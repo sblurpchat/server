@@ -15,6 +15,7 @@ import {
   type Channel,
   type Event,
   type GetServerInfoResponse,
+  type MemberRole,
   type Message,
 } from "./gen/sblurp/v1/sblurp_pb";
 import {
@@ -78,6 +79,7 @@ export type Modal =
   | { t: "invite" }
   | { t: "leave" }
   | { t: "delete"; id: string }
+  | { t: "remove"; url: string; memberId: string; ban: boolean }
   | { t: "lightbox"; src: string; name: string };
 export type Theme = "system" | "light" | "dark";
 
@@ -585,6 +587,10 @@ export async function leaveCommunity(url: string) {
   }
   leave(url);
 }
+
+export const setRole = (url: string, memberId: string, role: MemberRole) => api(url).server.setMemberRole({ memberId, role });
+export const removeMember = (url: string, memberId: string, ban: boolean) =>
+  ban ? api(url).server.banMember({ memberId }) : api(url).server.kickMember({ memberId });
 
 export function joinAgain(url: string) {
   patchC(url, (c) => ({ ...c, status: "join" }));

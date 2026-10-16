@@ -2,6 +2,7 @@
 import { create } from "@bufbuild/protobuf";
 import {
   ChannelKind,
+  MemberKind,
   MemberRole,
   Presence,
   ReadStateSchema,
@@ -544,6 +545,17 @@ export function landingChannel(c: Community): string {
     list.find((ch) => (c.reads[ch.id]?.unreadCount ?? 0) > 0) ??
     list[0];
   return pick?.id ?? "";
+}
+
+// What `me` may do to `target` from the profile card. Mirrors the server: moderators and up act
+// only on lower ranks, kick and ban only humans, and admins set roles below their own.
+export function modActions(me: Member | undefined, target: Member) {
+  const above = !!me && me.id !== target.id && me.role >= MemberRole.MODERATOR && me.role > target.role;
+  const roles = [MemberRole.MEMBER, MemberRole.MODERATOR, MemberRole.ADMIN];
+  return {
+    remove: above && target.kind === MemberKind.HUMAN,
+    roles: above && me!.role >= MemberRole.ADMIN ? roles.filter((r) => r < me!.role) : [],
+  };
 }
 
 const ROLE_GROUP: [MemberRole, string][] = [

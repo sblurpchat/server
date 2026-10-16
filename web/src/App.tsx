@@ -8,6 +8,7 @@ import {
   hostOf,
   isDM,
   matchScore,
+  modActions,
   moveItem,
   normalizeCommunityUrl,
   sidebarSections,
@@ -25,6 +26,7 @@ import {
   joinAgain,
   leave,
   leaveCommunity,
+  removeMember,
   openDM,
   probe,
   remove,
@@ -33,6 +35,7 @@ import {
   selectChannel,
   selectCommunity,
   set,
+  setRole,
   setNotify,
   setTheme,
   signIn,
@@ -653,6 +656,8 @@ function Modals() {
       return <CommunityDialog kind={modal.t} />;
     case "delete":
       return <DeleteConfirm id={modal.id} />;
+    case "remove":
+      return <RemoveMember {...modal} />;
     case "lightbox":
       return (
         <Dialog label={modal.name} className="lightbox">
@@ -942,6 +947,42 @@ function DeleteConfirm({ id }: { id: string }) {
   );
 }
 
+function RemoveMember({ url, memberId, ban }: { url: string; memberId: string; ban: boolean }) {
+  const c = useApp((s) => s.cs[url]);
+  const m = c?.members[memberId];
+  const [err, setErr] = useState("");
+  if (!c || !m) return null;
+  const name = m.displayName || m.username;
+  const where = c.info?.name ?? hostOf(url);
+  const verb = ban ? "Ban" : "Kick";
+  const go = () =>
+    removeMember(url, memberId, ban).then(
+      () => set({ modal: null }),
+      (e) => setErr(errorText(e, where)),
+    );
+  return (
+    <Dialog label={`${verb} ${name}`} className="confirm">
+      <h2>
+        {verb} {name}?
+      </h2>
+      <p className="muted">
+        {ban
+          ? `${name} is removed from ${where} and can't join again with this account.`
+          : `${name} is removed from ${where}. They can join again with its address.`}
+      </p>
+      {err && <p className="error">{err}</p>}
+      <div className="row-end">
+        <button className="btn ghost" autoFocus onClick={() => set({ modal: null })}>
+          Cancel
+        </button>
+        <button className="btn danger" onClick={go}>
+          {verb}
+        </button>
+      </div>
+    </Dialog>
+  );
+}
+
 const ROLE: Record<number, string> = {
   [MemberRole.OWNER]: "Owner",
   [MemberRole.ADMIN]: "Admin",
@@ -951,8 +992,9 @@ const ROLE: Record<number, string> = {
 function ProfilePopover() {
   const p = useApp((s) => s.popover);
   const m = useApp((s) => (s.popover ? s.cs[s.popover.url]?.members[s.popover.memberId] : undefined));
-  const meId = useApp((s) => (s.popover ? s.cs[s.popover.url]?.me?.id : undefined));
+  const me = useApp((s) => (s.popover ? s.cs[s.popover.url]?.me : undefined));
   const [err, setErr] = useState("");
+  const mod = m ? modActions(me, m) : { remove: false, roles: [] };
   return (
     <Pop anchor={p && m ? p.rect : null} side="right" className="profile" label="Profile" onClose={() => (setErr(""), set({ popover: null }))}>
       {m && p && (
@@ -984,12 +1026,41 @@ function ProfilePopover() {
               </>
             )}
             {err && <p className="error small">{err}</p>}
-            {m.id === meId ? (
+            {m.id === me?.id ? (
               <p className="fine">This is you.</p>
             ) : (
               <button className="btn primary wide" onClick={() => openDM(p.url, m.id).catch((e) => setErr(errorText(e)))}>
                 Message
               </button>
+            )}
+            {mod.roles.length > 0 && (
+              <label className="profile-role">
+                Role
+                <select
+                  className="input"
+                  value={m.role}
+                  onChange={(e) => (setErr(""), setRole(p.url, m.id, Number(e.target.value)).catch((x) => setErr(errorText(x))))}
+                >
+                  {mod.roles.map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE[r] ?? "Member"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {mod.remove && (
+              <div className="row-end profile-mod">
+                {[false, true].map((ban) => (
+                  <button
+                    key={String(ban)}
+                    className="btn danger-ghost small"
+                    onClick={() => set({ popover: null, modal: { t: "remove", url: p.url, memberId: m.id, ban } })}
+                  >
+                    {ban ? "Ban" : "Kick"}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         </>

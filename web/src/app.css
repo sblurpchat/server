@@ -1221,6 +1221,25 @@ li.sw-empty {
 .profile-body .fine {
   margin-top: 16px;
 }
+/* Moderator tools: role picker, then kick and ban. */
+.profile-role {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--graphite);
+}
+.profile-role .input {
+  flex: 1;
+}
+.profile-mod {
+  margin-top: 4px;
+}
+.profile-body .profile-mod .btn {
+  margin-top: 8px;
+}
 
 /* --------------------------------------------------------------- sign in */
 

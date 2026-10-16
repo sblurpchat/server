@@ -4,6 +4,7 @@ import {
   ChannelKind,
   ChannelSchema,
   EventSchema,
+  MemberKind,
   MemberRole,
   MemberSchema,
   Presence,
@@ -30,6 +31,7 @@ import {
   parseInline,
   parseMarkdown,
   landingChannel,
+  modActions,
   sidebarSections,
   tabTitle,
   tokenFresh,
@@ -389,4 +391,24 @@ it("count pluralizes and groups digits", () => {
   expect(count(1, "member", "members")).toBe("1 member");
   expect(count(0, "reply", "replies")).toBe("0 replies");
   expect(count(1204, "member", "members")).toBe("1,204 members");
+});
+
+describe("modActions", () => {
+  const { MEMBER, MODERATOR, ADMIN, OWNER } = MemberRole;
+  const mem = (id: string, role: MemberRole, kind = MemberKind.HUMAN) => create(MemberSchema, { id, role, kind });
+  it("lets moderators remove lower ranks but not set roles", () => {
+    expect(modActions(mem("a", MODERATOR), mem("b", MEMBER))).toEqual({ remove: true, roles: [] });
+    expect(modActions(mem("a", MODERATOR), mem("b", MODERATOR))).toEqual({ remove: false, roles: [] });
+  });
+  it("lets admins set roles below their own, and the owner up to admin", () => {
+    expect(modActions(mem("a", ADMIN), mem("b", MEMBER)).roles).toEqual([MEMBER, MODERATOR]);
+    expect(modActions(mem("a", OWNER), mem("b", ADMIN)).roles).toEqual([MEMBER, MODERATOR, ADMIN]);
+    expect(modActions(mem("a", ADMIN), mem("b", OWNER))).toEqual({ remove: false, roles: [] });
+  });
+  it("never offers kick or ban for bots, yourself, or plain members", () => {
+    expect(modActions(mem("a", OWNER), mem("b", MEMBER, MemberKind.BOT)).remove).toBe(false);
+    expect(modActions(mem("a", OWNER), mem("a", OWNER)).remove).toBe(false);
+    expect(modActions(mem("a", MEMBER), mem("b", MEMBER)).remove).toBe(false);
+    expect(modActions(undefined, mem("b", MEMBER)).remove).toBe(false);
+  });
 });
