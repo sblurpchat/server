@@ -471,7 +471,7 @@ function JoinCard({ url }: { url: string }) {
 
 function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServerInfoResponse; invite: string; onBack?: () => void }) {
   const profile = useApp((s) => s.profile);
-  const [share, setShare] = useState({ displayName: true, avatarUrl: true, bio: true });
+  const [share, setShare] = useState({ displayName: true, avatarUrl: true, bio: false });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const fields = [
