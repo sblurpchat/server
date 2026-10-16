@@ -704,6 +704,55 @@ func TestSendValidationIdempotencyAndRateLimit(t *testing.T) {
 	wantCode(t, err, connect.CodeResourceExhausted)
 }
 
+func TestListMessagesAroundAndAfter(t *testing.T) {
+	e := newEnv(t)
+	ana := e.join("ana")
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	other := ana.channel("other", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	var ids []string
+	for i := range 10 {
+		e.clock.Advance(time.Second) // rate limit
+		ids = append(ids, ana.send(gen.Id, fmt.Sprint("m", i)).Id)
+	}
+	reply := must(ana.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: gen.Id, ThreadRootId: ids[2], Text: "r"}))).Message
+	list := func(r *v1.ListMessagesRequest) (string, bool, bool) {
+		r.ChannelId = gen.Id
+		res := must(ana.chat.ListMessages(ctx(), connect.NewRequest(r)))
+		var texts []string
+		for _, m := range res.Messages {
+			texts = append(texts, m.Text)
+		}
+		return strings.Join(texts, ","), res.HasMore, res.HasMoreAfter
+	}
+	for _, c := range []struct {
+		req         *v1.ListMessagesRequest
+		want        string
+		more, after bool
+	}{
+		{&v1.ListMessagesRequest{AroundId: ids[5], Limit: 4}, "m3,m4,m5,m6", true, true},
+		{&v1.ListMessagesRequest{AroundId: ids[9], Limit: 4}, "m7,m8,m9", true, false},
+		{&v1.ListMessagesRequest{AroundId: ids[0], Limit: 4}, "m0,m1,m2,m3", false, true},
+		{&v1.ListMessagesRequest{AfterId: ids[6], Limit: 5}, "m7,m8,m9", false, false},
+		{&v1.ListMessagesRequest{AfterId: ids[2], Limit: 2}, "m3,m4", false, true},
+		{&v1.ListMessagesRequest{BeforeId: ids[2], Limit: 5}, "m0,m1", false, false},
+		{&v1.ListMessagesRequest{Limit: 3}, "m7,m8,m9", true, false},
+		{&v1.ListMessagesRequest{AroundId: reply.Id, ThreadRootId: ids[2]}, "r", false, false},
+	} {
+		got, more, after := list(c.req)
+		if got != c.want || more != c.more || after != c.after {
+			t.Errorf("%v: got %s more=%v after=%v, want %s %v %v", c.req, got, more, after, c.want, c.more, c.after)
+		}
+	}
+	for _, r := range []*v1.ListMessagesRequest{
+		{ChannelId: gen.Id, AroundId: ids[1], BeforeId: ids[5]},
+		{ChannelId: other.Id, AroundId: ids[1]},
+		{ChannelId: gen.Id, AroundId: reply.Id}, // a reply needs its thread_root_id
+	} {
+		_, err := ana.chat.ListMessages(ctx(), connect.NewRequest(r))
+		wantCode(t, err, connect.CodeInvalidArgument)
+	}
+}
+
 func pngBytes(w, h int) []byte {
 	var buf bytes.Buffer
 	png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, w, h)))

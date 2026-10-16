@@ -860,26 +860,57 @@ func (s *Server) ListMessages(ctx context.Context, req *connect.Request[v1.ListM
 		limit = 50
 	}
 	limit = min(limit, 200)
-	before := int64(math.MaxInt64)
-	if r.BeforeId != "" {
-		err := s.db.r.QueryRowContext(ctx, "SELECT created_seq FROM messages WHERE id = ? AND channel_id = ?", r.BeforeId, r.ChannelId).Scan(&before)
+	anchor, field := "", ""
+	for _, f := range [][2]string{{"before_id", r.BeforeId}, {"after_id", r.AfterId}, {"around_id", r.AroundId}} {
+		if f[1] != "" {
+			if anchor != "" {
+				return nil, errf(connect.CodeInvalidArgument, "set only one of before_id, after_id and around_id")
+			}
+			anchor, field = f[1], f[0]
+		}
+	}
+	at := int64(math.MaxInt64)
+	if anchor != "" {
+		err := s.db.r.QueryRowContext(ctx, "SELECT created_seq FROM messages WHERE id = ? AND channel_id = ? AND thread_root_id = ?",
+			anchor, r.ChannelId, r.ThreadRootId).Scan(&at)
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errf(connect.CodeInvalidArgument, "before_id is not a message in this channel")
+			return nil, errf(connect.CodeInvalidArgument, "%s is not a message in this channel or thread", field)
 		} else if err != nil {
 			return nil, err
 		}
 	}
-	ms, err := queryMessages(ctx, s.db.r, `channel_id = ? AND thread_root_id = ? AND created_seq < ? AND (deleted = 0 OR reply_count > 0)
-		ORDER BY created_seq DESC LIMIT ?`, r.ChannelId, r.ThreadRootId, before, limit+1)
+	// page returns up to n messages on one side of seq, nearest first, and
+	// whether there are more.
+	page := func(op string, seq int64, n int) ([]*v1.Message, bool, error) {
+		order := "ASC"
+		if op == "<" {
+			order = "DESC"
+		}
+		ms, err := queryMessages(ctx, s.db.r, `channel_id = ? AND thread_root_id = ? AND created_seq `+op+` ? AND (deleted = 0 OR reply_count > 0)
+			ORDER BY created_seq `+order+` LIMIT ?`, r.ChannelId, r.ThreadRootId, seq, n+1)
+		if len(ms) > n {
+			return ms[:n], true, err
+		}
+		return ms, false, err
+	}
+	out := &v1.ListMessagesResponse{}
+	var older, newer []*v1.Message
+	var err error
+	switch field {
+	case "after_id":
+		newer, out.HasMoreAfter, err = page(">", at, limit)
+	case "around_id":
+		if older, out.HasMore, err = page("<", at, limit/2); err == nil {
+			newer, out.HasMoreAfter, err = page(">=", at, limit-len(older))
+		}
+	default:
+		older, out.HasMore, err = page("<", at, limit)
+	}
 	if err != nil {
 		return nil, err
 	}
-	out := &v1.ListMessagesResponse{HasMore: len(ms) > limit}
-	if out.HasMore {
-		ms = ms[:limit]
-	}
-	slices.Reverse(ms)
-	out.Messages = ms
+	slices.Reverse(older)
+	out.Messages = append(older, newer...)
 	return connect.NewResponse(out), nil
 }
 

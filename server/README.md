@@ -87,7 +87,12 @@ client. There is no separate apps system. The bot is ~150 lines in
 - **ListMessages** lists top-level messages, or a thread's replies when
   `thread_root_id` is set (the root is not included). A deleted message is
   left out, unless it is a thread root with replies; then it shows as
-  `deleted: true` with empty text.
+  `deleted: true` with empty text. Paging: `before_id` gives older
+  messages, `after_id` newer ones, and `around_id` the message itself with
+  about `limit/2` older ones and the rest newer (to jump to a search hit; for
+  a thread reply also pass its `thread_root_id`). Set at most one. Results
+  are always oldest first. `has_more` means older messages exist,
+  `has_more_after` means newer ones exist.
 - **Upload**: `POST /upload`, `multipart/form-data` with one part named
   `file`, same Bearer token, 25 MB max. The response is the `Attachment`
   message as protojson, so parse it with `fromJson`. Note that `size` is a

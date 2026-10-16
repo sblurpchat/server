@@ -2178,11 +2178,14 @@ func (x *OpenDMResponse) GetChannel() *Channel {
 }
 
 type ListMessagesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ChannelId     string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
-	ThreadRootId  string                 `protobuf:"bytes,2,opt,name=thread_root_id,json=threadRootId,proto3" json:"thread_root_id,omitempty"` // set to list a thread's replies
-	BeforeId      string                 `protobuf:"bytes,3,opt,name=before_id,json=beforeId,proto3" json:"before_id,omitempty"`               // page backwards from this message; empty = newest
-	Limit         int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`                                    // default 50, max 200
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	ChannelId    string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	ThreadRootId string                 `protobuf:"bytes,2,opt,name=thread_root_id,json=threadRootId,proto3" json:"thread_root_id,omitempty"` // set to list a thread's replies
+	BeforeId     string                 `protobuf:"bytes,3,opt,name=before_id,json=beforeId,proto3" json:"before_id,omitempty"`               // page backwards from this message; empty = newest
+	Limit        int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`                                    // default 50, max 200
+	// Set at most one of before_id, after_id and around_id.
+	AroundId      string `protobuf:"bytes,5,opt,name=around_id,json=aroundId,proto3" json:"around_id,omitempty"` // this message, about limit/2 older ones and the rest newer (jump to a search hit)
+	AfterId       string `protobuf:"bytes,6,opt,name=after_id,json=afterId,proto3" json:"after_id,omitempty"`    // page forwards from this message (newer ones)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2245,10 +2248,25 @@ func (x *ListMessagesRequest) GetLimit() int32 {
 	return 0
 }
 
+func (x *ListMessagesRequest) GetAroundId() string {
+	if x != nil {
+		return x.AroundId
+	}
+	return ""
+}
+
+func (x *ListMessagesRequest) GetAfterId() string {
+	if x != nil {
+		return x.AfterId
+	}
+	return ""
+}
+
 type ListMessagesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Messages      []*Message             `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"` // oldest first
-	HasMore       bool                   `protobuf:"varint,2,opt,name=has_more,json=hasMore,proto3" json:"has_more,omitempty"`
+	Messages      []*Message             `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`                                // oldest first
+	HasMore       bool                   `protobuf:"varint,2,opt,name=has_more,json=hasMore,proto3" json:"has_more,omitempty"`                  // older messages exist before the first one
+	HasMoreAfter  bool                   `protobuf:"varint,3,opt,name=has_more_after,json=hasMoreAfter,proto3" json:"has_more_after,omitempty"` // newer messages exist after the last one (after_id and around_id only)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2293,6 +2311,13 @@ func (x *ListMessagesResponse) GetMessages() []*Message {
 func (x *ListMessagesResponse) GetHasMore() bool {
 	if x != nil {
 		return x.HasMore
+	}
+	return false
+}
+
+func (x *ListMessagesResponse) GetHasMoreAfter() bool {
+	if x != nil {
+		return x.HasMoreAfter
 	}
 	return false
 }
@@ -3526,16 +3551,19 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\n" +
 	"member_ids\x18\x01 \x03(\tR\tmemberIds\">\n" +
 	"\x0eOpenDMResponse\x12,\n" +
-	"\achannel\x18\x01 \x01(\v2\x12.sblurp.v1.ChannelR\achannel\"\x8d\x01\n" +
+	"\achannel\x18\x01 \x01(\v2\x12.sblurp.v1.ChannelR\achannel\"\xc5\x01\n" +
 	"\x13ListMessagesRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12$\n" +
 	"\x0ethread_root_id\x18\x02 \x01(\tR\fthreadRootId\x12\x1b\n" +
 	"\tbefore_id\x18\x03 \x01(\tR\bbeforeId\x12\x14\n" +
-	"\x05limit\x18\x04 \x01(\x05R\x05limit\"a\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\x12\x1b\n" +
+	"\taround_id\x18\x05 \x01(\tR\baroundId\x12\x19\n" +
+	"\bafter_id\x18\x06 \x01(\tR\aafterId\"\x87\x01\n" +
 	"\x14ListMessagesResponse\x12.\n" +
 	"\bmessages\x18\x01 \x03(\v2\x12.sblurp.v1.MessageR\bmessages\x12\x19\n" +
-	"\bhas_more\x18\x02 \x01(\bR\ahasMore\"\xb1\x01\n" +
+	"\bhas_more\x18\x02 \x01(\bR\ahasMore\x12$\n" +
+	"\x0ehas_more_after\x18\x03 \x01(\bR\fhasMoreAfter\"\xb1\x01\n" +
 	"\x12SendMessageRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x12\n" +

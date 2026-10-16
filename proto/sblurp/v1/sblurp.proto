@@ -250,10 +250,14 @@ message ListMessagesRequest {
   string thread_root_id = 2;  // set to list a thread's replies
   string before_id = 3;       // page backwards from this message; empty = newest
   int32 limit = 4;            // default 50, max 200
+  // Set at most one of before_id, after_id and around_id.
+  string around_id = 5;       // this message, about limit/2 older ones and the rest newer (jump to a search hit)
+  string after_id = 6;        // page forwards from this message (newer ones)
 }
 message ListMessagesResponse {
   repeated Message messages = 1; // oldest first
-  bool has_more = 2;
+  bool has_more = 2;             // older messages exist before the first one
+  bool has_more_after = 3;       // newer messages exist after the last one (after_id and around_id only)
 }
 
 message SendMessageRequest {
