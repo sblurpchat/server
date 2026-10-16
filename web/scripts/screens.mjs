@@ -55,6 +55,23 @@ const shots = {
     if ((p.viewportSize()?.width ?? 0) >= 768) return "skip";
     await p.getByRole("button", { name: "Open communities and channels" }).click();
   },
+  reactions: async (p) => {
+    const chip = p.locator(".msg .reaction:not(.add)").last();
+    await chip.scrollIntoViewIfNeeded();
+    if ((p.viewportSize()?.width ?? 0) >= 768) return chip.hover();
+    await chip.dispatchEvent("pointerdown", { pointerType: "touch" });
+    await p.waitForTimeout(600);
+    await chip.dispatchEvent("pointerup", { pointerType: "touch" });
+    await p.locator(".pop.who li").first().waitFor();
+  },
+  drop: async (p) => {
+    const dt = await p.evaluateHandle(() => {
+      const d = new DataTransfer();
+      d.items.add(new File(["x"], "kiln.jpg", { type: "image/jpeg" }));
+      return d;
+    });
+    await p.dispatchEvent(".channel .scroller", "dragover", { dataTransfer: dt });
+  },
   signin: "signedout",
 };
 

@@ -17,6 +17,7 @@ import {
   mentionsMe,
   timeLabel,
   typingLabel,
+  reactorsLabel,
   type Community,
   count,
   communityBadge,
@@ -305,6 +306,17 @@ function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: 
   const editing = useApp((s) => s.editing === m.id);
   const [pick, setPick] = useState<DOMRect | null>(null);
   const [more, setMore] = useState<DOMRect | null>(null);
+  const [who, setWho] = useState<{ emoji: string; rect: DOMRect } | null>(null);
+  const press = useRef<{ timer: number; held: HTMLElement | null; long: boolean }>({ timer: 0, held: null, long: false });
+  const release = (e: { pointerType: string }) => {
+    clearTimeout(press.current.timer);
+    const el = press.current.held;
+    if (!el) return;
+    // A touch release also fires click; that click must not toggle the reaction.
+    press.current = { timer: 0, held: null, long: e.pointerType !== "mouse" };
+    setWho({ emoji: el.dataset.emoji!, rect: el.getBoundingClientRect() });
+  };
+  const whoR = who && m.reactions.find((r) => r.emoji === who.emoji);
   const author = c.members[m.authorId];
   const mine = m.authorId === c.me?.id;
   const pending = m.seq === 0n && !!m.clientId;
@@ -389,9 +401,37 @@ function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: 
           <div className="reactions">
             {m.reactions.map((r) => {
               const me = !!c.me && r.memberIds.includes(c.me.id);
-              const who = r.memberIds.map((id) => c.members[id]?.displayName ?? "someone").join(", ");
+              const label = reactorsLabel(r.memberIds, c.members, c.me?.id, emojiChar(r.emoji));
+              const showWho = (el: HTMLElement) => setWho({ emoji: r.emoji, rect: el.getBoundingClientRect() });
               return (
-                <button key={r.emoji} className="reaction" aria-pressed={me} title={`${who} reacted with ${r.emoji}`} onClick={() => react(url, m, r.emoji)}>
+                <button
+                  key={r.emoji}
+                  className="reaction"
+                  aria-pressed={me}
+                  aria-label={label}
+                  data-tip={label}
+                  data-emoji={r.emoji}
+                  // Who reacted: hover tooltip on desktop, right-click or press-and-hold for the full list.
+                  // The list opens on release: a popover shown while the button is still down would be
+                  // light-dismissed by the pointerup.
+                  onPointerDown={(e) => {
+                    if (e.pointerType === "mouse") return;
+                    const el = e.currentTarget;
+                    press.current.timer = window.setTimeout(() => (press.current.held = el), 450);
+                  }}
+                  onPointerUp={release}
+                  onPointerCancel={release}
+                  onPointerLeave={() => clearTimeout(press.current.timer)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    if (e.buttons) press.current.held = e.currentTarget;
+                    else showWho(e.currentTarget);
+                  }}
+                  onClick={() => {
+                    if (press.current.long) press.current.long = false;
+                    else void react(url, m, r.emoji);
+                  }}
+                >
                   <span className="emoji">{emojiChar(r.emoji)}</span> {r.memberIds.length}
                 </button>
               );
@@ -430,6 +470,23 @@ function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: 
             void react(url, m, e);
           }}
         />
+      </Pop>
+      <Pop anchor={whoR ? who.rect : null} side="above" onClose={() => setWho(null)} className="who" label={whoR ? reactorsLabel(whoR.memberIds, c.members, c.me?.id, emojiChar(whoR.emoji)) : "Reactions"}>
+        {whoR && (
+          <>
+            <p className="who-head">
+              <span className="emoji">{emojiChar(whoR.emoji)}</span> {count(whoR.memberIds.length, "reaction", "reactions")}
+            </p>
+            <ul>
+              {whoR.memberIds.map((id) => (
+                <li key={id}>
+                  <Avatar m={c.members[id]} size={24} />
+                  <span className="truncate">{id === c.me?.id ? "You" : c.members[id]?.displayName || c.members[id]?.username || "Someone"}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </Pop>
       <Pop anchor={more} side="left" onClose={() => setMore(null)} className="menu" label="Message actions">
         <div role="menu" onClick={() => setMore(null)}>

@@ -1662,6 +1662,78 @@ li.sw-empty {
 .reaction .emoji {
   font-size: 15px;
 }
+.reaction:not(.add) {
+  position: relative;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+/* Who reacted: a tooltip on hover or keyboard focus; touch uses press-and-hold (.pop.who). */
+@media (hover: hover) {
+  .reaction[data-tip]:is(:hover, :focus-visible)::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    translate: -50% 0;
+    z-index: 5;
+    width: max-content;
+    max-width: 260px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #0f1019;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: center;
+    white-space: normal;
+    box-shadow: var(--shadow);
+    pointer-events: none;
+  }
+}
+.who {
+  min-width: 200px;
+  max-width: 280px;
+  padding: 10px 6px 6px;
+}
+.who-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 8px 6px;
+  font-weight: 700;
+}
+.who-head .emoji {
+  font-size: 22px;
+}
+.who ul {
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.who li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 6px 8px;
+  font-weight: 500;
+}
+@media (max-width: 767px) {
+  /* A bottom sheet on phones; !important beats the inline position place() sets. */
+  .pop.who {
+    left: 0 !important;
+    right: 0;
+    top: auto !important;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    border-radius: 16px 16px 0 0;
+  }
+}
 .reaction:hover {
   border-color: var(--graphite);
 }

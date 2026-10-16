@@ -41,6 +41,15 @@ try {
   await sent.locator(".thread-link", { hasText: "1 reply" }).waitFor();
   if (await page.locator(".channel .msg", { hasText: reply }).count()) throw new Error("thread reply leaked into the channel");
 
+  // React, then right-click the chip to see who reacted.
+  await sent.hover();
+  await sent.getByRole("toolbar").getByRole("button", { name: "Add reaction" }).click();
+  await page.getByRole("option", { name: "thumbsup" }).click();
+  const chip = sent.getByRole("button", { name: "You reacted with 👍" });
+  await chip.click({ button: "right" });
+  await page.locator(".pop.who li", { hasText: "You" }).waitFor();
+  await page.keyboard.press("Escape");
+
   // Drop a file on the message list (not the composer): it shows the overlay, then a chip.
   const dt = await page.evaluateHandle(() => {
     const d = new DataTransfer();
@@ -55,7 +64,7 @@ try {
   await page.locator(".channel .chip", { hasText: "glaze.txt" }).getByRole("button", { name: "Remove glaze.txt" }).click();
 
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, drop)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message);

@@ -404,6 +404,14 @@ export function acQuery(text: string, caret: number): { kind: "@" | ":"; start: 
   return { kind: m[1] as "@" | ":", start: caret - m[2].length - 1, q: m[2].toLowerCase() };
 }
 
+/** Who reacted, you first: "You, Ana Ruiz and 3 others reacted with 👍". */
+export function reactorsLabel(ids: string[], members: Record<string, Member>, meId: string | undefined, emoji: string): string {
+  const names = [...ids].sort((a, b) => Number(b === meId) - Number(a === meId)).map((id) => (id === meId ? "You" : members[id]?.displayName || members[id]?.username || "Someone"));
+  const shown = names.length > 4 ? [...names.slice(0, 3), count(names.length - 3, "other", "others")] : names;
+  const list = shown.length > 1 ? `${shown.slice(0, -1).join(", ")} and ${shown.at(-1)}` : shown[0] ?? "Nobody";
+  return `${list} reacted with ${emoji}`;
+}
+
 export function typingLabel(names: string[]): string {
   if (names.length === 0) return "";
   if (names.length === 1) return `${names[0]} is typing…`;

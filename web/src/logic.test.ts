@@ -36,6 +36,7 @@ import {
   tabTitle,
   tokenFresh,
   typingLabel,
+  reactorsLabel,
   upsertMessage,
   type Community,
   count,
@@ -319,6 +320,25 @@ describe("helpers", () => {
     expect(typingLabel(["Ana"])).toBe("Ana is typing…");
     expect(typingLabel(["Ana", "Ben"])).toBe("Ana and Ben are typing…");
     expect(typingLabel(["A", "B", "C"])).toBe("Several people are typing…");
+  });
+});
+
+describe("reactorsLabel", () => {
+  const members = Object.fromEntries(
+    ["ana:Ana", "ben:Ben", "cy:Cy", "dee:Dee", "eve:Eve"].map((x) => {
+      const [id, displayName] = x.split(":");
+      return [id, create(MemberSchema, { id, displayName })];
+    }),
+  );
+  it("puts you first and joins names with and", () => {
+    expect(reactorsLabel(["ana"], members, "me", "👍")).toBe("Ana reacted with 👍");
+    expect(reactorsLabel(["ana", "me"], members, "me", "👍")).toBe("You and Ana reacted with 👍");
+    expect(reactorsLabel(["ana", "ben", "cy"], members, "me", "🎉")).toBe("Ana, Ben and Cy reacted with 🎉");
+  });
+  it("counts the rest after three names", () => {
+    expect(reactorsLabel(["ana", "ben", "cy", "dee"], members, "me", "👀")).toBe("Ana, Ben, Cy and Dee reacted with 👀");
+    expect(reactorsLabel(["ana", "ben", "cy", "dee", "eve"], members, "me", "👀")).toBe("Ana, Ben, Cy and 2 others reacted with 👀");
+    expect(reactorsLabel(["gone"], members, "me", "👀")).toBe("Someone reacted with 👀");
   });
 });
 

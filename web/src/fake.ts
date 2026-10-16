@@ -15,6 +15,7 @@ import {
   MemberSchema,
   MessageSchema,
   Presence,
+  ReactionSchema,
   ReadStateSchema,
   ServerService,
   type Attachment,
@@ -666,7 +667,7 @@ function service(f: Fake) {
         need();
         const m = msg(req.messageId);
         let r = m.reactions.find((x) => x.emoji === req.emoji);
-        if (!r && !req.remove) m.reactions.push((r = { emoji: req.emoji, memberIds: [] } as never));
+        if (!r && !req.remove) m.reactions.push((r = create(ReactionSchema, { emoji: req.emoji })));
         if (r) {
           r.memberIds = r.memberIds.filter((x) => x !== f.meId);
           if (!req.remove) r.memberIds.push(f.meId);

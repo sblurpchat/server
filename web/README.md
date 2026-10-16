@@ -51,3 +51,4 @@ Things DESIGN.md and ARCHITECTURE.md left open, and what I picked.
 - **Uploads** go to `POST {base}/upload` and are served by signed URLs (`?exp=&sig=`, one to two hours) relative to the community; drop files anywhere over the channel or thread pane (a dashed overlay shows while dragging). A broken image refetches its message (ListMessages around_id) for fresh URLs, at most once a minute.
 - **Devnotes**: dev builds load `http://localhost:8090/devnotes.js` and remove the tag silently if it fails. The scripts block it so it does not appear in screenshots.
 - **Contrast**: the badge red is `#D42A44` and dark-mode accent fill `#4A5EF2` so white text reaches 4.5:1.
+- **Who reacted**: a dark tooltip on hover or focus ("You, Ana Ruiz and 2 others reacted with 👍"), and a list on right-click or press-and-hold (a bottom sheet on phones). The list opens on release, because a popover opened while the pointer is down is light-dismissed by the pointerup.
