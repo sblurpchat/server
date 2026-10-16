@@ -70,6 +70,18 @@ const (
 	ServerServiceKickMemberProcedure = "/sblurp.v1.ServerService/KickMember"
 	// ServerServiceBanMemberProcedure is the fully-qualified name of the ServerService's BanMember RPC.
 	ServerServiceBanMemberProcedure = "/sblurp.v1.ServerService/BanMember"
+	// ServerServiceCreateInviteProcedure is the fully-qualified name of the ServerService's
+	// CreateInvite RPC.
+	ServerServiceCreateInviteProcedure = "/sblurp.v1.ServerService/CreateInvite"
+	// ServerServiceListInvitesProcedure is the fully-qualified name of the ServerService's ListInvites
+	// RPC.
+	ServerServiceListInvitesProcedure = "/sblurp.v1.ServerService/ListInvites"
+	// ServerServiceRevokeInviteProcedure is the fully-qualified name of the ServerService's
+	// RevokeInvite RPC.
+	ServerServiceRevokeInviteProcedure = "/sblurp.v1.ServerService/RevokeInvite"
+	// ServerServiceUpdateServerSettingsProcedure is the fully-qualified name of the ServerService's
+	// UpdateServerSettings RPC.
+	ServerServiceUpdateServerSettingsProcedure = "/sblurp.v1.ServerService/UpdateServerSettings"
 	// ChatServiceCreateChannelProcedure is the fully-qualified name of the ChatService's CreateChannel
 	// RPC.
 	ChatServiceCreateChannelProcedure = "/sblurp.v1.ChatService/CreateChannel"
@@ -127,6 +139,10 @@ type ServerServiceClient interface {
 	LeaveCommunity(context.Context, *connect.Request[v1.LeaveCommunityRequest]) (*connect.Response[v1.LeaveCommunityResponse], error)
 	KickMember(context.Context, *connect.Request[v1.KickMemberRequest]) (*connect.Response[v1.KickMemberResponse], error)
 	BanMember(context.Context, *connect.Request[v1.BanMemberRequest]) (*connect.Response[v1.BanMemberResponse], error)
+	CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error)
+	ListInvites(context.Context, *connect.Request[v1.ListInvitesRequest]) (*connect.Response[v1.ListInvitesResponse], error)
+	RevokeInvite(context.Context, *connect.Request[v1.RevokeInviteRequest]) (*connect.Response[v1.RevokeInviteResponse], error)
+	UpdateServerSettings(context.Context, *connect.Request[v1.UpdateServerSettingsRequest]) (*connect.Response[v1.UpdateServerSettingsResponse], error)
 }
 
 // NewServerServiceClient constructs a client for the sblurp.v1.ServerService service. By default,
@@ -200,21 +216,49 @@ func NewServerServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(serverServiceMethods.ByName("BanMember")),
 			connect.WithClientOptions(opts...),
 		),
+		createInvite: connect.NewClient[v1.CreateInviteRequest, v1.CreateInviteResponse](
+			httpClient,
+			baseURL+ServerServiceCreateInviteProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("CreateInvite")),
+			connect.WithClientOptions(opts...),
+		),
+		listInvites: connect.NewClient[v1.ListInvitesRequest, v1.ListInvitesResponse](
+			httpClient,
+			baseURL+ServerServiceListInvitesProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("ListInvites")),
+			connect.WithClientOptions(opts...),
+		),
+		revokeInvite: connect.NewClient[v1.RevokeInviteRequest, v1.RevokeInviteResponse](
+			httpClient,
+			baseURL+ServerServiceRevokeInviteProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("RevokeInvite")),
+			connect.WithClientOptions(opts...),
+		),
+		updateServerSettings: connect.NewClient[v1.UpdateServerSettingsRequest, v1.UpdateServerSettingsResponse](
+			httpClient,
+			baseURL+ServerServiceUpdateServerSettingsProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("UpdateServerSettings")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // serverServiceClient implements ServerServiceClient.
 type serverServiceClient struct {
-	getServerInfo  *connect.Client[v1.GetServerInfoRequest, v1.GetServerInfoResponse]
-	join           *connect.Client[v1.JoinRequest, v1.JoinResponse]
-	getMe          *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
-	updateProfile  *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
-	getState       *connect.Client[v1.GetStateRequest, v1.GetStateResponse]
-	subscribe      *connect.Client[v1.SubscribeRequest, v1.Event]
-	setMemberRole  *connect.Client[v1.SetMemberRoleRequest, v1.SetMemberRoleResponse]
-	leaveCommunity *connect.Client[v1.LeaveCommunityRequest, v1.LeaveCommunityResponse]
-	kickMember     *connect.Client[v1.KickMemberRequest, v1.KickMemberResponse]
-	banMember      *connect.Client[v1.BanMemberRequest, v1.BanMemberResponse]
+	getServerInfo        *connect.Client[v1.GetServerInfoRequest, v1.GetServerInfoResponse]
+	join                 *connect.Client[v1.JoinRequest, v1.JoinResponse]
+	getMe                *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	updateProfile        *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
+	getState             *connect.Client[v1.GetStateRequest, v1.GetStateResponse]
+	subscribe            *connect.Client[v1.SubscribeRequest, v1.Event]
+	setMemberRole        *connect.Client[v1.SetMemberRoleRequest, v1.SetMemberRoleResponse]
+	leaveCommunity       *connect.Client[v1.LeaveCommunityRequest, v1.LeaveCommunityResponse]
+	kickMember           *connect.Client[v1.KickMemberRequest, v1.KickMemberResponse]
+	banMember            *connect.Client[v1.BanMemberRequest, v1.BanMemberResponse]
+	createInvite         *connect.Client[v1.CreateInviteRequest, v1.CreateInviteResponse]
+	listInvites          *connect.Client[v1.ListInvitesRequest, v1.ListInvitesResponse]
+	revokeInvite         *connect.Client[v1.RevokeInviteRequest, v1.RevokeInviteResponse]
+	updateServerSettings *connect.Client[v1.UpdateServerSettingsRequest, v1.UpdateServerSettingsResponse]
 }
 
 // GetServerInfo calls sblurp.v1.ServerService.GetServerInfo.
@@ -267,6 +311,26 @@ func (c *serverServiceClient) BanMember(ctx context.Context, req *connect.Reques
 	return c.banMember.CallUnary(ctx, req)
 }
 
+// CreateInvite calls sblurp.v1.ServerService.CreateInvite.
+func (c *serverServiceClient) CreateInvite(ctx context.Context, req *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error) {
+	return c.createInvite.CallUnary(ctx, req)
+}
+
+// ListInvites calls sblurp.v1.ServerService.ListInvites.
+func (c *serverServiceClient) ListInvites(ctx context.Context, req *connect.Request[v1.ListInvitesRequest]) (*connect.Response[v1.ListInvitesResponse], error) {
+	return c.listInvites.CallUnary(ctx, req)
+}
+
+// RevokeInvite calls sblurp.v1.ServerService.RevokeInvite.
+func (c *serverServiceClient) RevokeInvite(ctx context.Context, req *connect.Request[v1.RevokeInviteRequest]) (*connect.Response[v1.RevokeInviteResponse], error) {
+	return c.revokeInvite.CallUnary(ctx, req)
+}
+
+// UpdateServerSettings calls sblurp.v1.ServerService.UpdateServerSettings.
+func (c *serverServiceClient) UpdateServerSettings(ctx context.Context, req *connect.Request[v1.UpdateServerSettingsRequest]) (*connect.Response[v1.UpdateServerSettingsResponse], error) {
+	return c.updateServerSettings.CallUnary(ctx, req)
+}
+
 // ServerServiceHandler is an implementation of the sblurp.v1.ServerService service.
 type ServerServiceHandler interface {
 	GetServerInfo(context.Context, *connect.Request[v1.GetServerInfoRequest]) (*connect.Response[v1.GetServerInfoResponse], error)
@@ -281,6 +345,10 @@ type ServerServiceHandler interface {
 	LeaveCommunity(context.Context, *connect.Request[v1.LeaveCommunityRequest]) (*connect.Response[v1.LeaveCommunityResponse], error)
 	KickMember(context.Context, *connect.Request[v1.KickMemberRequest]) (*connect.Response[v1.KickMemberResponse], error)
 	BanMember(context.Context, *connect.Request[v1.BanMemberRequest]) (*connect.Response[v1.BanMemberResponse], error)
+	CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error)
+	ListInvites(context.Context, *connect.Request[v1.ListInvitesRequest]) (*connect.Response[v1.ListInvitesResponse], error)
+	RevokeInvite(context.Context, *connect.Request[v1.RevokeInviteRequest]) (*connect.Response[v1.RevokeInviteResponse], error)
+	UpdateServerSettings(context.Context, *connect.Request[v1.UpdateServerSettingsRequest]) (*connect.Response[v1.UpdateServerSettingsResponse], error)
 }
 
 // NewServerServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -350,6 +418,30 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(serverServiceMethods.ByName("BanMember")),
 		connect.WithHandlerOptions(opts...),
 	)
+	serverServiceCreateInviteHandler := connect.NewUnaryHandler(
+		ServerServiceCreateInviteProcedure,
+		svc.CreateInvite,
+		connect.WithSchema(serverServiceMethods.ByName("CreateInvite")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceListInvitesHandler := connect.NewUnaryHandler(
+		ServerServiceListInvitesProcedure,
+		svc.ListInvites,
+		connect.WithSchema(serverServiceMethods.ByName("ListInvites")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceRevokeInviteHandler := connect.NewUnaryHandler(
+		ServerServiceRevokeInviteProcedure,
+		svc.RevokeInvite,
+		connect.WithSchema(serverServiceMethods.ByName("RevokeInvite")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceUpdateServerSettingsHandler := connect.NewUnaryHandler(
+		ServerServiceUpdateServerSettingsProcedure,
+		svc.UpdateServerSettings,
+		connect.WithSchema(serverServiceMethods.ByName("UpdateServerSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/sblurp.v1.ServerService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ServerServiceGetServerInfoProcedure:
@@ -372,6 +464,14 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 			serverServiceKickMemberHandler.ServeHTTP(w, r)
 		case ServerServiceBanMemberProcedure:
 			serverServiceBanMemberHandler.ServeHTTP(w, r)
+		case ServerServiceCreateInviteProcedure:
+			serverServiceCreateInviteHandler.ServeHTTP(w, r)
+		case ServerServiceListInvitesProcedure:
+			serverServiceListInvitesHandler.ServeHTTP(w, r)
+		case ServerServiceRevokeInviteProcedure:
+			serverServiceRevokeInviteHandler.ServeHTTP(w, r)
+		case ServerServiceUpdateServerSettingsProcedure:
+			serverServiceUpdateServerSettingsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -419,6 +519,22 @@ func (UnimplementedServerServiceHandler) KickMember(context.Context, *connect.Re
 
 func (UnimplementedServerServiceHandler) BanMember(context.Context, *connect.Request[v1.BanMemberRequest]) (*connect.Response[v1.BanMemberResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.BanMember is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.CreateInvite is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) ListInvites(context.Context, *connect.Request[v1.ListInvitesRequest]) (*connect.Response[v1.ListInvitesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.ListInvites is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) RevokeInvite(context.Context, *connect.Request[v1.RevokeInviteRequest]) (*connect.Response[v1.RevokeInviteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.RevokeInvite is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) UpdateServerSettings(context.Context, *connect.Request[v1.UpdateServerSettingsRequest]) (*connect.Response[v1.UpdateServerSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.UpdateServerSettings is not implemented"))
 }
 
 // ChatServiceClient is a client for the sblurp.v1.ChatService service.

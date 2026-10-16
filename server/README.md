@@ -131,6 +131,17 @@ client. There is no separate apps system. The bot is ~150 lines in
   as `member_left`. Their member row stays (same id when they Join again,
   as a plain member). `BanMember` also blocks their `(iss, sub)` from
   `Join`. Bots are removed with `DeleteBot`, not kicked.
+- **Invites**: a community is open (anyone with a login from a trusted
+  issuer may `Join`) until an admin calls
+  `UpdateServerSettings{invite_only: true}`. `GetServerInfo.invite_only`
+  tells the join screen to ask for a code. Then `Join` needs
+  `invite_code` (case-insensitive, spaces trimmed), except for the first
+  person (the owner) and current members; someone who left or was kicked
+  needs a new code. Admins `CreateInvite` (optional `expires_in_seconds`,
+  up to a year, and `max_uses`), `ListInvites` (all not revoked, newest
+  first, with `uses`) and `RevokeInvite`. A bad, expired, used-up or
+  missing code is `permission_denied`. On an open community the code is
+  ignored and not counted. Seeded communities are open.
 - **Private channel members**: any member of a private channel may
   `AddChannelMembers`; added members get `channel_updated` for a channel
   they did not have yet (upsert it), and its old messages are not unread.

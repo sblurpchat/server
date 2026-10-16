@@ -1397,3 +1397,82 @@ func TestPruneOrphanedUploads(t *testing.T) {
 		t.Fatalf("after 25h: orphan %v, used %v, fresh %v", exists(orphan.Id), exists(used.Id), exists(fresh.Id))
 	}
 }
+
+// Invite-only communities need a usable invite code to Join (0103).
+func TestInvites(t *testing.T) {
+	e := newEnv(t)
+	ana, bob := e.join("ana"), e.join("bob")
+	info := func() bool {
+		return must(e.client("").srv.GetServerInfo(ctx(), connect.NewRequest(&v1.GetServerInfoRequest{}))).InviteOnly
+	}
+	joinWith := func(sub, code string) error {
+		_, err := e.client(e.token(sub)).srv.Join(ctx(), connect.NewRequest(&v1.JoinRequest{InviteCode: code}))
+		return err
+	}
+	create := func(secs int64, uses int32) *v1.Invite {
+		return must(ana.srv.CreateInvite(ctx(), connect.NewRequest(&v1.CreateInviteRequest{ExpiresInSeconds: secs, MaxUses: uses}))).Invite
+	}
+	setInviteOnly := func(c *client, on bool) error {
+		_, err := c.srv.UpdateServerSettings(ctx(), connect.NewRequest(&v1.UpdateServerSettingsRequest{InviteOnly: &on}))
+		return err
+	}
+	if info() {
+		t.Fatal("a new community must be open")
+	}
+	_, err := bob.srv.CreateInvite(ctx(), connect.NewRequest(&v1.CreateInviteRequest{}))
+	wantCode(t, err, connect.CodePermissionDenied)
+	wantCode(t, setInviteOnly(bob, true), connect.CodePermissionDenied)
+	_, err = ana.srv.CreateInvite(ctx(), connect.NewRequest(&v1.CreateInviteRequest{MaxUses: -1}))
+	wantCode(t, err, connect.CodeInvalidArgument)
+	_, err = ana.srv.CreateInvite(ctx(), connect.NewRequest(&v1.CreateInviteRequest{ExpiresInSeconds: 400 * 86400}))
+	wantCode(t, err, connect.CodeInvalidArgument)
+
+	if err := setInviteOnly(ana, true); err != nil || !info() {
+		t.Fatalf("invite_only not set: %v", err)
+	}
+	wantCode(t, joinWith("carol", ""), connect.CodePermissionDenied)
+	wantCode(t, joinWith("carol", "NOPE"), connect.CodePermissionDenied)
+
+	once := create(3600, 1)
+	if len(once.Code) != 10 || once.MaxUses != 1 || once.CreatedBy != ana.me.Id ||
+		once.ExpiresAtMs != e.clock.Now().Add(time.Hour).UnixMilli() {
+		t.Fatalf("invite = %v", once)
+	}
+	if err := joinWith("carol", " "+strings.ToLower(once.Code)+" "); err != nil {
+		t.Fatalf("join with invite: %v", err)
+	}
+	wantCode(t, joinWith("dave", once.Code), connect.CodePermissionDenied) // used up
+
+	short := create(60, 0)
+	e.clock.Advance(61 * time.Second)
+	wantCode(t, joinWith("dave", short.Code), connect.CodePermissionDenied) // expired
+
+	open := create(0, 0)
+	must(ana.srv.RevokeInvite(ctx(), connect.NewRequest(&v1.RevokeInviteRequest{Code: open.Code})))
+	wantCode(t, joinWith("dave", open.Code), connect.CodePermissionDenied) // revoked
+	_, err = ana.srv.RevokeInvite(ctx(), connect.NewRequest(&v1.RevokeInviteRequest{Code: open.Code}))
+	wantCode(t, err, connect.CodeNotFound)
+
+	list := must(ana.srv.ListInvites(ctx(), connect.NewRequest(&v1.ListInvitesRequest{}))).Invites
+	if len(list) != 2 || list[0].Code != short.Code || list[1].Code != once.Code || list[1].Uses != 1 || list[0].Uses != 0 {
+		t.Fatalf("list = %v", list)
+	}
+	_, err = bob.srv.ListInvites(ctx(), connect.NewRequest(&v1.ListInvitesRequest{}))
+	wantCode(t, err, connect.CodePermissionDenied)
+
+	// A member needs no code; one who left needs one again.
+	bob = e.client(e.token("bob"))
+	must(bob.srv.Join(ctx(), connect.NewRequest(&v1.JoinRequest{})))
+	must(bob.srv.LeaveCommunity(ctx(), connect.NewRequest(&v1.LeaveCommunityRequest{})))
+	wantCode(t, joinWith("bob", ""), connect.CodePermissionDenied)
+	if err := joinWith("bob", create(0, 0).Code); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := setInviteOnly(ana, false); err != nil || info() {
+		t.Fatal("could not reopen")
+	}
+	if err := joinWith("frank", ""); err != nil {
+		t.Fatalf("open community: %v", err)
+	}
+}

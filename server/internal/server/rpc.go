@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -387,6 +388,10 @@ func (s *Server) GetServerInfo(ctx context.Context, _ *connect.Request[v1.GetSer
 	if err := s.db.r.QueryRowContext(ctx, "SELECT COUNT(*) FROM members WHERE deleted = 0").Scan(&n); err != nil {
 		return nil, err
 	}
+	inviteOnly, err := isInviteOnly(ctx, s.db.r)
+	if err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&v1.GetServerInfoResponse{
 		Name:            s.cfg.Name,
 		Description:     s.cfg.Description,
@@ -396,6 +401,7 @@ func (s *Server) GetServerInfo(ctx context.Context, _ *connect.Request[v1.GetSer
 		BaseUrl:         s.cfg.BaseURL,
 		MemberCount:     n,
 		AccentColor:     s.cfg.Accent,
+		InviteOnly:      inviteOnly,
 	}), nil
 }
 
@@ -441,6 +447,9 @@ func (s *Server) Join(ctx context.Context, req *connect.Request[v1.JoinRequest])
 		}
 		if banned {
 			return errf(connect.CodePermissionDenied, "you are banned from this community")
+		}
+		if err := useInvite(t, r.InviteCode, s.nowMs()); err != nil {
+			return err
 		}
 		// A member who left or was kicked comes back with the same id.
 		var oldID string
@@ -1591,6 +1600,158 @@ func (s *Server) removeMember(t *wtx, id string) error {
 		return err
 	}
 	return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberLeft{MemberLeft: id}}, "", "")
+}
+
+// ---------------------------------------------------------------------------
+// Invites and settings
+// ---------------------------------------------------------------------------
+
+const (
+	maxInviteLife = 365 * 24 * time.Hour
+	maxInviteUses = 1_000_000
+)
+
+func isInviteOnly(ctx context.Context, q queryer) (bool, error) {
+	var on bool
+	err := q.QueryRowContext(ctx, "SELECT COALESCE((SELECT value = '1' FROM settings WHERE key = 'invite_only'), 0)").Scan(&on)
+	return on, err
+}
+
+// useInvite lets a Join through: always on an open community, and for the
+// first person (the owner). Otherwise it needs a usable code and counts a use.
+func useInvite(t *wtx, code string, nowMs int64) error {
+	on, err := isInviteOnly(t.ctx, t)
+	if err != nil || !on {
+		return err
+	}
+	var humans int
+	if err := t.QueryRowContext(t.ctx, "SELECT COUNT(*) FROM members WHERE iss IS NOT NULL").Scan(&humans); err != nil || humans == 0 {
+		return err
+	}
+	code = strings.ToUpper(strings.TrimSpace(code))
+	if code == "" {
+		return errf(connect.CodePermissionDenied, "this community is invite-only; you need an invite code")
+	}
+	res, err := t.ExecContext(t.ctx, `UPDATE invites SET uses = uses + 1 WHERE code = ?
+		AND (expires_at_ms = 0 OR expires_at_ms > ?) AND (max_uses = 0 OR uses < max_uses)`, code, nowMs)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		return errf(connect.CodePermissionDenied, "that invite code is invalid, expired or used up")
+	}
+	return nil
+}
+
+func requireAdmin(ctx context.Context) error {
+	if !isAdmin(me(ctx)) {
+		return errf(connect.CodePermissionDenied, "only admins can manage invites and settings")
+	}
+	return nil
+}
+
+const inviteCols = "code, created_by, created_at_ms, expires_at_ms, max_uses, uses"
+
+func scanInvite(sc scanner) (*v1.Invite, error) {
+	i := &v1.Invite{}
+	return i, sc.Scan(&i.Code, &i.CreatedBy, &i.CreatedAtMs, &i.ExpiresAtMs, &i.MaxUses, &i.Uses)
+}
+
+func (s *Server) CreateInvite(ctx context.Context, req *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	r := req.Msg
+	if r.ExpiresInSeconds < 0 || r.ExpiresInSeconds > int64(maxInviteLife/time.Second) {
+		return nil, errf(connect.CodeInvalidArgument, "expires_in_seconds must be 0 (never) to one year")
+	}
+	if r.MaxUses < 0 || r.MaxUses > maxInviteUses {
+		return nil, errf(connect.CodeInvalidArgument, "max_uses must be 0 (no limit) to %d", maxInviteUses)
+	}
+	now := s.now()
+	var exp int64
+	if r.ExpiresInSeconds > 0 {
+		exp = now.Add(time.Duration(r.ExpiresInSeconds) * time.Second).UnixMilli()
+	}
+	code := rand.Text()[:10] // 50 random bits
+	var inv *v1.Invite
+	err := s.writeTx(ctx, func(t *wtx) error {
+		var err error
+		inv, err = scanInvite(t.QueryRowContext(ctx, "INSERT INTO invites(code, created_by, created_at_ms, expires_at_ms, max_uses) VALUES (?,?,?,?,?) RETURNING "+inviteCols,
+			code, me(ctx).Id, now.UnixMilli(), exp, r.MaxUses))
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.log.Info("invite created", "by", me(ctx).Id, "max_uses", r.MaxUses, "expires_at_ms", exp)
+	return connect.NewResponse(&v1.CreateInviteResponse{Invite: inv}), nil
+}
+
+func (s *Server) ListInvites(ctx context.Context, _ *connect.Request[v1.ListInvitesRequest]) (*connect.Response[v1.ListInvitesResponse], error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	rows, err := s.db.r.QueryContext(ctx, "SELECT "+inviteCols+" FROM invites ORDER BY created_at_ms DESC, rowid DESC")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := &v1.ListInvitesResponse{}
+	for rows.Next() {
+		inv, err := scanInvite(rows)
+		if err != nil {
+			return nil, err
+		}
+		out.Invites = append(out.Invites, inv)
+	}
+	return connect.NewResponse(out), rows.Err()
+}
+
+func (s *Server) RevokeInvite(ctx context.Context, req *connect.Request[v1.RevokeInviteRequest]) (*connect.Response[v1.RevokeInviteResponse], error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	err := s.writeTx(ctx, func(t *wtx) error {
+		res, err := t.ExecContext(ctx, "DELETE FROM invites WHERE code = ?", strings.ToUpper(strings.TrimSpace(req.Msg.Code)))
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return errf(connect.CodeNotFound, "invite not found")
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&v1.RevokeInviteResponse{}), nil
+}
+
+func (s *Server) UpdateServerSettings(ctx context.Context, req *connect.Request[v1.UpdateServerSettingsRequest]) (*connect.Response[v1.UpdateServerSettingsResponse], error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	out := &v1.UpdateServerSettingsResponse{}
+	err := s.writeTx(ctx, func(t *wtx) error {
+		if v := req.Msg.InviteOnly; v != nil {
+			val := "0"
+			if *v {
+				val = "1"
+			}
+			if _, err := t.ExecContext(ctx, "INSERT INTO settings(key, value) VALUES ('invite_only', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", val); err != nil {
+				return err
+			}
+		}
+		var err error
+		out.InviteOnly, err = isInviteOnly(ctx, t)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.log.Info("settings updated", "by", me(ctx).Id, "invite_only", out.InviteOnly)
+	return connect.NewResponse(out), nil
 }
 
 // ---------------------------------------------------------------------------
