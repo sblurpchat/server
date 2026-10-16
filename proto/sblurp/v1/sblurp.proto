@@ -305,6 +305,54 @@ message SearchRequest {
 message SearchResponse { repeated Message messages = 1; }
 
 // ---------------------------------------------------------------------------
+// Membership and moderation
+//
+// Rank: owner > admin > moderator > member. Nobody acts on a member of equal
+// or higher rank.
+// ---------------------------------------------------------------------------
+
+// Any member of a private channel may add others to it. The new members get
+// channel_updated (treat it as an upsert).
+message AddChannelMembersRequest {
+  string channel_id = 1;
+  repeated string member_ids = 2; // max 50
+}
+message AddChannelMembersResponse { Channel channel = 1; }
+
+// Removes a member from a private channel. Your own id leaves the channel;
+// anyone else needs moderator or higher and a higher rank than theirs. The
+// removed member gets channel_deleted (the channel is gone for them); the
+// rest get channel_updated.
+message RemoveChannelMemberRequest {
+  string channel_id = 1;
+  string member_id = 2;
+}
+message RemoveChannelMemberResponse { Channel channel = 1; }
+
+// Admin or owner only. The new role must be MEMBER, MODERATOR or ADMIN and
+// lower than the caller's, and the target must rank lower than the caller.
+message SetMemberRoleRequest {
+  string member_id = 1;
+  MemberRole role = 2;
+}
+message SetMemberRoleResponse { Member member = 1; }
+
+// Leave this community. The owner cannot leave. You may Join again later.
+// Others get member_left.
+message LeaveCommunityRequest {}
+message LeaveCommunityResponse {}
+
+// Moderator or higher, and a higher rank than the target. The target leaves
+// the community and its private channels but may Join again. Not for bots
+// (use BotService.DeleteBot).
+message KickMemberRequest { string member_id = 1; }
+message KickMemberResponse {}
+
+// Like KickMember, and the person's login (iss, sub) cannot Join again.
+message BanMemberRequest { string member_id = 1; }
+message BanMemberResponse {}
+
+// ---------------------------------------------------------------------------
 // Bots
 // ---------------------------------------------------------------------------
 
@@ -341,6 +389,10 @@ service ServerService {
   // Server stream. Browsers support server streams over Connect; there is
   // deliberately no bidirectional stream. Clients send with unary calls.
   rpc Subscribe(SubscribeRequest) returns (stream Event) {}
+  rpc SetMemberRole(SetMemberRoleRequest) returns (SetMemberRoleResponse) {}
+  rpc LeaveCommunity(LeaveCommunityRequest) returns (LeaveCommunityResponse) {}
+  rpc KickMember(KickMemberRequest) returns (KickMemberResponse) {}
+  rpc BanMember(BanMemberRequest) returns (BanMemberResponse) {}
 }
 
 service ChatService {
@@ -355,6 +407,8 @@ service ChatService {
   rpc MarkRead(MarkReadRequest) returns (MarkReadResponse) {}
   rpc SetTyping(SetTypingRequest) returns (SetTypingResponse) {}
   rpc Search(SearchRequest) returns (SearchResponse) {}
+  rpc AddChannelMembers(AddChannelMembersRequest) returns (AddChannelMembersResponse) {}
+  rpc RemoveChannelMember(RemoveChannelMemberRequest) returns (RemoveChannelMemberResponse) {}
 }
 
 service BotService {

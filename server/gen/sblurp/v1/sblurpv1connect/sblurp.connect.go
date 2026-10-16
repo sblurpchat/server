@@ -59,6 +59,17 @@ const (
 	ServerServiceGetStateProcedure = "/sblurp.v1.ServerService/GetState"
 	// ServerServiceSubscribeProcedure is the fully-qualified name of the ServerService's Subscribe RPC.
 	ServerServiceSubscribeProcedure = "/sblurp.v1.ServerService/Subscribe"
+	// ServerServiceSetMemberRoleProcedure is the fully-qualified name of the ServerService's
+	// SetMemberRole RPC.
+	ServerServiceSetMemberRoleProcedure = "/sblurp.v1.ServerService/SetMemberRole"
+	// ServerServiceLeaveCommunityProcedure is the fully-qualified name of the ServerService's
+	// LeaveCommunity RPC.
+	ServerServiceLeaveCommunityProcedure = "/sblurp.v1.ServerService/LeaveCommunity"
+	// ServerServiceKickMemberProcedure is the fully-qualified name of the ServerService's KickMember
+	// RPC.
+	ServerServiceKickMemberProcedure = "/sblurp.v1.ServerService/KickMember"
+	// ServerServiceBanMemberProcedure is the fully-qualified name of the ServerService's BanMember RPC.
+	ServerServiceBanMemberProcedure = "/sblurp.v1.ServerService/BanMember"
 	// ChatServiceCreateChannelProcedure is the fully-qualified name of the ChatService's CreateChannel
 	// RPC.
 	ChatServiceCreateChannelProcedure = "/sblurp.v1.ChatService/CreateChannel"
@@ -85,6 +96,12 @@ const (
 	ChatServiceSetTypingProcedure = "/sblurp.v1.ChatService/SetTyping"
 	// ChatServiceSearchProcedure is the fully-qualified name of the ChatService's Search RPC.
 	ChatServiceSearchProcedure = "/sblurp.v1.ChatService/Search"
+	// ChatServiceAddChannelMembersProcedure is the fully-qualified name of the ChatService's
+	// AddChannelMembers RPC.
+	ChatServiceAddChannelMembersProcedure = "/sblurp.v1.ChatService/AddChannelMembers"
+	// ChatServiceRemoveChannelMemberProcedure is the fully-qualified name of the ChatService's
+	// RemoveChannelMember RPC.
+	ChatServiceRemoveChannelMemberProcedure = "/sblurp.v1.ChatService/RemoveChannelMember"
 	// BotServiceCreateBotProcedure is the fully-qualified name of the BotService's CreateBot RPC.
 	BotServiceCreateBotProcedure = "/sblurp.v1.BotService/CreateBot"
 	// BotServiceListBotsProcedure is the fully-qualified name of the BotService's ListBots RPC.
@@ -106,6 +123,10 @@ type ServerServiceClient interface {
 	// Server stream. Browsers support server streams over Connect; there is
 	// deliberately no bidirectional stream. Clients send with unary calls.
 	Subscribe(context.Context, *connect.Request[v1.SubscribeRequest]) (*connect.ServerStreamForClient[v1.Event], error)
+	SetMemberRole(context.Context, *connect.Request[v1.SetMemberRoleRequest]) (*connect.Response[v1.SetMemberRoleResponse], error)
+	LeaveCommunity(context.Context, *connect.Request[v1.LeaveCommunityRequest]) (*connect.Response[v1.LeaveCommunityResponse], error)
+	KickMember(context.Context, *connect.Request[v1.KickMemberRequest]) (*connect.Response[v1.KickMemberResponse], error)
+	BanMember(context.Context, *connect.Request[v1.BanMemberRequest]) (*connect.Response[v1.BanMemberResponse], error)
 }
 
 // NewServerServiceClient constructs a client for the sblurp.v1.ServerService service. By default,
@@ -155,17 +176,45 @@ func NewServerServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(serverServiceMethods.ByName("Subscribe")),
 			connect.WithClientOptions(opts...),
 		),
+		setMemberRole: connect.NewClient[v1.SetMemberRoleRequest, v1.SetMemberRoleResponse](
+			httpClient,
+			baseURL+ServerServiceSetMemberRoleProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("SetMemberRole")),
+			connect.WithClientOptions(opts...),
+		),
+		leaveCommunity: connect.NewClient[v1.LeaveCommunityRequest, v1.LeaveCommunityResponse](
+			httpClient,
+			baseURL+ServerServiceLeaveCommunityProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("LeaveCommunity")),
+			connect.WithClientOptions(opts...),
+		),
+		kickMember: connect.NewClient[v1.KickMemberRequest, v1.KickMemberResponse](
+			httpClient,
+			baseURL+ServerServiceKickMemberProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("KickMember")),
+			connect.WithClientOptions(opts...),
+		),
+		banMember: connect.NewClient[v1.BanMemberRequest, v1.BanMemberResponse](
+			httpClient,
+			baseURL+ServerServiceBanMemberProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("BanMember")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // serverServiceClient implements ServerServiceClient.
 type serverServiceClient struct {
-	getServerInfo *connect.Client[v1.GetServerInfoRequest, v1.GetServerInfoResponse]
-	join          *connect.Client[v1.JoinRequest, v1.JoinResponse]
-	getMe         *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
-	updateProfile *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
-	getState      *connect.Client[v1.GetStateRequest, v1.GetStateResponse]
-	subscribe     *connect.Client[v1.SubscribeRequest, v1.Event]
+	getServerInfo  *connect.Client[v1.GetServerInfoRequest, v1.GetServerInfoResponse]
+	join           *connect.Client[v1.JoinRequest, v1.JoinResponse]
+	getMe          *connect.Client[v1.GetMeRequest, v1.GetMeResponse]
+	updateProfile  *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
+	getState       *connect.Client[v1.GetStateRequest, v1.GetStateResponse]
+	subscribe      *connect.Client[v1.SubscribeRequest, v1.Event]
+	setMemberRole  *connect.Client[v1.SetMemberRoleRequest, v1.SetMemberRoleResponse]
+	leaveCommunity *connect.Client[v1.LeaveCommunityRequest, v1.LeaveCommunityResponse]
+	kickMember     *connect.Client[v1.KickMemberRequest, v1.KickMemberResponse]
+	banMember      *connect.Client[v1.BanMemberRequest, v1.BanMemberResponse]
 }
 
 // GetServerInfo calls sblurp.v1.ServerService.GetServerInfo.
@@ -198,6 +247,26 @@ func (c *serverServiceClient) Subscribe(ctx context.Context, req *connect.Reques
 	return c.subscribe.CallServerStream(ctx, req)
 }
 
+// SetMemberRole calls sblurp.v1.ServerService.SetMemberRole.
+func (c *serverServiceClient) SetMemberRole(ctx context.Context, req *connect.Request[v1.SetMemberRoleRequest]) (*connect.Response[v1.SetMemberRoleResponse], error) {
+	return c.setMemberRole.CallUnary(ctx, req)
+}
+
+// LeaveCommunity calls sblurp.v1.ServerService.LeaveCommunity.
+func (c *serverServiceClient) LeaveCommunity(ctx context.Context, req *connect.Request[v1.LeaveCommunityRequest]) (*connect.Response[v1.LeaveCommunityResponse], error) {
+	return c.leaveCommunity.CallUnary(ctx, req)
+}
+
+// KickMember calls sblurp.v1.ServerService.KickMember.
+func (c *serverServiceClient) KickMember(ctx context.Context, req *connect.Request[v1.KickMemberRequest]) (*connect.Response[v1.KickMemberResponse], error) {
+	return c.kickMember.CallUnary(ctx, req)
+}
+
+// BanMember calls sblurp.v1.ServerService.BanMember.
+func (c *serverServiceClient) BanMember(ctx context.Context, req *connect.Request[v1.BanMemberRequest]) (*connect.Response[v1.BanMemberResponse], error) {
+	return c.banMember.CallUnary(ctx, req)
+}
+
 // ServerServiceHandler is an implementation of the sblurp.v1.ServerService service.
 type ServerServiceHandler interface {
 	GetServerInfo(context.Context, *connect.Request[v1.GetServerInfoRequest]) (*connect.Response[v1.GetServerInfoResponse], error)
@@ -208,6 +277,10 @@ type ServerServiceHandler interface {
 	// Server stream. Browsers support server streams over Connect; there is
 	// deliberately no bidirectional stream. Clients send with unary calls.
 	Subscribe(context.Context, *connect.Request[v1.SubscribeRequest], *connect.ServerStream[v1.Event]) error
+	SetMemberRole(context.Context, *connect.Request[v1.SetMemberRoleRequest]) (*connect.Response[v1.SetMemberRoleResponse], error)
+	LeaveCommunity(context.Context, *connect.Request[v1.LeaveCommunityRequest]) (*connect.Response[v1.LeaveCommunityResponse], error)
+	KickMember(context.Context, *connect.Request[v1.KickMemberRequest]) (*connect.Response[v1.KickMemberResponse], error)
+	BanMember(context.Context, *connect.Request[v1.BanMemberRequest]) (*connect.Response[v1.BanMemberResponse], error)
 }
 
 // NewServerServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -253,6 +326,30 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(serverServiceMethods.ByName("Subscribe")),
 		connect.WithHandlerOptions(opts...),
 	)
+	serverServiceSetMemberRoleHandler := connect.NewUnaryHandler(
+		ServerServiceSetMemberRoleProcedure,
+		svc.SetMemberRole,
+		connect.WithSchema(serverServiceMethods.ByName("SetMemberRole")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceLeaveCommunityHandler := connect.NewUnaryHandler(
+		ServerServiceLeaveCommunityProcedure,
+		svc.LeaveCommunity,
+		connect.WithSchema(serverServiceMethods.ByName("LeaveCommunity")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceKickMemberHandler := connect.NewUnaryHandler(
+		ServerServiceKickMemberProcedure,
+		svc.KickMember,
+		connect.WithSchema(serverServiceMethods.ByName("KickMember")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceBanMemberHandler := connect.NewUnaryHandler(
+		ServerServiceBanMemberProcedure,
+		svc.BanMember,
+		connect.WithSchema(serverServiceMethods.ByName("BanMember")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/sblurp.v1.ServerService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ServerServiceGetServerInfoProcedure:
@@ -267,6 +364,14 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 			serverServiceGetStateHandler.ServeHTTP(w, r)
 		case ServerServiceSubscribeProcedure:
 			serverServiceSubscribeHandler.ServeHTTP(w, r)
+		case ServerServiceSetMemberRoleProcedure:
+			serverServiceSetMemberRoleHandler.ServeHTTP(w, r)
+		case ServerServiceLeaveCommunityProcedure:
+			serverServiceLeaveCommunityHandler.ServeHTTP(w, r)
+		case ServerServiceKickMemberProcedure:
+			serverServiceKickMemberHandler.ServeHTTP(w, r)
+		case ServerServiceBanMemberProcedure:
+			serverServiceBanMemberHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -300,6 +405,22 @@ func (UnimplementedServerServiceHandler) Subscribe(context.Context, *connect.Req
 	return connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.Subscribe is not implemented"))
 }
 
+func (UnimplementedServerServiceHandler) SetMemberRole(context.Context, *connect.Request[v1.SetMemberRoleRequest]) (*connect.Response[v1.SetMemberRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.SetMemberRole is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) LeaveCommunity(context.Context, *connect.Request[v1.LeaveCommunityRequest]) (*connect.Response[v1.LeaveCommunityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.LeaveCommunity is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) KickMember(context.Context, *connect.Request[v1.KickMemberRequest]) (*connect.Response[v1.KickMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.KickMember is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) BanMember(context.Context, *connect.Request[v1.BanMemberRequest]) (*connect.Response[v1.BanMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.BanMember is not implemented"))
+}
+
 // ChatServiceClient is a client for the sblurp.v1.ChatService service.
 type ChatServiceClient interface {
 	CreateChannel(context.Context, *connect.Request[v1.CreateChannelRequest]) (*connect.Response[v1.CreateChannelResponse], error)
@@ -313,6 +434,8 @@ type ChatServiceClient interface {
 	MarkRead(context.Context, *connect.Request[v1.MarkReadRequest]) (*connect.Response[v1.MarkReadResponse], error)
 	SetTyping(context.Context, *connect.Request[v1.SetTypingRequest]) (*connect.Response[v1.SetTypingResponse], error)
 	Search(context.Context, *connect.Request[v1.SearchRequest]) (*connect.Response[v1.SearchResponse], error)
+	AddChannelMembers(context.Context, *connect.Request[v1.AddChannelMembersRequest]) (*connect.Response[v1.AddChannelMembersResponse], error)
+	RemoveChannelMember(context.Context, *connect.Request[v1.RemoveChannelMemberRequest]) (*connect.Response[v1.RemoveChannelMemberResponse], error)
 }
 
 // NewChatServiceClient constructs a client for the sblurp.v1.ChatService service. By default, it
@@ -392,22 +515,36 @@ func NewChatServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(chatServiceMethods.ByName("Search")),
 			connect.WithClientOptions(opts...),
 		),
+		addChannelMembers: connect.NewClient[v1.AddChannelMembersRequest, v1.AddChannelMembersResponse](
+			httpClient,
+			baseURL+ChatServiceAddChannelMembersProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("AddChannelMembers")),
+			connect.WithClientOptions(opts...),
+		),
+		removeChannelMember: connect.NewClient[v1.RemoveChannelMemberRequest, v1.RemoveChannelMemberResponse](
+			httpClient,
+			baseURL+ChatServiceRemoveChannelMemberProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("RemoveChannelMember")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // chatServiceClient implements ChatServiceClient.
 type chatServiceClient struct {
-	createChannel *connect.Client[v1.CreateChannelRequest, v1.CreateChannelResponse]
-	updateChannel *connect.Client[v1.UpdateChannelRequest, v1.UpdateChannelResponse]
-	openDM        *connect.Client[v1.OpenDMRequest, v1.OpenDMResponse]
-	listMessages  *connect.Client[v1.ListMessagesRequest, v1.ListMessagesResponse]
-	sendMessage   *connect.Client[v1.SendMessageRequest, v1.SendMessageResponse]
-	editMessage   *connect.Client[v1.EditMessageRequest, v1.EditMessageResponse]
-	deleteMessage *connect.Client[v1.DeleteMessageRequest, v1.DeleteMessageResponse]
-	react         *connect.Client[v1.ReactRequest, v1.ReactResponse]
-	markRead      *connect.Client[v1.MarkReadRequest, v1.MarkReadResponse]
-	setTyping     *connect.Client[v1.SetTypingRequest, v1.SetTypingResponse]
-	search        *connect.Client[v1.SearchRequest, v1.SearchResponse]
+	createChannel       *connect.Client[v1.CreateChannelRequest, v1.CreateChannelResponse]
+	updateChannel       *connect.Client[v1.UpdateChannelRequest, v1.UpdateChannelResponse]
+	openDM              *connect.Client[v1.OpenDMRequest, v1.OpenDMResponse]
+	listMessages        *connect.Client[v1.ListMessagesRequest, v1.ListMessagesResponse]
+	sendMessage         *connect.Client[v1.SendMessageRequest, v1.SendMessageResponse]
+	editMessage         *connect.Client[v1.EditMessageRequest, v1.EditMessageResponse]
+	deleteMessage       *connect.Client[v1.DeleteMessageRequest, v1.DeleteMessageResponse]
+	react               *connect.Client[v1.ReactRequest, v1.ReactResponse]
+	markRead            *connect.Client[v1.MarkReadRequest, v1.MarkReadResponse]
+	setTyping           *connect.Client[v1.SetTypingRequest, v1.SetTypingResponse]
+	search              *connect.Client[v1.SearchRequest, v1.SearchResponse]
+	addChannelMembers   *connect.Client[v1.AddChannelMembersRequest, v1.AddChannelMembersResponse]
+	removeChannelMember *connect.Client[v1.RemoveChannelMemberRequest, v1.RemoveChannelMemberResponse]
 }
 
 // CreateChannel calls sblurp.v1.ChatService.CreateChannel.
@@ -465,6 +602,16 @@ func (c *chatServiceClient) Search(ctx context.Context, req *connect.Request[v1.
 	return c.search.CallUnary(ctx, req)
 }
 
+// AddChannelMembers calls sblurp.v1.ChatService.AddChannelMembers.
+func (c *chatServiceClient) AddChannelMembers(ctx context.Context, req *connect.Request[v1.AddChannelMembersRequest]) (*connect.Response[v1.AddChannelMembersResponse], error) {
+	return c.addChannelMembers.CallUnary(ctx, req)
+}
+
+// RemoveChannelMember calls sblurp.v1.ChatService.RemoveChannelMember.
+func (c *chatServiceClient) RemoveChannelMember(ctx context.Context, req *connect.Request[v1.RemoveChannelMemberRequest]) (*connect.Response[v1.RemoveChannelMemberResponse], error) {
+	return c.removeChannelMember.CallUnary(ctx, req)
+}
+
 // ChatServiceHandler is an implementation of the sblurp.v1.ChatService service.
 type ChatServiceHandler interface {
 	CreateChannel(context.Context, *connect.Request[v1.CreateChannelRequest]) (*connect.Response[v1.CreateChannelResponse], error)
@@ -478,6 +625,8 @@ type ChatServiceHandler interface {
 	MarkRead(context.Context, *connect.Request[v1.MarkReadRequest]) (*connect.Response[v1.MarkReadResponse], error)
 	SetTyping(context.Context, *connect.Request[v1.SetTypingRequest]) (*connect.Response[v1.SetTypingResponse], error)
 	Search(context.Context, *connect.Request[v1.SearchRequest]) (*connect.Response[v1.SearchResponse], error)
+	AddChannelMembers(context.Context, *connect.Request[v1.AddChannelMembersRequest]) (*connect.Response[v1.AddChannelMembersResponse], error)
+	RemoveChannelMember(context.Context, *connect.Request[v1.RemoveChannelMemberRequest]) (*connect.Response[v1.RemoveChannelMemberResponse], error)
 }
 
 // NewChatServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -553,6 +702,18 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(chatServiceMethods.ByName("Search")),
 		connect.WithHandlerOptions(opts...),
 	)
+	chatServiceAddChannelMembersHandler := connect.NewUnaryHandler(
+		ChatServiceAddChannelMembersProcedure,
+		svc.AddChannelMembers,
+		connect.WithSchema(chatServiceMethods.ByName("AddChannelMembers")),
+		connect.WithHandlerOptions(opts...),
+	)
+	chatServiceRemoveChannelMemberHandler := connect.NewUnaryHandler(
+		ChatServiceRemoveChannelMemberProcedure,
+		svc.RemoveChannelMember,
+		connect.WithSchema(chatServiceMethods.ByName("RemoveChannelMember")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/sblurp.v1.ChatService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ChatServiceCreateChannelProcedure:
@@ -577,6 +738,10 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 			chatServiceSetTypingHandler.ServeHTTP(w, r)
 		case ChatServiceSearchProcedure:
 			chatServiceSearchHandler.ServeHTTP(w, r)
+		case ChatServiceAddChannelMembersProcedure:
+			chatServiceAddChannelMembersHandler.ServeHTTP(w, r)
+		case ChatServiceRemoveChannelMemberProcedure:
+			chatServiceRemoveChannelMemberHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -628,6 +793,14 @@ func (UnimplementedChatServiceHandler) SetTyping(context.Context, *connect.Reque
 
 func (UnimplementedChatServiceHandler) Search(context.Context, *connect.Request[v1.SearchRequest]) (*connect.Response[v1.SearchResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ChatService.Search is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) AddChannelMembers(context.Context, *connect.Request[v1.AddChannelMembersRequest]) (*connect.Response[v1.AddChannelMembersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ChatService.AddChannelMembers is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) RemoveChannelMember(context.Context, *connect.Request[v1.RemoveChannelMemberRequest]) (*connect.Response[v1.RemoveChannelMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ChatService.RemoveChannelMember is not implemented"))
 }
 
 // BotServiceClient is a client for the sblurp.v1.BotService service.

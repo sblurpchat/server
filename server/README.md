@@ -118,6 +118,21 @@ client. There is no separate apps system. The bot is ~150 lines in
   again. Removing a member does not revoke URLs they already hold. The
   content type is sniffed by the server. Images, audio and video are served
   inline; everything else as a download, with `nosniff` and a sandbox CSP.
+- **Roles and moderation**: owner > admin > moderator > member. Nobody
+  acts on someone of equal or higher rank. `SetMemberRole`: admins and the
+  owner, to MEMBER, MODERATOR or ADMIN below their own role (there is no
+  ownership transfer). `KickMember` and `BanMember`: moderator or higher.
+  A kicked or banned person, or one who calls `LeaveCommunity` (not the
+  owner), gets their streams closed, leaves every private channel and shows
+  as `member_left`. Their member row stays (same id when they Join again,
+  as a plain member). `BanMember` also blocks their `(iss, sub)` from
+  `Join`. Bots are removed with `DeleteBot`, not kicked.
+- **Private channel members**: any member of a private channel may
+  `AddChannelMembers`; added members get `channel_updated` for a channel
+  they did not have yet (upsert it), and its old messages are not unread.
+  `RemoveChannelMember` with your own id leaves; removing someone else
+  needs a higher rank (moderator or higher). The removed member gets
+  `channel_deleted` with the channel id.
 - Errors use Connect codes with plain messages: `invalid_argument`,
   `permission_denied`, `not_found` (also for channels you may not see),
   `already_exists`, `resource_exhausted`, `unauthenticated`.

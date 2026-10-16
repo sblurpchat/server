@@ -104,3 +104,15 @@ func (h *hub) closeAll() {
 	}
 	clear(h.online)
 }
+
+// drop ends every subscription of one member, e.g. after a kick.
+func (h *hub) drop(member string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for s := range h.subs {
+		if s.member == member && h.subs[s] {
+			close(s.gone)
+			h.removeLocked(s)
+		}
+	}
+}

@@ -19,8 +19,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -453,6 +453,176 @@ func TestPrivateChannelAndDMVisibility(t *testing.T) {
 	}
 	if res := must(ana.chat.Search(ctx(), connect.NewRequest(&v1.SearchRequest{Query: "plan"}))); len(res.Messages) != 1 {
 		t.Fatalf("ana prefix search found %v", res.Messages)
+	}
+}
+
+func (c *client) setRole(id string, role v1.MemberRole) error {
+	_, err := c.srv.SetMemberRole(ctx(), connect.NewRequest(&v1.SetMemberRoleRequest{MemberId: id, Role: role}))
+	return err
+}
+
+func (c *client) addTo(channel string, ids ...string) error {
+	_, err := c.chat.AddChannelMembers(ctx(), connect.NewRequest(&v1.AddChannelMembersRequest{ChannelId: channel, MemberIds: ids}))
+	return err
+}
+
+func (c *client) removeFrom(channel, id string) error {
+	_, err := c.chat.RemoveChannelMember(ctx(), connect.NewRequest(&v1.RemoveChannelMemberRequest{ChannelId: channel, MemberId: id}))
+	return err
+}
+
+func (c *client) inState(channel string) bool {
+	for _, ch := range c.state().Channels {
+		if ch.Id == channel {
+			return true
+		}
+	}
+	return false
+}
+
+func TestRolesAndPrivateChannelMembers(t *testing.T) {
+	e := newEnv(t)
+	ana, bob, cy, dee := e.join("ana"), e.join("bob"), e.join("cy"), e.join("dee") // ana is the owner
+	const (
+		member = v1.MemberRole_MEMBER_ROLE_MEMBER
+		mod    = v1.MemberRole_MEMBER_ROLE_MODERATOR
+		admin  = v1.MemberRole_MEMBER_ROLE_ADMIN
+	)
+	wantCode(t, bob.setRole(cy.me.Id, mod), connect.CodePermissionDenied) // members set no roles
+	sub := cy.subscribe(cy.state().Seq)
+	if err := ana.setRole(bob.me.Id, admin); err != nil {
+		t.Fatal(err)
+	}
+	if ev := sub.next(func(ev *v1.Event) bool { return ev.GetMemberUpdated() != nil }, nil); ev.GetMemberUpdated().Role != admin {
+		t.Fatalf("member_updated = %v", ev)
+	}
+	if err := bob.setRole(cy.me.Id, mod); err != nil {
+		t.Fatal(err)
+	}
+	wantCode(t, bob.setRole(dee.me.Id, admin), connect.CodePermissionDenied)  // not up to your own rank
+	wantCode(t, bob.setRole(ana.me.Id, member), connect.CodePermissionDenied) // not on a higher rank
+	wantCode(t, cy.setRole(dee.me.Id, mod), connect.CodePermissionDenied)     // moderators are not admins
+	wantCode(t, ana.setRole(bob.me.Id, v1.MemberRole_MEMBER_ROLE_OWNER), connect.CodeInvalidArgument)
+
+	// Private channel members.
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	secret := ana.channel("secret", v1.ChannelKind_CHANNEL_KIND_PRIVATE)
+	ana.send(secret.Id, "old news")
+	wantCode(t, ana.addTo(gen.Id, cy.me.Id), connect.CodeInvalidArgument)
+	wantCode(t, bob.addTo(secret.Id, bob.me.Id), connect.CodeNotFound) // bob cannot see it
+	wantCode(t, ana.addTo(secret.Id, "nobody"), connect.CodeNotFound)
+	if err := ana.addTo(secret.Id, cy.me.Id); err != nil {
+		t.Fatal(err)
+	}
+	if ev := sub.next(func(ev *v1.Event) bool { return ev.GetChannelUpdated() != nil }, nil); len(ev.GetChannelUpdated().MemberIds) != 2 {
+		t.Fatalf("channel_updated = %v", ev)
+	}
+	if rs := readStateFor(cy.state(), secret.Id); rs == nil || rs.UnreadCount != 0 {
+		t.Fatalf("cy's read state = %v", rs)
+	}
+	if err := cy.addTo(secret.Id, dee.me.Id); err != nil { // any channel member may add
+		t.Fatal(err)
+	}
+	deeSub := dee.subscribe(dee.state().Seq)
+	wantCode(t, dee.removeFrom(secret.Id, cy.me.Id), connect.CodePermissionDenied)
+	wantCode(t, cy.removeFrom(secret.Id, ana.me.Id), connect.CodePermissionDenied)
+	if err := cy.removeFrom(secret.Id, dee.me.Id); err != nil {
+		t.Fatal(err)
+	}
+	if ev := deeSub.next(func(ev *v1.Event) bool { return ev.GetChannelDeleted() != "" }, nil); ev.GetChannelDeleted() != secret.Id {
+		t.Fatalf("dee got %v", ev)
+	}
+	if dee.inState(secret.Id) {
+		t.Fatal("dee still sees the channel")
+	}
+	if err := cy.removeFrom(secret.Id, cy.me.Id); err != nil { // leave
+		t.Fatal(err)
+	}
+	if cy.inState(secret.Id) || !ana.inState(secret.Id) {
+		t.Fatal("cy left, ana stays")
+	}
+}
+
+func TestLeaveKickAndBan(t *testing.T) {
+	e := newEnv(t)
+	ana, bob, cy, dee := e.join("ana"), e.join("bob"), e.join("cy"), e.join("dee") // ana is the owner
+	must(ana.srv.SetMemberRole(ctx(), connect.NewRequest(&v1.SetMemberRoleRequest{MemberId: bob.me.Id, Role: v1.MemberRole_MEMBER_ROLE_ADMIN})))
+	must(ana.srv.SetMemberRole(ctx(), connect.NewRequest(&v1.SetMemberRoleRequest{MemberId: cy.me.Id, Role: v1.MemberRole_MEMBER_ROLE_MODERATOR})))
+	secret := ana.channel("secret", v1.ChannelKind_CHANNEL_KIND_PRIVATE)
+	if err := ana.addTo(secret.Id, dee.me.Id); err != nil {
+		t.Fatal(err)
+	}
+	kick := func(c *client, id string) error {
+		_, err := c.srv.KickMember(ctx(), connect.NewRequest(&v1.KickMemberRequest{MemberId: id}))
+		return err
+	}
+	ban := func(c *client, id string) error {
+		_, err := c.srv.BanMember(ctx(), connect.NewRequest(&v1.BanMemberRequest{MemberId: id}))
+		return err
+	}
+	wantCode(t, kick(dee, cy.me.Id), connect.CodePermissionDenied) // member on moderator
+	wantCode(t, kick(cy, bob.me.Id), connect.CodePermissionDenied) // moderator on admin
+	wantCode(t, ban(bob, ana.me.Id), connect.CodePermissionDenied) // admin on owner
+	bot := must(ana.bots.CreateBot(ctx(), connect.NewRequest(&v1.CreateBotRequest{Username: "robo"}))).Bot
+	wantCode(t, kick(ana, bot.Id), connect.CodeInvalidArgument)
+
+	// Kick: dee's stream ends, her token stops working, the others see
+	// member_left and she leaves the private channel. She may come back.
+	anaSub := ana.subscribe(ana.state().Seq)
+	deeSub := dee.subscribe(dee.state().Seq)
+	if err := kick(cy, dee.me.Id); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-deeSub.done:
+		if err == nil {
+			t.Fatal("dee's stream ended without an error")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("dee's stream stayed open")
+	}
+	if ev := anaSub.next(func(ev *v1.Event) bool { return ev.GetMemberLeft() != "" }, nil); ev.GetMemberLeft() != dee.me.Id {
+		t.Fatalf("member_left = %v", ev)
+	}
+	_, err := dee.srv.GetState(ctx(), connect.NewRequest(&v1.GetStateRequest{}))
+	wantCode(t, err, connect.CodePermissionDenied)
+	stream, _ := dee.srv.Subscribe(ctx(), connect.NewRequest(&v1.SubscribeRequest{}))
+	for stream.Receive() {
+	}
+	wantCode(t, stream.Err(), connect.CodePermissionDenied)
+	for _, m := range ana.state().Members {
+		if m.Id == dee.me.Id {
+			t.Fatal("dee is still listed")
+		}
+	}
+	for _, c := range ana.state().Channels {
+		if c.Id == secret.Id && len(c.MemberIds) != 1 {
+			t.Fatalf("secret members = %v", c.MemberIds)
+		}
+	}
+	back := must(dee.srv.Join(ctx(), connect.NewRequest(&v1.JoinRequest{DisplayName: "Dee"})))
+	if !back.Created || back.Member.Id != dee.me.Id || back.Member.Role != v1.MemberRole_MEMBER_ROLE_MEMBER {
+		t.Fatalf("rejoin = %v", back)
+	}
+	if dee.inState(secret.Id) {
+		t.Fatal("a rejoin restored a private channel")
+	}
+
+	// Ban: she cannot come back.
+	if err := ban(bob, dee.me.Id); err != nil {
+		t.Fatal(err)
+	}
+	_, err = dee.srv.Join(ctx(), connect.NewRequest(&v1.JoinRequest{DisplayName: "Dee"}))
+	wantCode(t, err, connect.CodePermissionDenied)
+
+	// Leave: anyone but the owner.
+	_, err = ana.srv.LeaveCommunity(ctx(), connect.NewRequest(&v1.LeaveCommunityRequest{}))
+	wantCode(t, err, connect.CodeFailedPrecondition)
+	must(cy.srv.LeaveCommunity(ctx(), connect.NewRequest(&v1.LeaveCommunityRequest{})))
+	_, err = cy.srv.GetMe(ctx(), connect.NewRequest(&v1.GetMeRequest{}))
+	wantCode(t, err, connect.CodePermissionDenied)
+	if again := must(cy.srv.Join(ctx(), connect.NewRequest(&v1.JoinRequest{DisplayName: "Cy"}))); again.Member.Role != v1.MemberRole_MEMBER_ROLE_MEMBER {
+		t.Fatalf("cy rejoined as %v", again.Member.Role)
 	}
 }
 
@@ -1042,6 +1212,16 @@ func TestPureHelpers(t *testing.T) {
 	}
 	if cleanFileName(`..\..\evil".txt`) != "evil.txt" || cleanFileName("..") != "file" {
 		t.Error("cleanFileName")
+	}
+	m, mod, admin, owner := v1.MemberRole_MEMBER_ROLE_MEMBER, v1.MemberRole_MEMBER_ROLE_MODERATOR, v1.MemberRole_MEMBER_ROLE_ADMIN, v1.MemberRole_MEMBER_ROLE_OWNER
+	for _, c := range []struct {
+		actor, target v1.MemberRole
+		want          bool
+	}{{owner, admin, true}, {admin, mod, true}, {mod, m, true}, {owner, owner, false}, {admin, admin, false},
+		{mod, mod, false}, {mod, admin, false}, {m, m, false}, {admin, owner, false}} {
+		if got := outranks(c.actor, c.target); got != c.want {
+			t.Errorf("outranks(%v, %v) = %v", c.actor, c.target, got)
+		}
 	}
 	if !errors.Is(nil, nil) {
 		t.Fatal()

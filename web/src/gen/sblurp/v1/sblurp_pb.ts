@@ -18,7 +18,7 @@ import type { Message as Message$1 } from "@bufbuild/protobuf";
  * Describes the file sblurp/v1/sblurp.proto.
  */
 export const file_sblurp_v1_sblurp: GenFile = /*@__PURE__*/
-  fileDesc("ChZzYmx1cnAvdjEvc2JsdXJwLnByb3RvEglzYmx1cnAudjEijwIKBk1lbWJlchIKCgJpZBgBIAEoCRIjCgRraW5kGAIgASgOMhUuc2JsdXJwLnYxLk1lbWJlcktpbmQSIwoEcm9sZRgDIAEoDjIVLnNibHVycC52MS5NZW1iZXJSb2xlEhAKCHVzZXJuYW1lGAQgASgJEhQKDGRpc3BsYXlfbmFtZRgFIAEoCRISCgphdmF0YXJfdXJsGAYgASgJEgsKA2JpbxgHIAEoCRIlCghwcmVzZW5jZRgIIAEoDjITLnNibHVycC52MS5QcmVzZW5jZRIUCgxqb2luZWRfYXRfbXMYCSABKAMSEwoLc3RhdHVzX3RleHQYCiABKAkSFAoMc3RhdHVzX2Vtb2ppGAsgASgJIsEBCgdDaGFubmVsEgoKAmlkGAEgASgJEiQKBGtpbmQYAiABKA4yFi5zYmx1cnAudjEuQ2hhbm5lbEtpbmQSDAoEbmFtZRgDIAEoCRINCgV0b3BpYxgEIAEoCRIQCghjYXRlZ29yeRgFIAEoCRIQCghwb3NpdGlvbhgGIAEoBRISCgptZW1iZXJfaWRzGAcgAygJEhUKDWNyZWF0ZWRfYXRfbXMYCCABKAMSGAoQbGFzdF9tZXNzYWdlX3NlcRgJIAEoAyJ2CgpBdHRhY2htZW50EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSFAoMY29udGVudF90eXBlGAMgASgJEgwKBHNpemUYBCABKAMSCwoDdXJsGAUgASgJEg0KBXdpZHRoGAYgASgFEg4KBmhlaWdodBgHIAEoBSItCghSZWFjdGlvbhINCgVlbW9qaRgBIAEoCRISCgptZW1iZXJfaWRzGAIgAygJItgCCgdNZXNzYWdlEgoKAmlkGAEgASgJEhIKCmNoYW5uZWxfaWQYAiABKAkSEQoJYXV0aG9yX2lkGAMgASgJEgwKBHRleHQYBCABKAkSFQoNY3JlYXRlZF9hdF9tcxgFIAEoAxIUCgxlZGl0ZWRfYXRfbXMYBiABKAMSDwoHZGVsZXRlZBgHIAEoCBIWCg50aHJlYWRfcm9vdF9pZBgIIAEoCRITCgtyZXBseV9jb3VudBgJIAEoBRIYChBsYXN0X3JlcGx5X2F0X21zGAogASgDEiYKCXJlYWN0aW9ucxgLIAMoCzITLnNibHVycC52MS5SZWFjdGlvbhIqCgthdHRhY2htZW50cxgMIAMoCzIVLnNibHVycC52MS5BdHRhY2htZW50EhEKCWNsaWVudF9pZBgNIAEoCRILCgNzZXEYDiABKAMSEwoLY3JlYXRlZF9zZXEYDyABKAMiYwoJUmVhZFN0YXRlEhIKCmNoYW5uZWxfaWQYASABKAkSFQoNbGFzdF9yZWFkX3NlcRgCIAEoAxIUCgx1bnJlYWRfY291bnQYAyABKAUSFQoNbWVudGlvbl9jb3VudBgEIAEoBSIWChRHZXRTZXJ2ZXJJbmZvUmVxdWVzdCK9AQoVR2V0U2VydmVySW5mb1Jlc3BvbnNlEgwKBG5hbWUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSEAoIaWNvbl91cmwYAyABKAkSGAoQcHJvdG9jb2xfdmVyc2lvbhgEIAEoBRIXCg90cnVzdGVkX2lzc3VlcnMYBSADKAkSEAoIYmFzZV91cmwYBiABKAkSFAoMbWVtYmVyX2NvdW50GAcgASgFEhQKDGFjY2VudF9jb2xvchgIIAEoCSJZCgtKb2luUmVxdWVzdBIUCgxkaXNwbGF5X25hbWUYASABKAkSEgoKYXZhdGFyX3VybBgCIAEoCRILCgNiaW8YAyABKAkSEwoLaW52aXRlX2NvZGUYBCABKAkiQgoMSm9pblJlc3BvbnNlEiEKBm1lbWJlchgBIAEoCzIRLnNibHVycC52MS5NZW1iZXISDwoHY3JlYXRlZBgCIAEoCCIOCgxHZXRNZVJlcXVlc3QiMgoNR2V0TWVSZXNwb25zZRIhCgZtZW1iZXIYASABKAsyES5zYmx1cnAudjEuTWVtYmVyItoBChRVcGRhdGVQcm9maWxlUmVxdWVzdBIZCgxkaXNwbGF5X25hbWUYASABKAlIAIgBARIXCgphdmF0YXJfdXJsGAIgASgJSAGIAQESEAoDYmlvGAMgASgJSAKIAQESGAoLc3RhdHVzX3RleHQYBCABKAlIA4gBARIZCgxzdGF0dXNfZW1vamkYBSABKAlIBIgBAUIPCg1fZGlzcGxheV9uYW1lQg0KC19hdmF0YXJfdXJsQgYKBF9iaW9CDgoMX3N0YXR1c190ZXh0Qg8KDV9zdGF0dXNfZW1vamkiOgoVVXBkYXRlUHJvZmlsZVJlc3BvbnNlEiEKBm1lbWJlchgBIAEoCzIRLnNibHVycC52MS5NZW1iZXIiEQoPR2V0U3RhdGVSZXF1ZXN0IrMBChBHZXRTdGF0ZVJlc3BvbnNlEh0KAm1lGAEgASgLMhEuc2JsdXJwLnYxLk1lbWJlchIkCghjaGFubmVscxgCIAMoCzISLnNibHVycC52MS5DaGFubmVsEiIKB21lbWJlcnMYAyADKAsyES5zYmx1cnAudjEuTWVtYmVyEikKC3JlYWRfc3RhdGVzGAQgAygLMhQuc2JsdXJwLnYxLlJlYWRTdGF0ZRILCgNzZXEYBSABKAMiJQoQU3Vic2NyaWJlUmVxdWVzdBIRCglhZnRlcl9zZXEYASABKAMiTAoLVHlwaW5nRXZlbnQSEgoKY2hhbm5lbF9pZBgBIAEoCRIRCgltZW1iZXJfaWQYAiABKAkSFgoOdGhyZWFkX3Jvb3RfaWQYAyABKAkiSQoNUHJlc2VuY2VFdmVudBIRCgltZW1iZXJfaWQYASABKAkSJQoIcHJlc2VuY2UYAiABKA4yEy5zYmx1cnAudjEuUHJlc2VuY2UizAQKBUV2ZW50EgsKA3NlcRgBIAEoAxINCgVhdF9tcxgCIAEoAxItCg9tZXNzYWdlX2NyZWF0ZWQYCiABKAsyEi5zYmx1cnAudjEuTWVzc2FnZUgAEi0KD21lc3NhZ2VfdXBkYXRlZBgLIAEoCzISLnNibHVycC52MS5NZXNzYWdlSAASLQoPbWVzc2FnZV9kZWxldGVkGAwgASgLMhIuc2JsdXJwLnYxLk1lc3NhZ2VIABItCg9jaGFubmVsX2NyZWF0ZWQYDSABKAsyEi5zYmx1cnAudjEuQ2hhbm5lbEgAEi0KD2NoYW5uZWxfdXBkYXRlZBgOIAEoCzISLnNibHVycC52MS5DaGFubmVsSAASGQoPY2hhbm5lbF9kZWxldGVkGA8gASgJSAASKgoNbWVtYmVyX2pvaW5lZBgQIAEoCzIRLnNibHVycC52MS5NZW1iZXJIABIrCg5tZW1iZXJfdXBkYXRlZBgRIAEoCzIRLnNibHVycC52MS5NZW1iZXJIABIVCgttZW1iZXJfbGVmdBgSIAEoCUgAEioKCnJlYWRfc3RhdGUYEyABKAsyFC5zYmx1cnAudjEuUmVhZFN0YXRlSAASKAoGdHlwaW5nGBQgASgLMhYuc2JsdXJwLnYxLlR5cGluZ0V2ZW50SAASLAoIcHJlc2VuY2UYFSABKAsyGC5zYmx1cnAudjEuUHJlc2VuY2VFdmVudEgAEhMKCWhlYXJ0YmVhdBgWIAEoCEgAEhAKBnJlc3luYxgXIAEoCEgAQgYKBGtpbmQiawoUQ3JlYXRlQ2hhbm5lbFJlcXVlc3QSDAoEbmFtZRgBIAEoCRIkCgRraW5kGAIgASgOMhYuc2JsdXJwLnYxLkNoYW5uZWxLaW5kEg0KBXRvcGljGAMgASgJEhAKCGNhdGVnb3J5GAQgASgJIjwKFUNyZWF0ZUNoYW5uZWxSZXNwb25zZRIjCgdjaGFubmVsGAEgASgLMhIuc2JsdXJwLnYxLkNoYW5uZWwirAEKFFVwZGF0ZUNoYW5uZWxSZXF1ZXN0EhIKCmNoYW5uZWxfaWQYASABKAkSEQoEbmFtZRgCIAEoCUgAiAEBEhIKBXRvcGljGAMgASgJSAGIAQESFQoIY2F0ZWdvcnkYBCABKAlIAogBARIVCghwb3NpdGlvbhgFIAEoBUgDiAEBQgcKBV9uYW1lQggKBl90b3BpY0ILCglfY2F0ZWdvcnlCCwoJX3Bvc2l0aW9uIjwKFVVwZGF0ZUNoYW5uZWxSZXNwb25zZRIjCgdjaGFubmVsGAEgASgLMhIuc2JsdXJwLnYxLkNoYW5uZWwiIwoNT3BlbkRNUmVxdWVzdBISCgptZW1iZXJfaWRzGAEgAygJIjUKDk9wZW5ETVJlc3BvbnNlEiMKB2NoYW5uZWwYASABKAsyEi5zYmx1cnAudjEuQ2hhbm5lbCKIAQoTTGlzdE1lc3NhZ2VzUmVxdWVzdBISCgpjaGFubmVsX2lkGAEgASgJEhYKDnRocmVhZF9yb290X2lkGAIgASgJEhEKCWJlZm9yZV9pZBgDIAEoCRINCgVsaW1pdBgEIAEoBRIRCglhcm91bmRfaWQYBSABKAkSEAoIYWZ0ZXJfaWQYBiABKAkiZgoUTGlzdE1lc3NhZ2VzUmVzcG9uc2USJAoIbWVzc2FnZXMYASADKAsyEi5zYmx1cnAudjEuTWVzc2FnZRIQCghoYXNfbW9yZRgCIAEoCBIWCg5oYXNfbW9yZV9hZnRlchgDIAEoCCJ5ChJTZW5kTWVzc2FnZVJlcXVlc3QSEgoKY2hhbm5lbF9pZBgBIAEoCRIMCgR0ZXh0GAIgASgJEhYKDnRocmVhZF9yb290X2lkGAMgASgJEhEKCWNsaWVudF9pZBgEIAEoCRIWCg5hdHRhY2htZW50X2lkcxgFIAMoCSI6ChNTZW5kTWVzc2FnZVJlc3BvbnNlEiMKB21lc3NhZ2UYASABKAsyEi5zYmx1cnAudjEuTWVzc2FnZSI2ChJFZGl0TWVzc2FnZVJlcXVlc3QSEgoKbWVzc2FnZV9pZBgBIAEoCRIMCgR0ZXh0GAIgASgJIjoKE0VkaXRNZXNzYWdlUmVzcG9uc2USIwoHbWVzc2FnZRgBIAEoCzISLnNibHVycC52MS5NZXNzYWdlIioKFERlbGV0ZU1lc3NhZ2VSZXF1ZXN0EhIKCm1lc3NhZ2VfaWQYASABKAkiFwoVRGVsZXRlTWVzc2FnZVJlc3BvbnNlIkEKDFJlYWN0UmVxdWVzdBISCgptZXNzYWdlX2lkGAEgASgJEg0KBWVtb2ppGAIgASgJEg4KBnJlbW92ZRgDIAEoCCI0Cg1SZWFjdFJlc3BvbnNlEiMKB21lc3NhZ2UYASABKAsyEi5zYmx1cnAudjEuTWVzc2FnZSIyCg9NYXJrUmVhZFJlcXVlc3QSEgoKY2hhbm5lbF9pZBgBIAEoCRILCgNzZXEYAiABKAMiPAoQTWFya1JlYWRSZXNwb25zZRIoCgpyZWFkX3N0YXRlGAEgASgLMhQuc2JsdXJwLnYxLlJlYWRTdGF0ZSI+ChBTZXRUeXBpbmdSZXF1ZXN0EhIKCmNoYW5uZWxfaWQYASABKAkSFgoOdGhyZWFkX3Jvb3RfaWQYAiABKAkiEwoRU2V0VHlwaW5nUmVzcG9uc2UiQQoNU2VhcmNoUmVxdWVzdBINCgVxdWVyeRgBIAEoCRISCgpjaGFubmVsX2lkGAIgASgJEg0KBWxpbWl0GAMgASgFIjYKDlNlYXJjaFJlc3BvbnNlEiQKCG1lc3NhZ2VzGAEgAygLMhIuc2JsdXJwLnYxLk1lc3NhZ2UiWwoQQ3JlYXRlQm90UmVxdWVzdBIQCgh1c2VybmFtZRgBIAEoCRIUCgxkaXNwbGF5X25hbWUYAiABKAkSEgoKYXZhdGFyX3VybBgDIAEoCRILCgNiaW8YBCABKAkiQgoRQ3JlYXRlQm90UmVzcG9uc2USHgoDYm90GAEgASgLMhEuc2JsdXJwLnYxLk1lbWJlchINCgV0b2tlbhgCIAEoCSIRCg9MaXN0Qm90c1JlcXVlc3QiMwoQTGlzdEJvdHNSZXNwb25zZRIfCgRib3RzGAEgAygLMhEuc2JsdXJwLnYxLk1lbWJlciInChVSb3RhdGVCb3RUb2tlblJlcXVlc3QSDgoGYm90X2lkGAEgASgJIicKFlJvdGF0ZUJvdFRva2VuUmVzcG9uc2USDQoFdG9rZW4YASABKAkiIgoQRGVsZXRlQm90UmVxdWVzdBIOCgZib3RfaWQYASABKAkiEwoRRGVsZXRlQm90UmVzcG9uc2UqVQoKTWVtYmVyS2luZBIbChdNRU1CRVJfS0lORF9VTlNQRUNJRklFRBAAEhUKEU1FTUJFUl9LSU5EX0hVTUFOEAESEwoPTUVNQkVSX0tJTkRfQk9UEAIqigEKCk1lbWJlclJvbGUSGwoXTUVNQkVSX1JPTEVfVU5TUEVDSUZJRUQQABIWChJNRU1CRVJfUk9MRV9NRU1CRVIQARIZChVNRU1CRVJfUk9MRV9NT0RFUkFUT1IQAhIVChFNRU1CRVJfUk9MRV9BRE1JThADEhUKEU1FTUJFUl9ST0xFX09XTkVSEAQqYgoIUHJlc2VuY2USGAoUUFJFU0VOQ0VfVU5TUEVDSUZJRUQQABITCg9QUkVTRU5DRV9PTkxJTkUQARIRCg1QUkVTRU5DRV9BV0FZEAISFAoQUFJFU0VOQ0VfT0ZGTElORRADKnEKC0NoYW5uZWxLaW5kEhwKGENIQU5ORUxfS0lORF9VTlNQRUNJRklFRBAAEhUKEUNIQU5ORUxfS0lORF9URVhUEAESGAoUQ0hBTk5FTF9LSU5EX1BSSVZBVEUQAhITCg9DSEFOTkVMX0tJTkRfRE0QAzK7AwoNU2VydmVyU2VydmljZRJUCg1HZXRTZXJ2ZXJJbmZvEh8uc2JsdXJwLnYxLkdldFNlcnZlckluZm9SZXF1ZXN0GiAuc2JsdXJwLnYxLkdldFNlcnZlckluZm9SZXNwb25zZSIAEjkKBEpvaW4SFi5zYmx1cnAudjEuSm9pblJlcXVlc3QaFy5zYmx1cnAudjEuSm9pblJlc3BvbnNlIgASPAoFR2V0TWUSFy5zYmx1cnAudjEuR2V0TWVSZXF1ZXN0Ghguc2JsdXJwLnYxLkdldE1lUmVzcG9uc2UiABJUCg1VcGRhdGVQcm9maWxlEh8uc2JsdXJwLnYxLlVwZGF0ZVByb2ZpbGVSZXF1ZXN0GiAuc2JsdXJwLnYxLlVwZGF0ZVByb2ZpbGVSZXNwb25zZSIAEkUKCEdldFN0YXRlEhouc2JsdXJwLnYxLkdldFN0YXRlUmVxdWVzdBobLnNibHVycC52MS5HZXRTdGF0ZVJlc3BvbnNlIgASPgoJU3Vic2NyaWJlEhsuc2JsdXJwLnYxLlN1YnNjcmliZVJlcXVlc3QaEC5zYmx1cnAudjEuRXZlbnQiADABMtMGCgtDaGF0U2VydmljZRJUCg1DcmVhdGVDaGFubmVsEh8uc2JsdXJwLnYxLkNyZWF0ZUNoYW5uZWxSZXF1ZXN0GiAuc2JsdXJwLnYxLkNyZWF0ZUNoYW5uZWxSZXNwb25zZSIAElQKDVVwZGF0ZUNoYW5uZWwSHy5zYmx1cnAudjEuVXBkYXRlQ2hhbm5lbFJlcXVlc3QaIC5zYmx1cnAudjEuVXBkYXRlQ2hhbm5lbFJlc3BvbnNlIgASPwoGT3BlbkRNEhguc2JsdXJwLnYxLk9wZW5ETVJlcXVlc3QaGS5zYmx1cnAudjEuT3BlbkRNUmVzcG9uc2UiABJRCgxMaXN0TWVzc2FnZXMSHi5zYmx1cnAudjEuTGlzdE1lc3NhZ2VzUmVxdWVzdBofLnNibHVycC52MS5MaXN0TWVzc2FnZXNSZXNwb25zZSIAEk4KC1NlbmRNZXNzYWdlEh0uc2JsdXJwLnYxLlNlbmRNZXNzYWdlUmVxdWVzdBoeLnNibHVycC52MS5TZW5kTWVzc2FnZVJlc3BvbnNlIgASTgoLRWRpdE1lc3NhZ2USHS5zYmx1cnAudjEuRWRpdE1lc3NhZ2VSZXF1ZXN0Gh4uc2JsdXJwLnYxLkVkaXRNZXNzYWdlUmVzcG9uc2UiABJUCg1EZWxldGVNZXNzYWdlEh8uc2JsdXJwLnYxLkRlbGV0ZU1lc3NhZ2VSZXF1ZXN0GiAuc2JsdXJwLnYxLkRlbGV0ZU1lc3NhZ2VSZXNwb25zZSIAEjwKBVJlYWN0Ehcuc2JsdXJwLnYxLlJlYWN0UmVxdWVzdBoYLnNibHVycC52MS5SZWFjdFJlc3BvbnNlIgASRQoITWFya1JlYWQSGi5zYmx1cnAudjEuTWFya1JlYWRSZXF1ZXN0Ghsuc2JsdXJwLnYxLk1hcmtSZWFkUmVzcG9uc2UiABJICglTZXRUeXBpbmcSGy5zYmx1cnAudjEuU2V0VHlwaW5nUmVxdWVzdBocLnNibHVycC52MS5TZXRUeXBpbmdSZXNwb25zZSIAEj8KBlNlYXJjaBIYLnNibHVycC52MS5TZWFyY2hSZXF1ZXN0Ghkuc2JsdXJwLnYxLlNlYXJjaFJlc3BvbnNlIgAywAIKCkJvdFNlcnZpY2USSAoJQ3JlYXRlQm90Ehsuc2JsdXJwLnYxLkNyZWF0ZUJvdFJlcXVlc3QaHC5zYmx1cnAudjEuQ3JlYXRlQm90UmVzcG9uc2UiABJFCghMaXN0Qm90cxIaLnNibHVycC52MS5MaXN0Qm90c1JlcXVlc3QaGy5zYmx1cnAudjEuTGlzdEJvdHNSZXNwb25zZSIAElcKDlJvdGF0ZUJvdFRva2VuEiAuc2JsdXJwLnYxLlJvdGF0ZUJvdFRva2VuUmVxdWVzdBohLnNibHVycC52MS5Sb3RhdGVCb3RUb2tlblJlc3BvbnNlIgASSAoJRGVsZXRlQm90Ehsuc2JsdXJwLnYxLkRlbGV0ZUJvdFJlcXVlc3QaHC5zYmx1cnAudjEuRGVsZXRlQm90UmVzcG9uc2UiAEIrWilzYmx1cnAuY2hhdC9zZXJ2ZXIvZ2VuL3NibHVycC92MTtzYmx1cnB2MWIGcHJvdG8z");
+  fileDesc("ChZzYmx1cnAvdjEvc2JsdXJwLnByb3RvEglzYmx1cnAudjEijwIKBk1lbWJlchIKCgJpZBgBIAEoCRIjCgRraW5kGAIgASgOMhUuc2JsdXJwLnYxLk1lbWJlcktpbmQSIwoEcm9sZRgDIAEoDjIVLnNibHVycC52MS5NZW1iZXJSb2xlEhAKCHVzZXJuYW1lGAQgASgJEhQKDGRpc3BsYXlfbmFtZRgFIAEoCRISCgphdmF0YXJfdXJsGAYgASgJEgsKA2JpbxgHIAEoCRIlCghwcmVzZW5jZRgIIAEoDjITLnNibHVycC52MS5QcmVzZW5jZRIUCgxqb2luZWRfYXRfbXMYCSABKAMSEwoLc3RhdHVzX3RleHQYCiABKAkSFAoMc3RhdHVzX2Vtb2ppGAsgASgJIsEBCgdDaGFubmVsEgoKAmlkGAEgASgJEiQKBGtpbmQYAiABKA4yFi5zYmx1cnAudjEuQ2hhbm5lbEtpbmQSDAoEbmFtZRgDIAEoCRINCgV0b3BpYxgEIAEoCRIQCghjYXRlZ29yeRgFIAEoCRIQCghwb3NpdGlvbhgGIAEoBRISCgptZW1iZXJfaWRzGAcgAygJEhUKDWNyZWF0ZWRfYXRfbXMYCCABKAMSGAoQbGFzdF9tZXNzYWdlX3NlcRgJIAEoAyJ2CgpBdHRhY2htZW50EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSFAoMY29udGVudF90eXBlGAMgASgJEgwKBHNpemUYBCABKAMSCwoDdXJsGAUgASgJEg0KBXdpZHRoGAYgASgFEg4KBmhlaWdodBgHIAEoBSItCghSZWFjdGlvbhINCgVlbW9qaRgBIAEoCRISCgptZW1iZXJfaWRzGAIgAygJItgCCgdNZXNzYWdlEgoKAmlkGAEgASgJEhIKCmNoYW5uZWxfaWQYAiABKAkSEQoJYXV0aG9yX2lkGAMgASgJEgwKBHRleHQYBCABKAkSFQoNY3JlYXRlZF9hdF9tcxgFIAEoAxIUCgxlZGl0ZWRfYXRfbXMYBiABKAMSDwoHZGVsZXRlZBgHIAEoCBIWCg50aHJlYWRfcm9vdF9pZBgIIAEoCRITCgtyZXBseV9jb3VudBgJIAEoBRIYChBsYXN0X3JlcGx5X2F0X21zGAogASgDEiYKCXJlYWN0aW9ucxgLIAMoCzITLnNibHVycC52MS5SZWFjdGlvbhIqCgthdHRhY2htZW50cxgMIAMoCzIVLnNibHVycC52MS5BdHRhY2htZW50EhEKCWNsaWVudF9pZBgNIAEoCRILCgNzZXEYDiABKAMSEwoLY3JlYXRlZF9zZXEYDyABKAMiYwoJUmVhZFN0YXRlEhIKCmNoYW5uZWxfaWQYASABKAkSFQoNbGFzdF9yZWFkX3NlcRgCIAEoAxIUCgx1bnJlYWRfY291bnQYAyABKAUSFQoNbWVudGlvbl9jb3VudBgEIAEoBSIWChRHZXRTZXJ2ZXJJbmZvUmVxdWVzdCK9AQoVR2V0U2VydmVySW5mb1Jlc3BvbnNlEgwKBG5hbWUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSEAoIaWNvbl91cmwYAyABKAkSGAoQcHJvdG9jb2xfdmVyc2lvbhgEIAEoBRIXCg90cnVzdGVkX2lzc3VlcnMYBSADKAkSEAoIYmFzZV91cmwYBiABKAkSFAoMbWVtYmVyX2NvdW50GAcgASgFEhQKDGFjY2VudF9jb2xvchgIIAEoCSJZCgtKb2luUmVxdWVzdBIUCgxkaXNwbGF5X25hbWUYASABKAkSEgoKYXZhdGFyX3VybBgCIAEoCRILCgNiaW8YAyABKAkSEwoLaW52aXRlX2NvZGUYBCABKAkiQgoMSm9pblJlc3BvbnNlEiEKBm1lbWJlchgBIAEoCzIRLnNibHVycC52MS5NZW1iZXISDwoHY3JlYXRlZBgCIAEoCCIOCgxHZXRNZVJlcXVlc3QiMgoNR2V0TWVSZXNwb25zZRIhCgZtZW1iZXIYASABKAsyES5zYmx1cnAudjEuTWVtYmVyItoBChRVcGRhdGVQcm9maWxlUmVxdWVzdBIZCgxkaXNwbGF5X25hbWUYASABKAlIAIgBARIXCgphdmF0YXJfdXJsGAIgASgJSAGIAQESEAoDYmlvGAMgASgJSAKIAQESGAoLc3RhdHVzX3RleHQYBCABKAlIA4gBARIZCgxzdGF0dXNfZW1vamkYBSABKAlIBIgBAUIPCg1fZGlzcGxheV9uYW1lQg0KC19hdmF0YXJfdXJsQgYKBF9iaW9CDgoMX3N0YXR1c190ZXh0Qg8KDV9zdGF0dXNfZW1vamkiOgoVVXBkYXRlUHJvZmlsZVJlc3BvbnNlEiEKBm1lbWJlchgBIAEoCzIRLnNibHVycC52MS5NZW1iZXIiEQoPR2V0U3RhdGVSZXF1ZXN0IrMBChBHZXRTdGF0ZVJlc3BvbnNlEh0KAm1lGAEgASgLMhEuc2JsdXJwLnYxLk1lbWJlchIkCghjaGFubmVscxgCIAMoCzISLnNibHVycC52MS5DaGFubmVsEiIKB21lbWJlcnMYAyADKAsyES5zYmx1cnAudjEuTWVtYmVyEikKC3JlYWRfc3RhdGVzGAQgAygLMhQuc2JsdXJwLnYxLlJlYWRTdGF0ZRILCgNzZXEYBSABKAMiJQoQU3Vic2NyaWJlUmVxdWVzdBIRCglhZnRlcl9zZXEYASABKAMiTAoLVHlwaW5nRXZlbnQSEgoKY2hhbm5lbF9pZBgBIAEoCRIRCgltZW1iZXJfaWQYAiABKAkSFgoOdGhyZWFkX3Jvb3RfaWQYAyABKAkiSQoNUHJlc2VuY2VFdmVudBIRCgltZW1iZXJfaWQYASABKAkSJQoIcHJlc2VuY2UYAiABKA4yEy5zYmx1cnAudjEuUHJlc2VuY2UizAQKBUV2ZW50EgsKA3NlcRgBIAEoAxINCgVhdF9tcxgCIAEoAxItCg9tZXNzYWdlX2NyZWF0ZWQYCiABKAsyEi5zYmx1cnAudjEuTWVzc2FnZUgAEi0KD21lc3NhZ2VfdXBkYXRlZBgLIAEoCzISLnNibHVycC52MS5NZXNzYWdlSAASLQoPbWVzc2FnZV9kZWxldGVkGAwgASgLMhIuc2JsdXJwLnYxLk1lc3NhZ2VIABItCg9jaGFubmVsX2NyZWF0ZWQYDSABKAsyEi5zYmx1cnAudjEuQ2hhbm5lbEgAEi0KD2NoYW5uZWxfdXBkYXRlZBgOIAEoCzISLnNibHVycC52MS5DaGFubmVsSAASGQoPY2hhbm5lbF9kZWxldGVkGA8gASgJSAASKgoNbWVtYmVyX2pvaW5lZBgQIAEoCzIRLnNibHVycC52MS5NZW1iZXJIABIrCg5tZW1iZXJfdXBkYXRlZBgRIAEoCzIRLnNibHVycC52MS5NZW1iZXJIABIVCgttZW1iZXJfbGVmdBgSIAEoCUgAEioKCnJlYWRfc3RhdGUYEyABKAsyFC5zYmx1cnAudjEuUmVhZFN0YXRlSAASKAoGdHlwaW5nGBQgASgLMhYuc2JsdXJwLnYxLlR5cGluZ0V2ZW50SAASLAoIcHJlc2VuY2UYFSABKAsyGC5zYmx1cnAudjEuUHJlc2VuY2VFdmVudEgAEhMKCWhlYXJ0YmVhdBgWIAEoCEgAEhAKBnJlc3luYxgXIAEoCEgAQgYKBGtpbmQiawoUQ3JlYXRlQ2hhbm5lbFJlcXVlc3QSDAoEbmFtZRgBIAEoCRIkCgRraW5kGAIgASgOMhYuc2JsdXJwLnYxLkNoYW5uZWxLaW5kEg0KBXRvcGljGAMgASgJEhAKCGNhdGVnb3J5GAQgASgJIjwKFUNyZWF0ZUNoYW5uZWxSZXNwb25zZRIjCgdjaGFubmVsGAEgASgLMhIuc2JsdXJwLnYxLkNoYW5uZWwirAEKFFVwZGF0ZUNoYW5uZWxSZXF1ZXN0EhIKCmNoYW5uZWxfaWQYASABKAkSEQoEbmFtZRgCIAEoCUgAiAEBEhIKBXRvcGljGAMgASgJSAGIAQESFQoIY2F0ZWdvcnkYBCABKAlIAogBARIVCghwb3NpdGlvbhgFIAEoBUgDiAEBQgcKBV9uYW1lQggKBl90b3BpY0ILCglfY2F0ZWdvcnlCCwoJX3Bvc2l0aW9uIjwKFVVwZGF0ZUNoYW5uZWxSZXNwb25zZRIjCgdjaGFubmVsGAEgASgLMhIuc2JsdXJwLnYxLkNoYW5uZWwiIwoNT3BlbkRNUmVxdWVzdBISCgptZW1iZXJfaWRzGAEgAygJIjUKDk9wZW5ETVJlc3BvbnNlEiMKB2NoYW5uZWwYASABKAsyEi5zYmx1cnAudjEuQ2hhbm5lbCKIAQoTTGlzdE1lc3NhZ2VzUmVxdWVzdBISCgpjaGFubmVsX2lkGAEgASgJEhYKDnRocmVhZF9yb290X2lkGAIgASgJEhEKCWJlZm9yZV9pZBgDIAEoCRINCgVsaW1pdBgEIAEoBRIRCglhcm91bmRfaWQYBSABKAkSEAoIYWZ0ZXJfaWQYBiABKAkiZgoUTGlzdE1lc3NhZ2VzUmVzcG9uc2USJAoIbWVzc2FnZXMYASADKAsyEi5zYmx1cnAudjEuTWVzc2FnZRIQCghoYXNfbW9yZRgCIAEoCBIWCg5oYXNfbW9yZV9hZnRlchgDIAEoCCJ5ChJTZW5kTWVzc2FnZVJlcXVlc3QSEgoKY2hhbm5lbF9pZBgBIAEoCRIMCgR0ZXh0GAIgASgJEhYKDnRocmVhZF9yb290X2lkGAMgASgJEhEKCWNsaWVudF9pZBgEIAEoCRIWCg5hdHRhY2htZW50X2lkcxgFIAMoCSI6ChNTZW5kTWVzc2FnZVJlc3BvbnNlEiMKB21lc3NhZ2UYASABKAsyEi5zYmx1cnAudjEuTWVzc2FnZSI2ChJFZGl0TWVzc2FnZVJlcXVlc3QSEgoKbWVzc2FnZV9pZBgBIAEoCRIMCgR0ZXh0GAIgASgJIjoKE0VkaXRNZXNzYWdlUmVzcG9uc2USIwoHbWVzc2FnZRgBIAEoCzISLnNibHVycC52MS5NZXNzYWdlIioKFERlbGV0ZU1lc3NhZ2VSZXF1ZXN0EhIKCm1lc3NhZ2VfaWQYASABKAkiFwoVRGVsZXRlTWVzc2FnZVJlc3BvbnNlIkEKDFJlYWN0UmVxdWVzdBISCgptZXNzYWdlX2lkGAEgASgJEg0KBWVtb2ppGAIgASgJEg4KBnJlbW92ZRgDIAEoCCI0Cg1SZWFjdFJlc3BvbnNlEiMKB21lc3NhZ2UYASABKAsyEi5zYmx1cnAudjEuTWVzc2FnZSIyCg9NYXJrUmVhZFJlcXVlc3QSEgoKY2hhbm5lbF9pZBgBIAEoCRILCgNzZXEYAiABKAMiPAoQTWFya1JlYWRSZXNwb25zZRIoCgpyZWFkX3N0YXRlGAEgASgLMhQuc2JsdXJwLnYxLlJlYWRTdGF0ZSI+ChBTZXRUeXBpbmdSZXF1ZXN0EhIKCmNoYW5uZWxfaWQYASABKAkSFgoOdGhyZWFkX3Jvb3RfaWQYAiABKAkiEwoRU2V0VHlwaW5nUmVzcG9uc2UiQQoNU2VhcmNoUmVxdWVzdBINCgVxdWVyeRgBIAEoCRISCgpjaGFubmVsX2lkGAIgASgJEg0KBWxpbWl0GAMgASgFIjYKDlNlYXJjaFJlc3BvbnNlEiQKCG1lc3NhZ2VzGAEgAygLMhIuc2JsdXJwLnYxLk1lc3NhZ2UiQgoYQWRkQ2hhbm5lbE1lbWJlcnNSZXF1ZXN0EhIKCmNoYW5uZWxfaWQYASABKAkSEgoKbWVtYmVyX2lkcxgCIAMoCSJAChlBZGRDaGFubmVsTWVtYmVyc1Jlc3BvbnNlEiMKB2NoYW5uZWwYASABKAsyEi5zYmx1cnAudjEuQ2hhbm5lbCJDChpSZW1vdmVDaGFubmVsTWVtYmVyUmVxdWVzdBISCgpjaGFubmVsX2lkGAEgASgJEhEKCW1lbWJlcl9pZBgCIAEoCSJCChtSZW1vdmVDaGFubmVsTWVtYmVyUmVzcG9uc2USIwoHY2hhbm5lbBgBIAEoCzISLnNibHVycC52MS5DaGFubmVsIk4KFFNldE1lbWJlclJvbGVSZXF1ZXN0EhEKCW1lbWJlcl9pZBgBIAEoCRIjCgRyb2xlGAIgASgOMhUuc2JsdXJwLnYxLk1lbWJlclJvbGUiOgoVU2V0TWVtYmVyUm9sZVJlc3BvbnNlEiEKBm1lbWJlchgBIAEoCzIRLnNibHVycC52MS5NZW1iZXIiFwoVTGVhdmVDb21tdW5pdHlSZXF1ZXN0IhgKFkxlYXZlQ29tbXVuaXR5UmVzcG9uc2UiJgoRS2lja01lbWJlclJlcXVlc3QSEQoJbWVtYmVyX2lkGAEgASgJIhQKEktpY2tNZW1iZXJSZXNwb25zZSIlChBCYW5NZW1iZXJSZXF1ZXN0EhEKCW1lbWJlcl9pZBgBIAEoCSITChFCYW5NZW1iZXJSZXNwb25zZSJbChBDcmVhdGVCb3RSZXF1ZXN0EhAKCHVzZXJuYW1lGAEgASgJEhQKDGRpc3BsYXlfbmFtZRgCIAEoCRISCgphdmF0YXJfdXJsGAMgASgJEgsKA2JpbxgEIAEoCSJCChFDcmVhdGVCb3RSZXNwb25zZRIeCgNib3QYASABKAsyES5zYmx1cnAudjEuTWVtYmVyEg0KBXRva2VuGAIgASgJIhEKD0xpc3RCb3RzUmVxdWVzdCIzChBMaXN0Qm90c1Jlc3BvbnNlEh8KBGJvdHMYASADKAsyES5zYmx1cnAudjEuTWVtYmVyIicKFVJvdGF0ZUJvdFRva2VuUmVxdWVzdBIOCgZib3RfaWQYASABKAkiJwoWUm90YXRlQm90VG9rZW5SZXNwb25zZRINCgV0b2tlbhgBIAEoCSIiChBEZWxldGVCb3RSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSITChFEZWxldGVCb3RSZXNwb25zZSpVCgpNZW1iZXJLaW5kEhsKF01FTUJFUl9LSU5EX1VOU1BFQ0lGSUVEEAASFQoRTUVNQkVSX0tJTkRfSFVNQU4QARITCg9NRU1CRVJfS0lORF9CT1QQAiqKAQoKTWVtYmVyUm9sZRIbChdNRU1CRVJfUk9MRV9VTlNQRUNJRklFRBAAEhYKEk1FTUJFUl9ST0xFX01FTUJFUhABEhkKFU1FTUJFUl9ST0xFX01PREVSQVRPUhACEhUKEU1FTUJFUl9ST0xFX0FETUlOEAMSFQoRTUVNQkVSX1JPTEVfT1dORVIQBCpiCghQcmVzZW5jZRIYChRQUkVTRU5DRV9VTlNQRUNJRklFRBAAEhMKD1BSRVNFTkNFX09OTElORRABEhEKDVBSRVNFTkNFX0FXQVkQAhIUChBQUkVTRU5DRV9PRkZMSU5FEAMqcQoLQ2hhbm5lbEtpbmQSHAoYQ0hBTk5FTF9LSU5EX1VOU1BFQ0lGSUVEEAASFQoRQ0hBTk5FTF9LSU5EX1RFWFQQARIYChRDSEFOTkVMX0tJTkRfUFJJVkFURRACEhMKD0NIQU5ORUxfS0lORF9ETRADMoEGCg1TZXJ2ZXJTZXJ2aWNlElQKDUdldFNlcnZlckluZm8SHy5zYmx1cnAudjEuR2V0U2VydmVySW5mb1JlcXVlc3QaIC5zYmx1cnAudjEuR2V0U2VydmVySW5mb1Jlc3BvbnNlIgASOQoESm9pbhIWLnNibHVycC52MS5Kb2luUmVxdWVzdBoXLnNibHVycC52MS5Kb2luUmVzcG9uc2UiABI8CgVHZXRNZRIXLnNibHVycC52MS5HZXRNZVJlcXVlc3QaGC5zYmx1cnAudjEuR2V0TWVSZXNwb25zZSIAElQKDVVwZGF0ZVByb2ZpbGUSHy5zYmx1cnAudjEuVXBkYXRlUHJvZmlsZVJlcXVlc3QaIC5zYmx1cnAudjEuVXBkYXRlUHJvZmlsZVJlc3BvbnNlIgASRQoIR2V0U3RhdGUSGi5zYmx1cnAudjEuR2V0U3RhdGVSZXF1ZXN0Ghsuc2JsdXJwLnYxLkdldFN0YXRlUmVzcG9uc2UiABI+CglTdWJzY3JpYmUSGy5zYmx1cnAudjEuU3Vic2NyaWJlUmVxdWVzdBoQLnNibHVycC52MS5FdmVudCIAMAESVAoNU2V0TWVtYmVyUm9sZRIfLnNibHVycC52MS5TZXRNZW1iZXJSb2xlUmVxdWVzdBogLnNibHVycC52MS5TZXRNZW1iZXJSb2xlUmVzcG9uc2UiABJXCg5MZWF2ZUNvbW11bml0eRIgLnNibHVycC52MS5MZWF2ZUNvbW11bml0eVJlcXVlc3QaIS5zYmx1cnAudjEuTGVhdmVDb21tdW5pdHlSZXNwb25zZSIAEksKCktpY2tNZW1iZXISHC5zYmx1cnAudjEuS2lja01lbWJlclJlcXVlc3QaHS5zYmx1cnAudjEuS2lja01lbWJlclJlc3BvbnNlIgASSAoJQmFuTWVtYmVyEhsuc2JsdXJwLnYxLkJhbk1lbWJlclJlcXVlc3QaHC5zYmx1cnAudjEuQmFuTWVtYmVyUmVzcG9uc2UiADKdCAoLQ2hhdFNlcnZpY2USVAoNQ3JlYXRlQ2hhbm5lbBIfLnNibHVycC52MS5DcmVhdGVDaGFubmVsUmVxdWVzdBogLnNibHVycC52MS5DcmVhdGVDaGFubmVsUmVzcG9uc2UiABJUCg1VcGRhdGVDaGFubmVsEh8uc2JsdXJwLnYxLlVwZGF0ZUNoYW5uZWxSZXF1ZXN0GiAuc2JsdXJwLnYxLlVwZGF0ZUNoYW5uZWxSZXNwb25zZSIAEj8KBk9wZW5ETRIYLnNibHVycC52MS5PcGVuRE1SZXF1ZXN0Ghkuc2JsdXJwLnYxLk9wZW5ETVJlc3BvbnNlIgASUQoMTGlzdE1lc3NhZ2VzEh4uc2JsdXJwLnYxLkxpc3RNZXNzYWdlc1JlcXVlc3QaHy5zYmx1cnAudjEuTGlzdE1lc3NhZ2VzUmVzcG9uc2UiABJOCgtTZW5kTWVzc2FnZRIdLnNibHVycC52MS5TZW5kTWVzc2FnZVJlcXVlc3QaHi5zYmx1cnAudjEuU2VuZE1lc3NhZ2VSZXNwb25zZSIAEk4KC0VkaXRNZXNzYWdlEh0uc2JsdXJwLnYxLkVkaXRNZXNzYWdlUmVxdWVzdBoeLnNibHVycC52MS5FZGl0TWVzc2FnZVJlc3BvbnNlIgASVAoNRGVsZXRlTWVzc2FnZRIfLnNibHVycC52MS5EZWxldGVNZXNzYWdlUmVxdWVzdBogLnNibHVycC52MS5EZWxldGVNZXNzYWdlUmVzcG9uc2UiABI8CgVSZWFjdBIXLnNibHVycC52MS5SZWFjdFJlcXVlc3QaGC5zYmx1cnAudjEuUmVhY3RSZXNwb25zZSIAEkUKCE1hcmtSZWFkEhouc2JsdXJwLnYxLk1hcmtSZWFkUmVxdWVzdBobLnNibHVycC52MS5NYXJrUmVhZFJlc3BvbnNlIgASSAoJU2V0VHlwaW5nEhsuc2JsdXJwLnYxLlNldFR5cGluZ1JlcXVlc3QaHC5zYmx1cnAudjEuU2V0VHlwaW5nUmVzcG9uc2UiABI/CgZTZWFyY2gSGC5zYmx1cnAudjEuU2VhcmNoUmVxdWVzdBoZLnNibHVycC52MS5TZWFyY2hSZXNwb25zZSIAEmAKEUFkZENoYW5uZWxNZW1iZXJzEiMuc2JsdXJwLnYxLkFkZENoYW5uZWxNZW1iZXJzUmVxdWVzdBokLnNibHVycC52MS5BZGRDaGFubmVsTWVtYmVyc1Jlc3BvbnNlIgASZgoTUmVtb3ZlQ2hhbm5lbE1lbWJlchIlLnNibHVycC52MS5SZW1vdmVDaGFubmVsTWVtYmVyUmVxdWVzdBomLnNibHVycC52MS5SZW1vdmVDaGFubmVsTWVtYmVyUmVzcG9uc2UiADLAAgoKQm90U2VydmljZRJICglDcmVhdGVCb3QSGy5zYmx1cnAudjEuQ3JlYXRlQm90UmVxdWVzdBocLnNibHVycC52MS5DcmVhdGVCb3RSZXNwb25zZSIAEkUKCExpc3RCb3RzEhouc2JsdXJwLnYxLkxpc3RCb3RzUmVxdWVzdBobLnNibHVycC52MS5MaXN0Qm90c1Jlc3BvbnNlIgASVwoOUm90YXRlQm90VG9rZW4SIC5zYmx1cnAudjEuUm90YXRlQm90VG9rZW5SZXF1ZXN0GiEuc2JsdXJwLnYxLlJvdGF0ZUJvdFRva2VuUmVzcG9uc2UiABJICglEZWxldGVCb3QSGy5zYmx1cnAudjEuRGVsZXRlQm90UmVxdWVzdBocLnNibHVycC52MS5EZWxldGVCb3RSZXNwb25zZSIAQitaKXNibHVycC5jaGF0L3NlcnZlci9nZW4vc2JsdXJwL3YxO3NibHVycHYxYgZwcm90bzM");
 
 /**
  * @generated from message sblurp.v1.Member
@@ -1361,6 +1361,231 @@ export const SearchResponseSchema: GenMessage<SearchResponse> = /*@__PURE__*/
   messageDesc(file_sblurp_v1_sblurp, 41);
 
 /**
+ * Any member of a private channel may add others to it. The new members get
+ * channel_updated (treat it as an upsert).
+ *
+ * @generated from message sblurp.v1.AddChannelMembersRequest
+ */
+export type AddChannelMembersRequest = Message$1<"sblurp.v1.AddChannelMembersRequest"> & {
+  /**
+   * @generated from field: string channel_id = 1;
+   */
+  channelId: string;
+
+  /**
+   * max 50
+   *
+   * @generated from field: repeated string member_ids = 2;
+   */
+  memberIds: string[];
+};
+
+/**
+ * Describes the message sblurp.v1.AddChannelMembersRequest.
+ * Use `create(AddChannelMembersRequestSchema)` to create a new message.
+ */
+export const AddChannelMembersRequestSchema: GenMessage<AddChannelMembersRequest> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 42);
+
+/**
+ * @generated from message sblurp.v1.AddChannelMembersResponse
+ */
+export type AddChannelMembersResponse = Message$1<"sblurp.v1.AddChannelMembersResponse"> & {
+  /**
+   * @generated from field: sblurp.v1.Channel channel = 1;
+   */
+  channel?: Channel;
+};
+
+/**
+ * Describes the message sblurp.v1.AddChannelMembersResponse.
+ * Use `create(AddChannelMembersResponseSchema)` to create a new message.
+ */
+export const AddChannelMembersResponseSchema: GenMessage<AddChannelMembersResponse> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 43);
+
+/**
+ * Removes a member from a private channel. Your own id leaves the channel;
+ * anyone else needs moderator or higher and a higher rank than theirs. The
+ * removed member gets channel_deleted (the channel is gone for them); the
+ * rest get channel_updated.
+ *
+ * @generated from message sblurp.v1.RemoveChannelMemberRequest
+ */
+export type RemoveChannelMemberRequest = Message$1<"sblurp.v1.RemoveChannelMemberRequest"> & {
+  /**
+   * @generated from field: string channel_id = 1;
+   */
+  channelId: string;
+
+  /**
+   * @generated from field: string member_id = 2;
+   */
+  memberId: string;
+};
+
+/**
+ * Describes the message sblurp.v1.RemoveChannelMemberRequest.
+ * Use `create(RemoveChannelMemberRequestSchema)` to create a new message.
+ */
+export const RemoveChannelMemberRequestSchema: GenMessage<RemoveChannelMemberRequest> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 44);
+
+/**
+ * @generated from message sblurp.v1.RemoveChannelMemberResponse
+ */
+export type RemoveChannelMemberResponse = Message$1<"sblurp.v1.RemoveChannelMemberResponse"> & {
+  /**
+   * @generated from field: sblurp.v1.Channel channel = 1;
+   */
+  channel?: Channel;
+};
+
+/**
+ * Describes the message sblurp.v1.RemoveChannelMemberResponse.
+ * Use `create(RemoveChannelMemberResponseSchema)` to create a new message.
+ */
+export const RemoveChannelMemberResponseSchema: GenMessage<RemoveChannelMemberResponse> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 45);
+
+/**
+ * Admin or owner only. The new role must be MEMBER, MODERATOR or ADMIN and
+ * lower than the caller's, and the target must rank lower than the caller.
+ *
+ * @generated from message sblurp.v1.SetMemberRoleRequest
+ */
+export type SetMemberRoleRequest = Message$1<"sblurp.v1.SetMemberRoleRequest"> & {
+  /**
+   * @generated from field: string member_id = 1;
+   */
+  memberId: string;
+
+  /**
+   * @generated from field: sblurp.v1.MemberRole role = 2;
+   */
+  role: MemberRole;
+};
+
+/**
+ * Describes the message sblurp.v1.SetMemberRoleRequest.
+ * Use `create(SetMemberRoleRequestSchema)` to create a new message.
+ */
+export const SetMemberRoleRequestSchema: GenMessage<SetMemberRoleRequest> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 46);
+
+/**
+ * @generated from message sblurp.v1.SetMemberRoleResponse
+ */
+export type SetMemberRoleResponse = Message$1<"sblurp.v1.SetMemberRoleResponse"> & {
+  /**
+   * @generated from field: sblurp.v1.Member member = 1;
+   */
+  member?: Member;
+};
+
+/**
+ * Describes the message sblurp.v1.SetMemberRoleResponse.
+ * Use `create(SetMemberRoleResponseSchema)` to create a new message.
+ */
+export const SetMemberRoleResponseSchema: GenMessage<SetMemberRoleResponse> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 47);
+
+/**
+ * Leave this community. The owner cannot leave. You may Join again later.
+ * Others get member_left.
+ *
+ * @generated from message sblurp.v1.LeaveCommunityRequest
+ */
+export type LeaveCommunityRequest = Message$1<"sblurp.v1.LeaveCommunityRequest"> & {
+};
+
+/**
+ * Describes the message sblurp.v1.LeaveCommunityRequest.
+ * Use `create(LeaveCommunityRequestSchema)` to create a new message.
+ */
+export const LeaveCommunityRequestSchema: GenMessage<LeaveCommunityRequest> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 48);
+
+/**
+ * @generated from message sblurp.v1.LeaveCommunityResponse
+ */
+export type LeaveCommunityResponse = Message$1<"sblurp.v1.LeaveCommunityResponse"> & {
+};
+
+/**
+ * Describes the message sblurp.v1.LeaveCommunityResponse.
+ * Use `create(LeaveCommunityResponseSchema)` to create a new message.
+ */
+export const LeaveCommunityResponseSchema: GenMessage<LeaveCommunityResponse> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 49);
+
+/**
+ * Moderator or higher, and a higher rank than the target. The target leaves
+ * the community and its private channels but may Join again. Not for bots
+ * (use BotService.DeleteBot).
+ *
+ * @generated from message sblurp.v1.KickMemberRequest
+ */
+export type KickMemberRequest = Message$1<"sblurp.v1.KickMemberRequest"> & {
+  /**
+   * @generated from field: string member_id = 1;
+   */
+  memberId: string;
+};
+
+/**
+ * Describes the message sblurp.v1.KickMemberRequest.
+ * Use `create(KickMemberRequestSchema)` to create a new message.
+ */
+export const KickMemberRequestSchema: GenMessage<KickMemberRequest> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 50);
+
+/**
+ * @generated from message sblurp.v1.KickMemberResponse
+ */
+export type KickMemberResponse = Message$1<"sblurp.v1.KickMemberResponse"> & {
+};
+
+/**
+ * Describes the message sblurp.v1.KickMemberResponse.
+ * Use `create(KickMemberResponseSchema)` to create a new message.
+ */
+export const KickMemberResponseSchema: GenMessage<KickMemberResponse> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 51);
+
+/**
+ * Like KickMember, and the person's login (iss, sub) cannot Join again.
+ *
+ * @generated from message sblurp.v1.BanMemberRequest
+ */
+export type BanMemberRequest = Message$1<"sblurp.v1.BanMemberRequest"> & {
+  /**
+   * @generated from field: string member_id = 1;
+   */
+  memberId: string;
+};
+
+/**
+ * Describes the message sblurp.v1.BanMemberRequest.
+ * Use `create(BanMemberRequestSchema)` to create a new message.
+ */
+export const BanMemberRequestSchema: GenMessage<BanMemberRequest> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 52);
+
+/**
+ * @generated from message sblurp.v1.BanMemberResponse
+ */
+export type BanMemberResponse = Message$1<"sblurp.v1.BanMemberResponse"> & {
+};
+
+/**
+ * Describes the message sblurp.v1.BanMemberResponse.
+ * Use `create(BanMemberResponseSchema)` to create a new message.
+ */
+export const BanMemberResponseSchema: GenMessage<BanMemberResponse> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 53);
+
+/**
  * @generated from message sblurp.v1.CreateBotRequest
  */
 export type CreateBotRequest = Message$1<"sblurp.v1.CreateBotRequest"> & {
@@ -1390,7 +1615,7 @@ export type CreateBotRequest = Message$1<"sblurp.v1.CreateBotRequest"> & {
  * Use `create(CreateBotRequestSchema)` to create a new message.
  */
 export const CreateBotRequestSchema: GenMessage<CreateBotRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 42);
+  messageDesc(file_sblurp_v1_sblurp, 54);
 
 /**
  * @generated from message sblurp.v1.CreateBotResponse
@@ -1414,7 +1639,7 @@ export type CreateBotResponse = Message$1<"sblurp.v1.CreateBotResponse"> & {
  * Use `create(CreateBotResponseSchema)` to create a new message.
  */
 export const CreateBotResponseSchema: GenMessage<CreateBotResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 43);
+  messageDesc(file_sblurp_v1_sblurp, 55);
 
 /**
  * @generated from message sblurp.v1.ListBotsRequest
@@ -1427,7 +1652,7 @@ export type ListBotsRequest = Message$1<"sblurp.v1.ListBotsRequest"> & {
  * Use `create(ListBotsRequestSchema)` to create a new message.
  */
 export const ListBotsRequestSchema: GenMessage<ListBotsRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 44);
+  messageDesc(file_sblurp_v1_sblurp, 56);
 
 /**
  * @generated from message sblurp.v1.ListBotsResponse
@@ -1444,7 +1669,7 @@ export type ListBotsResponse = Message$1<"sblurp.v1.ListBotsResponse"> & {
  * Use `create(ListBotsResponseSchema)` to create a new message.
  */
 export const ListBotsResponseSchema: GenMessage<ListBotsResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 45);
+  messageDesc(file_sblurp_v1_sblurp, 57);
 
 /**
  * @generated from message sblurp.v1.RotateBotTokenRequest
@@ -1461,7 +1686,7 @@ export type RotateBotTokenRequest = Message$1<"sblurp.v1.RotateBotTokenRequest">
  * Use `create(RotateBotTokenRequestSchema)` to create a new message.
  */
 export const RotateBotTokenRequestSchema: GenMessage<RotateBotTokenRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 46);
+  messageDesc(file_sblurp_v1_sblurp, 58);
 
 /**
  * @generated from message sblurp.v1.RotateBotTokenResponse
@@ -1478,7 +1703,7 @@ export type RotateBotTokenResponse = Message$1<"sblurp.v1.RotateBotTokenResponse
  * Use `create(RotateBotTokenResponseSchema)` to create a new message.
  */
 export const RotateBotTokenResponseSchema: GenMessage<RotateBotTokenResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 47);
+  messageDesc(file_sblurp_v1_sblurp, 59);
 
 /**
  * @generated from message sblurp.v1.DeleteBotRequest
@@ -1495,7 +1720,7 @@ export type DeleteBotRequest = Message$1<"sblurp.v1.DeleteBotRequest"> & {
  * Use `create(DeleteBotRequestSchema)` to create a new message.
  */
 export const DeleteBotRequestSchema: GenMessage<DeleteBotRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 48);
+  messageDesc(file_sblurp_v1_sblurp, 60);
 
 /**
  * @generated from message sblurp.v1.DeleteBotResponse
@@ -1508,7 +1733,7 @@ export type DeleteBotResponse = Message$1<"sblurp.v1.DeleteBotResponse"> & {
  * Use `create(DeleteBotResponseSchema)` to create a new message.
  */
 export const DeleteBotResponseSchema: GenMessage<DeleteBotResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 49);
+  messageDesc(file_sblurp_v1_sblurp, 61);
 
 /**
  * @generated from enum sblurp.v1.MemberKind
@@ -1695,6 +1920,38 @@ export const ServerService: GenService<{
     input: typeof SubscribeRequestSchema;
     output: typeof EventSchema;
   },
+  /**
+   * @generated from rpc sblurp.v1.ServerService.SetMemberRole
+   */
+  setMemberRole: {
+    methodKind: "unary";
+    input: typeof SetMemberRoleRequestSchema;
+    output: typeof SetMemberRoleResponseSchema;
+  },
+  /**
+   * @generated from rpc sblurp.v1.ServerService.LeaveCommunity
+   */
+  leaveCommunity: {
+    methodKind: "unary";
+    input: typeof LeaveCommunityRequestSchema;
+    output: typeof LeaveCommunityResponseSchema;
+  },
+  /**
+   * @generated from rpc sblurp.v1.ServerService.KickMember
+   */
+  kickMember: {
+    methodKind: "unary";
+    input: typeof KickMemberRequestSchema;
+    output: typeof KickMemberResponseSchema;
+  },
+  /**
+   * @generated from rpc sblurp.v1.ServerService.BanMember
+   */
+  banMember: {
+    methodKind: "unary";
+    input: typeof BanMemberRequestSchema;
+    output: typeof BanMemberResponseSchema;
+  },
 }> = /*@__PURE__*/
   serviceDesc(file_sblurp_v1_sblurp, 0);
 
@@ -1789,6 +2046,22 @@ export const ChatService: GenService<{
     methodKind: "unary";
     input: typeof SearchRequestSchema;
     output: typeof SearchResponseSchema;
+  },
+  /**
+   * @generated from rpc sblurp.v1.ChatService.AddChannelMembers
+   */
+  addChannelMembers: {
+    methodKind: "unary";
+    input: typeof AddChannelMembersRequestSchema;
+    output: typeof AddChannelMembersResponseSchema;
+  },
+  /**
+   * @generated from rpc sblurp.v1.ChatService.RemoveChannelMember
+   */
+  removeChannelMember: {
+    methodKind: "unary";
+    input: typeof RemoveChannelMemberRequestSchema;
+    output: typeof RemoveChannelMemberResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_sblurp_v1_sblurp, 1);

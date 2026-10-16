@@ -152,6 +152,12 @@ func isAdmin(m *memberRow) bool { return m.Role >= v1.MemberRole_MEMBER_ROLE_ADM
 
 func canModerate(m *memberRow) bool { return m.Role >= v1.MemberRole_MEMBER_ROLE_MODERATOR }
 
+// outranks reports whether actor may act on target: moderator or higher and
+// a strictly higher role. Owner > admin > moderator > member.
+func outranks(actor, target v1.MemberRole) bool {
+	return actor >= v1.MemberRole_MEMBER_ROLE_MODERATOR && actor > target
+}
+
 func canSee(c *v1.Channel, member string) bool {
 	return c.Kind == v1.ChannelKind_CHANNEL_KIND_TEXT || slices.Contains(c.MemberIds, member)
 }
@@ -431,6 +437,35 @@ func (s *Server) Join(ctx context.Context, req *connect.Request[v1.JoinRequest])
 	var out *memberRow
 	created := false
 	err := s.writeTx(ctx, func(t *wtx) error {
+		var banned bool
+		if err := t.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM bans WHERE iss = ? AND sub = ?)", id.iss, id.sub).Scan(&banned); err != nil {
+			return err
+		}
+		if banned {
+			return errf(connect.CodePermissionDenied, "you are banned from this community")
+		}
+		// A member who left or was kicked comes back with the same id.
+		var oldID string
+		err := t.QueryRowContext(ctx, "SELECT id FROM members WHERE iss = ? AND sub = ? AND deleted = 1", id.iss, id.sub).Scan(&oldID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		if oldID != "" {
+			seq, err := t.nextSeq()
+			if err != nil {
+				return err
+			}
+			if _, err := t.ExecContext(ctx, `UPDATE members SET deleted = 0, role = ?, display_name = ?, avatar_url = ?, bio = ?,
+				status_text = '', status_emoji = '', joined_at_ms = ?, joined_seq = ? WHERE id = ?`,
+				v1.MemberRole_MEMBER_ROLE_MEMBER, display, r.AvatarUrl, r.Bio, s.nowMs(), seq, oldID); err != nil {
+				return err
+			}
+			if out, err = s.loadMember(ctx, t, "id = ?", oldID); err != nil {
+				return err
+			}
+			created = true
+			return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberJoined{MemberJoined: out.Member}}, "", "")
+		}
 		existing, err := s.loadMember(ctx, t, "iss = ? AND sub = ?", id.iss, id.sub)
 		if err != nil || existing != nil {
 			out = existing
@@ -576,6 +611,11 @@ func (s *Server) Subscribe(ctx context.Context, req *connect.Request[v1.Subscrib
 	// by seq.
 	sb := s.hub.add(m.Id)
 	defer s.hub.remove(sb)
+	// A kick commits before it drops subscriptions; one registered after
+	// that drop must see the kick here.
+	if _, err := s.liveMember(ctx, s.db.r, m.Id); err != nil {
+		return errf(connect.CodePermissionDenied, "you are no longer a member")
+	}
 
 	last := req.Msg.AfterSeq
 	var oldest int64
@@ -1268,6 +1308,291 @@ func (s *Server) Search(ctx context.Context, req *connect.Request[v1.SearchReque
 		return nil, err
 	}
 	return connect.NewResponse(&v1.SearchResponse{Messages: ms}), nil
+}
+
+// ---------------------------------------------------------------------------
+// Membership and moderation
+// ---------------------------------------------------------------------------
+
+const maxAddMembers = 50
+
+// privateChannelFor loads a private channel the caller is in.
+func privateChannelFor(ctx context.Context, q queryer, id, member string) (*v1.Channel, error) {
+	c, err := channelFor(ctx, q, id, member)
+	if err == nil && c.Kind != v1.ChannelKind_CHANNEL_KIND_PRIVATE {
+		err = errf(connect.CodeInvalidArgument, "only private channels have a member list")
+	}
+	return c, err
+}
+
+// liveMember loads a member who has not left, or NOT_FOUND.
+func (s *Server) liveMember(ctx context.Context, q queryer, id string) (*memberRow, error) {
+	m, err := s.loadMember(ctx, q, "id = ? AND deleted = 0", id)
+	if err == nil && m == nil {
+		err = errf(connect.CodeNotFound, "member %s not found", id)
+	}
+	return m, err
+}
+
+// emitChannelUpdated reloads c and tells its members.
+func emitChannelUpdated(t *wtx, id string) (*v1.Channel, error) {
+	cs, err := queryChannels(t.ctx, t, "id = ?", id)
+	if err != nil {
+		return nil, err
+	}
+	seq, err := t.nextSeq()
+	if err != nil {
+		return nil, err
+	}
+	return cs[0], t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_ChannelUpdated{ChannelUpdated: cs[0]}}, id, "")
+}
+
+func (s *Server) AddChannelMembers(ctx context.Context, req *connect.Request[v1.AddChannelMembersRequest]) (*connect.Response[v1.AddChannelMembersResponse], error) {
+	m := me(ctx)
+	r := req.Msg
+	if len(r.MemberIds) == 0 || len(r.MemberIds) > maxAddMembers {
+		return nil, errf(connect.CodeInvalidArgument, "add 1 to %d members at a time", maxAddMembers)
+	}
+	for _, id := range r.MemberIds {
+		if err := checkID("member_ids", id); err != nil {
+			return nil, err
+		}
+	}
+	var c *v1.Channel
+	err := s.writeTx(ctx, func(t *wtx) error {
+		var err error
+		if c, err = privateChannelFor(ctx, t, r.ChannelId, m.Id); err != nil {
+			return err
+		}
+		cur, err := currentSeq(ctx, t)
+		if err != nil {
+			return err
+		}
+		added := 0
+		for _, id := range r.MemberIds {
+			if _, err := s.liveMember(ctx, t, id); err != nil {
+				return err
+			}
+			res, err := t.ExecContext(ctx, "INSERT OR IGNORE INTO channel_members(channel_id, member_id) VALUES (?,?)", c.Id, id)
+			if err != nil {
+				return err
+			}
+			if n, _ := res.RowsAffected(); n == 1 {
+				added++
+				// Old history is not unread for a new channel member.
+				if _, err := t.ExecContext(ctx, `INSERT INTO read_states(member_id, channel_id, last_read_seq) VALUES (?,?,?)
+					ON CONFLICT(member_id, channel_id) DO UPDATE SET last_read_seq = MAX(last_read_seq, excluded.last_read_seq)`, id, c.Id, cur); err != nil {
+					return err
+				}
+			}
+		}
+		if added == 0 {
+			return nil
+		}
+		c, err = emitChannelUpdated(t, c.Id)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&v1.AddChannelMembersResponse{Channel: c}), nil
+}
+
+func (s *Server) RemoveChannelMember(ctx context.Context, req *connect.Request[v1.RemoveChannelMemberRequest]) (*connect.Response[v1.RemoveChannelMemberResponse], error) {
+	m := me(ctx)
+	r := req.Msg
+	var c *v1.Channel
+	err := s.writeTx(ctx, func(t *wtx) error {
+		var err error
+		if c, err = privateChannelFor(ctx, t, r.ChannelId, m.Id); err != nil {
+			return err
+		}
+		if !slices.Contains(c.MemberIds, r.MemberId) {
+			return errf(connect.CodeNotFound, "member %s is not in this channel", r.MemberId)
+		}
+		if r.MemberId != m.Id {
+			actor, err := s.liveMember(ctx, t, m.Id)
+			if err != nil {
+				return err
+			}
+			target, err := s.loadMember(ctx, t, "id = ?", r.MemberId)
+			if err != nil {
+				return err
+			}
+			if !outranks(actor.Role, target.Role) {
+				return errf(connect.CodePermissionDenied, "you can only remove members of a lower role")
+			}
+		}
+		if err := removeFromChannel(t, c.Id, r.MemberId); err != nil {
+			return err
+		}
+		c, err = emitChannelUpdated(t, c.Id)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&v1.RemoveChannelMemberResponse{Channel: c}), nil
+}
+
+// removeFromChannel deletes the membership and tells the removed member the
+// channel is gone for them.
+func removeFromChannel(t *wtx, channel, member string) error {
+	if _, err := t.ExecContext(t.ctx, "DELETE FROM channel_members WHERE channel_id = ? AND member_id = ?", channel, member); err != nil {
+		return err
+	}
+	seq, err := t.nextSeq()
+	if err != nil {
+		return err
+	}
+	return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_ChannelDeleted{ChannelDeleted: channel}}, "", member)
+}
+
+func (s *Server) SetMemberRole(ctx context.Context, req *connect.Request[v1.SetMemberRoleRequest]) (*connect.Response[v1.SetMemberRoleResponse], error) {
+	r := req.Msg
+	switch r.Role {
+	case v1.MemberRole_MEMBER_ROLE_MEMBER, v1.MemberRole_MEMBER_ROLE_MODERATOR, v1.MemberRole_MEMBER_ROLE_ADMIN:
+	default:
+		return nil, errf(connect.CodeInvalidArgument, "role must be MEMBER, MODERATOR or ADMIN")
+	}
+	var out *memberRow
+	err := s.writeTx(ctx, func(t *wtx) error {
+		actor, err := s.liveMember(ctx, t, me(ctx).Id)
+		if err != nil {
+			return err
+		}
+		target, err := s.liveMember(ctx, t, r.MemberId)
+		if err != nil {
+			return err
+		}
+		if !isAdmin(actor) || !outranks(actor.Role, target.Role) || !outranks(actor.Role, r.Role) {
+			return errf(connect.CodePermissionDenied, "only admins set roles, and only below their own")
+		}
+		if _, err := t.ExecContext(ctx, "UPDATE members SET role = ? WHERE id = ?", r.Role, target.Id); err != nil {
+			return err
+		}
+		if out, err = s.loadMember(ctx, t, "id = ?", target.Id); err != nil {
+			return err
+		}
+		seq, err := t.nextSeq()
+		if err != nil {
+			return err
+		}
+		return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberUpdated{MemberUpdated: out.Member}}, "", "")
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.log.Info("role set", "member", out.Id, "role", out.Role.String(), "by", me(ctx).Id)
+	return connect.NewResponse(&v1.SetMemberRoleResponse{Member: out.Member}), nil
+}
+
+func (s *Server) LeaveCommunity(ctx context.Context, _ *connect.Request[v1.LeaveCommunityRequest]) (*connect.Response[v1.LeaveCommunityResponse], error) {
+	m := me(ctx)
+	err := s.writeTx(ctx, func(t *wtx) error {
+		self, err := s.liveMember(ctx, t, m.Id)
+		if err != nil {
+			return err
+		}
+		if self.Role == v1.MemberRole_MEMBER_ROLE_OWNER {
+			return errf(connect.CodeFailedPrecondition, "the owner cannot leave")
+		}
+		return s.removeMember(t, self.Id)
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.hub.drop(m.Id)
+	return connect.NewResponse(&v1.LeaveCommunityResponse{}), nil
+}
+
+func (s *Server) KickMember(ctx context.Context, req *connect.Request[v1.KickMemberRequest]) (*connect.Response[v1.KickMemberResponse], error) {
+	if err := s.kick(ctx, req.Msg.MemberId, false); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&v1.KickMemberResponse{}), nil
+}
+
+func (s *Server) BanMember(ctx context.Context, req *connect.Request[v1.BanMemberRequest]) (*connect.Response[v1.BanMemberResponse], error) {
+	if err := s.kick(ctx, req.Msg.MemberId, true); err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&v1.BanMemberResponse{}), nil
+}
+
+// kick removes a person of lower rank, and with ban also blocks their login.
+func (s *Server) kick(ctx context.Context, memberID string, ban bool) error {
+	by := me(ctx).Id
+	err := s.writeTx(ctx, func(t *wtx) error {
+		actor, err := s.liveMember(ctx, t, by)
+		if err != nil {
+			return err
+		}
+		target, err := s.liveMember(ctx, t, memberID)
+		if err != nil {
+			return err
+		}
+		if target.Kind != v1.MemberKind_MEMBER_KIND_HUMAN {
+			return errf(connect.CodeInvalidArgument, "use DeleteBot to remove a bot")
+		}
+		if !outranks(actor.Role, target.Role) {
+			return errf(connect.CodePermissionDenied, "you can only remove members of a lower role")
+		}
+		if ban {
+			if _, err := t.ExecContext(ctx, `INSERT OR IGNORE INTO bans(iss, sub, member_id, by_id, at_ms)
+				SELECT iss, sub, id, ?, ? FROM members WHERE id = ?`, by, s.nowMs(), target.Id); err != nil {
+				return err
+			}
+		}
+		return s.removeMember(t, target.Id)
+	})
+	if err != nil {
+		return err
+	}
+	s.log.Info("member removed", "member", memberID, "by", by, "ban", ban)
+	s.hub.drop(memberID)
+	return nil
+}
+
+// removeMember takes a member out of the community and its private
+// channels. The row stays, so old messages keep their author and Join can
+// bring them back. DMs are kept.
+func (s *Server) removeMember(t *wtx, id string) error {
+	ctx := t.ctx
+	rows, err := t.QueryContext(ctx, `SELECT channel_id FROM channel_members WHERE member_id = ?
+		AND channel_id IN (SELECT id FROM channels WHERE kind = ?)`, id, v1.ChannelKind_CHANNEL_KIND_PRIVATE)
+	if err != nil {
+		return err
+	}
+	var channels []string
+	for rows.Next() {
+		var c string
+		if err := rows.Scan(&c); err != nil {
+			rows.Close()
+			return err
+		}
+		channels = append(channels, c)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, c := range channels {
+		if err := removeFromChannel(t, c, id); err != nil {
+			return err
+		}
+		if _, err := emitChannelUpdated(t, c); err != nil {
+			return err
+		}
+	}
+	if _, err := t.ExecContext(ctx, "UPDATE members SET deleted = 1, role = ? WHERE id = ?", v1.MemberRole_MEMBER_ROLE_MEMBER, id); err != nil {
+		return err
+	}
+	seq, err := t.nextSeq()
+	if err != nil {
+		return err
+	}
+	return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberLeft{MemberLeft: id}}, "", "")
 }
 
 // ---------------------------------------------------------------------------
