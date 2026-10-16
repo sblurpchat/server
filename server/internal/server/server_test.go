@@ -1336,3 +1336,33 @@ func TestQueryMessagesBatchesLoads(t *testing.T) {
 		t.Fatalf("got  %s\nwant %s", got, want)
 	}
 }
+
+// Uploads record the size of images the stdlib cannot decode (0104).
+// The fixtures in testdata were made with cwebp and sips.
+func TestUploadImageSizes(t *testing.T) {
+	e := newEnv(t)
+	ana := e.join("ana")
+	for _, c := range []struct {
+		file, ctype string
+		w, h        int32
+	}{
+		{"lossy.webp", "image/webp", 37, 23},
+		{"lossless.webp", "image/webp", 37, 23},
+		{"alpha.webp", "image/webp", 37, 23},
+		{"img.bmp", "image/bmp", 37, 23},
+		{"img.avif", "image/avif", 40, 24},
+		{"img.heic", "image/heic", 40, 24},
+	} {
+		body, err := os.ReadFile(filepath.Join("testdata", c.file))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, a := ana.upload(c.file, body)
+		if a == nil || a.ContentType != c.ctype || a.Width != c.w || a.Height != c.h {
+			t.Errorf("%s: got %v", c.file, a)
+		}
+	}
+	if w, h := imageSize([]byte("RIFF\x00\x00\x00\x00WEBPVP8 truncated.............")); w != 0 || h != 0 {
+		t.Errorf("junk webp = %dx%d", w, h)
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"image"
@@ -86,6 +87,65 @@ func (s *Server) signURLs(m proto.Message) {
 	})
 }
 
+// sniffType is http.DetectContentType plus AVIF and HEIF, which it does
+// not know.
+func sniffType(head []byte) string {
+	ct := http.DetectContentType(head)
+	if ct == "application/octet-stream" && len(head) >= 12 && string(head[4:8]) == "ftyp" {
+		switch string(head[8:12]) {
+		case "avif", "avis":
+			return "image/avif"
+		case "heic", "heix":
+			return "image/heic"
+		case "mif1":
+			return "image/heif"
+		}
+	}
+	return ct
+}
+
+// imageSize reads the size from the header of the image types the standard
+// library cannot decode: WebP, BMP, AVIF and HEIC. It returns 0, 0 when it
+// cannot tell.
+func imageSize(b []byte) (w, h int) {
+	le := binary.LittleEndian
+	switch {
+	case len(b) >= 30 && string(b[:4]) == "RIFF" && string(b[8:12]) == "WEBP":
+		switch string(b[12:16]) {
+		case "VP8X":
+			return 1 + int(b[24]) | int(b[25])<<8 | int(b[26])<<16, 1 + int(b[27]) | int(b[28])<<8 | int(b[29])<<16
+		case "VP8L":
+			if bits := le.Uint32(b[21:25]); b[20] == 0x2f {
+				return 1 + int(bits&0x3fff), 1 + int(bits>>14&0x3fff)
+			}
+		case "VP8 ":
+			if string(b[23:26]) == "\x9d\x01\x2a" {
+				return int(le.Uint16(b[26:28]) & 0x3fff), int(le.Uint16(b[28:30]) & 0x3fff)
+			}
+		}
+	case len(b) >= 26 && string(b[:2]) == "BM":
+		w, h := int32(le.Uint32(b[18:22])), int32(le.Uint32(b[22:26]))
+		return int(w), int(max(h, -h)) // negative height means top-down rows
+	case len(b) >= 12 && string(b[4:8]) == "ftyp":
+		// ponytail: the largest "ispe" (image spatial extent) box wins, so a
+		// grid image reports its full size, not a tile's. It is the coded
+		// size; the clean-aperture crop (odd sizes) is ignored, so it can be
+		// a pixel or two larger. Parse iprp/ipma properly if that matters.
+		for i := bytes.Index(b, []byte("ispe")); i >= 0 && i+16 <= len(b); {
+			bw, bh := int(binary.BigEndian.Uint32(b[i+8:])), int(binary.BigEndian.Uint32(b[i+12:]))
+			if bw*bh > w*h && bw <= 1<<16 && bh <= 1<<16 {
+				w, h = bw, bh
+			}
+			j := bytes.Index(b[i+4:], []byte("ispe"))
+			if j < 0 {
+				break
+			}
+			i += 4 + j
+		}
+	}
+	return w, h
+}
+
 func httpError(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
@@ -159,7 +219,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusBadRequest, "file is empty")
 		return
 	}
-	ctype := http.DetectContentType(head[:n])
+	ctype := sniffType(head[:n])
 	rest, err := io.Copy(tmp, io.MultiReader(bytes.NewReader(head[:n]), io.LimitReader(part, maxUpload+1-int64(n))))
 	if err != nil {
 		var tooBig *http.MaxBytesError
@@ -179,6 +239,10 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 		if _, err := tmp.Seek(0, io.SeekStart); err == nil {
 			if cfg, _, err := image.DecodeConfig(tmp); err == nil {
 				a.Width, a.Height = int32(cfg.Width), int32(cfg.Height)
+			} else if _, err := tmp.Seek(0, io.SeekStart); err == nil {
+				b, _ := io.ReadAll(io.LimitReader(tmp, 64<<10))
+				w, h := imageSize(b)
+				a.Width, a.Height = int32(w), int32(h)
 			}
 		}
 	}

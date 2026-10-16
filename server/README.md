@@ -116,7 +116,9 @@ client. There is no separate apps system. The bot is ~150 lines in
   can cache it). A missing, wrong or expired signature returns 403
   `{"error": ...}`; the client gets fresh URLs by listing the messages
   again. Removing a member does not revoke URLs they already hold. The
-  content type is sniffed by the server. Images, audio and video are served
+  content type is sniffed by the server (AVIF and HEIC too). `width` and
+  `height` are set for PNG, JPEG, GIF, WebP, BMP, AVIF and HEIC (for
+  AVIF/HEIC the coded size, which can be a pixel larger for odd sizes). Images, audio and video are served
   inline; everything else as a download, with `nosniff` and a sandbox CSP.
 - **Roles and moderation**: owner > admin > moderator > member. Nobody
   acts on someone of equal or higher rank. `SetMemberRole`: admins and the
