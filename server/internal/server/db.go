@@ -9,6 +9,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/fs"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -206,14 +208,40 @@ func channelMemberIDs(ctx context.Context, q queryer, channelID string) ([]strin
 }
 
 // prune drops old events: those outside both the newest keepEvents and the
-// last keepFor. Subscribers behind the oldest kept seq get resync.
+// last keepFor. Subscribers behind the oldest kept seq get resync. It also
+// deletes uploads that were never attached to a message within orphanAfter.
 func (s *Server) prune(ctx context.Context) error {
-	cutoff := s.now().Add(-s.keepFor).UnixMilli()
-	return s.writeTx(ctx, func(t *wtx) error {
-		_, err := t.ExecContext(ctx, "DELETE FROM events WHERE seq <= (SELECT MAX(seq) FROM events) - ? AND at_ms < ?", s.keepEvents, cutoff)
-		return err
+	now := s.now()
+	cutoff := now.Add(-s.keepFor).UnixMilli()
+	var orphans []string
+	err := s.writeTx(ctx, func(t *wtx) error {
+		if _, err := t.ExecContext(ctx, "DELETE FROM events WHERE seq <= (SELECT MAX(seq) FROM events) - ? AND at_ms < ?", s.keepEvents, cutoff); err != nil {
+			return err
+		}
+		rows, err := t.QueryContext(ctx, "DELETE FROM attachments WHERE message_id IS NULL AND created_at_ms < ? RETURNING id", now.Add(-orphanAfter).UnixMilli())
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				return err
+			}
+			orphans = append(orphans, id)
+		}
+		return rows.Err()
 	})
+	if err != nil {
+		return err
+	}
+	for _, id := range orphans {
+		os.Remove(filepath.Join(s.filesDir, id))
+	}
+	return nil
 }
+
+const orphanAfter = 24 * time.Hour
 
 // newID returns a UUIDv7: 48-bit unix ms, version 7, variant 10, random rest.
 func newID(now time.Time) string {

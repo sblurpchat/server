@@ -1366,3 +1366,34 @@ func TestUploadImageSizes(t *testing.T) {
 		t.Errorf("junk webp = %dx%d", w, h)
 	}
 }
+
+// Uploads never sent in a message are deleted after a day (0105).
+func TestPruneOrphanedUploads(t *testing.T) {
+	e := newEnv(t)
+	ana := e.join("ana")
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	_, orphan := ana.upload("orphan.txt", []byte("x"))
+	_, used := ana.upload("used.txt", []byte("y"))
+	must(ana.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: gen.Id, AttachmentIds: []string{used.Id}})))
+	e.clock.Advance(23 * time.Hour)
+	_, fresh := e.client(e.token("ana")).upload("fresh.txt", []byte("z")) // new token: the old one expired
+	exists := func(id string) bool {
+		var n int
+		e.s.db.r.QueryRow("SELECT COUNT(*) FROM attachments WHERE id = ?", id).Scan(&n)
+		_, err := os.Stat(filepath.Join(e.dir, "files", id))
+		if (n == 1) != (err == nil) {
+			t.Fatalf("%s: row %d, file err %v", id, n, err)
+		}
+		return n == 1
+	}
+	if err := e.s.prune(ctx()); err != nil || !exists(orphan.Id) {
+		t.Fatalf("23h old upload was pruned (%v)", err)
+	}
+	e.clock.Advance(2 * time.Hour)
+	if err := e.s.prune(ctx()); err != nil {
+		t.Fatal(err)
+	}
+	if exists(orphan.Id) || !exists(used.Id) || !exists(fresh.Id) {
+		t.Fatalf("after 25h: orphan %v, used %v, fresh %v", exists(orphan.Id), exists(used.Id), exists(fresh.Id))
+	}
+}

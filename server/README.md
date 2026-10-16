@@ -118,8 +118,10 @@ client. There is no separate apps system. The bot is ~150 lines in
   again. Removing a member does not revoke URLs they already hold. The
   content type is sniffed by the server (AVIF and HEIC too). `width` and
   `height` are set for PNG, JPEG, GIF, WebP, BMP, AVIF and HEIC (for
-  AVIF/HEIC the coded size, which can be a pixel larger for odd sizes). Images, audio and video are served
-  inline; everything else as a download, with `nosniff` and a sandbox CSP.
+  AVIF/HEIC the coded size, which can be a pixel larger for odd sizes).
+  Images, audio and video are served inline; everything else as a
+  download, with `nosniff` and a sandbox CSP. An upload not sent in a
+  message within a day is deleted.
 - **Roles and moderation**: owner > admin > moderator > member. Nobody
   acts on someone of equal or higher rank. `SetMemberRole`: admins and the
   owner, to MEMBER, MODERATOR or ADMIN below their own role (there is no
@@ -248,7 +250,8 @@ with a JWKS, and real Connect clients, with a fake clock.
   members (private channels and DMs), or one member (`read_state`). Replay
   and live delivery use the same rule.
 - **Retention**: an event is pruned only when it is outside the newest
-  10,000 *and* older than 7 days. Pruning runs at start and hourly.
+  10,000 *and* older than 7 days. Uploads never attached to a message are
+  deleted after a day. Pruning runs at start and hourly.
 - **Search** uses SQLite FTS5 (modernc's build includes it). User input is
   quoted word by word; the last word matches as a prefix.
 - **Deleted messages** keep a tombstone row; text, reactions and
