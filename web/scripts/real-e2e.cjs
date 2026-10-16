@@ -89,6 +89,19 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
   await row(edited).locator('.edited').waitFor({ timeout: 10000 });
   ok(true, 'edit shows new text and "(edited)"');
 
+  // Search jumps to the hit in context: a channel message, then a thread reply.
+  const find = async (q) => {
+    await p.locator('.chan-search input').fill(q); await p.locator('.chan-search input').press('Enter');
+    await p.locator('.result').first().click();
+  };
+  await find(edited.split(' ')[4]);
+  await p.locator('.channel .msg[data-focus=true]', { hasText: edited }).waitFor({ timeout: 10000 });
+  await find(reply.split(' ').pop());
+  await p.locator('.pane .msg[data-focus=true]', { hasText: reply }).waitFor({ timeout: 10000 });
+  ok(true, 'search results jump to and highlight the message and the thread reply');
+  await shot('search-jump');
+  await p.getByRole('button', { name: 'Close thread' }).click();
+
   // Delete (the caption message; the edited one keeps its thread).
   await tool(row(cap), 'More actions');
   await p.getByRole('menuitem', { name: 'Delete message' }).click();

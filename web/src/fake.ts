@@ -604,15 +604,24 @@ function service(f: Fake) {
         }
         return { channel: ch };
       },
-      listMessages(req: { channelId: string; threadRootId: string; beforeId: string; limit: number }) {
+      listMessages(req: { channelId: string; threadRootId: string; beforeId: string; afterId: string; aroundId: string; limit: number }) {
         need();
         if (!canSee(f, f.channels.get(req.channelId))) throw new ConnectError("channel not found", Code.NotFound);
         let list = f.messages.filter((m) =>
           req.threadRootId ? m.threadRootId === req.threadRootId : m.channelId === req.channelId && !m.threadRootId,
         );
         list = list.filter((m) => !m.deleted || m.replyCount > 0);
-        if (req.beforeId) list = list.slice(0, Math.max(0, list.findIndex((m) => m.id === req.beforeId)));
         const limit = Math.min(req.limit || 50, 200);
+        const at = (id: string) => list.findIndex((m) => m.id === id);
+        if (req.aroundId) {
+          const lo = Math.max(0, at(req.aroundId) - (limit >> 1));
+          return { messages: list.slice(lo, lo + limit), hasMore: lo > 0, hasMoreAfter: lo + limit < list.length };
+        }
+        if (req.afterId) {
+          const rest = list.slice(at(req.afterId) + 1);
+          return { messages: rest.slice(0, limit), hasMore: false, hasMoreAfter: rest.length > limit };
+        }
+        if (req.beforeId) list = list.slice(0, Math.max(0, at(req.beforeId)));
         return { messages: list.slice(-limit), hasMore: list.length > limit };
       },
       sendMessage(req: { channelId: string; text: string; threadRootId: string; clientId: string; attachmentIds: string[] }) {

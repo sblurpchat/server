@@ -176,6 +176,14 @@ describe("applyEvent", () => {
     expect(c.channels.c1.lastMessageSeq).toBe(11n);
   });
 
+  it("does not append to a search-jump window that is missing newer messages, but still counts unread", () => {
+    const c0 = community();
+    c0.lists.c1.hasMoreAfter = true;
+    const c = applyEvent(c0, ev(11n, { case: "messageCreated", value: msg("m2", "ana", 1) }), T0, null);
+    expect(c.lists.c1.items.map((x) => x.id)).toEqual(["m1"]);
+    expect(c.reads.c1).toMatchObject({ unreadCount: 1 });
+  });
+
   it("does not count unread in the channel being viewed", () => {
     const c = applyEvent(community(), ev(11n, { case: "messageCreated", value: msg("m2", "ana", 1) }), T0, "c1");
     expect(c.reads.c1).toMatchObject({ unreadCount: 0, lastReadSeq: 11n });

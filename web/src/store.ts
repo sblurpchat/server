@@ -364,27 +364,42 @@ function applyHash() {
 // Messages
 // ---------------------------------------------------------------------------
 
-export async function loadList(url: string, channelId: string, rootId = "", older = false) {
+// page: "" loads the newest messages, "older" and "newer" extend the list, and "around" loads
+// a window centred on focusId (a search jump).
+export async function loadList(url: string, channelId: string, rootId = "", page: "" | "older" | "newer" | "around" = "", focusId = "") {
   const key = listKey(channelId, rootId);
   const l = state.cs[url]?.lists[key];
-  if (l?.loading || (older && !l?.hasMore)) return;
+  if (page !== "around" && (l?.loading || (page === "older" && !l?.hasMore) || (page === "newer" && !l?.hasMoreAfter))) return;
   patchList(url, key, (x) => ({ ...x, loading: true, error: undefined }));
+  const confirmed = l?.items.filter((m) => m.seq > 0n) ?? [];
   try {
     const r = await api(url).chat.listMessages({
       channelId,
       threadRootId: rootId,
-      beforeId: older ? l?.items.find((m) => m.seq > 0n)?.id ?? "" : "",
+      beforeId: page === "older" ? confirmed[0]?.id ?? "" : "",
+      afterId: page === "newer" ? confirmed.at(-1)?.id ?? "" : "",
+      aroundId: page === "around" ? focusId : "",
       limit: 50,
     });
     patchList(url, key, (x) => {
-      let items = older ? [...r.messages, ...x.items] : r.messages;
+      if (page === "older") return { ...x, items: [...r.messages, ...x.items], hasMore: r.hasMore, loading: false };
+      if (page === "newer") return { ...x, items: [...x.items, ...r.messages], hasMoreAfter: r.hasMoreAfter, loading: false };
+      if (page === "around") return { items: r.messages, hasMore: r.hasMore, hasMoreAfter: r.hasMoreAfter, focusId, loading: false };
+      let items = r.messages;
       // Keep optimistic and live messages that arrived while loading.
-      if (!older) for (const m of x.items) if (m.seq === 0n || !items.some((y) => y.id === m.id)) items = upsertMessage(items, m);
+      for (const m of x.hasMoreAfter ? [] : x.items) if (m.seq === 0n || !items.some((y) => y.id === m.id)) items = upsertMessage(items, m);
       return { items, hasMore: r.hasMore, loading: false };
     });
   } catch (e) {
     patchList(url, key, (x) => ({ ...x, loading: false, error: errorText(e, state.cs[url]?.info?.name) }));
   }
+}
+
+// Opens the channel (and thread) of a search hit and loads the messages around it.
+export function jumpTo(url: string, m: Message) {
+  void loadList(url, m.channelId, m.threadRootId, "around", m.id);
+  selectChannel(url, m.channelId);
+  if (m.threadRootId) set({ pane: { t: "thread", rootId: m.threadRootId } });
 }
 
 export async function send(url: string, channelId: string, rootId: string, text: string, attachments: Attachment[] = []) {
@@ -402,7 +417,10 @@ export async function send(url: string, channelId: string, rootId: string, text:
     createdAtMs: BigInt(Date.now()),
   });
   const key = listKey(channelId, rootId);
-  patchList(url, key, (l) => ({ ...l, items: upsertMessage(l.items, m) }));
+  // Sending from a search-jump window goes back to the newest messages first.
+  const jumped = c.lists[key]?.hasMoreAfter;
+  patchList(url, key, (l) => (jumped ? { items: [m], hasMore: true } : { ...l, items: upsertMessage(l.items, m) }));
+  if (jumped) void loadList(url, channelId, rootId);
   await deliver(url, key, m);
 }
 

@@ -29,12 +29,12 @@ import {
   get,
   loadList,
   markRead,
+  jumpTo,
   react,
   refreshMessage,
   retryNow,
   retrySend,
   search,
-  selectChannel,
   send,
   set,
   setDraft,
@@ -169,12 +169,17 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
     const n = el.querySelector(".new-divider");
     setNewAbove(!!n && n.getBoundingClientRect().bottom < el.getBoundingClientRect().top);
     const l = get().cs[url]?.lists[key];
-    if (l && l.hasMore && !l.loading && !l.error && el.scrollHeight - el.clientHeight + el.scrollTop < 400) void loadList(url, channelId, rootId, true);
+    if (l && l.hasMore && !l.loading && !l.error && el.scrollHeight - el.clientHeight + el.scrollTop < 400) void loadList(url, channelId, rootId, "older");
+    if (l?.hasMoreAfter && !l.loading && !l.error && el.scrollTop > -400) void loadList(url, channelId, rootId, "newer");
     if (!rootId) {
       const v = bottom && document.visibilityState === "visible" && document.hasFocus() ? channelId : null;
       if (get().viewing !== v) set({ viewing: v });
     }
   };
+  // Before check(), so it sees the jumped-to position and does not page newer from the bottom.
+  useEffect(() => {
+    if (list?.focusId) scroller.current?.querySelector(`[data-focus=true]`)?.scrollIntoView({ block: "center" });
+  }, [list?.focusId]);
   useEffect(check);
   useEffect(() => {
     addEventListener("focus", check);
@@ -204,7 +209,7 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
           {list?.error ? (
             <div className="list-note">
               <p className="error">{list.error}</p>
-              <button className="btn small" onClick={() => loadList(url, channelId, rootId, !!list.items.length)}>
+              <button className="btn small" onClick={() => loadList(url, channelId, rootId, list.items.length ? "older" : "")}>
                 Try again
               </button>
             </div>
@@ -244,13 +249,19 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
                 <span>New</span>
               </div>
             ) : (
-              <MessageRow key={r.key} url={url} m={r.m} head={r.head} inThread={!!rootId} fresh={Number(r.m.createdAtMs) > mountedAt.current} />
+              <MessageRow key={r.key} url={url} m={r.m} head={r.head} inThread={!!rootId} fresh={Number(r.m.createdAtMs) > mountedAt.current} focus={r.m.id === list?.focusId} />
             ),
           )}
         </div>
       </div>
-      {!atBottom && (
-        <button className="jump jump-latest" onClick={() => scroller.current?.scrollTo({ top: 0 })}>
+      {(!atBottom || list?.hasMoreAfter) && (
+        <button
+          className="jump jump-latest"
+          onClick={() => {
+            if (list?.hasMoreAfter) void loadList(url, channelId, rootId);
+            scroller.current?.scrollTo({ top: 0 });
+          }}
+        >
           Jump to latest <Icon name="down" size={14} />
         </button>
       )}
@@ -289,7 +300,7 @@ function TypingLine({ c, k }: { c: Community; k: string }) {
 // One message
 // ---------------------------------------------------------------------------
 
-function MessageRow({ url, m, head, inThread, fresh }: { url: string; m: Message; head: boolean; inThread: boolean; fresh: boolean }) {
+function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: Message; head: boolean; inThread: boolean; fresh: boolean; focus?: boolean }) {
   const c = useC();
   const editing = useApp((s) => s.editing === m.id);
   const [pick, setPick] = useState<DOMRect | null>(null);
@@ -325,6 +336,7 @@ function MessageRow({ url, m, head, inThread, fresh }: { url: string; m: Message
       data-failed={!!failed}
       data-mention={mentionsMe(m.text, c.me?.id)}
       data-fresh={fresh}
+      data-focus={focus}
       data-editing={editing}
       aria-label={`${name}, ${timeLabel(Number(m.createdAtMs))}`}
     >
@@ -818,8 +830,7 @@ function SearchResults({ c, q }: { c: Community; q: string }) {
             <button
               className="result"
               onClick={() => {
-                selectChannel(c.url, m.channelId);
-                if (m.threadRootId) set({ pane: { t: "thread", rootId: m.threadRootId } });
+                jumpTo(c.url, m);
               }}
             >
               <span className="result-meta">

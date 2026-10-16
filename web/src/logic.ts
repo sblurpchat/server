@@ -30,6 +30,9 @@ export interface Info {
 export interface MsgList {
   items: Message[];
   hasMore: boolean;
+  // Set after a search jump: the list is a window around focusId and newer messages exist.
+  hasMoreAfter?: boolean;
+  focusId?: string;
   loading?: boolean;
   error?: string;
 }
@@ -138,7 +141,8 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
       const m = k.value;
       const key = listKey(m.channelId, m.threadRootId);
       const l = c.lists[key];
-      if (l) next.lists = { ...c.lists, [key]: { ...l, items: upsertMessage(l.items, m) } };
+      // A window from a search jump is not at the newest end, so new messages would leave a gap.
+      if (l && !l.hasMoreAfter) next.lists = { ...c.lists, [key]: { ...l, items: upsertMessage(l.items, m) } };
       if (m.clientId && c.failed[m.clientId]) {
         const { [m.clientId]: _, ...rest } = c.failed;
         next.failed = rest;

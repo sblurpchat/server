@@ -1456,6 +1456,11 @@ li.sw-empty {
     opacity: 0;
   }
 }
+/* The search hit you jumped to. Stays tinted so you can find it again. */
+.msg[data-focus="true"] {
+  background: color-mix(in srgb, var(--raspberry) 10%, var(--paper));
+  box-shadow: inset 3px 0 0 var(--raspberry);
+}
 .msg[data-editing="true"] {
   background: color-mix(in srgb, var(--raspberry) 6%, var(--paper));
 }
