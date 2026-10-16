@@ -1,0 +1,226 @@
+package server
+
+import (
+	"context"
+	"crypto/rand"
+	"database/sql"
+	"embed"
+	"encoding/binary"
+	"encoding/hex"
+	"fmt"
+	"io/fs"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
+	"google.golang.org/protobuf/proto"
+	_ "modernc.org/sqlite"
+
+	v1 "sblurp.chat/server/gen/sblurp/v1"
+)
+
+//go:embed migrations/*.sql
+var migrations embed.FS
+
+// db has one write connection behind a mutex (single writer) and a small
+// pool of readers. WAL lets readers run while a write is in progress.
+type db struct {
+	w  *sql.DB
+	r  *sql.DB
+	mu sync.Mutex
+}
+
+func openDB(path string) (*db, error) {
+	dsn := "file:" + path + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)"
+	w, err := sql.Open("sqlite", dsn+"&_txlock=immediate")
+	if err != nil {
+		return nil, err
+	}
+	w.SetMaxOpenConns(1)
+	r, err := sql.Open("sqlite", dsn+"&_pragma=query_only(1)")
+	if err != nil {
+		w.Close()
+		return nil, err
+	}
+	r.SetMaxOpenConns(8)
+	d := &db{w: w, r: r}
+	if err := d.migrate(); err != nil {
+		d.close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
+	return d, nil
+}
+
+func (d *db) close() {
+	d.r.Close()
+	d.w.Close()
+}
+
+// migrate applies migrations/NNN_*.sql in order, tracked by PRAGMA user_version.
+func (d *db) migrate() error {
+	var version int
+	if err := d.w.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
+		return err
+	}
+	names, _ := fs.Glob(migrations, "migrations/*.sql")
+	sort.Strings(names)
+	for i, name := range names {
+		if i+1 <= version {
+			continue
+		}
+		body, _ := migrations.ReadFile(name)
+		tx, err := d.w.Begin()
+		if err != nil {
+			return err
+		}
+		if _, err := tx.Exec(string(body)); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("%s: %w", name, err)
+		}
+		if _, err := tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", i+1)); err != nil {
+			tx.Rollback()
+			return err
+		}
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// queryer is satisfied by *sql.DB and *sql.Tx.
+type queryer interface {
+	QueryContext(ctx context.Context, q string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, q string, args ...any) *sql.Row
+	ExecContext(ctx context.Context, q string, args ...any) (sql.Result, error)
+}
+
+// wtx is a write transaction that also collects the events it emits. They
+// are published to the hub after commit, in seq order.
+type wtx struct {
+	*sql.Tx
+	ctx     context.Context
+	s       *Server
+	seq     int64
+	pending []published
+}
+
+type published struct {
+	ev       *v1.Event
+	audience map[string]bool // nil = every member
+}
+
+// writeTx runs fn in the single write transaction. Events are published
+// while the write lock is still held, so subscribers see them in seq order.
+func (s *Server) writeTx(ctx context.Context, fn func(t *wtx) error) error {
+	s.db.mu.Lock()
+	defer s.db.mu.Unlock()
+	tx, err := s.db.w.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	t := &wtx{Tx: tx, ctx: ctx, s: s}
+	if err := fn(t); err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	for _, p := range t.pending {
+		s.hub.publish(p.ev, p.audience)
+	}
+	return nil
+}
+
+// nextSeq reserves the next event seq. Safe because there is one writer.
+func (t *wtx) nextSeq() (int64, error) {
+	if t.seq == 0 {
+		err := t.QueryRowContext(t.ctx, "SELECT COALESCE((SELECT seq FROM sqlite_sequence WHERE name = 'events'), 0)").Scan(&t.seq)
+		if err != nil {
+			return 0, err
+		}
+	}
+	t.seq++
+	return t.seq, nil
+}
+
+// emit persists ev. ev.Seq must come from nextSeq. A non-empty scopeChannel
+// limits the event to that channel's members, scopeMember to one member.
+func (t *wtx) emit(ev *v1.Event, scopeChannel, scopeMember string) error {
+	if ev.AtMs == 0 {
+		ev.AtMs = t.s.nowMs()
+	}
+	payload, err := proto.Marshal(ev)
+	if err != nil {
+		return err
+	}
+	if _, err := t.ExecContext(t.ctx, "INSERT INTO events(seq, at_ms, scope_channel, scope_member, payload) VALUES (?,?,?,?,?)",
+		ev.Seq, ev.AtMs, scopeChannel, scopeMember, payload); err != nil {
+		return err
+	}
+	var aud map[string]bool
+	switch {
+	case scopeMember != "":
+		aud = map[string]bool{scopeMember: true}
+	case scopeChannel != "":
+		ids, err := channelMemberIDs(t.ctx, t, scopeChannel)
+		if err != nil {
+			return err
+		}
+		aud = map[string]bool{}
+		for _, id := range ids {
+			aud[id] = true
+		}
+	}
+	t.pending = append(t.pending, published{ev, aud})
+	return nil
+}
+
+// scopeFor returns the event scope of a channel: its id when only members
+// may see it, "" when it is public.
+func scopeFor(kind v1.ChannelKind, id string) string {
+	if kind == v1.ChannelKind_CHANNEL_KIND_TEXT {
+		return ""
+	}
+	return id
+}
+
+func channelMemberIDs(ctx context.Context, q queryer, channelID string) ([]string, error) {
+	rows, err := q.QueryContext(ctx, "SELECT member_id FROM channel_members WHERE channel_id = ? ORDER BY member_id", channelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// prune drops old events: those outside both the newest keepEvents and the
+// last keepFor. Subscribers behind the oldest kept seq get resync.
+func (s *Server) prune(ctx context.Context) error {
+	cutoff := s.now().Add(-s.keepFor).UnixMilli()
+	return s.writeTx(ctx, func(t *wtx) error {
+		_, err := t.ExecContext(ctx, "DELETE FROM events WHERE seq <= (SELECT MAX(seq) FROM events) - ? AND at_ms < ?", s.keepEvents, cutoff)
+		return err
+	})
+}
+
+// newID returns a UUIDv7: 48-bit unix ms, version 7, variant 10, random rest.
+func newID(now time.Time) string {
+	var b [16]byte
+	rand.Read(b[:])
+	binary.BigEndian.PutUint64(b[:8], uint64(now.UnixMilli())<<16|uint64(b[6])<<8|uint64(b[7]))
+	b[6] = 0x70 | b[6]&0x0f
+	b[8] = 0x80 | b[8]&0x3f
+	h := hex.EncodeToString(b[:])
+	return strings.Join([]string{h[:8], h[8:12], h[12:16], h[16:20], h[20:]}, "-")
+}

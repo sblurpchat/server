@@ -1,0 +1,60 @@
+// Package seed holds demo content for a fresh community server. It is plain
+// data; the server package turns it into members, channels and messages.
+package seed
+
+// Community is everything one demo server starts with.
+type Community struct {
+	Description string
+	Accent      string // "#rrggbb" for the rail icon
+	Members     []Member
+	Bot         Member // the server's bot; Role is ignored
+	Channels    []Channel
+	DMs         []DM
+}
+
+type Member struct {
+	Username string // [a-z0-9_.-]{2,32}
+	Display  string
+	Bio      string
+	Emoji    string // status emoji, may be empty
+	Status   string // status text, may be empty
+	Role     string // "", "moderator" or "admin"
+}
+
+type Channel struct {
+	Name     string // [a-z0-9_-]{1,80}
+	Topic    string
+	Category string
+	Private  bool
+	Members  []string // usernames; private channels only
+	Convos   []Convo
+}
+
+type DM struct {
+	Members []string // usernames, 2 or more
+	Convos  []Convo
+}
+
+// Convo is a burst of conversation. Lines are a few minutes apart.
+type Convo struct {
+	DaysAgo float64 // start time, 0 to 14 days before now
+	Lines   []Line
+}
+
+type Line struct {
+	By      string              // username (member or bot)
+	Text    string              // "@username" becomes a mention
+	React   map[string][]string // emoji -> usernames who reacted
+	Replies []Line              // thread replies (one level only)
+}
+
+// Get returns the named demo community, or false.
+func Get(name string) (Community, bool) {
+	switch name {
+	case "community":
+		return community, true
+	case "owls":
+		return owls, true
+	}
+	return Community{}, false
+}
