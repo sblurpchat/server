@@ -1,0 +1,506 @@
+// Pure decision logic. No DOM, no network. Everything here is covered by logic.test.ts.
+import { create } from "@bufbuild/protobuf";
+import {
+  ChannelKind,
+  ReadStateSchema,
+  type Channel,
+  type Event,
+  type GetStateResponse,
+  type Member,
+  type Message,
+  type ReadState,
+} from "./gen/sblurp/v1/sblurp_pb";
+
+// ---------------------------------------------------------------------------
+// Community state and the event reducer
+// ---------------------------------------------------------------------------
+
+export type Status = "connecting" | "live" | "reconnecting" | "join" | "error";
+
+export interface Info {
+  name: string;
+  description: string;
+  iconUrl: string;
+  accentColor: string;
+  memberCount: number;
+}
+
+export interface MsgList {
+  items: Message[];
+  hasMore: boolean;
+  loading?: boolean;
+  error?: string;
+}
+
+export interface Community {
+  url: string;
+  info?: Info;
+  status: Status;
+  error?: string;
+  retryAt?: number;
+  me?: Member;
+  members: Record<string, Member>;
+  channels: Record<string, Channel>;
+  reads: Record<string, ReadState>;
+  seq: bigint;
+  /** Message lists keyed by channel id, or `t:<rootId>` for a thread. */
+  lists: Record<string, MsgList>;
+  /** Typing expiry (ms) keyed by list key, then member id. */
+  typing: Record<string, Record<string, number>>;
+  /** client_ids of optimistic messages that failed to send. */
+  failed: Record<string, true>;
+}
+
+export const emptyCommunity = (url: string, info?: Info): Community => ({
+  url,
+  info,
+  status: "connecting",
+  members: {},
+  channels: {},
+  reads: {},
+  seq: 0n,
+  lists: {},
+  typing: {},
+  failed: {},
+});
+
+export const listKey = (channelId: string, rootId = "") => (rootId ? `t:${rootId}` : channelId);
+
+export const isDM = (ch?: Channel) => ch?.kind === ChannelKind.DM;
+
+export const mentionsMe = (text: string, meId: string | undefined) => !!meId && text.includes(`<@${meId}>`);
+
+export function applySnapshot(c: Community, s: GetStateResponse): Community {
+  return {
+    ...c,
+    me: s.me,
+    members: Object.fromEntries(s.members.map((m) => [m.id, m])),
+    channels: Object.fromEntries(s.channels.map((ch) => [ch.id, ch])),
+    reads: Object.fromEntries(s.readStates.map((r) => [r.channelId, r])),
+    seq: s.seq,
+    // Lists may have missed events; the open view reloads them.
+    lists: {},
+    typing: {},
+  };
+}
+
+/** Insert or replace a message, matching by id or by the optimistic client_id. Keeps time order. */
+export function upsertMessage(items: Message[], m: Message): Message[] {
+  const i = items.findIndex((x) => x.id === m.id || (!!m.clientId && x.clientId === m.clientId));
+  if (i >= 0) {
+    const next = items.slice();
+    next[i] = m;
+    return next;
+  }
+  let at = items.length;
+  while (at > 0 && items[at - 1].createdAtMs > m.createdAtMs) at--;
+  return [...items.slice(0, at), m, ...items.slice(at)];
+}
+
+function mapLists(c: Community, fn: (items: Message[]) => Message[]): Record<string, MsgList> {
+  const out: Record<string, MsgList> = {};
+  for (const [k, l] of Object.entries(c.lists)) out[k] = { ...l, items: fn(l.items) };
+  return out;
+}
+
+/** Unread math for one new message in a channel. */
+export function bumpUnread(
+  rs: ReadState | undefined,
+  channelId: string,
+  m: Message,
+  seq: bigint,
+  meId: string | undefined,
+  dm: boolean,
+  viewing: boolean,
+): ReadState {
+  const base = rs ?? create(ReadStateSchema, { channelId });
+  if (m.authorId === meId || viewing) {
+    return { ...base, lastReadSeq: seq > base.lastReadSeq ? seq : base.lastReadSeq, unreadCount: 0, mentionCount: 0 };
+  }
+  const mention = dm || mentionsMe(m.text, meId);
+  return { ...base, unreadCount: base.unreadCount + 1, mentionCount: base.mentionCount + (mention ? 1 : 0) };
+}
+
+export const TYPING_TTL = 6000;
+
+/**
+ * Apply one Subscribe event. `viewing` is the channel the person is looking at with the list
+ * scrolled to the bottom; new messages there do not count as unread.
+ */
+export function applyEvent(c: Community, ev: Event, now: number, viewing: string | null): Community {
+  if (ev.seq > 0n && ev.seq <= c.seq) return c; // already applied (replay overlap)
+  const next: Community = ev.seq > 0n ? { ...c, seq: ev.seq } : { ...c };
+  const k = ev.kind;
+  switch (k.case) {
+    case "messageCreated": {
+      const m = k.value;
+      const key = listKey(m.channelId, m.threadRootId);
+      const l = c.lists[key];
+      if (l) next.lists = { ...c.lists, [key]: { ...l, items: upsertMessage(l.items, m) } };
+      if (m.clientId && c.failed[m.clientId]) {
+        const { [m.clientId]: _, ...rest } = c.failed;
+        next.failed = rest;
+      }
+      const t = c.typing[key];
+      if (t?.[m.authorId]) {
+        const { [m.authorId]: _, ...rest } = t;
+        next.typing = { ...c.typing, [key]: rest };
+      }
+      const ch = c.channels[m.channelId];
+      if (ch && !m.threadRootId) {
+        next.channels = { ...c.channels, [ch.id]: { ...ch, lastMessageSeq: ev.seq } };
+        next.reads = {
+          ...c.reads,
+          [ch.id]: bumpUnread(c.reads[ch.id], ch.id, m, ev.seq, c.me?.id, isDM(ch), viewing === ch.id),
+        };
+      }
+      return next;
+    }
+    case "messageUpdated": {
+      const m = k.value;
+      next.lists = mapLists(c, (items) => items.map((x) => (x.id === m.id ? m : x)));
+      return next;
+    }
+    case "messageDeleted": {
+      const m = k.value;
+      // A deleted thread root stays as a placeholder so its replies remain reachable.
+      next.lists = mapLists(c, (items) =>
+        m.replyCount > 0 ? items.map((x) => (x.id === m.id ? { ...m, deleted: true } : x)) : items.filter((x) => x.id !== m.id),
+      );
+      return next;
+    }
+    case "channelCreated":
+    case "channelUpdated":
+      next.channels = { ...c.channels, [k.value.id]: k.value };
+      return next;
+    case "channelDeleted": {
+      const { [k.value]: _, ...rest } = c.channels;
+      next.channels = rest;
+      return next;
+    }
+    case "memberJoined":
+    case "memberUpdated":
+      next.members = { ...c.members, [k.value.id]: k.value };
+      if (c.me?.id === k.value.id) next.me = k.value;
+      return next;
+    case "memberLeft": {
+      const { [k.value]: _, ...rest } = c.members;
+      next.members = rest;
+      return next;
+    }
+    case "readState":
+      next.reads = { ...c.reads, [k.value.channelId]: k.value };
+      return next;
+    case "typing": {
+      const t = k.value;
+      if (t.memberId === c.me?.id) return c;
+      const key = listKey(t.channelId, t.threadRootId);
+      next.typing = { ...c.typing, [key]: { ...c.typing[key], [t.memberId]: now + TYPING_TTL } };
+      return next;
+    }
+    case "presence": {
+      const m = c.members[k.value.memberId];
+      if (!m) return c;
+      next.members = { ...c.members, [m.id]: { ...m, presence: k.value.presence } };
+      return next;
+    }
+    default:
+      return next; // heartbeat; resync is handled by the connection loop
+  }
+}
+
+/** Rail badge for a community: any unread channel, and the total mention count. */
+export function communityBadge(c: Community): { unread: boolean; mentions: number } {
+  let unread = false;
+  let mentions = 0;
+  for (const ch of Object.values(c.channels)) {
+    const r = c.reads[ch.id];
+    if (!r) continue;
+    if (r.unreadCount > 0) unread = true;
+    mentions += r.mentionCount;
+  }
+  return { unread, mentions };
+}
+
+/** Browser tab title: mention count first, a dot for plain unread. */
+export function tabTitle(mentions: number, unread: boolean, label: string): string {
+  const prefix = mentions > 0 ? `(${mentions > 99 ? "99+" : mentions}) ` : unread ? "• " : "";
+  return `${prefix}${label ? `${label} | ` : ""}Sblurp`;
+}
+
+// ---------------------------------------------------------------------------
+// Message rows: grouping, day dividers and the "New" divider
+// ---------------------------------------------------------------------------
+
+export type Row =
+  | { t: "day"; key: string; ms: number }
+  | { t: "new"; key: string }
+  | { t: "msg"; key: string; m: Message; head: boolean };
+
+export const GROUP_GAP_MS = 5 * 60 * 1000;
+
+const dayOf = (ms: number) => new Date(ms).toDateString();
+
+/**
+ * newAfterSeq: the read position when the channel was opened. The "New" divider goes before the
+ * first message from someone else with a higher seq. Null for no divider.
+ */
+export function buildRows(items: Message[], newAfterSeq: bigint | null, meId?: string): Row[] {
+  const rows: Row[] = [];
+  let prev: Message | undefined;
+  let placedNew = newAfterSeq === null;
+  for (const m of items) {
+    const ms = Number(m.createdAtMs);
+    let head = !prev || prev.authorId !== m.authorId || ms - Number(prev.createdAtMs) > GROUP_GAP_MS || prev.deleted;
+    if (!prev || dayOf(ms) !== dayOf(Number(prev.createdAtMs))) {
+      rows.push({ t: "day", key: `day-${dayOf(ms)}`, ms });
+      head = true;
+    }
+    if (!placedNew && m.seq > (newAfterSeq ?? 0n) && m.authorId !== meId && m.seq > 0n) {
+      rows.push({ t: "new", key: "new" });
+      placedNew = true;
+      head = true;
+    }
+    rows.push({ t: "msg", key: m.clientId || m.id, m, head });
+    prev = m;
+  }
+  return rows;
+}
+
+export function dayLabel(ms: number, now: number): string {
+  const d = new Date(ms);
+  const today = new Date(now);
+  const yesterday = new Date(now);
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return "Today";
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return d.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    ...(d.getFullYear() === today.getFullYear() ? {} : { year: "numeric" }),
+  });
+}
+
+export const timeLabel = (ms: number) =>
+  new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+// ---------------------------------------------------------------------------
+// Markdown subset → tokens. Rendering builds React nodes from these; no HTML strings.
+// ---------------------------------------------------------------------------
+
+export type Inline =
+  | { t: "text"; v: string }
+  | { t: "code"; v: string }
+  | { t: "mention"; id: string }
+  | { t: "link"; href: string; c: Inline[] }
+  | { t: "b" | "i" | "s"; c: Inline[] };
+
+export type Block = { t: "p"; c: Inline[] } | { t: "quote"; c: Inline[] } | { t: "pre"; lang: string; v: string };
+
+const INLINE =
+  /`([^`\n]+)`|<@([\w-]+)>|\[([^\]\n]+)\]\(((?:https?:\/\/|mailto:)[^\s)]+)\)|(https?:\/\/[^\s<]*[^\s<.,:;"')\]!?])|\*\*([^\n]+?)\*\*|~~([^\n]+?)~~|\*([^*\s](?:[^*\n]*[^*\s])?)\*|(?<!\w)_([^_\s](?:[^_\n]*[^_\s])?)_(?!\w)/g;
+
+export function parseInline(s: string): Inline[] {
+  const out: Inline[] = [];
+  let last = 0;
+  for (const m of s.matchAll(INLINE)) {
+    const i = m.index!;
+    if (i > last) out.push({ t: "text", v: s.slice(last, i) });
+    last = i + m[0].length;
+    if (m[1] !== undefined) out.push({ t: "code", v: m[1] });
+    else if (m[2] !== undefined) out.push({ t: "mention", id: m[2] });
+    else if (m[3] !== undefined) out.push({ t: "link", href: m[4], c: parseInline(m[3]) });
+    else if (m[5] !== undefined) out.push({ t: "link", href: m[5], c: [{ t: "text", v: m[5] }] });
+    else if (m[6] !== undefined) out.push({ t: "b", c: parseInline(m[6]) });
+    else if (m[7] !== undefined) out.push({ t: "s", c: parseInline(m[7]) });
+    else out.push({ t: "i", c: parseInline(m[8] ?? m[9]) });
+  }
+  if (last < s.length) out.push({ t: "text", v: s.slice(last) });
+  return out;
+}
+
+export function parseMarkdown(text: string): Block[] {
+  const blocks: Block[] = [];
+  const lines = text.split("\n");
+  let para: string[] = [];
+  let quote: string[] = [];
+  const flush = () => {
+    if (para.length) blocks.push({ t: "p", c: parseInline(para.join("\n")) });
+    if (quote.length) blocks.push({ t: "quote", c: parseInline(quote.join("\n")) });
+    para = [];
+    quote = [];
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const fence = /^```([\w+-]*)\s*$/.exec(line);
+    if (fence) {
+      const end = lines.findIndex((l, j) => j > i && /^```\s*$/.test(l));
+      if (end > i) {
+        flush();
+        blocks.push({ t: "pre", lang: fence[1], v: lines.slice(i + 1, end).join("\n") });
+        i = end;
+        continue;
+      }
+    }
+    const q = /^> ?(.*)$/.exec(line);
+    if (q) {
+      if (para.length) flush();
+      quote.push(q[1]);
+    } else {
+      if (quote.length) flush();
+      para.push(line);
+    }
+  }
+  flush();
+  return blocks;
+}
+
+/** Plain text for notifications and previews. */
+export function plainText(text: string, members: Record<string, Member>): string {
+  return text
+    .replace(/<@([\w-]+)>/g, (_, id) => `@${members[id]?.displayName ?? "someone"}`)
+    .replace(/```[\w+-]*\n?|`|\*\*|~~|\*/g, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+}
+
+// ---------------------------------------------------------------------------
+// Composer: mentions and autocomplete
+// ---------------------------------------------------------------------------
+
+/** "@ana hi" → "<@id> hi" for known usernames. */
+export function encodeMentions(text: string, members: Member[]): string {
+  const byName = new Map(members.map((m) => [m.username.toLowerCase(), m.id]));
+  return text.replace(/(^|[^\w@])@([\w.-]*\w)/g, (all, pre, name) => {
+    const id = byName.get(name.toLowerCase());
+    return id ? `${pre}<@${id}>` : all;
+  });
+}
+
+/** "<@id>" → "@username", for editing a sent message. */
+export function decodeMentions(text: string, members: Record<string, Member>): string {
+  return text.replace(/<@([\w-]+)>/g, (all, id) => (members[id] ? `@${members[id].username}` : all));
+}
+
+/** The token being typed at the caret, for `@` and `:` autocomplete. */
+export function acQuery(text: string, caret: number): { kind: "@" | ":"; start: number; q: string } | null {
+  const before = text.slice(0, caret);
+  const m = /(?:^|\s)([@:])([\w.+-]*)$/.exec(before);
+  if (!m) return null;
+  if (m[1] === ":" && m[2].length < 2) return null;
+  return { kind: m[1] as "@" | ":", start: caret - m[2].length - 1, q: m[2].toLowerCase() };
+}
+
+export function typingLabel(names: string[]): string {
+  if (names.length === 0) return "";
+  if (names.length === 1) return `${names[0]} is typing…`;
+  if (names.length === 2) return `${names[0]} and ${names[1]} are typing…`;
+  return "Several people are typing…";
+}
+
+// ---------------------------------------------------------------------------
+// Connection timing
+// ---------------------------------------------------------------------------
+
+/** Exponential backoff, 1s doubling to 30s, with jitter in [50%, 100%]. `rand` is in [0, 1). */
+export const backoffMs = (attempt: number, rand: number) =>
+  Math.round(Math.min(30_000, 1000 * 2 ** attempt) * (0.5 + rand / 2));
+
+/** Servers send a heartbeat every 25s. Two missed beats plus slack means the stream is dead. */
+export const HEARTBEAT_TIMEOUT_MS = 60_000;
+
+/** Access tokens are refreshed when less than this is left. */
+export const TOKEN_SKEW_MS = 60_000;
+export const tokenFresh = (expMs: number, now: number) => expMs - now > TOKEN_SKEW_MS;
+
+// ---------------------------------------------------------------------------
+// URLs and routing
+// ---------------------------------------------------------------------------
+
+/** Accepts "nightowls.chat", "https://x.y/", "localhost:8082" or an invite link. */
+export function normalizeCommunityUrl(input: string): { url: string; invite: string } | null {
+  let s = input.trim();
+  if (!s) return null;
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) {
+    s = (/^(localhost|127\.|\[::1\])/.test(s) ? "http://" : "https://") + s;
+  }
+  let u: URL;
+  try {
+    u = new URL(s);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+  if (!u.hostname.includes(".") && u.hostname !== "localhost") return null;
+  let invite = u.searchParams.get("invite") ?? "";
+  let path = u.pathname.replace(/\/+$/, "");
+  const inv = /^(.*)\/(?:invite|i)\/([\w-]+)$/.exec(path);
+  if (inv) {
+    path = inv[1];
+    invite = inv[2];
+  }
+  return { url: u.origin + path, invite };
+}
+
+export const hostOf = (url: string) => new URL(url).host;
+
+export function parseHash(hash: string): { host: string; channelId: string } | null {
+  const m = /^#\/c\/([^/]+)(?:\/([^/]+))?/.exec(hash);
+  return m ? { host: decodeURIComponent(m[1]), channelId: decodeURIComponent(m[2] ?? "") } : null;
+}
+
+export const formatHash = (url: string, channelId: string) =>
+  `#/c/${encodeURIComponent(hostOf(url))}${channelId ? `/${encodeURIComponent(channelId)}` : ""}`;
+
+// ---------------------------------------------------------------------------
+// Small helpers
+// ---------------------------------------------------------------------------
+
+/** Quick switcher ranking: prefix beats substring beats subsequence. -1 = no match. */
+export function matchScore(query: string, text: string): number {
+  const q = query.toLowerCase();
+  const t = text.toLowerCase();
+  if (!q) return 1;
+  if (t.startsWith(q)) return 300 - t.length;
+  const i = t.indexOf(q);
+  if (i >= 0) return 200 - i;
+  let j = 0;
+  for (const ch of t) if (ch === q[j]) j++;
+  return j === q.length ? 100 - t.length : -1;
+}
+
+export function moveItem<T>(arr: T[], from: number, to: number): T[] {
+  const out = arr.slice();
+  const [x] = out.splice(from, 1);
+  out.splice(to, 0, x);
+  return out;
+}
+
+export const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => [...w][0]!.toUpperCase())
+    .join("") || "?";
+
+/** Stable soda-fountain color for a name, used for avatars without images. */
+const SWATCHES = ["#3550F0", "#E8344E", "#7B5CE6", "#D9822B", "#0F9D8A", "#2C8BD6", "#C2457A", "#4F7A28"];
+export function swatch(seed: string): string {
+  let h = 0;
+  for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return SWATCHES[h % SWATCHES.length];
+}
+
+/** DM label: the other people's names. */
+export function channelLabel(ch: Channel, members: Record<string, Member>, meId?: string): string {
+  if (!isDM(ch)) return ch.name;
+  const others = ch.memberIds.filter((id) => id !== meId).map((id) => members[id]?.displayName ?? "Unknown");
+  return others.join(", ") || "Just you";
+}
+
+export function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(n < 10240 ? 1 : 0)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
