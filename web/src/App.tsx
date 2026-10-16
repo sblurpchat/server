@@ -13,6 +13,7 @@ import {
   sidebarSections,
   tabTitle,
   type Community,
+  count,
 } from "./logic";
 import {
   absUrl,
@@ -498,7 +499,7 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
           <h2>{info.name}</h2>
           <p className="muted small">
             {hostOf(url)}
-            {info.memberCount > 0 && <> &nbsp;&nbsp;{info.memberCount.toLocaleString()} members</>}
+            {info.memberCount > 0 && <> &nbsp;&nbsp;{count(info.memberCount, "member", "members")}</>}
           </p>
         </div>
       </div>
@@ -852,7 +853,7 @@ function CommunityDialog({ kind }: { kind: "info" | "invite" | "leave" }) {
         <CommunityIcon name={name} icon={c.info?.iconUrl ? absUrl(c.url, c.info.iconUrl) : ""} accent={c.info?.accentColor} size={56} />
         <div>
           <h2>{kind === "info" ? name : `Invite people to ${name}`}</h2>
-          <p className="muted small">{(c.info?.memberCount ?? Object.keys(c.members).length).toLocaleString()} members</p>
+          <p className="muted small">{count(c.info?.memberCount ?? Object.keys(c.members).length, "member", "members")}</p>
         </div>
         <button className="icon-btn" aria-label="Close" onClick={close}>
           <Icon name="x" />

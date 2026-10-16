@@ -18,6 +18,8 @@ import {
   timeLabel,
   typingLabel,
   type Community,
+  count,
+  communityBadge,
 } from "./logic";
 import {
   absUrl,
@@ -55,6 +57,13 @@ export function ChannelView() {
   const pane = useApp((s) => s.pane);
   const ch = c.channels[channelId];
   const [q, setQ] = useState(pane?.t === "search" ? pane.q : "");
+  // Mobile hides the rail and sidebar, so the menu button carries a dot for unread anywhere.
+  const elsewhere = useApp((s) =>
+    Object.values(s.cs).some((x) => {
+      const b = communityBadge(x);
+      return b.unread || b.mentions > 0;
+    }),
+  );
   if (!ch) {
     return (
       <section className="channel">
@@ -71,7 +80,12 @@ export function ChannelView() {
   return (
     <section className="channel" aria-label={dm ? title : `#${title}`}>
       <header className="chan-head">
-        <button className="icon-btn only-mobile" aria-label="Open communities and channels" onClick={() => set({ drawer: true })}>
+        <button
+          className="icon-btn only-mobile menu-btn"
+          aria-label={elsewhere ? "Open communities and channels, unread messages" : "Open communities and channels"}
+          data-unread={elsewhere}
+          onClick={() => set({ drawer: true })}
+        >
           <Icon name="menu" />
         </button>
         <h1 className="chan-title">
@@ -215,7 +229,7 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
             <>
               <MessageRow url={url} m={root} head inThread fresh={false} />
               <div className="thread-count">
-                <span>{root.replyCount === 1 ? "1 reply" : `${root.replyCount} replies`}</span>
+                <span>{count(root.replyCount, "reply", "replies")}</span>
               </div>
             </>
           )}
@@ -425,7 +439,7 @@ function ThreadLink({ m }: { m: Message }) {
   return (
     <button className="thread-link" aria-pressed={open} onClick={() => set({ pane: { t: "thread", rootId: m.id } })}>
       <Icon name="thread" size={16} />
-      <b>{m.replyCount === 1 ? "1 reply" : `${m.replyCount} replies`}</b>
+      <b>{count(m.replyCount, "reply", "replies")}</b>
       {m.lastReplyAtMs > 0n && <span className="muted">Last reply {timeLabel(Number(m.lastReplyAtMs))}</span>}
     </button>
   );

@@ -30,6 +30,7 @@ const shots = {
     await p.locator(".member").first().waitFor();
   },
   add: async (p) => {
+    if ((p.viewportSize()?.width ?? 0) < 768) await p.getByRole("button", { name: "Open communities and channels" }).click();
     await p.getByRole("button", { name: "Add a community" }).click();
     await p.getByLabel("Community address or invite link").fill("letterpress.club");
     await p.getByRole("button", { name: "Continue" }).click();
@@ -40,6 +41,7 @@ const shots = {
     await p.getByPlaceholder("Jump to a channel or person").fill("de");
   },
   settings: async (p) => {
+    if ((p.viewportSize()?.width ?? 0) < 768) await p.getByRole("button", { name: "Open communities and channels" }).click();
     await p.getByRole("button", { name: "Settings" }).click();
     await p.locator(".settings").waitFor();
   },
@@ -59,6 +61,7 @@ const shots = {
 for (const scheme of ["light", "dark"]) {
   for (const [vw, vh, tag] of [[1440, 900, "desktop"], [390, 844, "mobile"]]) {
     const ctx = await browser.newContext({ viewport: { width: vw, height: vh }, deviceScaleFactor: 2, colorScheme: scheme });
+    await ctx.route("http://localhost:8090/**", (r) => r.abort());
     for (const [name, act] of Object.entries(shots)) {
       if (only && !name.includes(only)) continue;
       const page = await ctx.newPage();
@@ -67,7 +70,8 @@ for (const scheme of ["light", "dark"]) {
       await page.evaluate(() => document.fonts.ready);
       if (act === "signedout") await page.locator(".signin").waitFor();
       else {
-        await page.locator(".msg").first().waitFor();
+        await page.locator(".msg, .chan-start").first().waitFor();
+        await jump(page, "general");
         if ((await act(page)) === "skip") {
           await page.close();
           continue;

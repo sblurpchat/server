@@ -546,3 +546,6 @@ export function memberGroups(members: Member[]): { title: string; members: Membe
   return groups.filter((g) => g.members.length);
 }
 
+
+/** "1 reply", "3 replies", "1,204 members". */
+export const count = (n: number, one: string, many: string) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;

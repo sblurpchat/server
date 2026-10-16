@@ -35,6 +35,7 @@ import {
   typingLabel,
   upsertMessage,
   type Community,
+  count,
 } from "./logic";
 
 const T0 = new Date(2026, 9, 16, 10, 0).getTime();
@@ -342,4 +343,10 @@ describe("memberGroups", () => {
       "Offline:gone",
     ]);
   });
+});
+
+it("count pluralizes and groups digits", () => {
+  expect(count(1, "member", "members")).toBe("1 member");
+  expect(count(0, "reply", "replies")).toBe("0 replies");
+  expect(count(1204, "member", "members")).toBe("1,204 members");
 });

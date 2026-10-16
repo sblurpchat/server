@@ -279,7 +279,7 @@ const SEEDS: Seed[] = [
   {
     url: "https://letterpress.club",
     name: "Letterpress Club",
-    description: "Lead type, ink and the people who love them. 212 printers across 19 countries.",
+    description: "Lead type, ink and the people who love them.",
     accent: "#0F9D8A",
     icon: "",
     joined: false,

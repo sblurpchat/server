@@ -325,6 +325,20 @@ kbd {
   background: var(--hover);
   color: var(--graphite);
 }
+.menu-btn {
+  position: relative;
+}
+.menu-btn[data-unread="true"]::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--badge);
+  box-shadow: 0 0 0 2px var(--paper);
+}
 .badge {
   display: inline-grid;
   place-items: center;
@@ -799,7 +813,7 @@ kbd {
   align-items: center;
   gap: 14px;
 }
-.dialog-head > :nth-child(2),
+.dialog-head > :nth-child(2):not(button),
 .dialog-head h2:first-child {
   flex: 1;
   min-width: 0;
@@ -1361,6 +1375,9 @@ li.sw-empty {
 }
 .msgs {
   padding: 16px 0 10px;
+}
+.pane .scroller {
+  justify-content: flex-end;
 }
 .list-note {
   display: flex;
@@ -2096,8 +2113,10 @@ li.sw-empty {
   }
   .chan-search {
     width: 36px;
+    height: 36px;
     padding: 0 9px;
     flex: none;
+    background: none;
   }
   .chan-search:focus-within {
     position: absolute;
@@ -2130,6 +2149,10 @@ li.sw-empty {
   }
   .signin {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .tip {
+    display: none;
   }
   .signin-rail {
     flex-direction: row;
