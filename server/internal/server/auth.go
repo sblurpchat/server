@@ -133,11 +133,12 @@ func verifyJWT(token string, trusted []string, aud string, now time.Time,
 type jwks struct {
 	client *http.Client
 	now    func() time.Time
-	mu     sync.Mutex
+	mu     sync.Mutex // guards byIss only
 	byIss  map[string]*issuerKeys
 }
 
 type issuerKeys struct {
+	mu      sync.Mutex // held across a fetch, so only this issuer waits
 	keys    map[string]ed25519.PublicKey
 	fetched time.Time // last successful fetch
 	tried   time.Time // last attempt
@@ -148,16 +149,18 @@ const (
 	refetchEvery = 30 * time.Second
 )
 
-// ponytail: one lock across the fetch serializes verification during a
-// refetch (5s timeout, rate limited); per-issuer singleflight if it matters.
+// key returns an issuer's key. j.mu guards only the map; each issuer has
+// its own lock, so a slow issuer stalls only its own tokens.
 func (j *jwks) key(iss, kid string) (ed25519.PublicKey, error) {
 	j.mu.Lock()
-	defer j.mu.Unlock()
 	ik := j.byIss[iss]
 	if ik == nil {
 		ik = &issuerKeys{}
 		j.byIss[iss] = ik
 	}
+	j.mu.Unlock()
+	ik.mu.Lock()
+	defer ik.mu.Unlock()
 	now := j.now()
 	k, have := ik.keys[kid]
 	if have && now.Sub(ik.fetched) < jwksMaxAge {

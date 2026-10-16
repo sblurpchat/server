@@ -1227,3 +1227,29 @@ func TestPureHelpers(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+// A slow issuer must not stall key lookups for another issuer (0109).
+func TestJWKSSlowIssuerDoesNotBlockOthers(t *testing.T) {
+	entered, release := make(chan struct{}), make(chan struct{})
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(entered)
+		<-release
+		http.NotFound(w, r)
+	}))
+	defer slow.Close()
+	defer close(release)
+	fast := newIssuer(t)
+	j := &jwks{client: &http.Client{Timeout: 10 * time.Second}, now: time.Now, byIss: map[string]*issuerKeys{}}
+	go j.key(slow.URL, "k1")
+	<-entered
+	got := make(chan error, 1)
+	go func() { _, err := j.key(fast.url, fast.kid); got <- err }()
+	select {
+	case err := <-got:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("fast issuer waited for the slow one")
+	}
+}
