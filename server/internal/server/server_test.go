@@ -324,6 +324,10 @@ func TestAuth(t *testing.T) {
 	reject("alg none with sig", none+"."+parts[1]+"."+parts[2])
 	hs := b64.EncodeToString([]byte(`{"alg":"HS256","kid":"k1"}`))
 	reject("alg HS256", hs+"."+parts[1]+"."+parts[2])
+	// Validly signed by the trusted key, but not labelled EdDSA.
+	for _, alg := range []string{"none", "HS256", "RS256", "eddsa"} {
+		reject("signed with alg "+alg, signJWT(e.iss.key, map[string]any{"alg": alg, "kid": e.iss.kid}, e.claims("dave")))
+	}
 	reject("garbage", "not.a.jwt")
 
 	c = e.claims("dave")

@@ -1,0 +1,32 @@
+# fly launch --copy-config --no-deploy
+# fly volumes create sblurp_data --size 1
+# fly deploy
+app = "sblurp-community"
+primary_region = "sjc"
+
+[env]
+  SBLURP_NAME = "Sblurp Community"
+  SBLURP_BASE_URL = "https://sblurp-community.fly.dev"
+  SBLURP_TRUSTED_ISSUERS = "https://sblurp.chat"
+
+[mounts]
+  source = "sblurp_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Subscribe streams are long-lived; keep one machine up. SQLite means
+  # exactly one machine: never scale this app past 1.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.http_options]
+    h2_backend = true # the server speaks h2c, so gRPC clients work too
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/healthz"
+    interval = "30s"
+    timeout = "5s"
