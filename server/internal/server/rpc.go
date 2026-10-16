@@ -259,14 +259,16 @@ func channelFor(ctx context.Context, q queryer, id, member string) (*v1.Channel,
 
 const messageCols = "id, channel_id, author_id, text, created_at_ms, edited_at_ms, deleted, thread_root_id, reply_count, last_reply_at_ms, client_id, seq, created_seq"
 
-// ponytail: reactions and attachments load per message (N+1). SQLite is
-// in-process so this is cheap at 200 messages; batch with IN (...) if not.
+// queryMessages loads messages, then their reactions and attachments with
+// one query each for the whole page.
 func queryMessages(ctx context.Context, q queryer, where string, args ...any) ([]*v1.Message, error) {
 	rows, err := q.QueryContext(ctx, "SELECT "+messageCols+" FROM messages WHERE "+where, args...)
 	if err != nil {
 		return nil, err
 	}
 	var out []*v1.Message
+	byID := map[string]*v1.Message{}
+	var ids []any
 	for rows.Next() {
 		m := &v1.Message{}
 		if err := rows.Scan(&m.Id, &m.ChannelId, &m.AuthorId, &m.Text, &m.CreatedAtMs, &m.EditedAtMs, &m.Deleted,
@@ -275,65 +277,61 @@ func queryMessages(ctx context.Context, q queryer, where string, args ...any) ([
 			return nil, err
 		}
 		out = append(out, m)
+		if !m.Deleted {
+			byID[m.Id] = m
+			ids = append(ids, m.Id)
+		}
 	}
 	rows.Close()
-	if err := rows.Err(); err != nil {
+	if err := rows.Err(); err != nil || len(ids) == 0 {
+		return out, err
+	}
+	in := "(?" + strings.Repeat(",?", len(ids)-1) + ")"
+	if err := loadReactions(ctx, q, in, ids, byID); err != nil {
 		return nil, err
 	}
-	for _, m := range out {
-		if m.Deleted {
-			continue
-		}
-		if m.Reactions, err = loadReactions(ctx, q, m.Id); err != nil {
-			return nil, err
-		}
-		if m.Attachments, err = loadAttachments(ctx, q, m.Id); err != nil {
-			return nil, err
-		}
-	}
-	return out, nil
+	return out, loadAttachments(ctx, q, in, ids, byID)
 }
 
-func loadReactions(ctx context.Context, q queryer, msgID string) ([]*v1.Reaction, error) {
-	rows, err := q.QueryContext(ctx, "SELECT emoji, member_id FROM reactions WHERE message_id = ? ORDER BY at_ms, rowid", msgID)
+func loadReactions(ctx context.Context, q queryer, in string, ids []any, byID map[string]*v1.Message) error {
+	rows, err := q.QueryContext(ctx, "SELECT message_id, emoji, member_id FROM reactions WHERE message_id IN "+in+" ORDER BY at_ms, rowid", ids...)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer rows.Close()
-	var out []*v1.Reaction
-	byEmoji := map[string]*v1.Reaction{}
+	byKey := map[[2]string]*v1.Reaction{}
 	for rows.Next() {
-		var emoji, member string
-		if err := rows.Scan(&emoji, &member); err != nil {
-			return nil, err
+		var msg, emoji, member string
+		if err := rows.Scan(&msg, &emoji, &member); err != nil {
+			return err
 		}
-		r := byEmoji[emoji]
+		r := byKey[[2]string{msg, emoji}]
 		if r == nil {
 			r = &v1.Reaction{Emoji: emoji}
-			byEmoji[emoji] = r
-			out = append(out, r)
+			byKey[[2]string{msg, emoji}] = r
+			byID[msg].Reactions = append(byID[msg].Reactions, r)
 		}
 		r.MemberIds = append(r.MemberIds, member)
 	}
-	return out, rows.Err()
+	return rows.Err()
 }
 
-func loadAttachments(ctx context.Context, q queryer, msgID string) ([]*v1.Attachment, error) {
-	rows, err := q.QueryContext(ctx, "SELECT id, name, content_type, size, width, height FROM attachments WHERE message_id = ? ORDER BY created_at_ms, id", msgID)
+func loadAttachments(ctx context.Context, q queryer, in string, ids []any, byID map[string]*v1.Message) error {
+	rows, err := q.QueryContext(ctx, "SELECT message_id, id, name, content_type, size, width, height FROM attachments WHERE message_id IN "+in+" ORDER BY created_at_ms, id", ids...)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer rows.Close()
-	var out []*v1.Attachment
 	for rows.Next() {
+		var msg string
 		a := &v1.Attachment{}
-		if err := rows.Scan(&a.Id, &a.Name, &a.ContentType, &a.Size, &a.Width, &a.Height); err != nil {
-			return nil, err
+		if err := rows.Scan(&msg, &a.Id, &a.Name, &a.ContentType, &a.Size, &a.Width, &a.Height); err != nil {
+			return err
 		}
 		a.Url = fileURL(a.Id, a.Name)
-		out = append(out, a)
+		byID[msg].Attachments = append(byID[msg].Attachments, a)
 	}
-	return out, rows.Err()
+	return rows.Err()
 }
 
 func fileURL(id, name string) string { return "/files/" + id + "/" + url.PathEscape(name) }

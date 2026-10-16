@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -1279,5 +1280,59 @@ func TestLimiterSweep(t *testing.T) {
 	l.sweep()
 	if len(l.buckets) != 0 {
 		t.Fatalf("%d buckets left", len(l.buckets))
+	}
+}
+
+type countingQ struct {
+	queryer
+	n int
+}
+
+func (c *countingQ) QueryContext(ctx context.Context, q string, args ...any) (*sql.Rows, error) {
+	c.n++
+	return c.queryer.QueryContext(ctx, q, args...)
+}
+
+// A page loads reactions and attachments with one query each (0108).
+func TestQueryMessagesBatchesLoads(t *testing.T) {
+	e := newEnv(t)
+	ana, bob := e.join("ana"), e.join("bob")
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	react := func(c *client, m *v1.Message, emoji string) {
+		must(c.chat.React(ctx(), connect.NewRequest(&v1.ReactRequest{MessageId: m.Id, Emoji: emoji})))
+	}
+	attach := func(name string) *v1.Message {
+		_, a := ana.upload(name, []byte("hello"))
+		return must(ana.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: gen.Id, AttachmentIds: []string{a.Id}}))).Message
+	}
+	m1 := ana.send(gen.Id, "one")
+	m2 := attach("a.txt")
+	m3 := attach("b.txt")
+	react(ana, m1, "👍")
+	react(bob, m1, "🎉")
+	react(bob, m1, "👍")
+	react(bob, m3, "👀")
+	q := &countingQ{queryer: e.s.db.r}
+	ms, err := queryMessages(ctx(), q, "channel_id = ? ORDER BY created_seq", gen.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q.n != 3 {
+		t.Errorf("%d queries for %d messages, want 3", q.n, len(ms))
+	}
+	got := ""
+	for _, m := range ms {
+		got += m.Text + ":"
+		for _, r := range m.Reactions {
+			got += r.Emoji + strings.Join(r.MemberIds, "+") + " "
+		}
+		for _, a := range m.Attachments {
+			got += a.Name + " "
+		}
+		got += "|"
+	}
+	want := "one:👍" + ana.me.Id + "+" + bob.me.Id + " 🎉" + bob.me.Id + " |:a.txt |:👀" + bob.me.Id + " b.txt |"
+	if got != want || ms[1].Id != m2.Id || ms[2].Id != m3.Id {
+		t.Fatalf("got  %s\nwant %s", got, want)
 	}
 }
