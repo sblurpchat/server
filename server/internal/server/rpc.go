@@ -445,6 +445,9 @@ func (s *Server) Join(ctx context.Context, req *connect.Request[v1.JoinRequest])
 	if err := checkProfile(&display, &r.AvatarUrl, &r.Bio); err != nil {
 		return nil, err
 	}
+	if err := s.pluginJoin(id, display); err != nil {
+		return nil, err
+	}
 	var out *memberRow
 	created := false
 	err := s.writeTx(ctx, func(t *wtx) error {
@@ -1017,6 +1020,7 @@ func (s *Server) SendMessage(ctx context.Context, req *connect.Request[v1.SendMe
 	if err != nil {
 		return nil, err
 	}
+	s.pluginMessage(m, out)
 	return connect.NewResponse(&v1.SendMessageResponse{Message: out}), nil
 }
 

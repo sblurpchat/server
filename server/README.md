@@ -184,6 +184,44 @@ client. There is no separate apps system. The bot is ~150 lines in
 - Channel names are normalized: `"Book Club"` becomes `book-club`.
 - `GET /healthz` returns `ok`.
 
+## Plugins
+
+Drop JavaScript files in `<data>/plugins/` and restart the server. Each
+`name.js` runs as a bot member called `name` (the file name must be a valid
+username, and must not be a person's). `plugins/examples/dice.js` is a
+working example: `/roll 2d6`, and only people with a verified email may
+join.
+
+A plugin defines any of these global functions:
+
+| Hook | Called | Return |
+|---|---|---|
+| `onJoin(member)` | before someone new (or returning) joins. `member` has `iss`, `sub`, `username`, `display_name`, `email_verified`, `age_over_13`, `age_over_18` (from the login token; false when the issuer does not say). | `{allow: false, reason}` turns them away with `permission_denied` and the reason (200 characters max). Anything else lets them in. |
+| `onMessage(msg)` | after a message by a person in a channel the plugin's bot can see. `msg` has `id`, `text`, `thread_root_id`, `author {id, username, display_name}`, `channel {id, name}`. | a reply (below), or nothing |
+| `onCommand(name, args, ctx)` | for a message `/name args` (name is 1 to 32 of a-z, 0-9, `_`, `-`). `ctx` has `message_id`, `thread_root_id`, `author`, `channel`. Every plugin sees every command; ignore the ones that are not yours. | a reply, or nothing |
+| `every(minutes, fn)` | call at load time; `fn()` runs every `minutes` (whole minutes, at least 1). | a reply with a `channel` |
+
+A reply is a string (posted where the message was, in its thread if it was
+in one) or `{text, channel}` where `channel` is a channel name like
+`"#general"` (posted there, outside threads). The bot can only post where
+it can see. Bot messages never trigger hooks.
+
+Limits: 32 MB of memory and 1 s per hook call (`Config.PluginMemory`,
+`Config.PluginTimeout`). Hooks run one at a time in a queue (onJoin runs
+inline in Join). A hook that throws, runs past its time or out of memory is
+logged and skipped; a plugin whose runtime died is restarted from its
+source, so top-level state resets. `console.log` goes to the server log.
+There is no file, network, environment, `std`, `os` or timer access: QuickJS
+runs under WASI with `/dev/null` as its root, so every file open fails,
+and `std`/`os` are removed. Plugin state lives in memory only and is lost on
+restart.
+
+Why `fastschema/qjs`: it is QuickJS (full modern JS, small) compiled to
+wasm and run on wazero, so it needs no CGO, keeps the single static binary,
+and the memory limit and context cancel are enforced by the wasm sandbox.
+The alternatives were goja (pure Go, but no memory limit and a slower,
+older JS) and modernc's QuickJS port (not sandboxed by wasm).
+
 ## Deploy on a $5 VPS with Caddy
 
 The server is one static binary and one directory. Caddy adds TLS.
@@ -273,6 +311,7 @@ with a JWKS, and real Connect clients, with a fake clock.
 | `internal/server/auth.go` | EdDSA JWT check, JWKS cache, bot tokens, the auth interceptor. |
 | `internal/server/hub.go` | Live fan-out, presence. |
 | `internal/server/rpc.go` | Every RPC. Validation helpers are pure functions. |
+| `internal/server/plugins.go`, `plugins/examples/` | The plugin runtime and an example plugin. |
 | `internal/server/roles.go` | Custom roles, channel modes, who sees which text channel. |
 | `internal/server/files.go` | Upload and file serving. |
 | `internal/server/seed.go`, `internal/seed/` | Demo data. |

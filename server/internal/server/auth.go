@@ -24,13 +24,16 @@ import (
 
 // claims are the JWT claims the server uses.
 type claims struct {
-	Iss      string   `json:"iss"`
-	Sub      string   `json:"sub"`
-	Aud      audience `json:"aud"`
-	Exp      int64    `json:"exp"`
-	Iat      int64    `json:"iat"`
-	Nbf      int64    `json:"nbf"`
-	Username string   `json:"preferred_username"`
+	Iss           string   `json:"iss"`
+	Sub           string   `json:"sub"`
+	Aud           audience `json:"aud"`
+	Exp           int64    `json:"exp"`
+	Iat           int64    `json:"iat"`
+	Nbf           int64    `json:"nbf"`
+	Username      string   `json:"preferred_username"`
+	EmailVerified bool     `json:"email_verified"`
+	AgeOver13     bool     `json:"age_over_13"`
+	AgeOver18     bool     `json:"age_over_18"`
 }
 
 // audience accepts the JWT "aud" as a string or a list of strings.
@@ -225,8 +228,9 @@ func hashToken(t string) string {
 // identity is who made a request. member is nil for a person who has not
 // joined yet.
 type identity struct {
-	iss, sub, username string
-	member             *memberRow
+	iss, sub, username                  string
+	emailVerified, ageOver13, ageOver18 bool // claims, passed to plugins
+	member                              *memberRow
 }
 
 type ctxKey struct{}
@@ -263,7 +267,8 @@ func (s *Server) authenticate(ctx context.Context, header string) (*identity, er
 	if err != nil {
 		return nil, err
 	}
-	return &identity{iss: c.Iss, sub: c.Sub, username: c.Username, member: m}, nil
+	return &identity{iss: c.Iss, sub: c.Sub, username: c.Username, member: m,
+		emailVerified: c.EmailVerified, ageOver13: c.AgeOver13, ageOver18: c.AgeOver18}, nil
 }
 
 // authorize decides whether an identity may call a procedure.

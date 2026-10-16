@@ -31,6 +31,8 @@ type Config struct {
 	Seed           string  // "community", "owls" or ""; only used on an empty database
 	BotRate        float64 // SendMessage per second for bots; 0 = no limit
 	BotBurst       int
+	PluginMemory   int           // bytes per plugin; default 32 MB
+	PluginTimeout  time.Duration // per hook call; default 1s
 
 	// For tests.
 	Now        func() time.Time
@@ -42,20 +44,24 @@ type Config struct {
 }
 
 type Server struct {
-	cfg        Config
-	db         *db
-	hub        *hub
-	jwks       *jwks
-	limiter    *limiter
-	log        *slog.Logger
-	now        func() time.Time
-	heartbeat  time.Duration
-	keepEvents int
-	keepFor    time.Duration
-	filesDir   string
-	fileKey    []byte
-	wg         sync.WaitGroup
-	stop       chan struct{}
+	cfg           Config
+	db            *db
+	hub           *hub
+	jwks          *jwks
+	limiter       *limiter
+	log           *slog.Logger
+	now           func() time.Time
+	heartbeat     time.Duration
+	keepEvents    int
+	keepFor       time.Duration
+	filesDir      string
+	fileKey       []byte
+	plugins       []*plugin
+	pluginJobs    chan func()
+	pluginMemory  int
+	pluginTimeout time.Duration
+	wg            sync.WaitGroup
+	stop          chan struct{}
 }
 
 // New opens (or creates) the database under cfg.DataDir and seeds it if asked.
@@ -79,6 +85,12 @@ func New(cfg Config) (*Server, error) {
 	if cfg.HTTPClient == nil {
 		cfg.HTTPClient = &http.Client{Timeout: 5 * time.Second}
 	}
+	if cfg.PluginMemory == 0 {
+		cfg.PluginMemory = defaultPluginMemory
+	}
+	if cfg.PluginTimeout == 0 {
+		cfg.PluginTimeout = defaultPluginTimeout
+	}
 	if cfg.Logger == nil {
 		cfg.Logger = slog.Default()
 	}
@@ -96,14 +108,16 @@ func New(cfg Config) (*Server, error) {
 	}
 	s := &Server{
 		cfg: cfg, db: d, log: cfg.Logger, now: cfg.Now,
-		jwks:       &jwks{client: cfg.HTTPClient, now: cfg.Now, byIss: map[string]*issuerKeys{}},
-		limiter:    &limiter{now: cfg.Now, buckets: map[string]*bucket{}},
-		heartbeat:  cfg.Heartbeat,
-		keepEvents: cfg.KeepEvents,
-		keepFor:    cfg.KeepFor,
-		filesDir:   filesDir,
-		fileKey:    fileKey,
-		stop:       make(chan struct{}),
+		jwks:          &jwks{client: cfg.HTTPClient, now: cfg.Now, byIss: map[string]*issuerKeys{}},
+		limiter:       &limiter{now: cfg.Now, buckets: map[string]*bucket{}},
+		heartbeat:     cfg.Heartbeat,
+		keepEvents:    cfg.KeepEvents,
+		keepFor:       cfg.KeepFor,
+		filesDir:      filesDir,
+		fileKey:       fileKey,
+		pluginMemory:  cfg.PluginMemory,
+		pluginTimeout: cfg.PluginTimeout,
+		stop:          make(chan struct{}),
 	}
 	s.hub = newHub(s.nowMs)
 	if cfg.Seed != "" {
@@ -118,6 +132,7 @@ func New(cfg Config) (*Server, error) {
 	}
 	s.wg.Add(1)
 	go s.pruneLoop()
+	s.loadPlugins()
 	return s, nil
 }
 
