@@ -201,6 +201,7 @@ const toInfo = (i: GetServerInfoResponse): Info => ({
   iconUrl: i.iconUrl,
   accentColor: i.accentColor,
   memberCount: i.memberCount,
+  inviteOnly: i.inviteOnly,
 });
 
 /** Resolve an attachment or icon URL relative to its server. */
@@ -605,6 +606,15 @@ export async function leaveCommunity(url: string) {
 export const setRole = (url: string, memberId: string, role: MemberRole) => api(url).server.setMemberRole({ memberId, role });
 export const removeMember = (url: string, memberId: string, ban: boolean) =>
   ban ? api(url).server.banMember({ memberId }) : api(url).server.kickMember({ memberId });
+
+export const createInvite = (url: string, expiresInSeconds: number, maxUses: number) =>
+  api(url).server.createInvite({ expiresInSeconds: BigInt(expiresInSeconds), maxUses });
+export const listInvites = async (url: string) => (await api(url).server.listInvites({})).invites;
+export const revokeInvite = (url: string, code: string) => api(url).server.revokeInvite({ code });
+export async function setInviteOnly(url: string, inviteOnly: boolean) {
+  const r = await api(url).server.updateServerSettings({ inviteOnly });
+  patchC(url, (c) => ({ ...c, info: c.info && { ...c.info, inviteOnly: r.inviteOnly } }));
+}
 
 export function joinAgain(url: string) {
   patchC(url, (c) => ({ ...c, status: "join" }));

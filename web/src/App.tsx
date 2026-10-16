@@ -1,11 +1,14 @@
+import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ChannelView, RightPane } from "./Chat";
-import { MemberKind, MemberRole, type GetServerInfoResponse } from "./gen/sblurp/v1/sblurp_pb";
+import { MemberKind, MemberRole, type GetServerInfoResponse, type Invite } from "./gen/sblurp/v1/sblurp_pb";
 import {
   channelLabel,
   communityBadge,
   formatHash,
   hostOf,
+  inviteLink,
+  inviteState,
   isDM,
   matchScore,
   modActions,
@@ -19,6 +22,7 @@ import {
 import {
   absUrl,
   ACCOUNT_URL,
+  createInvite,
   errorText,
   FAKE,
   get,
@@ -26,16 +30,19 @@ import {
   joinAgain,
   leave,
   leaveCommunity,
+  listInvites,
   removeMember,
   openDM,
   probe,
   remove,
   reorder,
   retryNow,
+  revokeInvite,
   selectChannel,
   selectCommunity,
   set,
   setRole,
+  setInviteOnly,
   setNotify,
   setTheme,
   signIn,
@@ -494,6 +501,7 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
   const [share, setShare] = useState({ displayName: true, avatarUrl: true, bio: false });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [code, setCode] = useState(invite);
   const fields = [
     { k: "displayName" as const, label: "Display name", value: profile?.displayName ?? "" },
     { k: "avatarUrl" as const, label: "Avatar", value: profile?.avatarUrl ?? "" },
@@ -505,9 +513,10 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
     setErr("");
     try {
       const pick = (k: (typeof fields)[number]["k"]) => (share[k] ? fields.find((f) => f.k === k)!.value : "");
-      await join(url, { displayName: pick("displayName"), avatarUrl: pick("avatarUrl"), bio: pick("bio") }, invite, info);
+      await join(url, { displayName: pick("displayName"), avatarUrl: pick("avatarUrl"), bio: pick("bio") }, code.trim(), info);
     } catch (x) {
-      setErr(errorText(x, info.name));
+      const bad = info.inviteOnly && ConnectError.from(x).code === Code.PermissionDenied;
+      setErr(bad ? "That invite code doesn't work. It may have expired or been used up." : errorText(x, info.name));
       setBusy(false);
     }
   };
@@ -524,6 +533,21 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
         </div>
       </div>
       {info.description && <p className="consent-desc">{info.description}</p>}
+      {info.inviteOnly && (
+        <label className="invite-code">
+          <b>Invite code</b>
+          <input
+            className="input"
+            required
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            spellCheck={false}
+            autoCapitalize="characters"
+            placeholder="From your invite link"
+          />
+          <small className="muted">{info.name} is invite only.</small>
+        </label>
+      )}
       <h3>Share your profile with {info.name}?</h3>
       <ul className="consent-fields">
         {fields.map((f) => (
@@ -903,16 +927,128 @@ function CommunityDialog({ kind }: { kind: "info" | "invite" | "leave" }) {
       </header>
       {kind === "info" ? (
         <p>{c.info?.description || "This community has no description."}</p>
+      ) : (c.me?.role ?? 0) >= MemberRole.ADMIN ? (
+        <Invites url={c.url} inviteOnly={!!c.info?.inviteOnly} />
+      ) : c.info?.inviteOnly ? (
+        <p className="muted">{name} is invite only. Ask an admin for an invite link.</p>
       ) : (
         <p className="muted">Share this address. Anyone with a sblurp.chat account can add it and join.</p>
       )}
-      <div className="copy-row">
-        <input className="input" readOnly value={c.url} aria-label="Community address" onFocus={(e) => e.target.select()} />
-        <button className="btn" onClick={copy}>
-          <Icon name={copied ? "check" : "copy"} size={16} /> {copied ? "Copied" : "Copy"}
-        </button>
-      </div>
+      {(kind === "info" || !c.info?.inviteOnly) && (
+        <div className="copy-row">
+          <input className="input" readOnly value={c.url} aria-label="Community address" onFocus={(e) => e.target.select()} />
+          <button className="btn" onClick={copy}>
+            <Icon name={copied ? "check" : "copy"} size={16} /> {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
+      )}
     </Dialog>
+  );
+}
+
+const EXPIRES = [
+  ["Never", 0],
+  ["1 day", 86400],
+  ["7 days", 7 * 86400],
+  ["30 days", 30 * 86400],
+] as const;
+const MAX_USES = [0, 1, 5, 10, 25];
+
+/** Admin view: invite-only switch, a form to make a link, and the live links. */
+function Invites({ url, inviteOnly }: { url: string; inviteOnly: boolean }) {
+  const [list, setList] = useState<Invite[] | null>(null);
+  const [expires, setExpires] = useState(7 * 86400);
+  const [maxUses, setMaxUses] = useState(0);
+  const [copied, setCopied] = useState("");
+  const [err, setErr] = useState("");
+  const fail = (e: unknown) => setErr(errorText(e));
+  const load = () => listInvites(url).then(setList, fail);
+  useEffect(() => void load(), [url]);
+  const copy = (code: string) => navigator.clipboard.writeText(inviteLink(url, code)).then(() => setCopied(code));
+  const make = async (e: FormEvent) => {
+    e.preventDefault();
+    setErr("");
+    try {
+      const r = await createInvite(url, expires, maxUses);
+      await load();
+      if (r.invite) copy(r.invite.code).catch(() => {});
+    } catch (x) {
+      fail(x);
+    }
+  };
+  const now = Date.now();
+  return (
+    <div className="invites">
+      <label className="invite-only">
+        <span>
+          <b>Invite only</b>
+          <small className="muted">{inviteOnly ? "People need an invite link to join." : "Anyone with the address can join."}</small>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          className="switch"
+          checked={inviteOnly}
+          onChange={(e) => setInviteOnly(url, e.target.checked).catch(fail)}
+        />
+      </label>
+      <form className="invite-new" onSubmit={make}>
+        <label>
+          Expires
+          <select className="input" value={expires} onChange={(e) => setExpires(+e.target.value)}>
+            {EXPIRES.map(([t, v]) => (
+              <option key={v} value={v}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Uses
+          <select className="input" value={maxUses} onChange={(e) => setMaxUses(+e.target.value)}>
+            {MAX_USES.map((n) => (
+              <option key={n} value={n}>
+                {n ? n : "No limit"}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button className="btn primary">Create link</button>
+      </form>
+      {err && (
+        <p className="error" role="alert">
+          {err}
+        </p>
+      )}
+      {list && !list.length && <p className="muted small">No invite links yet.</p>}
+      {!!list?.length && (
+        <ul className="invite-list" aria-label="Invite links">
+          {list.map((i) => {
+            const st = inviteState(i, now);
+            return (
+              <li key={i.code} className={st.live ? "" : "dead"}>
+                <span className="truncate">
+                  <code>{i.code}</code>
+                  <small className="muted">{st.text}</small>
+                </span>
+                {st.live && (
+                  <button className="btn" onClick={() => copy(i.code)} aria-label={`Copy invite link ${i.code}`}>
+                    <Icon name={copied === i.code ? "check" : "copy"} size={16} /> {copied === i.code ? "Copied" : "Copy"}
+                  </button>
+                )}
+                <button
+                  className="btn ghost"
+                  onClick={() => revokeInvite(url, i.code).then(load, fail)}
+                  aria-label={`Revoke invite ${i.code}`}
+                >
+                  Revoke
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 

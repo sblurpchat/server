@@ -10,6 +10,7 @@ import {
   ChatService,
   EventSchema,
   GetServerInfoResponseSchema,
+  InviteSchema,
   MemberKind,
   MemberRole,
   MemberSchema,
@@ -22,6 +23,7 @@ import {
   type Channel,
   type Event,
   type GetServerInfoResponse,
+  type Invite,
   type Member,
   type Message,
   type ReadState,
@@ -43,6 +45,7 @@ interface Seed {
   accent: string;
   icon: string;
   joined: boolean;
+  invite?: string; // makes the community invite-only, with this code
   members: [username: string, name: string, role: MemberRole, presence: Presence, bio: string, status?: string, bot?: true][];
   channels: [category: string, name: string, topic: string, privateTo?: string[]][];
   dms: string[][];
@@ -286,6 +289,7 @@ const SEEDS: Seed[] = [
     accent: "#0F9D8A",
     icon: "",
     joined: false,
+    invite: "INKSTAINED",
     members: [["gus", "Gus Fairweather", OWNER, ONLINE, "Prints posters on a 1921 Vandercook."]],
     channels: [["", "pressroom", "Show your prints"]],
     dms: [],
@@ -297,6 +301,7 @@ const SEEDS: Seed[] = [
 
 interface Fake {
   info: GetServerInfoResponse;
+  invites: Invite[];
   joined: boolean;
   meId: string;
   members: Map<string, Member>;
@@ -325,7 +330,9 @@ function seed(s: Seed, now: number): Fake {
       baseUrl: s.url,
       memberCount: s.members.length,
       accentColor: s.accent,
+      inviteOnly: !!s.invite,
     }),
+    invites: s.invite ? [create(InviteSchema, { code: s.invite, createdAtMs: BigInt(now - D * 60_000) })] : [],
     joined: s.joined,
     meId: "",
     members: new Map(),
@@ -502,14 +509,24 @@ function service(f: Fake) {
     if (!m || m.deleted) throw new ConnectError("message not found", Code.NotFound);
     return m;
   };
+  const admin = () => {
+    need();
+    if (me().role < MemberRole.ADMIN) throw new ConnectError("admins only", Code.PermissionDenied);
+  };
   const mine = (m: Message) => {
     if (m.authorId !== f.meId) throw new ConnectError("not your message", Code.PermissionDenied);
   };
   return {
     server: {
       getServerInfo: () => f.info,
-      join(req: { displayName: string; avatarUrl: string; bio: string }) {
+      join(req: { displayName: string; avatarUrl: string; bio: string; inviteCode: string }) {
         const created = !f.joined;
+        const inv = f.invites.find((i) => i.code === req.inviteCode.trim().toUpperCase());
+        if (created && f.info.inviteOnly) {
+          if (!inv || (inv.expiresAtMs && inv.expiresAtMs < BigInt(Date.now())) || (inv.maxUses && inv.uses >= inv.maxUses))
+            throw new ConnectError("this community needs a valid invite code", Code.PermissionDenied);
+          inv.uses++;
+        }
         if (created) {
           f.joined = true;
           const m = create(MemberSchema, {
@@ -536,6 +553,34 @@ function service(f: Fake) {
         f.members.delete(f.meId);
         f.info.memberCount--;
         return {};
+      },
+      createInvite(req: { expiresInSeconds: bigint; maxUses: number }) {
+        admin();
+        const code = Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"[b % 32]).join("");
+        const now = BigInt(Date.now());
+        const invite = create(InviteSchema, {
+          code,
+          createdBy: f.meId,
+          createdAtMs: now,
+          expiresAtMs: req.expiresInSeconds ? now + req.expiresInSeconds * 1000n : 0n,
+          maxUses: req.maxUses,
+        });
+        f.invites.unshift(invite);
+        return { invite };
+      },
+      listInvites() {
+        admin();
+        return { invites: f.invites };
+      },
+      revokeInvite(req: { code: string }) {
+        admin();
+        f.invites = f.invites.filter((i) => i.code !== req.code);
+        return {};
+      },
+      updateServerSettings(req: { inviteOnly?: boolean }) {
+        admin();
+        if (req.inviteOnly !== undefined) f.info.inviteOnly = req.inviteOnly;
+        return { inviteOnly: f.info.inviteOnly };
       },
       getMe() {
         need();

@@ -32,7 +32,7 @@ const shots = {
   add: async (p) => {
     if ((p.viewportSize()?.width ?? 0) < 768) await p.getByRole("button", { name: "Open communities and channels" }).click();
     await p.getByRole("button", { name: "Add a community" }).click();
-    await p.getByLabel("Community address or invite link").fill("letterpress.club");
+    await p.getByLabel("Community address or invite link").fill("https://letterpress.club/invite/INKSTAINED");
     await p.getByRole("button", { name: "Continue" }).click();
     await p.locator(".consent").waitFor();
   },
@@ -82,6 +82,13 @@ const shots = {
     await p.getByRole("button", { name: "Members" }).click();
     await p.getByRole("button", { name: "Add people" }).click();
     await p.locator(".pick-list label").first().click();
+  },
+  invite: async (p) => {
+    if ((p.viewportSize()?.width ?? 0) < 768) await p.getByRole("button", { name: "Open communities and channels" }).click();
+    await p.locator(".side-head").click();
+    await p.getByRole("menuitem", { name: "Invite people" }).click();
+    await p.getByRole("button", { name: "Create link" }).click();
+    await p.locator(".invite-list li").first().waitFor();
   },
   signin: "signedout",
 };

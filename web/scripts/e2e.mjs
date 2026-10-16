@@ -78,8 +78,31 @@ try {
   await page.getByRole("button", { name: "Remove Jun Park from #core-team" }).click();
   await page.locator(".members-head", { hasText: "Only these 3 people" }).waitFor();
 
+  // Invites: as owner of Sblurp Community, make a link and revoke it.
+  await page.locator(".side-head", { hasText: "Sblurp Community" }).click();
+  await page.getByRole("menuitem", { name: "Invite people" }).click();
+  await page.getByRole("button", { name: "Create link" }).click();
+  const made = page.locator(".invite-list li").first();
+  await made.locator("small", { hasText: "0 uses, expires in 7 days" }).waitFor();
+  const code = await made.locator("code").textContent();
+  await page.getByRole("button", { name: `Revoke invite ${code}` }).click();
+  await page.locator(".invite-list code", { hasText: code }).waitFor({ state: "detached" });
+  await page.keyboard.press("Escape");
+
+  // An invite link fills in the server and the code; a bad code is refused.
+  await page.getByRole("button", { name: "Add a community" }).click();
+  await page.getByLabel("Community address or invite link").fill("https://letterpress.club/invite/WRONG");
+  await page.getByRole("button", { name: "Continue" }).click();
+  const codeInput = page.getByLabel("Invite code");
+  if ((await codeInput.inputValue()) !== "WRONG") throw new Error("invite code not filled from the link");
+  await page.getByRole("button", { name: "Join Letterpress Club" }).click();
+  await page.getByRole("alert").filter({ hasText: "invite code doesn't work" }).waitFor();
+  await codeInput.fill("inkstained");
+  await page.getByRole("button", { name: "Join Letterpress Club" }).click();
+  await page.locator(".side-head", { hasText: "Letterpress Club" }).waitFor();
+
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message);

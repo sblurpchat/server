@@ -830,6 +830,60 @@ kbd {
   font-family: var(--mono);
   font-size: 13.5px;
 }
+.invites {
+  margin-top: 18px;
+  display: grid;
+  gap: 16px;
+}
+.invite-only,
+.invite-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.invite-only > span,
+.invite-list li > span {
+  flex: 1;
+  display: grid;
+  min-width: 0;
+}
+.invite-new {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.invite-new label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 110px;
+}
+.invite-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.invite-list code {
+  font-family: var(--mono);
+  font-size: 13.5px;
+}
+.invite-list .dead code {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.invite-code {
+  display: grid;
+  gap: 4px;
+  margin-top: 14px;
+}
+.invite-code .input {
+  font-family: var(--mono);
+}
 
 .consent-head {
   display: flex;

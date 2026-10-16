@@ -26,6 +26,7 @@ export interface Info {
   iconUrl: string;
   accentColor: string;
   memberCount: number;
+  inviteOnly?: boolean;
 }
 
 export interface MsgList {
@@ -461,6 +462,24 @@ export function normalizeCommunityUrl(input: string): { url: string; invite: str
     invite = inv[2];
   }
   return { url: u.origin + path, invite };
+}
+
+/** A link "Add a community" understands (normalizeCommunityUrl reads the code back out). */
+export const inviteLink = (url: string, code: string) => `${url}/invite/${code}`;
+
+/** "2 of 10 uses, expires in 6 days", or why the invite no longer works. */
+export function inviteState(inv: { expiresAtMs: bigint; maxUses: number; uses: number }, now: number): { live: boolean; text: string } {
+  const uses = inv.maxUses ? `${inv.uses} of ${inv.maxUses} uses` : count(inv.uses, "use", "uses");
+  const left = Number(inv.expiresAtMs) - now;
+  if (inv.expiresAtMs > 0n && left <= 0) return { live: false, text: `Expired, ${uses}` };
+  if (inv.maxUses && inv.uses >= inv.maxUses) return { live: false, text: `Used up, ${uses}` };
+  const H = 3_600_000;
+  const exp = !inv.expiresAtMs
+    ? "never expires"
+    : left < 24 * H
+      ? `expires in ${count(Math.ceil(left / H), "hour", "hours")}`
+      : `expires in ${count(Math.ceil(left / (24 * H)), "day", "days")}`;
+  return { live: true, text: `${uses}, ${exp}` };
 }
 
 export const hostOf = (url: string) => new URL(url).host;

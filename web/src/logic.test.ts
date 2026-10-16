@@ -26,6 +26,8 @@ import {
   matchScore,
   memberGroups,
   moveItem,
+  inviteLink,
+  inviteState,
   normalizeCommunityUrl,
   parseHash,
   parseInline,
@@ -295,6 +297,9 @@ describe("community URLs", () => {
     expect(normalizeCommunityUrl("https://x.test/sub/invite/AbC-12")).toEqual({ url: "https://x.test/sub", invite: "AbC-12" });
     expect(normalizeCommunityUrl("https://x.test/?invite=Q1")).toEqual({ url: "https://x.test", invite: "Q1" });
   });
+  it("reads back the invite links the client makes", () => {
+    expect(normalizeCommunityUrl(inviteLink("http://localhost:8082", "ABCDE23456"))).toEqual({ url: "http://localhost:8082", invite: "ABCDE23456" });
+  });
   it("rejects junk and other schemes", () => {
     expect(normalizeCommunityUrl("")).toBeNull();
     expect(normalizeCommunityUrl("javascript:alert(1)")).toBeNull();
@@ -412,6 +417,20 @@ it("count pluralizes and groups digits", () => {
   expect(count(1, "member", "members")).toBe("1 member");
   expect(count(0, "reply", "replies")).toBe("0 replies");
   expect(count(1204, "member", "members")).toBe("1,204 members");
+});
+
+describe("inviteState", () => {
+  const now = 1_000_000_000_000;
+  const inv = (expiresAtMs: number, maxUses: number, uses: number) => ({ expiresAtMs: BigInt(expiresAtMs), maxUses, uses });
+  it("describes live invites", () => {
+    expect(inviteState(inv(0, 0, 1), now)).toEqual({ live: true, text: "1 use, never expires" });
+    expect(inviteState(inv(now + 6 * 86_400_000 - 1, 10, 2), now)).toEqual({ live: true, text: "2 of 10 uses, expires in 6 days" });
+    expect(inviteState(inv(now + 90 * 60_000, 0, 0), now)).toEqual({ live: true, text: "0 uses, expires in 2 hours" });
+  });
+  it("says when an invite stopped working", () => {
+    expect(inviteState(inv(now, 0, 3), now)).toEqual({ live: false, text: "Expired, 3 uses" });
+    expect(inviteState(inv(0, 5, 5), now)).toEqual({ live: false, text: "Used up, 5 of 5 uses" });
+  });
 });
 
 describe("canRemoveFromChannel", () => {
