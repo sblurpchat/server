@@ -1,0 +1,360 @@
+// Sblurp community server protocol, version 1.
+//
+// Compatibility rules (servers are self-hosted and upgrade on their own
+// schedule, so one client talks to many server versions):
+//   - Never renumber or reuse a field number. Reserve removed ones.
+//   - New fields must be optional in meaning: an old peer ignores them.
+//   - Bump PROTOCOL_VERSION only for a change an old client cannot ignore.
+syntax = "proto3";
+
+package sblurp.v1;
+
+option go_package = "sblurp.chat/server/gen/sblurp/v1;sblurpv1";
+
+// ---------------------------------------------------------------------------
+// Core types
+// ---------------------------------------------------------------------------
+
+enum MemberKind {
+  MEMBER_KIND_UNSPECIFIED = 0;
+  MEMBER_KIND_HUMAN = 1;
+  MEMBER_KIND_BOT = 2;
+}
+
+enum MemberRole {
+  MEMBER_ROLE_UNSPECIFIED = 0;
+  MEMBER_ROLE_MEMBER = 1;
+  MEMBER_ROLE_MODERATOR = 2;
+  MEMBER_ROLE_ADMIN = 3;
+  MEMBER_ROLE_OWNER = 4;
+}
+
+enum Presence {
+  PRESENCE_UNSPECIFIED = 0;
+  PRESENCE_ONLINE = 1;
+  PRESENCE_AWAY = 2;
+  PRESENCE_OFFLINE = 3;
+}
+
+message Member {
+  string id = 1;              // UUIDv7, local to this server
+  MemberKind kind = 2;
+  MemberRole role = 3;
+  string username = 4;        // unique on this server
+  string display_name = 5;
+  string avatar_url = 6;      // may be empty
+  string bio = 7;
+  Presence presence = 8;
+  int64 joined_at_ms = 9;
+  string status_text = 10;    // short custom status, may be empty
+  string status_emoji = 11;
+}
+
+enum ChannelKind {
+  CHANNEL_KIND_UNSPECIFIED = 0;
+  CHANNEL_KIND_TEXT = 1;      // public to all members
+  CHANNEL_KIND_PRIVATE = 2;   // invite only
+  CHANNEL_KIND_DM = 3;        // direct message, 2+ members
+}
+
+message Channel {
+  string id = 1;
+  ChannelKind kind = 2;
+  string name = 3;            // empty for DMs
+  string topic = 4;
+  string category = 5;        // sidebar section, e.g. "General"; empty = none
+  int32 position = 6;         // sort order inside the category
+  repeated string member_ids = 7; // set for DM and PRIVATE channels
+  int64 created_at_ms = 8;
+  int64 last_message_seq = 9; // seq of the newest message, 0 if none
+}
+
+message Attachment {
+  string id = 1;
+  string name = 2;
+  string content_type = 3;
+  int64 size = 4;
+  string url = 5;             // relative to the server base URL
+  int32 width = 6;            // images only
+  int32 height = 7;
+}
+
+message Reaction {
+  string emoji = 1;           // unicode emoji or ":shortcode:"
+  repeated string member_ids = 2;
+}
+
+message Message {
+  string id = 1;
+  string channel_id = 2;
+  string author_id = 3;
+  string text = 4;            // markdown subset: bold, italic, code, links, mentions <@member_id>
+  int64 created_at_ms = 5;
+  int64 edited_at_ms = 6;     // 0 if never edited
+  bool deleted = 7;
+  string thread_root_id = 8;  // set when this message is a thread reply
+  int32 reply_count = 9;      // on a thread root
+  int64 last_reply_at_ms = 10;
+  repeated Reaction reactions = 11;
+  repeated Attachment attachments = 12;
+  string client_id = 13;      // echo of SendMessageRequest.client_id, for optimistic UI
+  int64 seq = 14;             // event seq that last changed this message
+}
+
+message ReadState {
+  string channel_id = 1;
+  int64 last_read_seq = 2;
+  int32 unread_count = 3;
+  int32 mention_count = 4;
+}
+
+// ---------------------------------------------------------------------------
+// Server info (public, no auth)
+// ---------------------------------------------------------------------------
+
+message GetServerInfoRequest {}
+message GetServerInfoResponse {
+  string name = 1;
+  string description = 2;
+  string icon_url = 3;
+  int32 protocol_version = 4;          // currently 1
+  repeated string trusted_issuers = 5; // auth issuers this server accepts, e.g. "https://sblurp.chat"
+  string base_url = 6;                 // canonical URL; also the JWT audience
+  int32 member_count = 7;
+  string accent_color = 8;             // optional "#rrggbb" for the rail icon
+}
+
+// ---------------------------------------------------------------------------
+// Joining
+// ---------------------------------------------------------------------------
+
+// Authentication: every call except GetServerInfo carries
+//   Authorization: Bearer <token>
+// The token is either
+//   (a) a JWT from a trusted issuer with aud = this server's base_url, or
+//   (b) a bot token ("sbb_..."), created by an admin.
+// A human token for a person who has not joined yet is accepted only by Join
+// and GetServerInfo; other calls return PERMISSION_DENIED.
+
+message JoinRequest {
+  // Profile fields the user agreed to share with this community.
+  string display_name = 1;
+  string avatar_url = 2;
+  string bio = 3;
+  string invite_code = 4;     // optional; servers may require one
+}
+message JoinResponse {
+  Member member = 1;
+  bool created = 2;           // false if already a member
+}
+
+message GetMeRequest {}
+message GetMeResponse {
+  Member member = 1;
+}
+
+message UpdateProfileRequest {
+  optional string display_name = 1;
+  optional string avatar_url = 2;
+  optional string bio = 3;
+  optional string status_text = 4;
+  optional string status_emoji = 5;
+}
+message UpdateProfileResponse {
+  Member member = 1;
+}
+
+// ---------------------------------------------------------------------------
+// Sync
+// ---------------------------------------------------------------------------
+
+// Everything a client needs to render the sidebar after connecting.
+message GetStateRequest {}
+message GetStateResponse {
+  Member me = 1;
+  repeated Channel channels = 2;      // channels visible to me, incl. DMs
+  repeated Member members = 3;
+  repeated ReadState read_states = 4;
+  int64 seq = 5;                      // server seq at snapshot time; Subscribe from here
+}
+
+message SubscribeRequest {
+  // Last seq the client has applied. The server first replays every event
+  // after it (that the caller may see), then streams live events.
+  // If the gap is too large the server sends Event.resync and the client
+  // must call GetState again.
+  int64 after_seq = 1;
+}
+
+message TypingEvent {
+  string channel_id = 1;
+  string member_id = 2;
+  string thread_root_id = 3;
+}
+
+message PresenceEvent {
+  string member_id = 1;
+  Presence presence = 2;
+}
+
+message Event {
+  int64 seq = 1;              // 0 for ephemeral events (typing, presence, heartbeat)
+  int64 at_ms = 2;
+  oneof kind {
+    Message message_created = 10;
+    Message message_updated = 11;   // edits, reactions, reply counts
+    Message message_deleted = 12;
+    Channel channel_created = 13;
+    Channel channel_updated = 14;
+    string channel_deleted = 15;    // channel id
+    Member member_joined = 16;
+    Member member_updated = 17;
+    string member_left = 18;        // member id
+    ReadState read_state = 19;      // my own read state, from another device
+    TypingEvent typing = 20;        // ephemeral
+    PresenceEvent presence = 21;    // ephemeral
+    bool heartbeat = 22;            // ephemeral, every 25s keeps proxies open
+    bool resync = 23;               // client must call GetState
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Channels and messages
+// ---------------------------------------------------------------------------
+
+message CreateChannelRequest {
+  string name = 1;
+  ChannelKind kind = 2;       // TEXT or PRIVATE
+  string topic = 3;
+  string category = 4;
+}
+message CreateChannelResponse { Channel channel = 1; }
+
+message UpdateChannelRequest {
+  string channel_id = 1;
+  optional string name = 2;
+  optional string topic = 3;
+  optional string category = 4;
+  optional int32 position = 5;
+}
+message UpdateChannelResponse { Channel channel = 1; }
+
+message OpenDMRequest {
+  repeated string member_ids = 1; // the others; the caller is added
+}
+message OpenDMResponse { Channel channel = 1; }
+
+message ListMessagesRequest {
+  string channel_id = 1;
+  string thread_root_id = 2;  // set to list a thread's replies
+  string before_id = 3;       // page backwards from this message; empty = newest
+  int32 limit = 4;            // default 50, max 200
+}
+message ListMessagesResponse {
+  repeated Message messages = 1; // oldest first
+  bool has_more = 2;
+}
+
+message SendMessageRequest {
+  string channel_id = 1;
+  string text = 2;
+  string thread_root_id = 3;
+  string client_id = 4;       // idempotency key from the client
+  repeated string attachment_ids = 5;
+}
+message SendMessageResponse { Message message = 1; }
+
+message EditMessageRequest {
+  string message_id = 1;
+  string text = 2;
+}
+message EditMessageResponse { Message message = 1; }
+
+message DeleteMessageRequest { string message_id = 1; }
+message DeleteMessageResponse {}
+
+message ReactRequest {
+  string message_id = 1;
+  string emoji = 2;
+  bool remove = 3;
+}
+message ReactResponse { Message message = 1; }
+
+message MarkReadRequest {
+  string channel_id = 1;
+  int64 seq = 2;
+}
+message MarkReadResponse { ReadState read_state = 1; }
+
+message SetTypingRequest {
+  string channel_id = 1;
+  string thread_root_id = 2;
+}
+message SetTypingResponse {}
+
+message SearchRequest {
+  string query = 1;
+  string channel_id = 2;      // optional filter
+  int32 limit = 3;
+}
+message SearchResponse { repeated Message messages = 1; }
+
+// ---------------------------------------------------------------------------
+// Bots
+// ---------------------------------------------------------------------------
+
+message CreateBotRequest {
+  string username = 1;
+  string display_name = 2;
+  string avatar_url = 3;
+  string bio = 4;
+}
+message CreateBotResponse {
+  Member bot = 1;
+  string token = 2;           // shown once; the server stores only a hash
+}
+
+message ListBotsRequest {}
+message ListBotsResponse { repeated Member bots = 1; }
+
+message RotateBotTokenRequest { string bot_id = 1; }
+message RotateBotTokenResponse { string token = 1; }
+
+message DeleteBotRequest { string bot_id = 1; }
+message DeleteBotResponse {}
+
+// ---------------------------------------------------------------------------
+// Services
+// ---------------------------------------------------------------------------
+
+service ServerService {
+  rpc GetServerInfo(GetServerInfoRequest) returns (GetServerInfoResponse) {}
+  rpc Join(JoinRequest) returns (JoinResponse) {}
+  rpc GetMe(GetMeRequest) returns (GetMeResponse) {}
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse) {}
+  rpc GetState(GetStateRequest) returns (GetStateResponse) {}
+  // Server stream. Browsers support server streams over Connect; there is
+  // deliberately no bidirectional stream. Clients send with unary calls.
+  rpc Subscribe(SubscribeRequest) returns (stream Event) {}
+}
+
+service ChatService {
+  rpc CreateChannel(CreateChannelRequest) returns (CreateChannelResponse) {}
+  rpc UpdateChannel(UpdateChannelRequest) returns (UpdateChannelResponse) {}
+  rpc OpenDM(OpenDMRequest) returns (OpenDMResponse) {}
+  rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse) {}
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse) {}
+  rpc EditMessage(EditMessageRequest) returns (EditMessageResponse) {}
+  rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse) {}
+  rpc React(ReactRequest) returns (ReactResponse) {}
+  rpc MarkRead(MarkReadRequest) returns (MarkReadResponse) {}
+  rpc SetTyping(SetTypingRequest) returns (SetTypingResponse) {}
+  rpc Search(SearchRequest) returns (SearchResponse) {}
+}
+
+service BotService {
+  rpc CreateBot(CreateBotRequest) returns (CreateBotResponse) {}
+  rpc ListBots(ListBotsRequest) returns (ListBotsResponse) {}
+  rpc RotateBotToken(RotateBotTokenRequest) returns (RotateBotTokenResponse) {}
+  rpc DeleteBot(DeleteBotRequest) returns (DeleteBotResponse) {}
+}
