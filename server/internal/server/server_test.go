@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -737,7 +738,7 @@ func TestUpload(t *testing.T) {
 	if a == nil || a.ContentType != "image/png" || a.Width != 3 || a.Height != 2 || a.Size != int64(len(img)) || a.Name != "cat.png" {
 		t.Fatalf("attachment = %v", a)
 	}
-	if a.Url != "/files/"+a.Id+"/cat.png" {
+	if !strings.HasPrefix(a.Url, "/files/"+a.Id+"/cat.png?exp=") {
 		t.Fatalf("url = %q", a.Url)
 	}
 
@@ -783,6 +784,71 @@ func TestUpload(t *testing.T) {
 	must(ana.chat.DeleteMessage(ctx(), connect.NewRequest(&v1.DeleteMessageRequest{MessageId: msg.Id})))
 	if res, _ := http.Get(e.url + a.Url); res.StatusCode != http.StatusNotFound {
 		t.Fatalf("file of deleted message: %d", res.StatusCode)
+	}
+}
+
+func getStatus(t *testing.T, url string) int {
+	t.Helper()
+	res, err := http.Get(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	return res.StatusCode
+}
+
+func TestFileURLsAreSigned(t *testing.T) {
+	e := newEnv(t)
+	ana, bob := e.join("ana"), e.join("bob")
+	secret := ana.channel("secret", v1.ChannelKind_CHANNEL_KIND_PRIVATE)
+	_, a := ana.upload("a.png", pngBytes(1, 1))
+	_, b := ana.upload("b.png", pngBytes(1, 1))
+	sub := ana.subscribe(ana.state().Seq)
+	must(ana.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: secret.Id, Text: "pic", AttachmentIds: []string{a.Id}})))
+
+	plain := e.url + "/files/" + a.Id + "/a.png"
+	if got := getStatus(t, plain); got != http.StatusForbidden {
+		t.Fatalf("unsigned GET = %d", got)
+	}
+	// A signature for one file does not open another.
+	_, query, _ := strings.Cut(b.Url, "?")
+	if got := getStatus(t, plain+"?"+query); got != http.StatusForbidden {
+		t.Fatalf("GET with another file's sig = %d", got)
+	}
+	exp, _ := strconv.ParseInt(strings.TrimPrefix(strings.Split(query, "&")[0], "exp="), 10, 64)
+	if got := getStatus(t, plain+"?exp="+strconv.FormatInt(exp+3600, 10)+"&sig="+strings.Split(query, "&sig=")[1]); got != http.StatusForbidden {
+		t.Fatalf("GET with a changed exp = %d", got)
+	}
+
+	// The live event, the list and the search all carry a working URL.
+	ev := sub.next(isCreated("pic"), nil)
+	listed := must(ana.chat.ListMessages(ctx(), connect.NewRequest(&v1.ListMessagesRequest{ChannelId: secret.Id}))).Messages
+	found := must(ana.chat.Search(ctx(), connect.NewRequest(&v1.SearchRequest{Query: "pic"}))).Messages
+	for name, m := range map[string]*v1.Message{"event": ev.GetMessageCreated(), "list": listed[0], "search": found[0]} {
+		if got := getStatus(t, e.url+m.Attachments[0].Url); got != http.StatusOK {
+			t.Fatalf("%s url %q = %d", name, m.Attachments[0].Url, got)
+		}
+	}
+	// Replay signs too.
+	replayed := ana.subscribe(0).next(isCreated("pic"), nil).GetMessageCreated().Attachments[0].Url
+	if getStatus(t, e.url+replayed) != http.StatusOK {
+		t.Fatalf("replayed url %q", replayed)
+	}
+
+	// Bob is not in the channel, so he never gets a signed URL.
+	if len(must(bob.chat.Search(ctx(), connect.NewRequest(&v1.SearchRequest{Query: "pic"}))).Messages) != 0 {
+		t.Fatal("bob found a private message")
+	}
+
+	// URLs expire after one to two hours.
+	url := e.url + listed[0].Attachments[0].Url
+	e.clock.Advance(59 * time.Minute)
+	if got := getStatus(t, url); got != http.StatusOK {
+		t.Fatalf("after 59m = %d", got)
+	}
+	e.clock.Advance(2 * time.Hour)
+	if got := getStatus(t, url); got != http.StatusForbidden {
+		t.Fatalf("after 3h = %d", got)
 	}
 }
 

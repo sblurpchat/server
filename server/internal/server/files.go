@@ -2,6 +2,9 @@ package server
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"image"
@@ -13,17 +16,75 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protopath"
+	"google.golang.org/protobuf/reflect/protorange"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	v1 "sblurp.chat/server/gen/sblurp/v1"
 )
 
 const maxUpload = 25 << 20
+
+// File URLs are capabilities: /files/{id}/{name}?exp=<unix s>&sig=<hmac>.
+// The server signs them only in responses to members who may see the file,
+// so <img src> works without an Authorization header. exp is rounded up to
+// the hour, so a URL is stable (and cacheable) for an hour and valid for one
+// to two hours. Removing someone does not revoke URLs they already hold.
+const fileURLLife = time.Hour
+
+// loadFileKey reads the HMAC key for file URLs, creating it on first start.
+func loadFileKey(path string) ([]byte, error) {
+	key, err := os.ReadFile(path)
+	if err == nil && len(key) == 32 {
+		return key, nil
+	}
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+	key = make([]byte, 32)
+	rand.Read(key)
+	return key, os.WriteFile(path, key, 0o600)
+}
+
+func fileSig(key []byte, id string, exp int64) string {
+	h := hmac.New(sha256.New, key)
+	h.Write([]byte(id + "\n" + strconv.FormatInt(exp, 10)))
+	return b64.EncodeToString(h.Sum(nil))
+}
+
+// signedFileURL adds exp and sig to an attachment's URL.
+func signedFileURL(key []byte, id, name string, now time.Time) string {
+	exp := now.Add(2 * fileURLLife).Truncate(fileURLLife).Unix()
+	return fileURL(id, name) + "?exp=" + strconv.FormatInt(exp, 10) + "&sig=" + fileSig(key, id, exp)
+}
+
+// fileSigOK checks a file URL's exp and sig.
+func fileSigOK(key []byte, id, expStr, sig string, now time.Time) bool {
+	exp, err := strconv.ParseInt(expStr, 10, 64)
+	return err == nil && now.Unix() <= exp && hmac.Equal([]byte(sig), []byte(fileSig(key, id, exp)))
+}
+
+// signURLs signs every Attachment.url in m, in place. Every RPC response
+// and stream event passes through it (see interceptor).
+func (s *Server) signURLs(m proto.Message) {
+	now := s.now()
+	protorange.Range(m.ProtoReflect(), func(p protopath.Values) error {
+		if v, ok := p.Index(-1).Value.Interface().(protoreflect.Message); ok {
+			if a, ok := v.Interface().(*v1.Attachment); ok && a.Id != "" {
+				a.Url = signedFileURL(s.fileKey, a.Id, a.Name, now)
+			}
+		}
+		return nil
+	})
+}
 
 func httpError(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
@@ -137,14 +198,20 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusInternalServerError, "cannot store file")
 		return
 	}
+	s.signURLs(a)
 	body, _ := protojson.Marshal(a)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(body)
 }
 
-// serveFile serves an upload to anyone who knows its unguessable id.
+// serveFile serves an upload to anyone with a valid signed URL.
 // Uploaded content is untrusted: it never runs as a page on this origin.
 func (s *Server) serveFile(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	if !fileSigOK(s.fileKey, r.PathValue("id"), q.Get("exp"), q.Get("sig"), s.now()) {
+		httpError(w, http.StatusForbidden, "file link is invalid or expired; reload the message for a new one")
+		return
+	}
 	var name, ctype string
 	var created int64
 	err := s.db.r.QueryRowContext(r.Context(), "SELECT name, content_type, created_at_ms FROM attachments WHERE id = ?", r.PathValue("id")).

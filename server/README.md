@@ -29,7 +29,7 @@ Every flag can also come from an environment variable.
 | Flag | Env | Default | What |
 |---|---|---|---|
 | `-addr` | `SBLURP_ADDR` | `:8082` | Listen address. HTTP/1.1 and cleartext HTTP/2 (h2c). |
-| `-data` | `SBLURP_DATA` | `data` | Data directory: `sblurp.db`, `files/`, `bot-token.txt`. |
+| `-data` | `SBLURP_DATA` | `data` | Data directory: `sblurp.db`, `files/`, `file-key`, `bot-token.txt`. |
 | `-name` | `SBLURP_NAME` | `Sblurp Community` | Community name. |
 | `-description` | `SBLURP_DESCRIPTION` | seed's text | One line for the join screen. |
 | `-icon-url` | `SBLURP_ICON_URL` | | Rail icon. |
@@ -93,16 +93,24 @@ client. There is no separate apps system. The bot is ~150 lines in
 
   ```json
   {"id":"01a1...","name":"cat.png","contentType":"image/png","size":"14211",
-   "url":"/files/01a1.../cat.png","width":640,"height":480}
+   "url":"/files/01a1.../cat.png?exp=1792000800&sig=...","width":640,"height":480}
   ```
 
   Then send the id in `SendMessage.attachment_ids` (max 10, only your own
   unused uploads). Errors are `{"error": "..."}` with status 400, 401, 403
   or 413.
-- **Files**: `GET /files/{id}/{name}`, relative to the server base URL. The
+- **Files**: `GET /files/{id}/{name}?exp=...&sig=...`, relative to the
+  server base URL. Use `Attachment.url` exactly as the server returns it.
+  The server signs it (HMAC-SHA256 over id and exp, with a key in
+  `<data>/file-key`) only in responses and events for members who may see
+  the file, and for the uploader of an unattached upload. It works in
+  `<img src>` without a header. A URL is valid for one to two hours (exp is
+  rounded up to the hour, so it stays the same for an hour and the browser
+  can cache it). A missing, wrong or expired signature returns 403
+  `{"error": ...}`; the client gets fresh URLs by listing the messages
+  again. Removing a member does not revoke URLs they already hold. The
   content type is sniffed by the server. Images, audio and video are served
   inline; everything else as a download, with `nosniff` and a sandbox CSP.
-  Anyone with the URL can fetch the file (ticket 0100).
 - Errors use Connect codes with plain messages: `invalid_argument`,
   `permission_denied`, `not_found` (also for channels you may not see),
   `already_exists`, `resource_exhausted`, `unauthenticated`.

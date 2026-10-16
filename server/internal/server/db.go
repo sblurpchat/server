@@ -174,7 +174,8 @@ func (t *wtx) emit(ev *v1.Event, scopeChannel, scopeMember string) error {
 			aud[id] = true
 		}
 	}
-	t.pending = append(t.pending, published{ev, aud})
+	// A copy: subscribers share it, so it must not alias anything the caller returns.
+	t.pending = append(t.pending, published{proto.Clone(ev).(*v1.Event), aud})
 	return nil
 }
 

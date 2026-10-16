@@ -53,6 +53,7 @@ type Server struct {
 	keepEvents int
 	keepFor    time.Duration
 	filesDir   string
+	fileKey    []byte
 	wg         sync.WaitGroup
 	stop       chan struct{}
 }
@@ -85,6 +86,10 @@ func New(cfg Config) (*Server, error) {
 	if err := os.MkdirAll(filesDir, 0o700); err != nil {
 		return nil, err
 	}
+	fileKey, err := loadFileKey(filepath.Join(cfg.DataDir, "file-key"))
+	if err != nil {
+		return nil, err
+	}
 	d, err := openDB(filepath.Join(cfg.DataDir, "sblurp.db"))
 	if err != nil {
 		return nil, err
@@ -97,6 +102,7 @@ func New(cfg Config) (*Server, error) {
 		keepEvents: cfg.KeepEvents,
 		keepFor:    cfg.KeepFor,
 		filesDir:   filesDir,
+		fileKey:    fileKey,
 		stop:       make(chan struct{}),
 	}
 	s.hub = newHub(s.nowMs)

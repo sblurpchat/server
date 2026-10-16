@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 
 	"sblurp.chat/server/gen/sblurp/v1/sblurpv1connect"
 )
@@ -301,7 +302,13 @@ func (i interceptor) WrapUnary(next connect.UnaryFunc) connect.UnaryFunc {
 		if err != nil {
 			return nil, err
 		}
-		return next(ctx, req)
+		res, err := next(ctx, req)
+		if err == nil {
+			if m, ok := res.Any().(proto.Message); ok {
+				i.s.signURLs(m)
+			}
+		}
+		return res, err
 	}
 }
 
@@ -315,6 +322,22 @@ func (i interceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc) con
 		if err != nil {
 			return err
 		}
-		return next(ctx, conn)
+		return next(ctx, signingConn{conn, i.s})
 	}
+}
+
+// signingConn signs attachment URLs in streamed events. Live events are
+// shared by every subscriber, so it signs a copy.
+type signingConn struct {
+	connect.StreamingHandlerConn
+	s *Server
+}
+
+func (c signingConn) Send(m any) error {
+	if pm, ok := m.(proto.Message); ok {
+		pm = proto.Clone(pm)
+		c.s.signURLs(pm)
+		m = pm
+	}
+	return c.StreamingHandlerConn.Send(m)
 }
