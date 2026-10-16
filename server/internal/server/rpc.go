@@ -1696,8 +1696,9 @@ func (s *Server) DeleteBot(ctx context.Context, req *connect.Request[v1.DeleteBo
 		if err != nil {
 			return err
 		}
-		// Keep the row so old messages still have an author.
-		if _, err := t.ExecContext(ctx, "UPDATE members SET deleted = 1, token_hash = NULL WHERE id = ?", bot.Id); err != nil {
+		// Keep the row so old messages still have an author, and free the
+		// username: "~" is not allowed in usernames, so this cannot collide.
+		if _, err := t.ExecContext(ctx, "UPDATE members SET deleted = 1, token_hash = NULL, username = username || '~' || id WHERE id = ?", bot.Id); err != nil {
 			return err
 		}
 		seq, err := t.nextSeq()

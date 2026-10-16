@@ -252,4 +252,5 @@ with a JWKS, and real Connect clients, with a fake clock.
 - **Deleted messages** keep a tombstone row; text, reactions and
   attachments (including the files) are removed.
 - **Deleted bots** keep their member row so old messages still have an
-  author; their token stops working and they leave the member list.
+  author; their token stops working, they leave the member list, and their
+  username becomes `name~id`, so the name is free again.

@@ -821,6 +821,8 @@ func TestBots(t *testing.T) {
 	must(ana.bots.DeleteBot(ctx(), connect.NewRequest(&v1.DeleteBotRequest{BotId: created.Bot.Id})))
 	_, err = bot.srv.GetMe(ctx(), connect.NewRequest(&v1.GetMeRequest{}))
 	wantCode(t, err, connect.CodeUnauthenticated)
+	// The username is free again (0107).
+	must(ana.bots.CreateBot(ctx(), connect.NewRequest(&v1.CreateBotRequest{Username: "helper"})))
 	_, err = e.client("sbb_made-up").srv.GetMe(ctx(), connect.NewRequest(&v1.GetMeRequest{}))
 	wantCode(t, err, connect.CodeUnauthenticated)
 }
