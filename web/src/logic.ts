@@ -516,6 +516,28 @@ export function moveItem<T>(arr: T[], from: number, to: number): T[] {
   return out;
 }
 
+/** The name the server will store ("Book Club" becomes "book-club"), or "" when it would be refused. */
+export function channelSlug(name: string): string {
+  const n = name.trim().replace(/^#/, "").toLowerCase().split(/\s+/).filter(Boolean).join("-");
+  return /^[a-z0-9_-]{1,80}$/.test(n) ? n : "";
+}
+
+/**
+ * Move a channel one step up or down inside its category. Returns the position updates to send.
+ * The category keeps the positions it already had, so it stays where it is among the other categories.
+ */
+export function reorderChannel(chans: { id: string; position: number }[], id: string, dir: -1 | 1): { id: string; position: number }[] {
+  const from = chans.findIndex((c) => c.id === id);
+  const to = from + dir;
+  if (from < 0 || to < 0 || to >= chans.length) return [];
+  const slots = chans.map((c) => c.position).sort((a, b) => a - b);
+  // Equal positions can't express an order, so spread them out from the lowest.
+  const pos = new Set(slots).size === slots.length ? slots : slots.map((_, i) => slots[0] + i);
+  return moveItem(chans, from, to)
+    .map((c, i) => ({ id: c.id, position: pos[i] }))
+    .filter((u) => chans.find((c) => c.id === u.id)!.position !== u.position);
+}
+
 export const initials = (name: string) =>
   name
     .split(/\s+/)

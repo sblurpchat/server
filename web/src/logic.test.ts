@@ -29,6 +29,8 @@ import {
   inviteLink,
   inviteState,
   normalizeCommunityUrl,
+  channelSlug,
+  reorderChannel,
   parseHash,
   parseInline,
   parseMarkdown,
@@ -463,5 +465,30 @@ describe("modActions", () => {
     expect(modActions(mem("a", OWNER), mem("a", OWNER)).remove).toBe(false);
     expect(modActions(mem("a", MEMBER), mem("b", MEMBER)).remove).toBe(false);
     expect(modActions(undefined, mem("b", MEMBER)).remove).toBe(false);
+  });
+});
+
+describe("channelSlug", () => {
+  it("matches the server's normalization", () => {
+    expect(channelSlug("  Book   Club ")).toBe("book-club");
+    expect(channelSlug("#Release_Notes")).toBe("release_notes");
+    expect(channelSlug("café")).toBe("");
+    expect(channelSlug("   ")).toBe("");
+    expect(channelSlug("a".repeat(81))).toBe("");
+  });
+});
+
+describe("reorderChannel", () => {
+  const ch = (id: string, position: number) => ({ id, position });
+  it("swaps neighbours and keeps the category's positions", () => {
+    expect(reorderChannel([ch("a", 4), ch("b", 5), ch("c", 9)], "c", -1)).toEqual([ch("c", 5), ch("b", 9)]);
+    expect(reorderChannel([ch("a", 4), ch("b", 5), ch("c", 9)], "a", 1)).toEqual([ch("b", 4), ch("a", 5)]);
+  });
+  it("spreads out equal positions", () => {
+    expect(reorderChannel([ch("a", 0), ch("b", 0), ch("c", 0)], "c", -1)).toEqual([ch("c", 1), ch("b", 2)]);
+  });
+  it("does nothing past the ends", () => {
+    expect(reorderChannel([ch("a", 0), ch("b", 1)], "a", -1)).toEqual([]);
+    expect(reorderChannel([ch("a", 0), ch("b", 1)], "b", 1)).toEqual([]);
   });
 });

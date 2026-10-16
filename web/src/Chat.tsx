@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 import { useCountdown } from "./App";
-import { ChannelKind, MemberKind, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
+import { ChannelKind, MemberKind, MemberRole, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
 import {
   acQuery,
   canRemoveFromChannel,
@@ -109,6 +109,11 @@ export function ChannelView() {
           <Icon name="search" size={16} />
           <input type="search" aria-label={`Search ${c.info?.name ?? ""}`} placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
+        {!dm && (c.me?.role ?? 0) >= MemberRole.ADMIN && (
+          <button className="icon-btn" aria-label={`Edit #${title}`} title="Edit channel" onClick={() => set({ modal: { t: "channel", id: ch.id } })}>
+            <Icon name="edit" />
+          </button>
+        )}
         <button
           className="icon-btn"
           aria-label="Members"

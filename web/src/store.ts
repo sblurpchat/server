@@ -3,12 +3,15 @@ import { create, fromJson } from "@bufbuild/protobuf";
 import { Code, ConnectError, createClient, type Client, type Interceptor } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { useSyncExternalStore } from "react";
+import type { SettingsTab } from "./Admin";
 import { AUTH_URL, fetchProfile, finishLogin, getToken, hasSession, SignedOutError, signOut as authSignOut, startLogin, type Profile } from "./auth";
 import { fakeTransport, fakeUpload, FAKE_URLS, startSimulation } from "./fake";
 import {
   AttachmentSchema,
+  BotService,
   ChannelKind,
   ChatService,
+  ReadStateSchema,
   MessageSchema,
   ServerService,
   type Attachment,
@@ -79,6 +82,8 @@ export type Modal =
   | { t: "invite" }
   | { t: "leave" }
   | { t: "delete"; id: string }
+  | { t: "channel"; id?: string; category?: string }
+  | { t: "community"; tab?: SettingsTab }
   | { t: "remove"; url: string; memberId: string; ban: boolean }
   | { t: "lightbox"; src: string; name: string };
 export type Theme = "system" | "light" | "dark";
@@ -163,13 +168,13 @@ const authInterceptor =
     return next(req);
   };
 
-const clients = new Map<string, { server: Client<typeof ServerService>; chat: Client<typeof ChatService> }>();
+const clients = new Map<string, { server: Client<typeof ServerService>; chat: Client<typeof ChatService>; bot: Client<typeof BotService> }>();
 export function api(url: string) {
   let c = clients.get(url);
   if (!c) {
     const transport =
       (FAKE && fakeTransport(url)) || createConnectTransport({ baseUrl: url, interceptors: FAKE ? [] : [authInterceptor(url)] });
-    c = { server: createClient(ServerService, transport), chat: createClient(ChatService, transport) };
+    c = { server: createClient(ServerService, transport), chat: createClient(ChatService, transport), bot: createClient(BotService, transport) };
     clients.set(url, c);
   }
   return c;
@@ -506,13 +511,14 @@ export function markRead(url: string, channelId: string) {
   const ch = c?.channels[channelId];
   const rs = c?.reads[channelId];
   if (!ch) return;
-  const seq = ch.lastMessageSeq > (rs?.lastReadSeq ?? 0n) ? ch.lastMessageSeq : rs!.lastReadSeq;
+  const last = rs?.lastReadSeq ?? 0n;
+  const seq = ch.lastMessageSeq > last ? ch.lastMessageSeq : last;
   const k = `${url} ${channelId}`;
   if ((sentRead.get(k) ?? -1n) >= seq && !rs?.unreadCount && !rs?.mentionCount) return;
   sentRead.set(k, seq);
   patchC(url, (x) => ({
     ...x,
-    reads: { ...x.reads, [channelId]: { ...(rs ?? { channelId }), lastReadSeq: seq, unreadCount: 0, mentionCount: 0 } as never },
+    reads: { ...x.reads, [channelId]: { ...(rs ?? create(ReadStateSchema, { channelId })), lastReadSeq: seq, unreadCount: 0, mentionCount: 0 } },
   }));
   api(url).chat.markRead({ channelId, seq }).catch(() => sentRead.delete(k));
 }
@@ -546,6 +552,23 @@ export async function openDM(url: string, memberId: string) {
 }
 
 const local = (url: string, kind: Event["kind"]) => dispatch(url, { seq: 0n, atMs: 0n, kind } as Event);
+
+export async function createChannel(url: string, req: { name: string; kind: ChannelKind; topic: string; category: string }) {
+  const r = await api(url).chat.createChannel(req);
+  if (r.channel) {
+    local(url, { case: "channelCreated", value: r.channel });
+    selectChannel(url, r.channel.id);
+  }
+}
+export async function updateChannel(url: string, req: { channelId: string; name?: string; topic?: string; category?: string; position?: number }) {
+  const r = await api(url).chat.updateChannel(req);
+  if (r.channel) local(url, { case: "channelUpdated", value: r.channel });
+}
+export const createBot = (url: string, req: { username: string; displayName: string; bio: string }) =>
+  api(url).bot.createBot({ ...req, avatarUrl: "" });
+export const listBots = async (url: string) => (await api(url).bot.listBots({})).bots;
+export const rotateBotToken = async (url: string, botId: string) => (await api(url).bot.rotateBotToken({ botId })).token;
+export const deleteBot = (url: string, botId: string) => api(url).bot.deleteBot({ botId });
 
 export async function addToChannel(url: string, channelId: string, memberIds: string[]) {
   const r = await api(url).chat.addChannelMembers({ channelId, memberIds });

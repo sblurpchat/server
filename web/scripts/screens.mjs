@@ -90,6 +90,26 @@ const shots = {
     await p.getByRole("button", { name: "Create link" }).click();
     await p.locator(".invite-list li").first().waitFor();
   },
+  newchannel: async (p) => {
+    if ((p.viewportSize()?.width ?? 0) < 768) await p.getByRole("button", { name: "Open communities and channels" }).click();
+    await p.locator(".side-head").click();
+    await p.getByRole("menuitem", { name: "Create channel" }).click();
+    await p.getByLabel("Name").fill("Book Club");
+  },
+  editchannel: (p) => p.getByRole("button", { name: "Edit #general" }).click(),
+  admin: async (p) => {
+    if ((p.viewportSize()?.width ?? 0) < 768) await p.getByRole("button", { name: "Open communities and channels" }).click();
+    await p.locator(".side-head").click();
+    await p.getByRole("menuitem", { name: "Community settings" }).click();
+    await p.locator(".admin-list li").first().waitFor();
+  },
+  bots: async (p) => {
+    if ((p.viewportSize()?.width ?? 0) < 768) await p.getByRole("button", { name: "Open communities and channels" }).click();
+    await p.locator(".side-head").click();
+    await p.getByRole("menuitem", { name: "Community settings" }).click();
+    await p.getByRole("tab", { name: "Bots" }).click();
+    await p.getByRole("button", { name: /^New token for/ }).first().click();
+  },
   signin: "signedout",
 };
 

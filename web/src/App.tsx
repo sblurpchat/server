@@ -1,14 +1,13 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { ChannelDialog, CommunitySettings, Invites, PERMISSION } from "./Admin";
 import { ChannelView, RightPane } from "./Chat";
-import { MemberKind, MemberRole, type GetServerInfoResponse, type Invite } from "./gen/sblurp/v1/sblurp_pb";
+import { MemberKind, MemberRole, type GetServerInfoResponse } from "./gen/sblurp/v1/sblurp_pb";
 import {
   channelLabel,
   communityBadge,
   formatHash,
   hostOf,
-  inviteLink,
-  inviteState,
   isDM,
   matchScore,
   modActions,
@@ -22,7 +21,6 @@ import {
 import {
   absUrl,
   ACCOUNT_URL,
-  createInvite,
   errorText,
   FAKE,
   get,
@@ -30,19 +28,16 @@ import {
   joinAgain,
   leave,
   leaveCommunity,
-  listInvites,
   removeMember,
   openDM,
   probe,
   remove,
   reorder,
   retryNow,
-  revokeInvite,
   selectChannel,
   selectCommunity,
   set,
   setRole,
-  setInviteOnly,
   setNotify,
   setTheme,
   signIn,
@@ -314,6 +309,7 @@ function Sidebar({ c }: { c: Community }) {
   const [menu, setMenu] = useState<DOMRect | null>(null);
   const name = c.info?.name ?? hostOf(c.url);
   const sections = useMemo(() => sidebarSections(c), [c.channels]); // eslint-disable-line react-hooks/exhaustive-deps
+  const admin = (c.me?.role ?? 0) >= MemberRole.ADMIN;
   return (
     <aside className="sidebar" aria-label={name}>
       <button className="side-head" aria-haspopup="menu" onClick={(e) => setMenu(e.currentTarget.getBoundingClientRect())}>
@@ -328,6 +324,16 @@ function Sidebar({ c }: { c: Community }) {
           <button role="menuitem" onClick={() => set({ modal: { t: "invite" } })}>
             <Icon name="invite" size={18} /> Invite people
           </button>
+          {admin && (
+            <>
+              <button role="menuitem" onClick={() => set({ modal: { t: "channel" } })}>
+                <Icon name="plus" size={18} /> Create channel
+              </button>
+              <button role="menuitem" onClick={() => set({ modal: { t: "community" } })}>
+                <Icon name="sliders" size={18} /> Community settings
+              </button>
+            </>
+          )}
           <hr />
           <button role="menuitem" className="danger" onClick={() => set({ modal: { t: "leave" } })}>
             <Icon name="leave" size={18} /> Leave community
@@ -352,6 +358,16 @@ function Sidebar({ c }: { c: Community }) {
                     </span>
                     {sec.title}
                   </button>
+                  {admin && !sec.dm && (
+                    <button
+                      className="sec-add"
+                      aria-label={`Create a channel in ${sec.title}`}
+                      title="Create channel"
+                      onClick={() => set({ modal: { t: "channel", category: sec.title === "Channels" ? "" : sec.title } })}
+                    >
+                      <Icon name="plus" size={16} />
+                    </button>
+                  )}
                 </h2>
                 <ul>
                   {shown.map((ch) => {
@@ -534,7 +550,7 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
       </div>
       {info.description && <p className="consent-desc">{info.description}</p>}
       {info.inviteOnly && (
-        <label className="invite-code">
+        <label className="field">
           <b>Invite code</b>
           <input
             className="input"
@@ -680,6 +696,10 @@ function Modals() {
       return <CommunityDialog kind={modal.t} />;
     case "delete":
       return <DeleteConfirm id={modal.id} />;
+    case "channel":
+      return <ChannelDialog key={modal.id ?? "new"} id={modal.id} category={modal.category} />;
+    case "community":
+      return <CommunitySettings tab={modal.tab} />;
     case "remove":
       return <RemoveMember {...modal} />;
     case "lightbox":
@@ -946,112 +966,6 @@ function CommunityDialog({ kind }: { kind: "info" | "invite" | "leave" }) {
   );
 }
 
-const EXPIRES = [
-  ["Never", 0],
-  ["1 day", 86400],
-  ["7 days", 7 * 86400],
-  ["30 days", 30 * 86400],
-] as const;
-const MAX_USES = [0, 1, 5, 10, 25];
-
-/** Admin view: invite-only switch, a form to make a link, and the live links. */
-function Invites({ url, inviteOnly }: { url: string; inviteOnly: boolean }) {
-  const [list, setList] = useState<Invite[] | null>(null);
-  const [expires, setExpires] = useState(7 * 86400);
-  const [maxUses, setMaxUses] = useState(0);
-  const [copied, setCopied] = useState("");
-  const [err, setErr] = useState("");
-  const fail = (e: unknown) => setErr(errorText(e));
-  const load = () => listInvites(url).then(setList, fail);
-  useEffect(() => void load(), [url]);
-  const copy = (code: string) => navigator.clipboard.writeText(inviteLink(url, code)).then(() => setCopied(code));
-  const make = async (e: FormEvent) => {
-    e.preventDefault();
-    setErr("");
-    try {
-      const r = await createInvite(url, expires, maxUses);
-      await load();
-      if (r.invite) copy(r.invite.code).catch(() => {});
-    } catch (x) {
-      fail(x);
-    }
-  };
-  const now = Date.now();
-  return (
-    <div className="invites">
-      <label className="invite-only">
-        <span>
-          <b>Invite only</b>
-          <small className="muted">{inviteOnly ? "People need an invite link to join." : "Anyone with the address can join."}</small>
-        </span>
-        <input
-          type="checkbox"
-          role="switch"
-          className="switch"
-          checked={inviteOnly}
-          onChange={(e) => setInviteOnly(url, e.target.checked).catch(fail)}
-        />
-      </label>
-      <form className="invite-new" onSubmit={make}>
-        <label>
-          Expires
-          <select className="input" value={expires} onChange={(e) => setExpires(+e.target.value)}>
-            {EXPIRES.map(([t, v]) => (
-              <option key={v} value={v}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Uses
-          <select className="input" value={maxUses} onChange={(e) => setMaxUses(+e.target.value)}>
-            {MAX_USES.map((n) => (
-              <option key={n} value={n}>
-                {n ? n : "No limit"}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button className="btn primary">Create link</button>
-      </form>
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
-      {list && !list.length && <p className="muted small">No invite links yet.</p>}
-      {!!list?.length && (
-        <ul className="invite-list" aria-label="Invite links">
-          {list.map((i) => {
-            const st = inviteState(i, now);
-            return (
-              <li key={i.code} className={st.live ? "" : "dead"}>
-                <span className="truncate">
-                  <code>{i.code}</code>
-                  <small className="muted">{st.text}</small>
-                </span>
-                {st.live && (
-                  <button className="btn" onClick={() => copy(i.code)} aria-label={`Copy invite link ${i.code}`}>
-                    <Icon name={copied === i.code ? "check" : "copy"} size={16} /> {copied === i.code ? "Copied" : "Copy"}
-                  </button>
-                )}
-                <button
-                  className="btn ghost"
-                  onClick={() => revokeInvite(url, i.code).then(load, fail)}
-                  aria-label={`Revoke invite ${i.code}`}
-                >
-                  Revoke
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
-}
-
 function DeleteConfirm({ id }: { id: string }) {
   const c = useApp((s) => s.cs[s.url]);
   const [err, setErr] = useState("");
@@ -1119,11 +1033,6 @@ function RemoveMember({ url, memberId, ban }: { url: string; memberId: string; b
   );
 }
 
-const ROLE: Record<number, string> = {
-  [MemberRole.OWNER]: "Owner",
-  [MemberRole.ADMIN]: "Admin",
-  [MemberRole.MODERATOR]: "Moderator",
-};
 
 function ProfilePopover() {
   const p = useApp((s) => s.popover);
@@ -1141,7 +1050,7 @@ function ProfilePopover() {
             <h3>
               {m.displayName || m.username}
               {m.kind === MemberKind.BOT && <span className="tag">Bot</span>}
-              {ROLE[m.role] && <span className="tag role">{ROLE[m.role]}</span>}
+              {m.role > MemberRole.MEMBER && <span className="tag role">{PERMISSION[m.role]}</span>}
             </h3>
             <p className="muted">@{m.username}</p>
             {(m.statusText || m.statusEmoji) && (
@@ -1171,7 +1080,7 @@ function ProfilePopover() {
             )}
             {mod.roles.length > 0 && (
               <label className="profile-role">
-                Role
+                Permission
                 <select
                   className="input"
                   value={m.role}
@@ -1179,7 +1088,7 @@ function ProfilePopover() {
                 >
                   {mod.roles.map((r) => (
                     <option key={r} value={r}>
-                      {ROLE[r] ?? "Member"}
+                      {PERMISSION[r]}
                     </option>
                   ))}
                 </select>

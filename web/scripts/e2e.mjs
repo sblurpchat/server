@@ -7,10 +7,11 @@ const server = await createServer({ server: { host: "127.0.0.1", port: 5198, str
 await server.listen();
 const browser = await chromium.launch();
 let failed = false;
+const page = await browser.newPage();
+const errors = [];
 try {
-  const page = await browser.newPage();
   await page.route("http://localhost:8090/**", (r) => r.abort());
-  const errors = [];
+
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("http://127.0.0.1:5198/?fake=1&quiet=1", { waitUntil: "domcontentloaded" });
   await page.locator(".msg, .chan-start").first().waitFor();
@@ -89,6 +90,40 @@ try {
   await page.locator(".invite-list code", { hasText: code }).waitFor({ state: "detached" });
   await page.keyboard.press("Escape");
 
+  // Admin: create a channel, edit it, move it; then make and delete a bot.
+  await page.locator(".side-head").click();
+  await page.getByRole("menuitem", { name: "Create channel" }).click();
+  await page.getByLabel("Name").fill("Book Club");
+  await page.getByText("Saved as #book-club").waitFor();
+  await page.getByLabel("Category").fill("Talk");
+  await page.getByRole("button", { name: "Create channel" }).click();
+  await page.locator(".chan-title", { hasText: "book-club" }).waitFor();
+  const talk = page.locator(".side-sec", { hasText: "Talk" });
+  if ((await talk.locator(".chan").last().textContent()) !== "book-club") throw new Error("new channel not last in Talk");
+  await page.getByRole("button", { name: "Edit #book-club" }).click();
+  await page.getByLabel("Topic").fill("Reading together");
+  await page.getByRole("button", { name: "Move up" }).click();
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await page.locator(".chan-topic", { hasText: "Reading together" }).waitFor();
+  const names = await talk.locator(".chan").allTextContents();
+  if (names.at(-2) !== "book-club") throw new Error(`Move up did not reorder: ${names}`);
+
+  await page.locator(".side-head").click();
+  await page.getByRole("menuitem", { name: "Community settings" }).click();
+  await page.getByRole("tab", { name: "Bots" }).click();
+  await page.getByLabel("Username").fill("kiln-bot");
+  await page.getByRole("button", { name: "Create bot" }).click();
+  const tok = await page.getByLabel(/^Token for /).inputValue();
+  if (!tok.startsWith("sbb_")) throw new Error("no bot token shown");
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "Delete kiln-bot" }).click();
+  await page.getByRole("button", { name: "Delete kiln-bot" }).click();
+  await page.locator(".admin-list", { hasText: "kiln-bot" }).waitFor({ state: "detached" });
+  await page.getByRole("tab", { name: "Members" }).click();
+  await page.getByLabel("Permission for Jun Park").selectOption({ label: "Moderator" });
+  await page.locator(".members-head, .cs-panel").first().waitFor();
+  await page.keyboard.press("Escape");
+
   // An invite link fills in the server and the code; a bad code is refused.
   await page.getByRole("button", { name: "Add a community" }).click();
   await page.getByLabel("Community address or invite link").fill("https://letterpress.club/invite/WRONG");
@@ -102,10 +137,11 @@ try {
   await page.locator(".side-head", { hasText: "Letterpress Club" }).waitFor();
 
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin)");
 } catch (e) {
   failed = true;
-  console.error("e2e: FAILED", e.message);
+  console.error("e2e: FAILED", e.message, errors.join("; "));
+  await page.screenshot({ path: new URL("../../artifacts/web/e2e-failure.png", import.meta.url).pathname }).catch(() => {});
 } finally {
   await browser.close();
   await server.close();

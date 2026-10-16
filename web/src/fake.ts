@@ -641,14 +641,22 @@ function service(f: Fake) {
     },
     chat: {
       createChannel(req: { name: string; kind: ChannelKind; topic: string; category: string }) {
-        need();
-        const ch = create(ChannelSchema, { ...req, id: id("c"), createdAtMs: BigInt(Date.now()) });
+        admin();
+        if ([...f.channels.values()].some((c) => c.name === req.name)) throw new ConnectError("a channel with that name exists", Code.AlreadyExists);
+        const position = Math.max(0, ...[...f.channels.values()].filter((c) => c.category === req.category).map((c) => c.position + 1));
+        const ch = create(ChannelSchema, {
+          ...req,
+          id: id("c"),
+          position,
+          memberIds: req.kind === ChannelKind.PRIVATE ? [f.meId] : [],
+          createdAtMs: BigInt(Date.now()),
+        });
         f.channels.set(ch.id, ch);
         emit(f, { case: "channelCreated", value: ch });
         return { channel: ch };
       },
       updateChannel(req: { channelId: string; name?: string; topic?: string; category?: string; position?: number }) {
-        need();
+        admin();
         const ch = f.channels.get(req.channelId);
         if (!ch) throw new ConnectError("channel not found", Code.NotFound);
         for (const k of ["name", "topic", "category", "position"] as const) {
@@ -775,22 +783,22 @@ function service(f: Fake) {
     },
     bot: {
       createBot(req: { username: string; displayName: string; avatarUrl: string; bio: string }) {
-        need();
+        admin();
         const bot = create(MemberSchema, { ...req, id: id("m"), kind: MemberKind.BOT, role: MEMBER, presence: ONLINE });
         f.members.set(bot.id, bot);
         emit(f, { case: "memberJoined", value: bot });
         return { bot, token: `sbb_${crypto.randomUUID().replace(/-/g, "")}` };
       },
       listBots() {
-        need();
+        admin();
         return { bots: [...f.members.values()].filter((m) => m.kind === MemberKind.BOT) };
       },
       rotateBotToken() {
-        need();
+        admin();
         return { token: `sbb_${crypto.randomUUID().replace(/-/g, "")}` };
       },
       deleteBot(req: { botId: string }) {
-        need();
+        admin();
         f.members.delete(req.botId);
         emit(f, { case: "memberLeft", value: req.botId });
         return {};
