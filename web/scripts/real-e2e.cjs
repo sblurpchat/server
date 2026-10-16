@@ -164,6 +164,14 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
     await p.setViewportSize({ width: 1440, height: 900 });
   }
 
+  // Leave Night Owls on the server; it drops off the rail.
+  const owls = p.getByRole('navigation', { name: 'Communities' }).getByRole('button', { name: /^Night Owls/ });
+  await owls.click(); await p.locator('.msg').first().waitFor();
+  await p.locator('.side-head').click(); await p.getByRole('menuitem', { name: 'Leave community' }).click();
+  await p.locator('dialog').getByRole('button', { name: 'Leave' }).click();
+  await owls.waitFor({ state: 'detached', timeout: 10000 });
+  ok(true, 'leave removes the community');
+
   console.log('errors:', JSON.stringify(errs.slice(0, 10)));
   ok(errs.length === 0, 'no page errors');
   await b.close();

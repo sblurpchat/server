@@ -518,6 +518,14 @@ function service(f: Fake) {
         }
         return { member: me(), created };
       },
+      leaveCommunity() {
+        need();
+        if (me().role === MemberRole.OWNER) throw new ConnectError("the owner cannot leave", Code.FailedPrecondition);
+        f.joined = false;
+        f.members.delete(f.meId);
+        f.info.memberCount--;
+        return {};
+      },
       getMe() {
         need();
         return { member: me() };

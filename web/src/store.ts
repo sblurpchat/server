@@ -570,6 +570,21 @@ export async function join(
   selectCommunity(base);
 }
 
+// Leave on the server, then drop it locally. A server that already removed you (or that you
+// never joined) is just dropped. Other errors, like the owner trying to leave, are thrown.
+export async function leaveCommunity(url: string) {
+  if (state.cs[url]?.me) {
+    try {
+      await api(url).server.leaveCommunity({});
+    } catch (e) {
+      const code = ConnectError.from(e).code;
+      if (code !== Code.PermissionDenied && code !== Code.NotFound) throw e;
+    }
+  }
+  leave(url);
+}
+
+// Drops a community from this browser only.
 export function leave(url: string) {
   conns.get(url)?.ctl.abort();
   conns.delete(url);

@@ -23,6 +23,7 @@ import {
   get,
   join,
   leave,
+  leaveCommunity,
   openDM,
   probe,
   remove,
@@ -822,6 +823,43 @@ function Switcher() {
   );
 }
 
+function LeaveDialog({ c, name }: { c: Community; name: string }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  return (
+    <Dialog label={`Leave ${name}`} className="confirm">
+      <h2>Leave {name}?</h2>
+      <p className="muted">
+        You stop being a member of {name} and it leaves your rail. Your messages stay on its server, and you can join again with its address.
+      </p>
+      {err && (
+        <p className="error" role="alert">
+          {err}
+        </p>
+      )}
+      <div className="row-end">
+        <button className="btn ghost" autoFocus onClick={() => set({ modal: null })}>
+          Cancel
+        </button>
+        <button
+          className="btn danger"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            setErr("");
+            leaveCommunity(c.url).catch((e) => {
+              setErr(errorText(e, name));
+              setBusy(false);
+            });
+          }}
+        >
+          {busy ? "Leaving…" : "Leave"}
+        </button>
+      </div>
+    </Dialog>
+  );
+}
+
 function CommunityDialog({ kind }: { kind: "info" | "invite" | "leave" }) {
   const c = useApp((s) => s.cs[s.url]);
   const [copied, setCopied] = useState(false);
@@ -829,24 +867,7 @@ function CommunityDialog({ kind }: { kind: "info" | "invite" | "leave" }) {
   const name = c.info?.name ?? hostOf(c.url);
   const copy = () => navigator.clipboard.writeText(c.url).then(() => setCopied(true));
   const close = () => set({ modal: null });
-  if (kind === "leave") {
-    return (
-      <Dialog label={`Leave ${name}`} className="confirm">
-        <h2>Leave {name}?</h2>
-        <p className="muted">
-          {name} leaves your rail and stops sending you messages. Your messages stay on its server, and you can add it again with its address.
-        </p>
-        <div className="row-end">
-          <button className="btn ghost" autoFocus onClick={close}>
-            Cancel
-          </button>
-          <button className="btn danger" onClick={() => leave(c.url)}>
-            Leave
-          </button>
-        </div>
-      </Dialog>
-    );
-  }
+  if (kind === "leave") return <LeaveDialog c={c} name={name} />;
   return (
     <Dialog label={kind === "info" ? name : `Invite people to ${name}`} className="community-dialog">
       <header className="dialog-head">

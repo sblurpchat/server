@@ -45,9 +45,9 @@ Things DESIGN.md and ARCHITECTURE.md left open, and what I picked.
 - **Mobile** (≤767px): rail and sidebar become a drawer; the right pane goes full screen. The menu button carries a red dot when anything is unread, since the rail is hidden.
 - **Collapsed sidebar sections** still show the selected channel and any channel with unread, like Slack.
 - **Join consent**: display name and avatar default on, bio defaults off. The community gets only what is switched on.
-- **Leave** is client-only until the server has a Leave RPC (ticket 304).
+- **Leave** calls LeaveCommunity, then drops the community locally. The owner gets the server's error ("The owner cannot leave.") in the dialog. **Remove** on an unreachable or removed community only drops it locally.
 - **Create an account** goes to `/signup?next=<authorize URL>`, so the user lands back in the PKCE flow.
 - **Tokens** refresh lazily, 60s before expiry. Refresh tokens are single-use, so every refresh runs under one Web Lock shared by all tabs and re-reads the refresh token inside the lock. Only `invalid_grant` signs you out; other token errors are shown and keep you signed in. The callback checks `iss` (RFC 9207).
-- **Uploads** go to `POST {base}/upload` and are served by proxy URLs relative to the community; drop target is the composer (ticket 305 for drop-anywhere).
+- **Uploads** go to `POST {base}/upload` and are served by signed URLs (`?exp=&sig=`, one to two hours) relative to the community; drop target is the composer (ticket 305 for drop-anywhere). A broken image refetches its message (ListMessages around_id) for fresh URLs, at most once a minute.
 - **Devnotes**: dev builds load `http://localhost:8090/devnotes.js` and remove the tag silently if it fails. The scripts block it so it does not appear in screenshots.
 - **Contrast**: the badge red is `#D42A44` and dark-mode accent fill `#4A5EF2` so white text reaches 4.5:1.
