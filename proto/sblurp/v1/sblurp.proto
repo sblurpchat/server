@@ -147,6 +147,9 @@ message GetServerInfoResponse {
   int32 member_count = 7;
   string accent_color = 8;             // optional "#rrggbb" for the rail icon
   bool invite_only = 9;                // Join needs a valid invite_code
+  // Questions a plugin asks people who join; show each with a text field
+  // and send the answers in JoinRequest.answers, in the same order.
+  repeated string join_questions = 10;
 }
 
 // ---------------------------------------------------------------------------
@@ -167,6 +170,7 @@ message JoinRequest {
   string avatar_url = 2;
   string bio = 3;
   string invite_code = 4;     // checked only when the server is invite_only; case-insensitive
+  repeated string answers = 5; // to GetServerInfoResponse.join_questions, in order
 }
 message JoinResponse {
   Member member = 1;

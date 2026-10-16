@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -224,5 +225,50 @@ func TestPlugins(t *testing.T) {
 	}
 	if echoes != 3 { // ana's, robo's and one reply
 		t.Fatalf("got %d echo messages, want 3", echoes)
+	}
+}
+
+// Verification plugins (1002): a plugin asks a question with joinQuestion and
+// checks member.answer in onJoin. Answers go to the plugins in order.
+func TestJoinQuestions(t *testing.T) {
+	e := newEnv(t, func(c *Config) {
+		dir := filepath.Join(c.DataDir, "plugins")
+		os.MkdirAll(dir, 0o700)
+		for name, src := range map[string]string{
+			"a-riddle.js": `const joinQuestion = "What has keys but opens no locks?";
+function onJoin(m) { if (m.answer.toLowerCase() !== "a piano") return { allow: false, reason: "Not quite. Try again." }; }`,
+			"b-plain.js": `function onJoin(m) { if ("answer" in m) return { allow: false, reason: "plain got an answer" }; }`,
+			"c-rules.js": `var joinQuestion = "Type 'I agree' to accept the rules.";
+function onJoin(m) { if (m.answer !== "I agree") return { allow: false, reason: "Please accept the rules." }; }`,
+			"d-bad.js": `var joinQuestion = "two\nlines";`,
+		} {
+			os.WriteFile(filepath.Join(dir, name), []byte(src), 0o600)
+		}
+	})
+	info := must(e.client("").srv.GetServerInfo(ctx(), connect.NewRequest(&v1.GetServerInfoRequest{})))
+	if want := []string{"What has keys but opens no locks?", "Type 'I agree' to accept the rules."}; !slices.Equal(info.JoinQuestions, want) {
+		t.Fatalf("join_questions = %q", info.JoinQuestions)
+	}
+	join := func(answers ...string) error {
+		_, err := e.client(e.token("ana")).srv.Join(ctx(), connect.NewRequest(&v1.JoinRequest{Answers: answers}))
+		return err
+	}
+	for _, c := range []struct {
+		answers []string
+		reason  string
+	}{
+		{nil, "Not quite"},
+		{[]string{"a piano"}, "Please accept the rules"},
+		{[]string{"I agree", "a piano"}, "Not quite"}, // order matters
+	} {
+		err := join(c.answers...)
+		wantCode(t, err, connect.CodePermissionDenied)
+		if !strings.Contains(err.Error(), c.reason) {
+			t.Fatalf("answers %q: %v", c.answers, err)
+		}
+	}
+	wantCode(t, join("1", "2", "3", "4"), connect.CodeInvalidArgument)
+	if err := join(" A Piano ", "I agree"); err != nil { // answers are trimmed
+		t.Fatalf("right answers refused: %v", err)
 	}
 }

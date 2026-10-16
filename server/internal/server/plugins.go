@@ -26,6 +26,8 @@ const (
 	defaultPluginMemory  = 32 << 20
 	defaultPluginTimeout = time.Second
 	maxReasonChars       = 200
+	maxQuestionChars     = 200
+	maxAnswerChars       = 1000
 )
 
 // prelude runs before the plugin's own code. It hides QuickJS's std and os
@@ -50,9 +52,10 @@ type plugin struct {
 	botID     string
 
 	mu     sync.Mutex
-	rt     *qjs.Runtime
-	cancel context.CancelFunc
-	timers []pluginTimer
+	rt       *qjs.Runtime
+	cancel   context.CancelFunc
+	timers   []pluginTimer
+	question string // the plugin's joinQuestion, if any
 }
 
 type pluginTimer struct {
@@ -152,14 +155,23 @@ func (s *Server) startPlugin(p *plugin) error {
 		return err
 	}
 	p.rt, p.cancel = rt, cancel
-	var minutes []int
-	if _, err := s.evalPlugin(p, prelude+p.src+"\n;JSON.stringify(__sb.timers.map(t => t.minutes))", &minutes); err != nil {
+	var loaded struct {
+		Minutes  []int
+		Question string
+	}
+	if _, err := s.evalPlugin(p, prelude+p.src+`
+;JSON.stringify({minutes: __sb.timers.map(t => t.minutes), question: typeof joinQuestion === "string" ? joinQuestion : ""})`, &loaded); err != nil {
+		stopRuntime(p)
+		return err
+	}
+	p.question = strings.TrimSpace(loaded.Question)
+	if err := checkText("joinQuestion", p.question, maxQuestionChars, true); err != nil {
 		stopRuntime(p)
 		return err
 	}
 	now := s.now()
 	p.timers = p.timers[:0]
-	for _, m := range minutes {
+	for _, m := range loaded.Minutes {
 		d := time.Duration(m) * time.Minute
 		p.timers = append(p.timers, pluginTimer{every: d, next: now.Add(d)})
 	}
@@ -257,14 +269,47 @@ func (l pluginLog) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-// pluginJoin runs every onJoin hook. The first {allow: false} turns the
-// person away with its reason. A hook that fails is skipped.
-func (s *Server) pluginJoin(id *identity, display string) error {
-	m := map[string]any{
-		"iss": id.iss, "sub": id.sub, "username": id.username, "display_name": display,
-		"email_verified": id.emailVerified, "age_over_13": id.ageOver13, "age_over_18": id.ageOver18,
-	}
+// joinQuestions lists the plugins' join questions, in plugin order.
+func (s *Server) joinQuestions() []string {
+	var qs []string
 	for _, p := range s.plugins {
+		p.mu.Lock()
+		if p.question != "" {
+			qs = append(qs, p.question)
+		}
+		p.mu.Unlock()
+	}
+	return qs
+}
+
+// pluginJoin runs every onJoin hook. The first {allow: false} turns the
+// person away with its reason. A hook that fails is skipped. A plugin with a
+// joinQuestion gets the matching entry of answers as member.answer.
+func (s *Server) pluginJoin(id *identity, display string, answers []string) error {
+	if len(answers) > len(s.plugins) {
+		return errf(connect.CodeInvalidArgument, "too many answers")
+	}
+	for _, a := range answers {
+		if err := checkText("answers", a, maxAnswerChars, false); err != nil {
+			return err
+		}
+	}
+	n := 0
+	for _, p := range s.plugins {
+		m := map[string]any{
+			"iss": id.iss, "sub": id.sub, "username": id.username, "display_name": display,
+			"email_verified": id.emailVerified, "age_over_13": id.ageOver13, "age_over_18": id.ageOver18,
+		}
+		p.mu.Lock()
+		asks := p.question != ""
+		p.mu.Unlock()
+		if asks {
+			m["answer"] = ""
+			if n < len(answers) {
+				m["answer"] = strings.TrimSpace(answers[n])
+			}
+			n++
+		}
 		r, ok := s.callPlugin(p, "onJoin", m)
 		if !ok || r.Allow == nil || *r.Allow {
 			continue

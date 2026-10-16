@@ -1032,8 +1032,11 @@ type GetServerInfoResponse struct {
 	MemberCount     int32                  `protobuf:"varint,7,opt,name=member_count,json=memberCount,proto3" json:"member_count,omitempty"`
 	AccentColor     string                 `protobuf:"bytes,8,opt,name=accent_color,json=accentColor,proto3" json:"accent_color,omitempty"` // optional "#rrggbb" for the rail icon
 	InviteOnly      bool                   `protobuf:"varint,9,opt,name=invite_only,json=inviteOnly,proto3" json:"invite_only,omitempty"`   // Join needs a valid invite_code
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Questions a plugin asks people who join; show each with a text field
+	// and send the answers in JoinRequest.answers, in the same order.
+	JoinQuestions []string `protobuf:"bytes,10,rep,name=join_questions,json=joinQuestions,proto3" json:"join_questions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetServerInfoResponse) Reset() {
@@ -1129,13 +1132,21 @@ func (x *GetServerInfoResponse) GetInviteOnly() bool {
 	return false
 }
 
+func (x *GetServerInfoResponse) GetJoinQuestions() []string {
+	if x != nil {
+		return x.JoinQuestions
+	}
+	return nil
+}
+
 type JoinRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Profile fields the user agreed to share with this community.
-	DisplayName   string `protobuf:"bytes,1,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
-	AvatarUrl     string `protobuf:"bytes,2,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
-	Bio           string `protobuf:"bytes,3,opt,name=bio,proto3" json:"bio,omitempty"`
-	InviteCode    string `protobuf:"bytes,4,opt,name=invite_code,json=inviteCode,proto3" json:"invite_code,omitempty"` // checked only when the server is invite_only; case-insensitive
+	DisplayName   string   `protobuf:"bytes,1,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	AvatarUrl     string   `protobuf:"bytes,2,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	Bio           string   `protobuf:"bytes,3,opt,name=bio,proto3" json:"bio,omitempty"`
+	InviteCode    string   `protobuf:"bytes,4,opt,name=invite_code,json=inviteCode,proto3" json:"invite_code,omitempty"` // checked only when the server is invite_only; case-insensitive
+	Answers       []string `protobuf:"bytes,5,rep,name=answers,proto3" json:"answers,omitempty"`                         // to GetServerInfoResponse.join_questions, in order
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1196,6 +1207,13 @@ func (x *JoinRequest) GetInviteCode() string {
 		return x.InviteCode
 	}
 	return ""
+}
+
+func (x *JoinRequest) GetAnswers() []string {
+	if x != nil {
+		return x.Answers
+	}
+	return nil
 }
 
 type JoinResponse struct {
@@ -5403,7 +5421,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\rlast_read_seq\x18\x02 \x01(\x03R\vlastReadSeq\x12!\n" +
 	"\funread_count\x18\x03 \x01(\x05R\vunreadCount\x12#\n" +
 	"\rmention_count\x18\x04 \x01(\x05R\fmentionCount\"\x16\n" +
-	"\x14GetServerInfoRequest\"\xbe\x02\n" +
+	"\x14GetServerInfoRequest\"\xe5\x02\n" +
 	"\x15GetServerInfoResponse\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x19\n" +
@@ -5414,14 +5432,17 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\fmember_count\x18\a \x01(\x05R\vmemberCount\x12!\n" +
 	"\faccent_color\x18\b \x01(\tR\vaccentColor\x12\x1f\n" +
 	"\vinvite_only\x18\t \x01(\bR\n" +
-	"inviteOnly\"\x82\x01\n" +
+	"inviteOnly\x12%\n" +
+	"\x0ejoin_questions\x18\n" +
+	" \x03(\tR\rjoinQuestions\"\x9c\x01\n" +
 	"\vJoinRequest\x12!\n" +
 	"\fdisplay_name\x18\x01 \x01(\tR\vdisplayName\x12\x1d\n" +
 	"\n" +
 	"avatar_url\x18\x02 \x01(\tR\tavatarUrl\x12\x10\n" +
 	"\x03bio\x18\x03 \x01(\tR\x03bio\x12\x1f\n" +
 	"\vinvite_code\x18\x04 \x01(\tR\n" +
-	"inviteCode\"S\n" +
+	"inviteCode\x12\x18\n" +
+	"\aanswers\x18\x05 \x03(\tR\aanswers\"S\n" +
 	"\fJoinResponse\x12)\n" +
 	"\x06member\x18\x01 \x01(\v2\x11.sblurp.v1.MemberR\x06member\x12\x18\n" +
 	"\acreated\x18\x02 \x01(\bR\acreated\"\x0e\n" +

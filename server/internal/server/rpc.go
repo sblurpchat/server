@@ -409,6 +409,7 @@ func (s *Server) GetServerInfo(ctx context.Context, _ *connect.Request[v1.GetSer
 		MemberCount:     n,
 		AccentColor:     s.cfg.Accent,
 		InviteOnly:      inviteOnly,
+		JoinQuestions:   s.joinQuestions(),
 	}), nil
 }
 
@@ -445,7 +446,7 @@ func (s *Server) Join(ctx context.Context, req *connect.Request[v1.JoinRequest])
 	if err := checkProfile(&display, &r.AvatarUrl, &r.Bio); err != nil {
 		return nil, err
 	}
-	if err := s.pluginJoin(id, display); err != nil {
+	if err := s.pluginJoin(id, display, r.Answers); err != nil {
 		return nil, err
 	}
 	var out *memberRow

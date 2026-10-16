@@ -196,9 +196,10 @@ A plugin defines any of these global functions:
 
 | Hook | Called | Return |
 |---|---|---|
-| `onJoin(member)` | before someone new (or returning) joins. `member` has `iss`, `sub`, `username`, `display_name`, `email_verified`, `age_over_13`, `age_over_18` (from the login token; false when the issuer does not say). | `{allow: false, reason}` turns them away with `permission_denied` and the reason (200 characters max). Anything else lets them in. |
+| `onJoin(member)` | before someone new (or returning) joins. `member` has `iss`, `sub`, `username`, `display_name`, `email_verified`, `age_over_13`, `age_over_18` (from the login token; false when the issuer does not say), and `answer` if the plugin has a `joinQuestion`. | `{allow: false, reason}` turns them away with `permission_denied` and the reason (200 characters max). Anything else lets them in. |
 | `onMessage(msg)` | after a message by a person in a channel the plugin's bot can see. `msg` has `id`, `text`, `thread_root_id`, `author {id, username, display_name}`, `channel {id, name}`. | a reply (below), or nothing |
 | `onCommand(name, args, ctx)` | for a message `/name args` (name is 1 to 32 of a-z, 0-9, `_`, `-`). `ctx` has `message_id`, `thread_root_id`, `author`, `channel`. Every plugin sees every command; ignore the ones that are not yours. | a reply, or nothing |
+| `joinQuestion` (a global string) | read at load (one line, 200 characters max). | Listed in `GetServerInfo.join_questions`; the join screen asks each one and sends `JoinRequest.answers` in the same order (trimmed, 1000 characters max each). The plugin checks `member.answer` in `onJoin`. |
 | `every(minutes, fn)` | call at load time; `fn()` runs every `minutes` (whole minutes, at least 1). | a reply with a `channel` |
 
 A reply is a string (posted where the message was, in its thread if it was
