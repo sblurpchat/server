@@ -4,7 +4,9 @@ import {
   ChannelKind,
   ChannelSchema,
   EventSchema,
+  MemberRole,
   MemberSchema,
+  Presence,
   MessageSchema,
   ReadStateSchema,
   type Event,
@@ -21,11 +23,13 @@ import {
   encodeMentions,
   formatHash,
   matchScore,
+  memberGroups,
   moveItem,
   normalizeCommunityUrl,
   parseHash,
   parseInline,
   parseMarkdown,
+  sidebarSections,
   tabTitle,
   tokenFresh,
   typingLabel,
@@ -199,6 +203,14 @@ describe("applyEvent", () => {
     expect(c.lists.c1.items).toHaveLength(1);
   });
 
+  it("counts a mention in a thread reply, but not a plain reply", () => {
+    let c = community();
+    c = applyEvent(c, ev(11n, { case: "messageCreated", value: msg("r1", "ana", 1, 11n, { threadRootId: "m1" }) }), T0, null);
+    c = applyEvent(c, ev(12n, { case: "messageCreated", value: msg("r2", "ana", 2, 12n, { threadRootId: "m1", text: "<@me> look" }) }), T0, null);
+    expect(c.reads.c1.unreadCount).toBe(0);
+    expect(c.reads.c1.mentionCount).toBe(1);
+  });
+
   it("removes deleted messages but keeps a deleted thread root", () => {
     const c0 = community();
     const gone = applyEvent(c0, ev(11n, { case: "messageDeleted", value: msg("m1", "ana", 0) }), T0, null);
@@ -290,5 +302,44 @@ describe("helpers", () => {
     expect(typingLabel(["Ana"])).toBe("Ana is typing…");
     expect(typingLabel(["Ana", "Ben"])).toBe("Ana and Ben are typing…");
     expect(typingLabel(["A", "B", "C"])).toBe("Several people are typing…");
+  });
+});
+
+describe("sidebarSections", () => {
+  it("orders categories by position, then DMs newest first", () => {
+    const c = emptyCommunity("https://x.test");
+    const ch = (id: string, category: string, position: number, kind = ChannelKind.TEXT, lastMessageSeq = 0n) =>
+      create(ChannelSchema, { id, name: id, category, position, kind, lastMessageSeq });
+    c.channels = {
+      b: ch("b", "Talk", 2),
+      a: ch("a", "", 0),
+      z: ch("z", "Talk", 1),
+      d1: ch("d1", "", 0, ChannelKind.DM, 3n),
+      d2: ch("d2", "", 0, ChannelKind.DM, 9n),
+    };
+    expect(sidebarSections(c).map((s) => `${s.title}:${s.channels.map((x) => x.id).join(",")}`)).toEqual([
+      "Channels:a",
+      "Talk:z,b",
+      "Direct messages:d2,d1",
+    ]);
+  });
+});
+
+describe("memberGroups", () => {
+  it("groups online members by role, then online, then offline", () => {
+    const m = (id: string, role: MemberRole, presence: Presence) => create(MemberSchema, { id, displayName: id, role, presence });
+    const groups = memberGroups([
+      m("zed", MemberRole.MEMBER, Presence.ONLINE),
+      m("owner", MemberRole.OWNER, Presence.ONLINE),
+      m("mod", MemberRole.MODERATOR, Presence.AWAY),
+      m("amy", MemberRole.MEMBER, Presence.ONLINE),
+      m("gone", MemberRole.ADMIN, Presence.OFFLINE),
+    ]);
+    expect(groups.map((g) => `${g.title}:${g.members.map((x) => x.id).join(",")}`)).toEqual([
+      "Owners:owner",
+      "Moderators:mod",
+      "Online:amy,zed",
+      "Offline:gone",
+    ]);
   });
 });

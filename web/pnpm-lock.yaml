@@ -9,14 +9,14 @@ importers:
   .:
     dependencies:
       '@bufbuild/protobuf':
-        specifier: ~2.2.5
-        version: 2.2.5
+        specifier: ~2.9.0
+        version: 2.9.0
       '@connectrpc/connect':
         specifier: ^2.2.0
-        version: 2.2.0(@bufbuild/protobuf@2.2.5)
+        version: 2.2.0(@bufbuild/protobuf@2.9.0)
       '@connectrpc/connect-web':
         specifier: ^2.2.0
-        version: 2.2.0(@bufbuild/protobuf@2.2.5)(@connectrpc/connect@2.2.0(@bufbuild/protobuf@2.2.5))
+        version: 2.2.0(@bufbuild/protobuf@2.9.0)(@connectrpc/connect@2.2.0(@bufbuild/protobuf@2.9.0))
       react:
         specifier: ^19.3.1
         version: 19.3.1
@@ -131,8 +131,8 @@ packages:
     resolution: {integrity: sha512-Vj1jF3cPfxg7OAfoI7QnVKLoILlm2JF9pnVHrX8qx7AHMiYWT+NDAA7jChlNgRS4WTLc/fD1lXLmPixluj+3Gg==}
     engines: {node: '>=6.9.0'}
 
-  '@bufbuild/protobuf@2.2.5':
-    resolution: {integrity: sha512-/g5EzJifw5GF8aren8wZ/G5oMuPoGeS6MQD3ca8ddcvdXR5UELUfdTZITCGNhNXynY/AYl3Z4plmxdj/tRl/hQ==}
+  '@bufbuild/protobuf@2.9.0':
+    resolution: {integrity: sha512-rnJenoStJ8nvmt9Gzye8nkYd6V22xUAnu4086ER7h1zJ508vStko4pMvDeQ446ilDTFpV5wnoc5YS7XvMwwMqA==}
 
   '@connectrpc/connect-web@2.2.0':
     resolution: {integrity: sha512-uuBUcBTYfb/r1o98LzCCZk1H90yx0vmZ5m21dpw/q4EUwsKwkCDGI8H0aEdjcZld+Q2jJ5A5ADvPqfb6lzQ/sg==}
@@ -951,16 +951,16 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@bufbuild/protobuf@2.2.5': {}
+  '@bufbuild/protobuf@2.9.0': {}
 
-  '@connectrpc/connect-web@2.2.0(@bufbuild/protobuf@2.2.5)(@connectrpc/connect@2.2.0(@bufbuild/protobuf@2.2.5))':
+  '@connectrpc/connect-web@2.2.0(@bufbuild/protobuf@2.9.0)(@connectrpc/connect@2.2.0(@bufbuild/protobuf@2.9.0))':
     dependencies:
-      '@bufbuild/protobuf': 2.2.5
-      '@connectrpc/connect': 2.2.0(@bufbuild/protobuf@2.2.5)
+      '@bufbuild/protobuf': 2.9.0
+      '@connectrpc/connect': 2.2.0(@bufbuild/protobuf@2.9.0)
 
-  '@connectrpc/connect@2.2.0(@bufbuild/protobuf@2.2.5)':
+  '@connectrpc/connect@2.2.0(@bufbuild/protobuf@2.9.0)':
     dependencies:
-      '@bufbuild/protobuf': 2.2.5
+      '@bufbuild/protobuf': 2.9.0
 
   '@esbuild/aix-ppc64@0.25.12':
     optional: true

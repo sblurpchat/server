@@ -1,0 +1,143 @@
+// Login against sblurp.chat (Authorization Code + PKCE) and per-community access tokens.
+import { tokenFresh } from "./logic";
+
+export const AUTH_URL: string = import.meta.env.VITE_AUTH_URL ?? "http://localhost:8081";
+const CLIENT_ID = "sblurp-web";
+const RT_KEY = "sblurp.refreshToken";
+const redirectUri = () => `${location.origin}/auth/callback`;
+
+export class SignedOutError extends Error {
+  constructor() {
+    super("Signed out");
+  }
+}
+
+export const b64url = (bytes: Uint8Array) =>
+  btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+export const randomToken = () => b64url(crypto.getRandomValues(new Uint8Array(32)));
+
+export async function pkceChallenge(verifier: string): Promise<string> {
+  return b64url(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))));
+}
+
+export function authorizeUrl(challenge: string, state: string, signup: boolean): string {
+  const q = new URLSearchParams({
+    response_type: "code",
+    client_id: CLIENT_ID,
+    redirect_uri: redirectUri(),
+    code_challenge: challenge,
+    code_challenge_method: "S256",
+    state,
+  });
+  const path = `/oauth/authorize?${q}`;
+  // Signup is a separate page that continues to the authorize step afterwards.
+  return signup ? `${AUTH_URL}/signup?${new URLSearchParams({ next: path })}` : AUTH_URL + path;
+}
+
+export async function startLogin(signup = false) {
+  const verifier = randomToken();
+  const state = randomToken();
+  sessionStorage.setItem("sblurp.pkce", JSON.stringify({ verifier, state }));
+  location.assign(authorizeUrl(await pkceChallenge(verifier), state, signup));
+}
+
+export const hasSession = () => !!localStorage.getItem(RT_KEY);
+
+const cache = new Map<string, { token: string; exp: number }>();
+const inflight = new Map<string, Promise<string>>();
+
+async function tokenRequest(body: URLSearchParams): Promise<string> {
+  body.set("client_id", CLIENT_ID);
+  const res = await fetch(`${AUTH_URL}/oauth/token`, { method: "POST", body });
+  const j = await res.json().catch(() => ({}));
+  // invalid_grant: the refresh token (or code) is used, expired or revoked. Anything else, like
+  // invalid_target for an audience the auth server refuses, is not a reason to sign out.
+  if (j.error === "invalid_grant") throw new SignedOutError();
+  if (!res.ok) throw new Error(j.error_description ?? j.error ?? `sblurp.chat returned ${res.status}`);
+  localStorage.setItem(RT_KEY, j.refresh_token);
+  const aud = body.get("audience") ?? AUTH_URL;
+  cache.set(aud, { token: j.access_token, exp: Date.now() + (j.expires_in ?? 900) * 1000 });
+  return j.access_token;
+}
+
+/** Called on /auth/callback. Returns true when signed in. */
+export async function finishLogin(params: URLSearchParams): Promise<boolean> {
+  const saved = JSON.parse(sessionStorage.getItem("sblurp.pkce") ?? "null");
+  sessionStorage.removeItem("sblurp.pkce");
+  const code = params.get("code");
+  // iss guards against a code from a different authorization server (RFC 9207).
+  if (!saved || !code || params.get("state") !== saved.state || params.get("iss")?.replace(/\/+$/, "") !== AUTH_URL.replace(/\/+$/, "")) return false;
+  await tokenRequest(
+    new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: redirectUri(), code_verifier: saved.verifier }),
+  );
+  return true;
+}
+
+// Refresh tokens rotate on every use, so refreshes must never overlap: not across audiences in
+// this tab, and not across tabs. The Web Lock serializes both; the refresh token is re-read from
+// localStorage inside the lock so a rotation done by another tab is seen.
+let tail: Promise<unknown> = Promise.resolve();
+function withLock<T>(fn: () => Promise<T>): Promise<T> {
+  if (globalThis.navigator?.locks) return navigator.locks.request("sblurp-refresh", fn);
+  const p = tail.then(fn, fn);
+  tail = p.catch(() => {});
+  return p;
+}
+
+/** Access token for one audience (a community base URL, or AUTH_URL for the account API). */
+export function getToken(aud: string): Promise<string> {
+  const c = cache.get(aud);
+  if (c && tokenFresh(c.exp, Date.now())) return Promise.resolve(c.token);
+  let p = inflight.get(aud);
+  if (!p) {
+    p = withLock(async () => {
+      const again = cache.get(aud);
+      if (again && tokenFresh(again.exp, Date.now())) return again.token;
+      const rt = localStorage.getItem(RT_KEY);
+      if (!rt) throw new SignedOutError();
+      const body = new URLSearchParams({ grant_type: "refresh_token", refresh_token: rt });
+      if (aud !== AUTH_URL) body.set("audience", aud);
+      try {
+        return await tokenRequest(body);
+      } catch (e) {
+        if (e instanceof SignedOutError && localStorage.getItem(RT_KEY) === rt) localStorage.removeItem(RT_KEY);
+        throw e;
+      }
+    }).finally(() => inflight.delete(aud));
+    inflight.set(aud, p);
+  }
+  return p;
+}
+
+export interface Profile {
+  username: string;
+  displayName: string;
+  avatarUrl: string;
+  bio: string;
+}
+
+export async function fetchProfile(): Promise<Profile> {
+  const res = await fetch(`${AUTH_URL}/api/me`, { headers: { Authorization: `Bearer ${await getToken(AUTH_URL)}` } });
+  if (res.status === 401) throw new SignedOutError();
+  if (!res.ok) throw new Error(`sblurp.chat returned ${res.status}`);
+  const j = await res.json();
+  return {
+    username: j.username ?? j.preferred_username ?? "",
+    displayName: j.display_name ?? j.displayName ?? j.name ?? j.username ?? "",
+    avatarUrl: j.avatar_url ?? j.avatarUrl ?? "",
+    bio: j.bio ?? "",
+  };
+}
+
+export function signOut() {
+  const rt = localStorage.getItem(RT_KEY);
+  localStorage.removeItem(RT_KEY);
+  cache.clear();
+  if (rt) {
+    fetch(`${AUTH_URL}/oauth/revoke`, {
+      method: "POST",
+      body: new URLSearchParams({ token: rt, client_id: CLIENT_ID }),
+    }).catch(() => {});
+  }
+}

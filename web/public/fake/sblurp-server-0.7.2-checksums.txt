@@ -1,0 +1,3 @@
+3f1d9a0c2b7e4f55a1c8e9d0b6a7f3e2c1d4b5a69788f0e1d2c3b4a5968778f6  sblurp-server-0.7.2-darwin-arm64.tar.gz
+a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8  sblurp-server-0.7.2-linux-amd64.tar.gz
+0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f  sblurp-server-0.7.2-linux-arm64.tar.gz

@@ -2,6 +2,8 @@
 import { create } from "@bufbuild/protobuf";
 import {
   ChannelKind,
+  MemberRole,
+  Presence,
   ReadStateSchema,
   type Channel,
   type Event,
@@ -153,6 +155,10 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
           ...c.reads,
           [ch.id]: bumpUnread(c.reads[ch.id], ch.id, m, ev.seq, c.me?.id, isDM(ch), viewing === ch.id),
         };
+      } else if (ch && m.authorId !== c.me?.id && (isDM(ch) || mentionsMe(m.text, c.me?.id))) {
+        // Thread replies are not channel unread, but a mention in one (or any DM reply) still counts.
+        const rs = c.reads[ch.id] ?? create(ReadStateSchema, { channelId: ch.id });
+        next.reads = { ...c.reads, [ch.id]: { ...rs, mentionCount: rs.mentionCount + 1 } };
       }
       return next;
     }
@@ -504,3 +510,39 @@ export function formatBytes(n: number): string {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(n < 10240 ? 1 : 0)} KB`;
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
+
+/** Sidebar order: channel categories in position order ("Channels" for none), then DMs, newest first. */
+export function sidebarSections(c: Community): { title: string; channels: Channel[]; dm: boolean }[] {
+  const chans = Object.values(c.channels)
+    .filter((ch) => !isDM(ch))
+    .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
+  const sections: { title: string; channels: Channel[]; dm: boolean }[] = [];
+  for (const ch of chans) {
+    const title = ch.category || "Channels";
+    let s = sections.find((x) => x.title === title);
+    if (!s) sections.push((s = { title, channels: [], dm: false }));
+    s.channels.push(ch);
+  }
+  const dms = Object.values(c.channels)
+    .filter(isDM)
+    .sort((a, b) => Number(b.lastMessageSeq - a.lastMessageSeq));
+  sections.push({ title: "Direct messages", channels: dms, dm: true });
+  return sections;
+}
+
+const ROLE_GROUP: [MemberRole, string][] = [
+  [MemberRole.OWNER, "Owners"],
+  [MemberRole.ADMIN, "Admins"],
+  [MemberRole.MODERATOR, "Moderators"],
+];
+
+/** Online members by role, then everyone online, then offline. */
+export function memberGroups(members: Member[]): { title: string; members: Member[] }[] {
+  const sorted = [...members].sort((a, b) => (a.displayName || a.username).localeCompare(b.displayName || b.username));
+  const off = (m: Member) => m.presence === Presence.OFFLINE || m.presence === Presence.UNSPECIFIED;
+  const groups = ROLE_GROUP.map(([r, title]) => ({ title, members: sorted.filter((m) => !off(m) && m.role === r) }));
+  groups.push({ title: "Online", members: sorted.filter((m) => !off(m) && m.role < MemberRole.MODERATOR) });
+  groups.push({ title: "Offline", members: sorted.filter(off) });
+  return groups.filter((g) => g.members.length);
+}
+
