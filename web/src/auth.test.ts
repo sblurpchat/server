@@ -7,7 +7,32 @@ vi.stubGlobal("localStorage", {
   removeItem: (k: string) => void store.delete(k),
 });
 
-const { pkceChallenge, getToken, SignedOutError, AUTH_URL } = await import("./auth");
+const { pkceChallenge, getToken, SignedOutError, AUTH_URL, savePkce, takePkce } = await import("./auth");
+
+describe("PKCE verifier storage", () => {
+  beforeEach(() => store.clear());
+  it("gives each state only its own verifier, once", () => {
+    savePkce("s1", "v1", 0);
+    savePkce("s2", "v2", 0);
+    expect(takePkce("s3", 1)).toBeNull();
+    expect(takePkce("s2", 1)).toBe("v2");
+    expect(takePkce("s2", 1)).toBeNull();
+    expect(takePkce("s1", 1)).toBe("v1");
+    expect(takePkce("__proto__", 1)).toBeNull();
+  });
+  it("expires after 10 minutes and sweeps old entries", () => {
+    savePkce("old", "v0", 0);
+    savePkce("new", "v1", 9 * 60_000);
+    expect(takePkce("old", 10 * 60_000)).toBeNull();
+    expect(store.get("sblurp.pkce")).not.toContain("old");
+    expect(takePkce("new", 10 * 60_000)).toBe("v1");
+  });
+  it("survives junk in storage", () => {
+    store.set("sblurp.pkce", "{not json");
+    savePkce("s", "v", 0);
+    expect(takePkce("s", 1)).toBe("v");
+  });
+});
 
 describe("PKCE", () => {
   it("matches the RFC 7636 appendix B vector", async () => {

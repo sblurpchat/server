@@ -35,10 +35,34 @@ export function authorizeUrl(challenge: string, state: string, signup: boolean):
   return signup ? `${AUTH_URL}/signup?${new URLSearchParams({ next: path })}` : AUTH_URL + path;
 }
 
+// PKCE verifiers live in localStorage keyed by state, so the login can finish in another tab
+// (the email confirmation link opens one). Each lasts 10 minutes and is deleted once used.
+const PKCE_KEY = "sblurp.pkce";
+const PKCE_TTL = 10 * 60_000;
+type Pending = Record<string, { verifier: string; exp: number }>;
+function pending(now: number): Pending {
+  let all: Pending = {};
+  try {
+    all = JSON.parse(localStorage.getItem(PKCE_KEY) ?? "{}") ?? {};
+  } catch {}
+  return Object.fromEntries(Object.entries(all).filter(([, p]) => p?.exp > now && typeof p.verifier === "string"));
+}
+export function savePkce(state: string, verifier: string, now = Date.now()) {
+  localStorage.setItem(PKCE_KEY, JSON.stringify({ ...pending(now), [state]: { verifier, exp: now + PKCE_TTL } }));
+}
+/** The verifier saved for exactly this state, removed so it can't be used twice. */
+export function takePkce(state: string, now = Date.now()): string | null {
+  const all = pending(now);
+  const hit = Object.hasOwn(all, state) ? all[state].verifier : null;
+  delete all[state];
+  localStorage.setItem(PKCE_KEY, JSON.stringify(all));
+  return hit;
+}
+
 export async function startLogin(signup = false) {
   const verifier = randomToken();
   const state = randomToken();
-  sessionStorage.setItem("sblurp.pkce", JSON.stringify({ verifier, state }));
+  savePkce(state, verifier);
   location.assign(authorizeUrl(await pkceChallenge(verifier), state, signup));
 }
 
@@ -63,14 +87,11 @@ async function tokenRequest(body: URLSearchParams): Promise<string> {
 
 /** Called on /auth/callback. Returns true when signed in. */
 export async function finishLogin(params: URLSearchParams): Promise<boolean> {
-  const saved = JSON.parse(sessionStorage.getItem("sblurp.pkce") ?? "null");
-  sessionStorage.removeItem("sblurp.pkce");
+  const verifier = takePkce(params.get("state") ?? "");
   const code = params.get("code");
   // iss guards against a code from a different authorization server (RFC 9207).
-  if (!saved || !code || params.get("state") !== saved.state || params.get("iss")?.replace(/\/+$/, "") !== AUTH_URL.replace(/\/+$/, "")) return false;
-  await tokenRequest(
-    new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: redirectUri(), code_verifier: saved.verifier }),
-  );
+  if (!verifier || !code || params.get("iss")?.replace(/\/+$/, "") !== AUTH_URL.replace(/\/+$/, "")) return false;
+  await tokenRequest(new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: redirectUri(), code_verifier: verifier }));
   return true;
 }
 
