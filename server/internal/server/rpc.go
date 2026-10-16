@@ -1,6 +1,7 @@
 package server
 
 import (
+	"cmp"
 	"context"
 	"crypto/rand"
 	"database/sql"
@@ -159,10 +160,6 @@ func outranks(actor, target v1.MemberRole) bool {
 	return actor >= v1.MemberRole_MEMBER_ROLE_MODERATOR && actor > target
 }
 
-func canSee(c *v1.Channel, member string) bool {
-	return c.Kind == v1.ChannelKind_CHANNEL_KIND_TEXT || slices.Contains(c.MemberIds, member)
-}
-
 // ---------------------------------------------------------------------------
 // Loading rows
 // ---------------------------------------------------------------------------
@@ -174,14 +171,16 @@ type memberRow struct {
 
 type scanner interface{ Scan(...any) error }
 
-const memberCols = "id, kind, role, username, display_name, avatar_url, bio, status_text, status_emoji, joined_at_ms, joined_seq"
+const memberCols = "id, kind, role, username, display_name, avatar_url, bio, status_text, status_emoji, joined_at_ms, joined_seq, (SELECT group_concat(role_id) FROM member_roles WHERE member_id = members.id)"
 
 func (s *Server) scanMember(sc scanner) (*memberRow, error) {
 	m := &memberRow{Member: &v1.Member{}}
+	var roles sql.NullString
 	if err := sc.Scan(&m.Id, &m.Kind, &m.Role, &m.Username, &m.DisplayName, &m.AvatarUrl, &m.Bio,
-		&m.StatusText, &m.StatusEmoji, &m.JoinedAtMs, &m.joinedSeq); err != nil {
+		&m.StatusText, &m.StatusEmoji, &m.JoinedAtMs, &m.joinedSeq, &roles); err != nil {
 		return nil, err
 	}
+	m.RoleIds = splitIDs(roles)
 	m.Presence = v1.Presence_PRESENCE_OFFLINE
 	if s.hub.isOnline(m.Id) {
 		m.Presence = v1.Presence_PRESENCE_ONLINE
@@ -215,7 +214,7 @@ func (s *Server) listMembers(ctx context.Context, q queryer, where string, args 
 	return out, rows.Err()
 }
 
-const channelCols = "id, kind, name, topic, category, position, created_at_ms, last_message_seq"
+const channelCols = "id, kind, name, topic, category, position, created_at_ms, last_message_seq, is_default, (SELECT group_concat(role_id) FROM channel_roles WHERE channel_id = channels.id)"
 
 func queryChannels(ctx context.Context, q queryer, where string, args ...any) ([]*v1.Channel, error) {
 	rows, err := q.QueryContext(ctx, "SELECT "+channelCols+" FROM channels WHERE "+where+" ORDER BY category, position, name, id", args...)
@@ -225,10 +224,12 @@ func queryChannels(ctx context.Context, q queryer, where string, args ...any) ([
 	var out []*v1.Channel
 	for rows.Next() {
 		c := &v1.Channel{}
-		if err := rows.Scan(&c.Id, &c.Kind, &c.Name, &c.Topic, &c.Category, &c.Position, &c.CreatedAtMs, &c.LastMessageSeq); err != nil {
+		var roles sql.NullString
+		if err := rows.Scan(&c.Id, &c.Kind, &c.Name, &c.Topic, &c.Category, &c.Position, &c.CreatedAtMs, &c.LastMessageSeq, &c.IsDefault, &roles); err != nil {
 			rows.Close()
 			return nil, err
 		}
+		c.RoleIds = splitIDs(roles)
 		out = append(out, c)
 	}
 	rows.Close()
@@ -245,14 +246,20 @@ func queryChannels(ctx context.Context, q queryer, where string, args ...any) ([
 	return out, nil
 }
 
-// channelFor loads a channel the member may see. A channel they may not see
-// is NOT_FOUND, so its existence does not leak.
+// channelFor loads a channel the member may see (see roles.go). A channel
+// they may not see is NOT_FOUND, so its existence does not leak.
 func channelFor(ctx context.Context, q queryer, id, member string) (*v1.Channel, error) {
 	cs, err := queryChannels(ctx, q, "id = ?", id)
-	if err != nil {
-		return nil, err
+	if err != nil || len(cs) == 0 {
+		return nil, cmp.Or(err, errf(connect.CodeNotFound, "channel not found"))
 	}
-	if len(cs) == 0 || !canSee(cs[0], member) {
+	ok := slices.Contains(cs[0].MemberIds, member)
+	if cs[0].Kind == v1.ChannelKind_CHANNEL_KIND_TEXT {
+		if ok, err = canSeeText(ctx, q, id, member); err != nil {
+			return nil, err
+		}
+	}
+	if !ok {
 		return nil, errf(connect.CodeNotFound, "channel not found")
 	}
 	return cs[0], nil
@@ -471,7 +478,10 @@ func (s *Server) Join(ctx context.Context, req *connect.Request[v1.JoinRequest])
 				return err
 			}
 			created = true
-			return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberJoined{MemberJoined: out.Member}}, "", "")
+			if err := t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberJoined{MemberJoined: out.Member}}, "", ""); err != nil {
+				return err
+			}
+			return s.syncAccess(t, oldID)
 		}
 		existing, err := s.loadMember(ctx, t, "iss = ? AND sub = ?", id.iss, id.sub)
 		if err != nil || existing != nil {
@@ -514,7 +524,10 @@ func (s *Server) Join(ctx context.Context, req *connect.Request[v1.JoinRequest])
 		}
 		created = true
 		s.log.Info("member joined", "member", mid, "role", role.String())
-		return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberJoined{MemberJoined: out.Member}}, "", "")
+		if err := t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberJoined{MemberJoined: out.Member}}, "", ""); err != nil {
+			return err
+		}
+		return s.syncAccess(t, mid)
 	})
 	if err != nil {
 		return nil, err
@@ -589,8 +602,13 @@ func (s *Server) GetState(ctx context.Context, _ *connect.Request[v1.GetStateReq
 		return nil, err
 	}
 	out.Me = m.Member
-	if out.Channels, err = queryChannels(ctx, tx, "kind = ? OR id IN (SELECT channel_id FROM channel_members WHERE member_id = ?)",
-		v1.ChannelKind_CHANNEL_KIND_TEXT, m.Id); err != nil {
+	if out.Channels, err = queryChannels(ctx, tx, "id IN (SELECT channel_id FROM channel_members WHERE member_id = ?)", m.Id); err != nil {
+		return nil, err
+	}
+	if out.Roles, err = listRoles(ctx, tx); err != nil {
+		return nil, err
+	}
+	if out.ChannelMode, err = channelMode(ctx, tx); err != nil {
 		return nil, err
 	}
 	if out.Members, err = s.listMembers(ctx, tx, "deleted = 0"); err != nil {
@@ -748,7 +766,7 @@ func (s *Server) CreateChannel(ctx context.Context, req *connect.Request[v1.Crea
 	return connect.NewResponse(&v1.CreateChannelResponse{Channel: c}), nil
 }
 
-// createChannel inserts a channel. members are stored for PRIVATE and DM.
+// createChannel inserts a channel with members in it.
 func (s *Server) createChannel(t *wtx, kind v1.ChannelKind, name, topic, category, dmKey string, members []string) (*v1.Channel, error) {
 	ctx := t.ctx
 	var pos int32
@@ -765,11 +783,9 @@ func (s *Server) createChannel(t *wtx, kind v1.ChannelKind, name, topic, categor
 		id, kind, name, topic, category, pos, now.UnixMilli(), key); err != nil {
 		return nil, err
 	}
-	if kind != v1.ChannelKind_CHANNEL_KIND_TEXT {
-		for _, mid := range members {
-			if _, err := t.ExecContext(ctx, "INSERT OR IGNORE INTO channel_members(channel_id, member_id) VALUES (?,?)", id, mid); err != nil {
-				return nil, err
-			}
+	for _, mid := range members {
+		if _, err := t.ExecContext(ctx, "INSERT OR IGNORE INTO channel_members(channel_id, member_id) VALUES (?,?)", id, mid); err != nil {
+			return nil, err
 		}
 	}
 	cs, err := queryChannels(ctx, t, "id = ?", id)
@@ -780,7 +796,14 @@ func (s *Server) createChannel(t *wtx, kind v1.ChannelKind, name, topic, categor
 	if err != nil {
 		return nil, err
 	}
-	return cs[0], t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_ChannelCreated{ChannelCreated: cs[0]}}, scopeFor(kind, id), "")
+	if err := t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_ChannelCreated{ChannelCreated: cs[0]}}, id, ""); err != nil {
+		return nil, err
+	}
+	// In ROLES mode everyone who can see a new text channel is in it.
+	if kind == v1.ChannelKind_CHANNEL_KIND_TEXT {
+		return cs[0], s.syncAccess(t, "")
+	}
+	return cs[0], nil
 }
 
 func (s *Server) UpdateChannel(ctx context.Context, req *connect.Request[v1.UpdateChannelRequest]) (*connect.Response[v1.UpdateChannelResponse], error) {
@@ -838,7 +861,7 @@ func (s *Server) UpdateChannel(ctx context.Context, req *connect.Request[v1.Upda
 		if err != nil {
 			return err
 		}
-		return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_ChannelUpdated{ChannelUpdated: c}}, scopeFor(c.Kind, c.Id), "")
+		return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_ChannelUpdated{ChannelUpdated: c}}, c.Id, "")
 	})
 	if isUnique(err) {
 		return nil, errf(connect.CodeAlreadyExists, "a channel with that name already exists")
@@ -1055,7 +1078,7 @@ func (s *Server) sendMessage(t *wtx, author string, r *v1.SendMessageRequest, at
 	if err != nil {
 		return nil, err
 	}
-	scope := scopeFor(c.Kind, c.Id)
+	scope := c.Id
 	if err := t.emit(&v1.Event{Seq: seq, AtMs: at.UnixMilli(), Kind: &v1.Event_MessageCreated{MessageCreated: ms[0]}}, scope, ""); err != nil {
 		return nil, err
 	}
@@ -1115,7 +1138,7 @@ func (s *Server) EditMessage(ctx context.Context, req *connect.Request[v1.EditMe
 		if _, err := t.ExecContext(ctx, "UPDATE messages SET text = ?, edited_at_ms = ? WHERE id = ?", r.Text, now, msg.Id); err != nil {
 			return err
 		}
-		if err := s.emitMessageUpdated(t, msg.Id, scopeFor(c.Kind, c.Id), now); err != nil {
+		if err := s.emitMessageUpdated(t, msg.Id, c.Id, now); err != nil {
 			return err
 		}
 		out, _, err = loadMessage(ctx, t, msg.Id, m.Id)
@@ -1158,7 +1181,7 @@ func (s *Server) DeleteMessage(ctx context.Context, req *connect.Request[v1.Dele
 			return err
 		}
 		now := s.nowMs()
-		scope := scopeFor(c.Kind, c.Id)
+		scope := c.Id
 		gone := &v1.Message{Id: msg.Id, ChannelId: msg.ChannelId, AuthorId: msg.AuthorId, CreatedAtMs: msg.CreatedAtMs,
 			Deleted: true, ThreadRootId: msg.ThreadRootId, ReplyCount: msg.ReplyCount, Seq: seq, CreatedSeq: msg.CreatedSeq}
 		if err := t.emit(&v1.Event{Seq: seq, AtMs: now, Kind: &v1.Event_MessageDeleted{MessageDeleted: gone}}, scope, ""); err != nil {
@@ -1212,7 +1235,7 @@ func (s *Server) React(ctx context.Context, req *connect.Request[v1.ReactRequest
 			out = msg // no change, no event
 			return nil
 		}
-		if err := s.emitMessageUpdated(t, msg.Id, scopeFor(c.Kind, c.Id), s.nowMs()); err != nil {
+		if err := s.emitMessageUpdated(t, msg.Id, c.Id, s.nowMs()); err != nil {
 			return err
 		}
 		out, _, err = loadMessage(ctx, t, msg.Id, m.Id)
@@ -1270,12 +1293,13 @@ func (s *Server) SetTyping(ctx context.Context, req *connect.Request[v1.SetTypin
 	if err != nil {
 		return nil, err
 	}
-	var aud map[string]bool
-	if c.Kind != v1.ChannelKind_CHANNEL_KIND_TEXT {
-		aud = map[string]bool{}
-		for _, id := range c.MemberIds {
-			aud[id] = true
-		}
+	ids, err := channelMemberIDs(ctx, s.db.r, c.Id)
+	if err != nil {
+		return nil, err
+	}
+	aud := map[string]bool{}
+	for _, id := range ids {
+		aud[id] = true
 	}
 	s.hub.publish(&v1.Event{AtMs: s.nowMs(), Kind: &v1.Event_Typing{Typing: &v1.TypingEvent{
 		ChannelId: c.Id, MemberId: m.Id, ThreadRootId: r.ThreadRootId}}}, aud)
@@ -1297,15 +1321,16 @@ func (s *Server) Search(ctx context.Context, req *connect.Request[v1.SearchReque
 		limit = 20
 	}
 	limit = min(limit, 100)
+	// Everywhere means the channels I am in; one channel may be any I can see.
 	where := `n IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?) AND deleted = 0
-		AND (channel_id IN (SELECT id FROM channels WHERE kind = ?) OR channel_id IN (SELECT channel_id FROM channel_members WHERE member_id = ?))`
-	args := []any{ftsQuery(q), v1.ChannelKind_CHANNEL_KIND_TEXT, m.Id}
+		AND channel_id IN (SELECT channel_id FROM channel_members WHERE member_id = ?)`
+	args := []any{ftsQuery(q), m.Id}
 	if r.ChannelId != "" {
 		if _, err := channelFor(ctx, s.db.r, r.ChannelId, m.Id); err != nil {
 			return nil, err
 		}
-		where += " AND channel_id = ?"
-		args = append(args, r.ChannelId)
+		where = `n IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?) AND deleted = 0 AND channel_id = ?`
+		args = []any{ftsQuery(q), r.ChannelId}
 	}
 	ms, err := queryMessages(ctx, s.db.r, where+" ORDER BY created_seq DESC LIMIT ?", append(args, limit)...)
 	if err != nil {
@@ -1485,7 +1510,10 @@ func (s *Server) SetMemberRole(ctx context.Context, req *connect.Request[v1.SetM
 		if err != nil {
 			return err
 		}
-		return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberUpdated{MemberUpdated: out.Member}}, "", "")
+		if err := t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberUpdated{MemberUpdated: out.Member}}, "", ""); err != nil {
+			return err
+		}
+		return s.syncAccess(t, "")
 	})
 	if err != nil {
 		return nil, err
@@ -1561,8 +1589,8 @@ func (s *Server) kick(ctx context.Context, memberID string, ban bool) error {
 	return nil
 }
 
-// removeMember takes a member out of the community and its private
-// channels. The row stays, so old messages keep their author and Join can
+// removeMember takes a member out of the community, its channels and its
+// roles. The row stays, so old messages keep their author and Join can
 // bring them back. DMs are kept.
 func (s *Server) removeMember(t *wtx, id string) error {
 	ctx := t.ctx
@@ -1593,6 +1621,14 @@ func (s *Server) removeMember(t *wtx, id string) error {
 		}
 	}
 	if _, err := t.ExecContext(ctx, "UPDATE members SET deleted = 1, role = ? WHERE id = ?", v1.MemberRole_MEMBER_ROLE_MEMBER, id); err != nil {
+		return err
+	}
+	// Their subscriptions are dropped, so text channels and roles go quietly.
+	if _, err := t.ExecContext(ctx, "DELETE FROM channel_members WHERE member_id = ? AND channel_id IN (SELECT id FROM channels WHERE kind = ?)",
+		id, v1.ChannelKind_CHANNEL_KIND_TEXT); err != nil {
+		return err
+	}
+	if _, err := t.ExecContext(ctx, "DELETE FROM member_roles WHERE member_id = ?", id); err != nil {
 		return err
 	}
 	seq, err := t.nextSeq()
@@ -1743,14 +1779,20 @@ func (s *Server) UpdateServerSettings(ctx context.Context, req *connect.Request[
 				return err
 			}
 		}
+		if err := s.setChannelMode(t, req.Msg.ChannelMode); err != nil {
+			return err
+		}
 		var err error
+		if out.ChannelMode, err = channelMode(ctx, t); err != nil {
+			return err
+		}
 		out.InviteOnly, err = isInviteOnly(ctx, t)
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
-	s.log.Info("settings updated", "by", me(ctx).Id, "invite_only", out.InviteOnly)
+	s.log.Info("settings updated", "by", me(ctx).Id, "invite_only", out.InviteOnly, "channel_mode", out.ChannelMode.String())
 	return connect.NewResponse(out), nil
 }
 

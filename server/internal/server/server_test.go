@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -1180,6 +1181,17 @@ func TestSeed(t *testing.T) {
 		// The first real person to join owns the place.
 		if p := e.join("ian"); p.me.Role != v1.MemberRole_MEMBER_ROLE_OWNER {
 			t.Fatalf("%s: first human role = %v", name, p.me.Role)
+		}
+		var names []string
+		for _, c := range e.join("pat").state().Channels {
+			names = append(names, c.Name)
+		}
+		slices.Sort(names)
+		switch got := strings.Join(names, " "); {
+		case name == "community" && got != "announcements general help":
+			t.Fatalf("community: a newcomer joins the defaults only, got %s", got)
+		case name == "owls" && (strings.Contains(got, "film-club") || strings.Contains(got, "spoilers") || !strings.Contains(got, "recs")):
+			t.Fatalf("owls: a newcomer without roles sees %s", got)
 		}
 	}
 	// Seeding again on a non-empty database is a no-op.

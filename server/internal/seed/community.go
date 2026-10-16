@@ -17,10 +17,11 @@ var community = Community{
 		{Username: "teo", Display: "Teodora Popescu", Bio: "Sysadmin at a university library who moved 400 staff off a Slack free plan.", Emoji: "📚", Status: "migration week"},
 		{Username: "sam_h", Display: "Sam Henderson", Bio: "Retired chemistry teacher learning Docker one error message at a time.", Emoji: "🌱", Status: "planting garlic"},
 	},
-	Bot: Member{Username: "slurpy", Display: "Slurpy", Bio: "Helpful house bot. Try `@slurpy help`, `@slurpy roll d20` or `@slurpy time`."},
+	Bot:   Member{Username: "slurpy", Display: "Slurpy", Bio: "Helpful house bot. Try `@slurpy help`, `@slurpy roll d20` or `@slurpy time`."},
+	OptIn: true,
 	Channels: []Channel{
 		{
-			Name: "announcements", Topic: "Releases and news. Low traffic, high signal.", Category: "General",
+			Name: "announcements", Topic: "Releases and news. Low traffic, high signal.", Category: "General", Default: true,
 			Convos: []Convo{
 				{DaysAgo: 13.2, Lines: []Line{
 					{By: "priya", Text: "**Sblurp v0.8.3** is out. It fixes the reconnect loop on Safari and makes uploads resumable. Release notes: https://sblurp.chat/releases/0.8.3",
@@ -47,7 +48,7 @@ var community = Community{
 			},
 		},
 		{
-			Name: "general", Topic: "Say hi. Anything Sblurp.", Category: "General",
+			Name: "general", Topic: "Say hi. Anything Sblurp.", Category: "General", Default: true,
 			Convos: []Convo{
 				{DaysAgo: 13.8, Lines: []Line{
 					{By: "sam_h", Text: "Hi all! Sam here. Retired after 31 years of teaching chemistry and my grandson told me to \"just self-host it\". So here I am.",
@@ -116,7 +117,7 @@ var community = Community{
 			},
 		},
 		{
-			Name: "help", Topic: "Stuck? Ask here. No question is too basic.", Category: "General",
+			Name: "help", Topic: "Stuck? Ask here. No question is too basic.", Category: "General", Default: true,
 			Convos: []Convo{
 				{DaysAgo: 13.5, Lines: []Line{
 					{By: "sam_h", Text: "OK, first error. `docker compose up` says `port is already allocated`. What did I break?"},

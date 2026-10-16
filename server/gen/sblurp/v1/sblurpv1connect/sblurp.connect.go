@@ -82,6 +82,18 @@ const (
 	// ServerServiceUpdateServerSettingsProcedure is the fully-qualified name of the ServerService's
 	// UpdateServerSettings RPC.
 	ServerServiceUpdateServerSettingsProcedure = "/sblurp.v1.ServerService/UpdateServerSettings"
+	// ServerServiceCreateRoleProcedure is the fully-qualified name of the ServerService's CreateRole
+	// RPC.
+	ServerServiceCreateRoleProcedure = "/sblurp.v1.ServerService/CreateRole"
+	// ServerServiceUpdateRoleProcedure is the fully-qualified name of the ServerService's UpdateRole
+	// RPC.
+	ServerServiceUpdateRoleProcedure = "/sblurp.v1.ServerService/UpdateRole"
+	// ServerServiceDeleteRoleProcedure is the fully-qualified name of the ServerService's DeleteRole
+	// RPC.
+	ServerServiceDeleteRoleProcedure = "/sblurp.v1.ServerService/DeleteRole"
+	// ServerServiceSetMemberRolesProcedure is the fully-qualified name of the ServerService's
+	// SetMemberRoles RPC.
+	ServerServiceSetMemberRolesProcedure = "/sblurp.v1.ServerService/SetMemberRoles"
 	// ChatServiceCreateChannelProcedure is the fully-qualified name of the ChatService's CreateChannel
 	// RPC.
 	ChatServiceCreateChannelProcedure = "/sblurp.v1.ChatService/CreateChannel"
@@ -114,6 +126,17 @@ const (
 	// ChatServiceRemoveChannelMemberProcedure is the fully-qualified name of the ChatService's
 	// RemoveChannelMember RPC.
 	ChatServiceRemoveChannelMemberProcedure = "/sblurp.v1.ChatService/RemoveChannelMember"
+	// ChatServiceSetChannelAccessProcedure is the fully-qualified name of the ChatService's
+	// SetChannelAccess RPC.
+	ChatServiceSetChannelAccessProcedure = "/sblurp.v1.ChatService/SetChannelAccess"
+	// ChatServiceBrowseChannelsProcedure is the fully-qualified name of the ChatService's
+	// BrowseChannels RPC.
+	ChatServiceBrowseChannelsProcedure = "/sblurp.v1.ChatService/BrowseChannels"
+	// ChatServiceJoinChannelProcedure is the fully-qualified name of the ChatService's JoinChannel RPC.
+	ChatServiceJoinChannelProcedure = "/sblurp.v1.ChatService/JoinChannel"
+	// ChatServiceLeaveChannelProcedure is the fully-qualified name of the ChatService's LeaveChannel
+	// RPC.
+	ChatServiceLeaveChannelProcedure = "/sblurp.v1.ChatService/LeaveChannel"
 	// BotServiceCreateBotProcedure is the fully-qualified name of the BotService's CreateBot RPC.
 	BotServiceCreateBotProcedure = "/sblurp.v1.BotService/CreateBot"
 	// BotServiceListBotsProcedure is the fully-qualified name of the BotService's ListBots RPC.
@@ -143,6 +166,10 @@ type ServerServiceClient interface {
 	ListInvites(context.Context, *connect.Request[v1.ListInvitesRequest]) (*connect.Response[v1.ListInvitesResponse], error)
 	RevokeInvite(context.Context, *connect.Request[v1.RevokeInviteRequest]) (*connect.Response[v1.RevokeInviteResponse], error)
 	UpdateServerSettings(context.Context, *connect.Request[v1.UpdateServerSettingsRequest]) (*connect.Response[v1.UpdateServerSettingsResponse], error)
+	CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error)
+	UpdateRole(context.Context, *connect.Request[v1.UpdateRoleRequest]) (*connect.Response[v1.UpdateRoleResponse], error)
+	DeleteRole(context.Context, *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error)
+	SetMemberRoles(context.Context, *connect.Request[v1.SetMemberRolesRequest]) (*connect.Response[v1.SetMemberRolesResponse], error)
 }
 
 // NewServerServiceClient constructs a client for the sblurp.v1.ServerService service. By default,
@@ -240,6 +267,30 @@ func NewServerServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(serverServiceMethods.ByName("UpdateServerSettings")),
 			connect.WithClientOptions(opts...),
 		),
+		createRole: connect.NewClient[v1.CreateRoleRequest, v1.CreateRoleResponse](
+			httpClient,
+			baseURL+ServerServiceCreateRoleProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("CreateRole")),
+			connect.WithClientOptions(opts...),
+		),
+		updateRole: connect.NewClient[v1.UpdateRoleRequest, v1.UpdateRoleResponse](
+			httpClient,
+			baseURL+ServerServiceUpdateRoleProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("UpdateRole")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteRole: connect.NewClient[v1.DeleteRoleRequest, v1.DeleteRoleResponse](
+			httpClient,
+			baseURL+ServerServiceDeleteRoleProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("DeleteRole")),
+			connect.WithClientOptions(opts...),
+		),
+		setMemberRoles: connect.NewClient[v1.SetMemberRolesRequest, v1.SetMemberRolesResponse](
+			httpClient,
+			baseURL+ServerServiceSetMemberRolesProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("SetMemberRoles")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -259,6 +310,10 @@ type serverServiceClient struct {
 	listInvites          *connect.Client[v1.ListInvitesRequest, v1.ListInvitesResponse]
 	revokeInvite         *connect.Client[v1.RevokeInviteRequest, v1.RevokeInviteResponse]
 	updateServerSettings *connect.Client[v1.UpdateServerSettingsRequest, v1.UpdateServerSettingsResponse]
+	createRole           *connect.Client[v1.CreateRoleRequest, v1.CreateRoleResponse]
+	updateRole           *connect.Client[v1.UpdateRoleRequest, v1.UpdateRoleResponse]
+	deleteRole           *connect.Client[v1.DeleteRoleRequest, v1.DeleteRoleResponse]
+	setMemberRoles       *connect.Client[v1.SetMemberRolesRequest, v1.SetMemberRolesResponse]
 }
 
 // GetServerInfo calls sblurp.v1.ServerService.GetServerInfo.
@@ -331,6 +386,26 @@ func (c *serverServiceClient) UpdateServerSettings(ctx context.Context, req *con
 	return c.updateServerSettings.CallUnary(ctx, req)
 }
 
+// CreateRole calls sblurp.v1.ServerService.CreateRole.
+func (c *serverServiceClient) CreateRole(ctx context.Context, req *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error) {
+	return c.createRole.CallUnary(ctx, req)
+}
+
+// UpdateRole calls sblurp.v1.ServerService.UpdateRole.
+func (c *serverServiceClient) UpdateRole(ctx context.Context, req *connect.Request[v1.UpdateRoleRequest]) (*connect.Response[v1.UpdateRoleResponse], error) {
+	return c.updateRole.CallUnary(ctx, req)
+}
+
+// DeleteRole calls sblurp.v1.ServerService.DeleteRole.
+func (c *serverServiceClient) DeleteRole(ctx context.Context, req *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error) {
+	return c.deleteRole.CallUnary(ctx, req)
+}
+
+// SetMemberRoles calls sblurp.v1.ServerService.SetMemberRoles.
+func (c *serverServiceClient) SetMemberRoles(ctx context.Context, req *connect.Request[v1.SetMemberRolesRequest]) (*connect.Response[v1.SetMemberRolesResponse], error) {
+	return c.setMemberRoles.CallUnary(ctx, req)
+}
+
 // ServerServiceHandler is an implementation of the sblurp.v1.ServerService service.
 type ServerServiceHandler interface {
 	GetServerInfo(context.Context, *connect.Request[v1.GetServerInfoRequest]) (*connect.Response[v1.GetServerInfoResponse], error)
@@ -349,6 +424,10 @@ type ServerServiceHandler interface {
 	ListInvites(context.Context, *connect.Request[v1.ListInvitesRequest]) (*connect.Response[v1.ListInvitesResponse], error)
 	RevokeInvite(context.Context, *connect.Request[v1.RevokeInviteRequest]) (*connect.Response[v1.RevokeInviteResponse], error)
 	UpdateServerSettings(context.Context, *connect.Request[v1.UpdateServerSettingsRequest]) (*connect.Response[v1.UpdateServerSettingsResponse], error)
+	CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error)
+	UpdateRole(context.Context, *connect.Request[v1.UpdateRoleRequest]) (*connect.Response[v1.UpdateRoleResponse], error)
+	DeleteRole(context.Context, *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error)
+	SetMemberRoles(context.Context, *connect.Request[v1.SetMemberRolesRequest]) (*connect.Response[v1.SetMemberRolesResponse], error)
 }
 
 // NewServerServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -442,6 +521,30 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(serverServiceMethods.ByName("UpdateServerSettings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	serverServiceCreateRoleHandler := connect.NewUnaryHandler(
+		ServerServiceCreateRoleProcedure,
+		svc.CreateRole,
+		connect.WithSchema(serverServiceMethods.ByName("CreateRole")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceUpdateRoleHandler := connect.NewUnaryHandler(
+		ServerServiceUpdateRoleProcedure,
+		svc.UpdateRole,
+		connect.WithSchema(serverServiceMethods.ByName("UpdateRole")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceDeleteRoleHandler := connect.NewUnaryHandler(
+		ServerServiceDeleteRoleProcedure,
+		svc.DeleteRole,
+		connect.WithSchema(serverServiceMethods.ByName("DeleteRole")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceSetMemberRolesHandler := connect.NewUnaryHandler(
+		ServerServiceSetMemberRolesProcedure,
+		svc.SetMemberRoles,
+		connect.WithSchema(serverServiceMethods.ByName("SetMemberRoles")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/sblurp.v1.ServerService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ServerServiceGetServerInfoProcedure:
@@ -472,6 +575,14 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 			serverServiceRevokeInviteHandler.ServeHTTP(w, r)
 		case ServerServiceUpdateServerSettingsProcedure:
 			serverServiceUpdateServerSettingsHandler.ServeHTTP(w, r)
+		case ServerServiceCreateRoleProcedure:
+			serverServiceCreateRoleHandler.ServeHTTP(w, r)
+		case ServerServiceUpdateRoleProcedure:
+			serverServiceUpdateRoleHandler.ServeHTTP(w, r)
+		case ServerServiceDeleteRoleProcedure:
+			serverServiceDeleteRoleHandler.ServeHTTP(w, r)
+		case ServerServiceSetMemberRolesProcedure:
+			serverServiceSetMemberRolesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -537,6 +648,22 @@ func (UnimplementedServerServiceHandler) UpdateServerSettings(context.Context, *
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.UpdateServerSettings is not implemented"))
 }
 
+func (UnimplementedServerServiceHandler) CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.CreateRole is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) UpdateRole(context.Context, *connect.Request[v1.UpdateRoleRequest]) (*connect.Response[v1.UpdateRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.UpdateRole is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) DeleteRole(context.Context, *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.DeleteRole is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) SetMemberRoles(context.Context, *connect.Request[v1.SetMemberRolesRequest]) (*connect.Response[v1.SetMemberRolesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.SetMemberRoles is not implemented"))
+}
+
 // ChatServiceClient is a client for the sblurp.v1.ChatService service.
 type ChatServiceClient interface {
 	CreateChannel(context.Context, *connect.Request[v1.CreateChannelRequest]) (*connect.Response[v1.CreateChannelResponse], error)
@@ -552,6 +679,10 @@ type ChatServiceClient interface {
 	Search(context.Context, *connect.Request[v1.SearchRequest]) (*connect.Response[v1.SearchResponse], error)
 	AddChannelMembers(context.Context, *connect.Request[v1.AddChannelMembersRequest]) (*connect.Response[v1.AddChannelMembersResponse], error)
 	RemoveChannelMember(context.Context, *connect.Request[v1.RemoveChannelMemberRequest]) (*connect.Response[v1.RemoveChannelMemberResponse], error)
+	SetChannelAccess(context.Context, *connect.Request[v1.SetChannelAccessRequest]) (*connect.Response[v1.SetChannelAccessResponse], error)
+	BrowseChannels(context.Context, *connect.Request[v1.BrowseChannelsRequest]) (*connect.Response[v1.BrowseChannelsResponse], error)
+	JoinChannel(context.Context, *connect.Request[v1.JoinChannelRequest]) (*connect.Response[v1.JoinChannelResponse], error)
+	LeaveChannel(context.Context, *connect.Request[v1.LeaveChannelRequest]) (*connect.Response[v1.LeaveChannelResponse], error)
 }
 
 // NewChatServiceClient constructs a client for the sblurp.v1.ChatService service. By default, it
@@ -643,6 +774,30 @@ func NewChatServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(chatServiceMethods.ByName("RemoveChannelMember")),
 			connect.WithClientOptions(opts...),
 		),
+		setChannelAccess: connect.NewClient[v1.SetChannelAccessRequest, v1.SetChannelAccessResponse](
+			httpClient,
+			baseURL+ChatServiceSetChannelAccessProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("SetChannelAccess")),
+			connect.WithClientOptions(opts...),
+		),
+		browseChannels: connect.NewClient[v1.BrowseChannelsRequest, v1.BrowseChannelsResponse](
+			httpClient,
+			baseURL+ChatServiceBrowseChannelsProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("BrowseChannels")),
+			connect.WithClientOptions(opts...),
+		),
+		joinChannel: connect.NewClient[v1.JoinChannelRequest, v1.JoinChannelResponse](
+			httpClient,
+			baseURL+ChatServiceJoinChannelProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("JoinChannel")),
+			connect.WithClientOptions(opts...),
+		),
+		leaveChannel: connect.NewClient[v1.LeaveChannelRequest, v1.LeaveChannelResponse](
+			httpClient,
+			baseURL+ChatServiceLeaveChannelProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("LeaveChannel")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -661,6 +816,10 @@ type chatServiceClient struct {
 	search              *connect.Client[v1.SearchRequest, v1.SearchResponse]
 	addChannelMembers   *connect.Client[v1.AddChannelMembersRequest, v1.AddChannelMembersResponse]
 	removeChannelMember *connect.Client[v1.RemoveChannelMemberRequest, v1.RemoveChannelMemberResponse]
+	setChannelAccess    *connect.Client[v1.SetChannelAccessRequest, v1.SetChannelAccessResponse]
+	browseChannels      *connect.Client[v1.BrowseChannelsRequest, v1.BrowseChannelsResponse]
+	joinChannel         *connect.Client[v1.JoinChannelRequest, v1.JoinChannelResponse]
+	leaveChannel        *connect.Client[v1.LeaveChannelRequest, v1.LeaveChannelResponse]
 }
 
 // CreateChannel calls sblurp.v1.ChatService.CreateChannel.
@@ -728,6 +887,26 @@ func (c *chatServiceClient) RemoveChannelMember(ctx context.Context, req *connec
 	return c.removeChannelMember.CallUnary(ctx, req)
 }
 
+// SetChannelAccess calls sblurp.v1.ChatService.SetChannelAccess.
+func (c *chatServiceClient) SetChannelAccess(ctx context.Context, req *connect.Request[v1.SetChannelAccessRequest]) (*connect.Response[v1.SetChannelAccessResponse], error) {
+	return c.setChannelAccess.CallUnary(ctx, req)
+}
+
+// BrowseChannels calls sblurp.v1.ChatService.BrowseChannels.
+func (c *chatServiceClient) BrowseChannels(ctx context.Context, req *connect.Request[v1.BrowseChannelsRequest]) (*connect.Response[v1.BrowseChannelsResponse], error) {
+	return c.browseChannels.CallUnary(ctx, req)
+}
+
+// JoinChannel calls sblurp.v1.ChatService.JoinChannel.
+func (c *chatServiceClient) JoinChannel(ctx context.Context, req *connect.Request[v1.JoinChannelRequest]) (*connect.Response[v1.JoinChannelResponse], error) {
+	return c.joinChannel.CallUnary(ctx, req)
+}
+
+// LeaveChannel calls sblurp.v1.ChatService.LeaveChannel.
+func (c *chatServiceClient) LeaveChannel(ctx context.Context, req *connect.Request[v1.LeaveChannelRequest]) (*connect.Response[v1.LeaveChannelResponse], error) {
+	return c.leaveChannel.CallUnary(ctx, req)
+}
+
 // ChatServiceHandler is an implementation of the sblurp.v1.ChatService service.
 type ChatServiceHandler interface {
 	CreateChannel(context.Context, *connect.Request[v1.CreateChannelRequest]) (*connect.Response[v1.CreateChannelResponse], error)
@@ -743,6 +922,10 @@ type ChatServiceHandler interface {
 	Search(context.Context, *connect.Request[v1.SearchRequest]) (*connect.Response[v1.SearchResponse], error)
 	AddChannelMembers(context.Context, *connect.Request[v1.AddChannelMembersRequest]) (*connect.Response[v1.AddChannelMembersResponse], error)
 	RemoveChannelMember(context.Context, *connect.Request[v1.RemoveChannelMemberRequest]) (*connect.Response[v1.RemoveChannelMemberResponse], error)
+	SetChannelAccess(context.Context, *connect.Request[v1.SetChannelAccessRequest]) (*connect.Response[v1.SetChannelAccessResponse], error)
+	BrowseChannels(context.Context, *connect.Request[v1.BrowseChannelsRequest]) (*connect.Response[v1.BrowseChannelsResponse], error)
+	JoinChannel(context.Context, *connect.Request[v1.JoinChannelRequest]) (*connect.Response[v1.JoinChannelResponse], error)
+	LeaveChannel(context.Context, *connect.Request[v1.LeaveChannelRequest]) (*connect.Response[v1.LeaveChannelResponse], error)
 }
 
 // NewChatServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -830,6 +1013,30 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(chatServiceMethods.ByName("RemoveChannelMember")),
 		connect.WithHandlerOptions(opts...),
 	)
+	chatServiceSetChannelAccessHandler := connect.NewUnaryHandler(
+		ChatServiceSetChannelAccessProcedure,
+		svc.SetChannelAccess,
+		connect.WithSchema(chatServiceMethods.ByName("SetChannelAccess")),
+		connect.WithHandlerOptions(opts...),
+	)
+	chatServiceBrowseChannelsHandler := connect.NewUnaryHandler(
+		ChatServiceBrowseChannelsProcedure,
+		svc.BrowseChannels,
+		connect.WithSchema(chatServiceMethods.ByName("BrowseChannels")),
+		connect.WithHandlerOptions(opts...),
+	)
+	chatServiceJoinChannelHandler := connect.NewUnaryHandler(
+		ChatServiceJoinChannelProcedure,
+		svc.JoinChannel,
+		connect.WithSchema(chatServiceMethods.ByName("JoinChannel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	chatServiceLeaveChannelHandler := connect.NewUnaryHandler(
+		ChatServiceLeaveChannelProcedure,
+		svc.LeaveChannel,
+		connect.WithSchema(chatServiceMethods.ByName("LeaveChannel")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/sblurp.v1.ChatService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ChatServiceCreateChannelProcedure:
@@ -858,6 +1065,14 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 			chatServiceAddChannelMembersHandler.ServeHTTP(w, r)
 		case ChatServiceRemoveChannelMemberProcedure:
 			chatServiceRemoveChannelMemberHandler.ServeHTTP(w, r)
+		case ChatServiceSetChannelAccessProcedure:
+			chatServiceSetChannelAccessHandler.ServeHTTP(w, r)
+		case ChatServiceBrowseChannelsProcedure:
+			chatServiceBrowseChannelsHandler.ServeHTTP(w, r)
+		case ChatServiceJoinChannelProcedure:
+			chatServiceJoinChannelHandler.ServeHTTP(w, r)
+		case ChatServiceLeaveChannelProcedure:
+			chatServiceLeaveChannelHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -917,6 +1132,22 @@ func (UnimplementedChatServiceHandler) AddChannelMembers(context.Context, *conne
 
 func (UnimplementedChatServiceHandler) RemoveChannelMember(context.Context, *connect.Request[v1.RemoveChannelMemberRequest]) (*connect.Response[v1.RemoveChannelMemberResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ChatService.RemoveChannelMember is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) SetChannelAccess(context.Context, *connect.Request[v1.SetChannelAccessRequest]) (*connect.Response[v1.SetChannelAccessResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ChatService.SetChannelAccess is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) BrowseChannels(context.Context, *connect.Request[v1.BrowseChannelsRequest]) (*connect.Response[v1.BrowseChannelsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ChatService.BrowseChannels is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) JoinChannel(context.Context, *connect.Request[v1.JoinChannelRequest]) (*connect.Response[v1.JoinChannelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ChatService.JoinChannel is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) LeaveChannel(context.Context, *connect.Request[v1.LeaveChannelRequest]) (*connect.Response[v1.LeaveChannelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ChatService.LeaveChannel is not implemented"))
 }
 
 // BotServiceClient is a client for the sblurp.v1.BotService service.

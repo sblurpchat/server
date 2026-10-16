@@ -48,11 +48,30 @@ message Member {
   int64 joined_at_ms = 9;
   string status_text = 10;    // short custom status, may be empty
   string status_emoji = 11;
+  repeated string role_ids = 12; // custom roles (visibility only), see Role
+}
+
+// A custom role, made by admins. Roles only decide which text channels a
+// member can see (Channel.role_ids). MemberRole still decides permissions;
+// call that one "Permission" in the UI and these "Roles".
+message Role {
+  string id = 1;
+  string name = 2;            // unique, case-insensitive
+  string color = 3;           // "#rrggbb" or empty
+  int32 position = 4;         // sort order, low first
+}
+
+// How members get into text channels. Private channels and DMs keep their
+// explicit member lists in both modes.
+enum ChannelMode {
+  CHANNEL_MODE_UNSPECIFIED = 0;
+  CHANNEL_MODE_ROLES = 1;     // Discord-like: you are in every text channel you can see
+  CHANNEL_MODE_OPT_IN = 2;    // Slack-like: browse the channels you can see, join and leave them
 }
 
 enum ChannelKind {
   CHANNEL_KIND_UNSPECIFIED = 0;
-  CHANNEL_KIND_TEXT = 1;      // public to all members
+  CHANNEL_KIND_TEXT = 1;      // every member can see it, unless role_ids limits it
   CHANNEL_KIND_PRIVATE = 2;   // invite only
   CHANNEL_KIND_DM = 3;        // direct message, 2+ members
 }
@@ -67,6 +86,10 @@ message Channel {
   repeated string member_ids = 7; // set for DM and PRIVATE channels
   int64 created_at_ms = 8;
   int64 last_message_seq = 9; // seq of the newest message, 0 if none
+  // TEXT only. Empty: every member can see the channel. Otherwise only
+  // members with one of these roles (and admins and the owner) can.
+  repeated string role_ids = 10;
+  bool is_default = 11;       // TEXT only: OPT_IN mode joins new members to it
 }
 
 message Attachment {
@@ -174,10 +197,12 @@ message UpdateProfileResponse {
 message GetStateRequest {}
 message GetStateResponse {
   Member me = 1;
-  repeated Channel channels = 2;      // channels visible to me, incl. DMs
+  repeated Channel channels = 2;      // channels I am in (my sidebar), incl. DMs
   repeated Member members = 3;
   repeated ReadState read_states = 4;
   int64 seq = 5;                      // server seq at snapshot time; Subscribe from here
+  repeated Role roles = 6;            // sorted by position
+  ChannelMode channel_mode = 7;
 }
 
 message SubscribeRequest {
@@ -217,6 +242,9 @@ message Event {
     PresenceEvent presence = 21;    // ephemeral
     bool heartbeat = 22;            // ephemeral, every 25s keeps proxies open
     bool resync = 23;               // client must call GetState
+    Role role_updated = 24;         // created or changed
+    string role_deleted = 25;       // role id; drop it from members and channels
+    ChannelMode channel_mode_changed = 26;
   }
 }
 
@@ -240,6 +268,25 @@ message UpdateChannelRequest {
   optional int32 position = 5;
 }
 message UpdateChannelResponse { Channel channel = 1; }
+
+// Who can see a TEXT channel, and whether OPT_IN joins new members to it.
+// Admins only. Replaces role_ids.
+message SetChannelAccessRequest {
+  string channel_id = 1;
+  repeated string role_ids = 2;
+  bool is_default = 3;
+}
+message SetChannelAccessResponse { Channel channel = 1; }
+
+// Every TEXT channel I can see, joined or not (OPT_IN's "Browse channels").
+message BrowseChannelsRequest {}
+message BrowseChannelsResponse { repeated Channel channels = 1; }
+
+// OPT_IN mode only (FAILED_PRECONDITION in ROLES mode). TEXT channels only.
+message JoinChannelRequest { string channel_id = 1; }
+message JoinChannelResponse { Channel channel = 1; }
+message LeaveChannelRequest { string channel_id = 1; }
+message LeaveChannelResponse {}
 
 message OpenDMRequest {
   repeated string member_ids = 1; // the others; the caller is added
@@ -386,10 +433,40 @@ message RevokeInviteResponse {}
 
 message UpdateServerSettingsRequest {
   optional bool invite_only = 1;
+  ChannelMode channel_mode = 2;       // UNSPECIFIED = leave as is
 }
 message UpdateServerSettingsResponse {
   bool invite_only = 1;
+  ChannelMode channel_mode = 2;
 }
+
+// Roles (admins only, except that everyone sees them in GetState).
+
+message CreateRoleRequest {
+  string name = 1;
+  string color = 2;           // "#rrggbb" or empty
+}
+message CreateRoleResponse { Role role = 1; }
+
+message UpdateRoleRequest {
+  string role_id = 1;
+  optional string name = 2;
+  optional string color = 3;
+  optional int32 position = 4;
+}
+message UpdateRoleResponse { Role role = 1; }
+
+// Fails with FAILED_PRECONDITION while the role still limits a channel, so
+// deleting a role never opens a channel to everyone.
+message DeleteRoleRequest { string role_id = 1; }
+message DeleteRoleResponse {}
+
+// Replaces the member's roles. Works for bots too.
+message SetMemberRolesRequest {
+  string member_id = 1;
+  repeated string role_ids = 2;
+}
+message SetMemberRolesResponse { Member member = 1; }
 
 // ---------------------------------------------------------------------------
 // Bots
@@ -436,6 +513,10 @@ service ServerService {
   rpc ListInvites(ListInvitesRequest) returns (ListInvitesResponse) {}
   rpc RevokeInvite(RevokeInviteRequest) returns (RevokeInviteResponse) {}
   rpc UpdateServerSettings(UpdateServerSettingsRequest) returns (UpdateServerSettingsResponse) {}
+  rpc CreateRole(CreateRoleRequest) returns (CreateRoleResponse) {}
+  rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse) {}
+  rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse) {}
+  rpc SetMemberRoles(SetMemberRolesRequest) returns (SetMemberRolesResponse) {}
 }
 
 service ChatService {
@@ -452,6 +533,10 @@ service ChatService {
   rpc Search(SearchRequest) returns (SearchResponse) {}
   rpc AddChannelMembers(AddChannelMembersRequest) returns (AddChannelMembersResponse) {}
   rpc RemoveChannelMember(RemoveChannelMemberRequest) returns (RemoveChannelMemberResponse) {}
+  rpc SetChannelAccess(SetChannelAccessRequest) returns (SetChannelAccessResponse) {}
+  rpc BrowseChannels(BrowseChannelsRequest) returns (BrowseChannelsResponse) {}
+  rpc JoinChannel(JoinChannelRequest) returns (JoinChannelResponse) {}
+  rpc LeaveChannel(LeaveChannelRequest) returns (LeaveChannelResponse) {}
 }
 
 service BotService {

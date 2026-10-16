@@ -100,8 +100,25 @@ func checkCommunity(t *testing.T, c Community) {
 		}
 	}
 
+	roles := map[string]bool{}
+	for _, r := range c.Roles {
+		if r.Name == "" || roles[r.Name] || !regexp.MustCompile(`^(#[0-9a-f]{6})?$`).MatchString(r.Color) {
+			t.Errorf("bad or duplicate role %q %q", r.Name, r.Color)
+		}
+		roles[r.Name] = true
+		for _, u := range r.Members {
+			if !known[u] {
+				t.Errorf("role %s: unknown member %q", r.Name, u)
+			}
+		}
+	}
 	chans := map[string]bool{}
 	for _, ch := range c.Channels {
+		for _, r := range ch.Roles {
+			if !roles[r] || ch.Private {
+				t.Errorf("#%s: unknown role %q or role on a private channel", ch.Name, r)
+			}
+		}
 		if !channelRe.MatchString(ch.Name) || chans[ch.Name] {
 			t.Errorf("bad or duplicate channel %q", ch.Name)
 		}

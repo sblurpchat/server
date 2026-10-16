@@ -181,15 +181,6 @@ func (t *wtx) emit(ev *v1.Event, scopeChannel, scopeMember string) error {
 	return nil
 }
 
-// scopeFor returns the event scope of a channel: its id when only members
-// may see it, "" when it is public.
-func scopeFor(kind v1.ChannelKind, id string) string {
-	if kind == v1.ChannelKind_CHANNEL_KIND_TEXT {
-		return ""
-	}
-	return id
-}
-
 func channelMemberIDs(ctx context.Context, q queryer, channelID string) ([]string, error) {
 	rows, err := q.QueryContext(ctx, "SELECT member_id FROM channel_members WHERE channel_id = ? ORDER BY member_id", channelID)
 	if err != nil {

@@ -8,8 +8,16 @@ type Community struct {
 	Accent      string // "#rrggbb" for the rail icon
 	Members     []Member
 	Bot         Member // the server's bot; Role is ignored
+	OptIn       bool   // OPT_IN channel mode; ROLES when false
+	Roles       []Role // custom roles that gate channels
 	Channels    []Channel
 	DMs         []DM
+}
+
+type Role struct {
+	Name    string
+	Color   string   // "#rrggbb" or ""
+	Members []string // usernames
 }
 
 type Member struct {
@@ -27,6 +35,8 @@ type Channel struct {
 	Category string
 	Private  bool
 	Members  []string // usernames; private channels only
+	Default  bool     // OPT_IN: joined automatically on join
+	Roles    []string // role names that may see it; empty is everyone
 	Convos   []Convo
 }
 

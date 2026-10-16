@@ -17,6 +17,10 @@ var owls = Community{
 		{Username: "kwame", Display: "Kwame Mensah", Bio: "Software engineer in Accra who joined for the sci-fi and stayed for the films.", Emoji: "🚀", Status: "recovering from Kindred"},
 	},
 	Bot: Member{Username: "hoot", Display: "Hoot", Bio: "Posts a reading prompt in #nightly-prompt every night around 10. Answer in the thread."},
+	Roles: []Role{
+		{Name: "Film club", Color: "#c0392b", Members: []string{"desmond", "hannah_b", "ines", "kwame", "leilani", "omar", "rosa.m", "theo", "yuki"}},
+		{Name: "Spoiler-safe", Color: "#8e44ad", Members: []string{"desmond", "hannah_b", "kwame", "leilani", "omar", "rosa.m", "theo", "yuki"}},
+	},
 	Channels: []Channel{
 		{
 			Name: "announcements", Topic: "Book of the month, film club schedule, polls.", Category: "General",
@@ -279,6 +283,7 @@ var owls = Community{
 		},
 		{
 			Name: "spoilers-the-left-hand-of-darkness", Topic: "Full spoilers for this month's book. You've been warned.", Category: "Reading",
+			Roles: []string{"Spoiler-safe"},
 			Convos: []Convo{
 				{DaysAgo: 13.3, Lines: []Line{
 					{By: "margot", Text: "Spoiler channel is open! Talk about anything here, ending included."},
@@ -319,6 +324,7 @@ var owls = Community{
 		},
 		{
 			Name: "film-club", Topic: "Weekly watch, Fridays at 10pm. Debrief threads after.", Category: "Film",
+			Roles: []string{"Film club"},
 			Convos: []Convo{
 				{DaysAgo: 13.7, Lines: []Line{
 					{By: "desmond", Text: "This Friday: _Paris, Texas_ (1984). Wim Wenders, Harry Dean Stanton, Ry Cooder's slide guitar. Bring tissues."},

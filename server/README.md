@@ -127,7 +127,8 @@ client. There is no separate apps system. The bot is ~150 lines in
   owner, to MEMBER, MODERATOR or ADMIN below their own role (there is no
   ownership transfer). `KickMember` and `BanMember`: moderator or higher.
   A kicked or banned person, or one who calls `LeaveCommunity` (not the
-  owner), gets their streams closed, leaves every private channel and shows
+  owner), gets their streams closed, leaves every channel, loses their custom
+  roles and shows
   as `member_left`. Their member row stays (same id when they Join again,
   as a plain member). `BanMember` also blocks their `(iss, sub)` from
   `Join`. Bots are removed with `DeleteBot`, not kicked.
@@ -142,6 +143,35 @@ client. There is no separate apps system. The bot is ~150 lines in
   first, with `uses`) and `RevokeInvite`. A bad, expired, used-up or
   missing code is `permission_denied`. On an open community the code is
   ignored and not counted. Seeded communities are open.
+- **Channel modes and custom roles** (ticket 1011). `GetState` has
+  `channel_mode`, `roles` (sorted by `position`) and, in `channels`, only
+  the channels I am in: my sidebar. `UpdateServerSettings{channel_mode}`
+  (admins; UNSPECIFIED leaves it) switches at any time and emits
+  `channel_mode_changed`.
+  - ROLES (the default): every member is in every text channel they can
+    see. `JoinChannel` and `LeaveChannel` are `failed_precondition`.
+  - OPT_IN: `BrowseChannels` lists every text channel I can see;
+    `JoinChannel` and `LeaveChannel` add or drop one. Only joined channels
+    are in `GetState`, have read states, get events and are searched by a
+    `Search` without `channel_id`. A visible channel I have not joined can
+    still be read with `ListMessages` or searched with its `channel_id`
+    (preview). New members join the channels with `is_default`.
+    Switching ROLES to OPT_IN keeps everyone in what they are in (which is
+    everything they can see); OPT_IN to ROLES puts everyone in everything.
+  - Roles: `Role{id, name, color, position}`. Admins `CreateRole`,
+    `UpdateRole` (name, color `#rrggbb` or empty, position),
+    `DeleteRole` (`failed_precondition` while it limits a channel) and
+    `SetMemberRoles` (replaces the list; bots too). Events: `role_updated`
+    (upsert), `role_deleted` (id), `member_updated` with `role_ids`.
+    Roles never change permissions; the rank (`MemberRole`) does.
+  - `SetChannelAccess{channel_id, role_ids, is_default}` (admins, text
+    channels only). Empty `role_ids` means everyone may see it; otherwise
+    members with one of those roles, plus admins and the owner. Private
+    channels keep their member list.
+  - When a change (roles, rank, access, mode, join) hides a channel from a
+    member, they get `channel_deleted`; when it puts them in one, they get
+    `channel_created`. Drop or add the channel on those. Members who still
+    see it get `channel_updated`.
 - **Private channel members**: any member of a private channel may
   `AddChannelMembers`; added members get `channel_updated` for a channel
   they did not have yet (upsert it), and its old messages are not unread.
@@ -208,12 +238,10 @@ The first person to join becomes the owner. Back up `/var/lib/sblurp`
 
 ## Deploy on Fly
 
-```sh
-cd server
-fly launch --copy-config --no-deploy   # edit app name and SBLURP_BASE_URL in fly.toml first
-fly volumes create sblurp_data --size 1
-fly deploy
-```
+Sblurp's own Fly setup is `server/fly.toml` plus `server/Dockerfile`,
+described in `deploy/fly/README.md`. Litestream and restic back up to R2
+when `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `R2_ENDPOINT` and
+`RESTIC_PASSWORD` are set; without them the image runs with no backups.
 
 SQLite means one machine. Do not scale past 1.
 
@@ -245,6 +273,7 @@ with a JWKS, and real Connect clients, with a fake clock.
 | `internal/server/auth.go` | EdDSA JWT check, JWKS cache, bot tokens, the auth interceptor. |
 | `internal/server/hub.go` | Live fan-out, presence. |
 | `internal/server/rpc.go` | Every RPC. Validation helpers are pure functions. |
+| `internal/server/roles.go` | Custom roles, channel modes, who sees which text channel. |
 | `internal/server/files.go` | Upload and file serving. |
 | `internal/server/seed.go`, `internal/seed/` | Demo data. |
 
@@ -258,8 +287,12 @@ with a JWKS, and real Connect clients, with a fake clock.
   get their seq inside the transaction and are published to the hub after
   commit while the lock is still held, so live order equals seq order.
 - **Event visibility** is stored with the event: public, one channel's
-  members (private channels and DMs), or one member (`read_state`). Replay
-  and live delivery use the same rule.
+  members, or one member (`read_state`, `channel_created` on join). Replay
+  and live delivery use the same rule. Text channels keep a member list
+  (`channel_members`) too, so every channel event goes only to who is in
+  it; `syncAccess` keeps those lists in step with roles, rank and mode
+  inside the same write. Migration 005 deleted old events, so clients
+  resync once.
 - **Retention**: an event is pruned only when it is outside the newest
   10,000 *and* older than 7 days. Uploads never attached to a message are
   deleted after a day. Pruning runs at start and hourly.

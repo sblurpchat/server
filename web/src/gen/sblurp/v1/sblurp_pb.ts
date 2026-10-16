@@ -18,7 +18,7 @@ import type { Message as Message$1 } from "@bufbuild/protobuf";
  * Describes the file sblurp/v1/sblurp.proto.
  */
 export const file_sblurp_v1_sblurp: GenFile = /*@__PURE__*/
-  fileDesc("ChZzYmx1cnAvdjEvc2JsdXJwLnByb3RvEglzYmx1cnAudjEijwIKBk1lbWJlchIKCgJpZBgBIAEoCRIjCgRraW5kGAIgASgOMhUuc2JsdXJwLnYxLk1lbWJlcktpbmQSIwoEcm9sZRgDIAEoDjIVLnNibHVycC52MS5NZW1iZXJSb2xlEhAKCHVzZXJuYW1lGAQgASgJEhQKDGRpc3BsYXlfbmFtZRgFIAEoCRISCgphdmF0YXJfdXJsGAYgASgJEgsKA2JpbxgHIAEoCRIlCghwcmVzZW5jZRgIIAEoDjITLnNibHVycC52MS5QcmVzZW5jZRIUCgxqb2luZWRfYXRfbXMYCSABKAMSEwoLc3RhdHVzX3RleHQYCiABKAkSFAoMc3RhdHVzX2Vtb2ppGAsgASgJIsEBCgdDaGFubmVsEgoKAmlkGAEgASgJEiQKBGtpbmQYAiABKA4yFi5zYmx1cnAudjEuQ2hhbm5lbEtpbmQSDAoEbmFtZRgDIAEoCRINCgV0b3BpYxgEIAEoCRIQCghjYXRlZ29yeRgFIAEoCRIQCghwb3NpdGlvbhgGIAEoBRISCgptZW1iZXJfaWRzGAcgAygJEhUKDWNyZWF0ZWRfYXRfbXMYCCABKAMSGAoQbGFzdF9tZXNzYWdlX3NlcRgJIAEoAyJ2CgpBdHRhY2htZW50EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSFAoMY29udGVudF90eXBlGAMgASgJEgwKBHNpemUYBCABKAMSCwoDdXJsGAUgASgJEg0KBXdpZHRoGAYgASgFEg4KBmhlaWdodBgHIAEoBSItCghSZWFjdGlvbhINCgVlbW9qaRgBIAEoCRISCgptZW1iZXJfaWRzGAIgAygJItgCCgdNZXNzYWdlEgoKAmlkGAEgASgJEhIKCmNoYW5uZWxfaWQYAiABKAkSEQoJYXV0aG9yX2lkGAMgASgJEgwKBHRleHQYBCABKAkSFQoNY3JlYXRlZF9hdF9tcxgFIAEoAxIUCgxlZGl0ZWRfYXRfbXMYBiABKAMSDwoHZGVsZXRlZBgHIAEoCBIWCg50aHJlYWRfcm9vdF9pZBgIIAEoCRITCgtyZXBseV9jb3VudBgJIAEoBRIYChBsYXN0X3JlcGx5X2F0X21zGAogASgDEiYKCXJlYWN0aW9ucxgLIAMoCzITLnNibHVycC52MS5SZWFjdGlvbhIqCgthdHRhY2htZW50cxgMIAMoCzIVLnNibHVycC52MS5BdHRhY2htZW50EhEKCWNsaWVudF9pZBgNIAEoCRILCgNzZXEYDiABKAMSEwoLY3JlYXRlZF9zZXEYDyABKAMiYwoJUmVhZFN0YXRlEhIKCmNoYW5uZWxfaWQYASABKAkSFQoNbGFzdF9yZWFkX3NlcRgCIAEoAxIUCgx1bnJlYWRfY291bnQYAyABKAUSFQoNbWVudGlvbl9jb3VudBgEIAEoBSIWChRHZXRTZXJ2ZXJJbmZvUmVxdWVzdCLSAQoVR2V0U2VydmVySW5mb1Jlc3BvbnNlEgwKBG5hbWUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSEAoIaWNvbl91cmwYAyABKAkSGAoQcHJvdG9jb2xfdmVyc2lvbhgEIAEoBRIXCg90cnVzdGVkX2lzc3VlcnMYBSADKAkSEAoIYmFzZV91cmwYBiABKAkSFAoMbWVtYmVyX2NvdW50GAcgASgFEhQKDGFjY2VudF9jb2xvchgIIAEoCRITCgtpbnZpdGVfb25seRgJIAEoCCJZCgtKb2luUmVxdWVzdBIUCgxkaXNwbGF5X25hbWUYASABKAkSEgoKYXZhdGFyX3VybBgCIAEoCRILCgNiaW8YAyABKAkSEwoLaW52aXRlX2NvZGUYBCABKAkiQgoMSm9pblJlc3BvbnNlEiEKBm1lbWJlchgBIAEoCzIRLnNibHVycC52MS5NZW1iZXISDwoHY3JlYXRlZBgCIAEoCCIOCgxHZXRNZVJlcXVlc3QiMgoNR2V0TWVSZXNwb25zZRIhCgZtZW1iZXIYASABKAsyES5zYmx1cnAudjEuTWVtYmVyItoBChRVcGRhdGVQcm9maWxlUmVxdWVzdBIZCgxkaXNwbGF5X25hbWUYASABKAlIAIgBARIXCgphdmF0YXJfdXJsGAIgASgJSAGIAQESEAoDYmlvGAMgASgJSAKIAQESGAoLc3RhdHVzX3RleHQYBCABKAlIA4gBARIZCgxzdGF0dXNfZW1vamkYBSABKAlIBIgBAUIPCg1fZGlzcGxheV9uYW1lQg0KC19hdmF0YXJfdXJsQgYKBF9iaW9CDgoMX3N0YXR1c190ZXh0Qg8KDV9zdGF0dXNfZW1vamkiOgoVVXBkYXRlUHJvZmlsZVJlc3BvbnNlEiEKBm1lbWJlchgBIAEoCzIRLnNibHVycC52MS5NZW1iZXIiEQoPR2V0U3RhdGVSZXF1ZXN0IrMBChBHZXRTdGF0ZVJlc3BvbnNlEh0KAm1lGAEgASgLMhEuc2JsdXJwLnYxLk1lbWJlchIkCghjaGFubmVscxgCIAMoCzISLnNibHVycC52MS5DaGFubmVsEiIKB21lbWJlcnMYAyADKAsyES5zYmx1cnAudjEuTWVtYmVyEikKC3JlYWRfc3RhdGVzGAQgAygLMhQuc2JsdXJwLnYxLlJlYWRTdGF0ZRILCgNzZXEYBSABKAMiJQoQU3Vic2NyaWJlUmVxdWVzdBIRCglhZnRlcl9zZXEYASABKAMiTAoLVHlwaW5nRXZlbnQSEgoKY2hhbm5lbF9pZBgBIAEoCRIRCgltZW1iZXJfaWQYAiABKAkSFgoOdGhyZWFkX3Jvb3RfaWQYAyABKAkiSQoNUHJlc2VuY2VFdmVudBIRCgltZW1iZXJfaWQYASABKAkSJQoIcHJlc2VuY2UYAiABKA4yEy5zYmx1cnAudjEuUHJlc2VuY2UizAQKBUV2ZW50EgsKA3NlcRgBIAEoAxINCgVhdF9tcxgCIAEoAxItCg9tZXNzYWdlX2NyZWF0ZWQYCiABKAsyEi5zYmx1cnAudjEuTWVzc2FnZUgAEi0KD21lc3NhZ2VfdXBkYXRlZBgLIAEoCzISLnNibHVycC52MS5NZXNzYWdlSAASLQoPbWVzc2FnZV9kZWxldGVkGAwgASgLMhIuc2JsdXJwLnYxLk1lc3NhZ2VIABItCg9jaGFubmVsX2NyZWF0ZWQYDSABKAsyEi5zYmx1cnAudjEuQ2hhbm5lbEgAEi0KD2NoYW5uZWxfdXBkYXRlZBgOIAEoCzISLnNibHVycC52MS5DaGFubmVsSAASGQoPY2hhbm5lbF9kZWxldGVkGA8gASgJSAASKgoNbWVtYmVyX2pvaW5lZBgQIAEoCzIRLnNibHVycC52MS5NZW1iZXJIABIrCg5tZW1iZXJfdXBkYXRlZBgRIAEoCzIRLnNibHVycC52MS5NZW1iZXJIABIVCgttZW1iZXJfbGVmdBgSIAEoCUgAEioKCnJlYWRfc3RhdGUYEyABKAsyFC5zYmx1cnAudjEuUmVhZFN0YXRlSAASKAoGdHlwaW5nGBQgASgLMhYuc2JsdXJwLnYxLlR5cGluZ0V2ZW50SAASLAoIcHJlc2VuY2UYFSABKAsyGC5zYmx1cnAudjEuUHJlc2VuY2VFdmVudEgAEhMKCWhlYXJ0YmVhdBgWIAEoCEgAEhAKBnJlc3luYxgXIAEoCEgAQgYKBGtpbmQiawoUQ3JlYXRlQ2hhbm5lbFJlcXVlc3QSDAoEbmFtZRgBIAEoCRIkCgRraW5kGAIgASgOMhYuc2JsdXJwLnYxLkNoYW5uZWxLaW5kEg0KBXRvcGljGAMgASgJEhAKCGNhdGVnb3J5GAQgASgJIjwKFUNyZWF0ZUNoYW5uZWxSZXNwb25zZRIjCgdjaGFubmVsGAEgASgLMhIuc2JsdXJwLnYxLkNoYW5uZWwirAEKFFVwZGF0ZUNoYW5uZWxSZXF1ZXN0EhIKCmNoYW5uZWxfaWQYASABKAkSEQoEbmFtZRgCIAEoCUgAiAEBEhIKBXRvcGljGAMgASgJSAGIAQESFQoIY2F0ZWdvcnkYBCABKAlIAogBARIVCghwb3NpdGlvbhgFIAEoBUgDiAEBQgcKBV9uYW1lQggKBl90b3BpY0ILCglfY2F0ZWdvcnlCCwoJX3Bvc2l0aW9uIjwKFVVwZGF0ZUNoYW5uZWxSZXNwb25zZRIjCgdjaGFubmVsGAEgASgLMhIuc2JsdXJwLnYxLkNoYW5uZWwiIwoNT3BlbkRNUmVxdWVzdBISCgptZW1iZXJfaWRzGAEgAygJIjUKDk9wZW5ETVJlc3BvbnNlEiMKB2NoYW5uZWwYASABKAsyEi5zYmx1cnAudjEuQ2hhbm5lbCKIAQoTTGlzdE1lc3NhZ2VzUmVxdWVzdBISCgpjaGFubmVsX2lkGAEgASgJEhYKDnRocmVhZF9yb290X2lkGAIgASgJEhEKCWJlZm9yZV9pZBgDIAEoCRINCgVsaW1pdBgEIAEoBRIRCglhcm91bmRfaWQYBSABKAkSEAoIYWZ0ZXJfaWQYBiABKAkiZgoUTGlzdE1lc3NhZ2VzUmVzcG9uc2USJAoIbWVzc2FnZXMYASADKAsyEi5zYmx1cnAudjEuTWVzc2FnZRIQCghoYXNfbW9yZRgCIAEoCBIWCg5oYXNfbW9yZV9hZnRlchgDIAEoCCJ5ChJTZW5kTWVzc2FnZVJlcXVlc3QSEgoKY2hhbm5lbF9pZBgBIAEoCRIMCgR0ZXh0GAIgASgJEhYKDnRocmVhZF9yb290X2lkGAMgASgJEhEKCWNsaWVudF9pZBgEIAEoCRIWCg5hdHRhY2htZW50X2lkcxgFIAMoCSI6ChNTZW5kTWVzc2FnZVJlc3BvbnNlEiMKB21lc3NhZ2UYASABKAsyEi5zYmx1cnAudjEuTWVzc2FnZSI2ChJFZGl0TWVzc2FnZVJlcXVlc3QSEgoKbWVzc2FnZV9pZBgBIAEoCRIMCgR0ZXh0GAIgASgJIjoKE0VkaXRNZXNzYWdlUmVzcG9uc2USIwoHbWVzc2FnZRgBIAEoCzISLnNibHVycC52MS5NZXNzYWdlIioKFERlbGV0ZU1lc3NhZ2VSZXF1ZXN0EhIKCm1lc3NhZ2VfaWQYASABKAkiFwoVRGVsZXRlTWVzc2FnZVJlc3BvbnNlIkEKDFJlYWN0UmVxdWVzdBISCgptZXNzYWdlX2lkGAEgASgJEg0KBWVtb2ppGAIgASgJEg4KBnJlbW92ZRgDIAEoCCI0Cg1SZWFjdFJlc3BvbnNlEiMKB21lc3NhZ2UYASABKAsyEi5zYmx1cnAudjEuTWVzc2FnZSIyCg9NYXJrUmVhZFJlcXVlc3QSEgoKY2hhbm5lbF9pZBgBIAEoCRILCgNzZXEYAiABKAMiPAoQTWFya1JlYWRSZXNwb25zZRIoCgpyZWFkX3N0YXRlGAEgASgLMhQuc2JsdXJwLnYxLlJlYWRTdGF0ZSI+ChBTZXRUeXBpbmdSZXF1ZXN0EhIKCmNoYW5uZWxfaWQYASABKAkSFgoOdGhyZWFkX3Jvb3RfaWQYAiABKAkiEwoRU2V0VHlwaW5nUmVzcG9uc2UiQQoNU2VhcmNoUmVxdWVzdBINCgVxdWVyeRgBIAEoCRISCgpjaGFubmVsX2lkGAIgASgJEg0KBWxpbWl0GAMgASgFIjYKDlNlYXJjaFJlc3BvbnNlEiQKCG1lc3NhZ2VzGAEgAygLMhIuc2JsdXJwLnYxLk1lc3NhZ2UiQgoYQWRkQ2hhbm5lbE1lbWJlcnNSZXF1ZXN0EhIKCmNoYW5uZWxfaWQYASABKAkSEgoKbWVtYmVyX2lkcxgCIAMoCSJAChlBZGRDaGFubmVsTWVtYmVyc1Jlc3BvbnNlEiMKB2NoYW5uZWwYASABKAsyEi5zYmx1cnAudjEuQ2hhbm5lbCJDChpSZW1vdmVDaGFubmVsTWVtYmVyUmVxdWVzdBISCgpjaGFubmVsX2lkGAEgASgJEhEKCW1lbWJlcl9pZBgCIAEoCSJCChtSZW1vdmVDaGFubmVsTWVtYmVyUmVzcG9uc2USIwoHY2hhbm5lbBgBIAEoCzISLnNibHVycC52MS5DaGFubmVsIk4KFFNldE1lbWJlclJvbGVSZXF1ZXN0EhEKCW1lbWJlcl9pZBgBIAEoCRIjCgRyb2xlGAIgASgOMhUuc2JsdXJwLnYxLk1lbWJlclJvbGUiOgoVU2V0TWVtYmVyUm9sZVJlc3BvbnNlEiEKBm1lbWJlchgBIAEoCzIRLnNibHVycC52MS5NZW1iZXIiFwoVTGVhdmVDb21tdW5pdHlSZXF1ZXN0IhgKFkxlYXZlQ29tbXVuaXR5UmVzcG9uc2UiJgoRS2lja01lbWJlclJlcXVlc3QSEQoJbWVtYmVyX2lkGAEgASgJIhQKEktpY2tNZW1iZXJSZXNwb25zZSIlChBCYW5NZW1iZXJSZXF1ZXN0EhEKCW1lbWJlcl9pZBgBIAEoCSITChFCYW5NZW1iZXJSZXNwb25zZSJ4CgZJbnZpdGUSDAoEY29kZRgBIAEoCRISCgpjcmVhdGVkX2J5GAIgASgJEhUKDWNyZWF0ZWRfYXRfbXMYAyABKAMSFQoNZXhwaXJlc19hdF9tcxgEIAEoAxIQCghtYXhfdXNlcxgFIAEoBRIMCgR1c2VzGAYgASgFIkMKE0NyZWF0ZUludml0ZVJlcXVlc3QSGgoSZXhwaXJlc19pbl9zZWNvbmRzGAEgASgDEhAKCG1heF91c2VzGAIgASgFIjkKFENyZWF0ZUludml0ZVJlc3BvbnNlEiEKBmludml0ZRgBIAEoCzIRLnNibHVycC52MS5JbnZpdGUiFAoSTGlzdEludml0ZXNSZXF1ZXN0IjkKE0xpc3RJbnZpdGVzUmVzcG9uc2USIgoHaW52aXRlcxgBIAMoCzIRLnNibHVycC52MS5JbnZpdGUiIwoTUmV2b2tlSW52aXRlUmVxdWVzdBIMCgRjb2RlGAEgASgJIhYKFFJldm9rZUludml0ZVJlc3BvbnNlIkcKG1VwZGF0ZVNlcnZlclNldHRpbmdzUmVxdWVzdBIYCgtpbnZpdGVfb25seRgBIAEoCEgAiAEBQg4KDF9pbnZpdGVfb25seSIzChxVcGRhdGVTZXJ2ZXJTZXR0aW5nc1Jlc3BvbnNlEhMKC2ludml0ZV9vbmx5GAEgASgIIlsKEENyZWF0ZUJvdFJlcXVlc3QSEAoIdXNlcm5hbWUYASABKAkSFAoMZGlzcGxheV9uYW1lGAIgASgJEhIKCmF2YXRhcl91cmwYAyABKAkSCwoDYmlvGAQgASgJIkIKEUNyZWF0ZUJvdFJlc3BvbnNlEh4KA2JvdBgBIAEoCzIRLnNibHVycC52MS5NZW1iZXISDQoFdG9rZW4YAiABKAkiEQoPTGlzdEJvdHNSZXF1ZXN0IjMKEExpc3RCb3RzUmVzcG9uc2USHwoEYm90cxgBIAMoCzIRLnNibHVycC52MS5NZW1iZXIiJwoVUm90YXRlQm90VG9rZW5SZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSInChZSb3RhdGVCb3RUb2tlblJlc3BvbnNlEg0KBXRva2VuGAEgASgJIiIKEERlbGV0ZUJvdFJlcXVlc3QSDgoGYm90X2lkGAEgASgJIhMKEURlbGV0ZUJvdFJlc3BvbnNlKlUKCk1lbWJlcktpbmQSGwoXTUVNQkVSX0tJTkRfVU5TUEVDSUZJRUQQABIVChFNRU1CRVJfS0lORF9IVU1BThABEhMKD01FTUJFUl9LSU5EX0JPVBACKooBCgpNZW1iZXJSb2xlEhsKF01FTUJFUl9ST0xFX1VOU1BFQ0lGSUVEEAASFgoSTUVNQkVSX1JPTEVfTUVNQkVSEAESGQoVTUVNQkVSX1JPTEVfTU9ERVJBVE9SEAISFQoRTUVNQkVSX1JPTEVfQURNSU4QAxIVChFNRU1CRVJfUk9MRV9PV05FUhAEKmIKCFByZXNlbmNlEhgKFFBSRVNFTkNFX1VOU1BFQ0lGSUVEEAASEwoPUFJFU0VOQ0VfT05MSU5FEAESEQoNUFJFU0VOQ0VfQVdBWRACEhQKEFBSRVNFTkNFX09GRkxJTkUQAypxCgtDaGFubmVsS2luZBIcChhDSEFOTkVMX0tJTkRfVU5TUEVDSUZJRUQQABIVChFDSEFOTkVMX0tJTkRfVEVYVBABEhgKFENIQU5ORUxfS0lORF9QUklWQVRFEAISEwoPQ0hBTk5FTF9LSU5EX0RNEAMy4ggKDVNlcnZlclNlcnZpY2USVAoNR2V0U2VydmVySW5mbxIfLnNibHVycC52MS5HZXRTZXJ2ZXJJbmZvUmVxdWVzdBogLnNibHVycC52MS5HZXRTZXJ2ZXJJbmZvUmVzcG9uc2UiABI5CgRKb2luEhYuc2JsdXJwLnYxLkpvaW5SZXF1ZXN0Ghcuc2JsdXJwLnYxLkpvaW5SZXNwb25zZSIAEjwKBUdldE1lEhcuc2JsdXJwLnYxLkdldE1lUmVxdWVzdBoYLnNibHVycC52MS5HZXRNZVJlc3BvbnNlIgASVAoNVXBkYXRlUHJvZmlsZRIfLnNibHVycC52MS5VcGRhdGVQcm9maWxlUmVxdWVzdBogLnNibHVycC52MS5VcGRhdGVQcm9maWxlUmVzcG9uc2UiABJFCghHZXRTdGF0ZRIaLnNibHVycC52MS5HZXRTdGF0ZVJlcXVlc3QaGy5zYmx1cnAudjEuR2V0U3RhdGVSZXNwb25zZSIAEj4KCVN1YnNjcmliZRIbLnNibHVycC52MS5TdWJzY3JpYmVSZXF1ZXN0GhAuc2JsdXJwLnYxLkV2ZW50IgAwARJUCg1TZXRNZW1iZXJSb2xlEh8uc2JsdXJwLnYxLlNldE1lbWJlclJvbGVSZXF1ZXN0GiAuc2JsdXJwLnYxLlNldE1lbWJlclJvbGVSZXNwb25zZSIAElcKDkxlYXZlQ29tbXVuaXR5EiAuc2JsdXJwLnYxLkxlYXZlQ29tbXVuaXR5UmVxdWVzdBohLnNibHVycC52MS5MZWF2ZUNvbW11bml0eVJlc3BvbnNlIgASSwoKS2lja01lbWJlchIcLnNibHVycC52MS5LaWNrTWVtYmVyUmVxdWVzdBodLnNibHVycC52MS5LaWNrTWVtYmVyUmVzcG9uc2UiABJICglCYW5NZW1iZXISGy5zYmx1cnAudjEuQmFuTWVtYmVyUmVxdWVzdBocLnNibHVycC52MS5CYW5NZW1iZXJSZXNwb25zZSIAElEKDENyZWF0ZUludml0ZRIeLnNibHVycC52MS5DcmVhdGVJbnZpdGVSZXF1ZXN0Gh8uc2JsdXJwLnYxLkNyZWF0ZUludml0ZVJlc3BvbnNlIgASTgoLTGlzdEludml0ZXMSHS5zYmx1cnAudjEuTGlzdEludml0ZXNSZXF1ZXN0Gh4uc2JsdXJwLnYxLkxpc3RJbnZpdGVzUmVzcG9uc2UiABJRCgxSZXZva2VJbnZpdGUSHi5zYmx1cnAudjEuUmV2b2tlSW52aXRlUmVxdWVzdBofLnNibHVycC52MS5SZXZva2VJbnZpdGVSZXNwb25zZSIAEmkKFFVwZGF0ZVNlcnZlclNldHRpbmdzEiYuc2JsdXJwLnYxLlVwZGF0ZVNlcnZlclNldHRpbmdzUmVxdWVzdBonLnNibHVycC52MS5VcGRhdGVTZXJ2ZXJTZXR0aW5nc1Jlc3BvbnNlIgAynQgKC0NoYXRTZXJ2aWNlElQKDUNyZWF0ZUNoYW5uZWwSHy5zYmx1cnAudjEuQ3JlYXRlQ2hhbm5lbFJlcXVlc3QaIC5zYmx1cnAudjEuQ3JlYXRlQ2hhbm5lbFJlc3BvbnNlIgASVAoNVXBkYXRlQ2hhbm5lbBIfLnNibHVycC52MS5VcGRhdGVDaGFubmVsUmVxdWVzdBogLnNibHVycC52MS5VcGRhdGVDaGFubmVsUmVzcG9uc2UiABI/CgZPcGVuRE0SGC5zYmx1cnAudjEuT3BlbkRNUmVxdWVzdBoZLnNibHVycC52MS5PcGVuRE1SZXNwb25zZSIAElEKDExpc3RNZXNzYWdlcxIeLnNibHVycC52MS5MaXN0TWVzc2FnZXNSZXF1ZXN0Gh8uc2JsdXJwLnYxLkxpc3RNZXNzYWdlc1Jlc3BvbnNlIgASTgoLU2VuZE1lc3NhZ2USHS5zYmx1cnAudjEuU2VuZE1lc3NhZ2VSZXF1ZXN0Gh4uc2JsdXJwLnYxLlNlbmRNZXNzYWdlUmVzcG9uc2UiABJOCgtFZGl0TWVzc2FnZRIdLnNibHVycC52MS5FZGl0TWVzc2FnZVJlcXVlc3QaHi5zYmx1cnAudjEuRWRpdE1lc3NhZ2VSZXNwb25zZSIAElQKDURlbGV0ZU1lc3NhZ2USHy5zYmx1cnAudjEuRGVsZXRlTWVzc2FnZVJlcXVlc3QaIC5zYmx1cnAudjEuRGVsZXRlTWVzc2FnZVJlc3BvbnNlIgASPAoFUmVhY3QSFy5zYmx1cnAudjEuUmVhY3RSZXF1ZXN0Ghguc2JsdXJwLnYxLlJlYWN0UmVzcG9uc2UiABJFCghNYXJrUmVhZBIaLnNibHVycC52MS5NYXJrUmVhZFJlcXVlc3QaGy5zYmx1cnAudjEuTWFya1JlYWRSZXNwb25zZSIAEkgKCVNldFR5cGluZxIbLnNibHVycC52MS5TZXRUeXBpbmdSZXF1ZXN0Ghwuc2JsdXJwLnYxLlNldFR5cGluZ1Jlc3BvbnNlIgASPwoGU2VhcmNoEhguc2JsdXJwLnYxLlNlYXJjaFJlcXVlc3QaGS5zYmx1cnAudjEuU2VhcmNoUmVzcG9uc2UiABJgChFBZGRDaGFubmVsTWVtYmVycxIjLnNibHVycC52MS5BZGRDaGFubmVsTWVtYmVyc1JlcXVlc3QaJC5zYmx1cnAudjEuQWRkQ2hhbm5lbE1lbWJlcnNSZXNwb25zZSIAEmYKE1JlbW92ZUNoYW5uZWxNZW1iZXISJS5zYmx1cnAudjEuUmVtb3ZlQ2hhbm5lbE1lbWJlclJlcXVlc3QaJi5zYmx1cnAudjEuUmVtb3ZlQ2hhbm5lbE1lbWJlclJlc3BvbnNlIgAywAIKCkJvdFNlcnZpY2USSAoJQ3JlYXRlQm90Ehsuc2JsdXJwLnYxLkNyZWF0ZUJvdFJlcXVlc3QaHC5zYmx1cnAudjEuQ3JlYXRlQm90UmVzcG9uc2UiABJFCghMaXN0Qm90cxIaLnNibHVycC52MS5MaXN0Qm90c1JlcXVlc3QaGy5zYmx1cnAudjEuTGlzdEJvdHNSZXNwb25zZSIAElcKDlJvdGF0ZUJvdFRva2VuEiAuc2JsdXJwLnYxLlJvdGF0ZUJvdFRva2VuUmVxdWVzdBohLnNibHVycC52MS5Sb3RhdGVCb3RUb2tlblJlc3BvbnNlIgASSAoJRGVsZXRlQm90Ehsuc2JsdXJwLnYxLkRlbGV0ZUJvdFJlcXVlc3QaHC5zYmx1cnAudjEuRGVsZXRlQm90UmVzcG9uc2UiAEIrWilzYmx1cnAuY2hhdC9zZXJ2ZXIvZ2VuL3NibHVycC92MTtzYmx1cnB2MWIGcHJvdG8z");
+  fileDesc("ChZzYmx1cnAvdjEvc2JsdXJwLnByb3RvEglzYmx1cnAudjEioQIKBk1lbWJlchIKCgJpZBgBIAEoCRIjCgRraW5kGAIgASgOMhUuc2JsdXJwLnYxLk1lbWJlcktpbmQSIwoEcm9sZRgDIAEoDjIVLnNibHVycC52MS5NZW1iZXJSb2xlEhAKCHVzZXJuYW1lGAQgASgJEhQKDGRpc3BsYXlfbmFtZRgFIAEoCRISCgphdmF0YXJfdXJsGAYgASgJEgsKA2JpbxgHIAEoCRIlCghwcmVzZW5jZRgIIAEoDjITLnNibHVycC52MS5QcmVzZW5jZRIUCgxqb2luZWRfYXRfbXMYCSABKAMSEwoLc3RhdHVzX3RleHQYCiABKAkSFAoMc3RhdHVzX2Vtb2ppGAsgASgJEhAKCHJvbGVfaWRzGAwgAygJIkEKBFJvbGUSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRINCgVjb2xvchgDIAEoCRIQCghwb3NpdGlvbhgEIAEoBSLnAQoHQ2hhbm5lbBIKCgJpZBgBIAEoCRIkCgRraW5kGAIgASgOMhYuc2JsdXJwLnYxLkNoYW5uZWxLaW5kEgwKBG5hbWUYAyABKAkSDQoFdG9waWMYBCABKAkSEAoIY2F0ZWdvcnkYBSABKAkSEAoIcG9zaXRpb24YBiABKAUSEgoKbWVtYmVyX2lkcxgHIAMoCRIVCg1jcmVhdGVkX2F0X21zGAggASgDEhgKEGxhc3RfbWVzc2FnZV9zZXEYCSABKAMSEAoIcm9sZV9pZHMYCiADKAkSEgoKaXNfZGVmYXVsdBgLIAEoCCJ2CgpBdHRhY2htZW50EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSFAoMY29udGVudF90eXBlGAMgASgJEgwKBHNpemUYBCABKAMSCwoDdXJsGAUgASgJEg0KBXdpZHRoGAYgASgFEg4KBmhlaWdodBgHIAEoBSItCghSZWFjdGlvbhINCgVlbW9qaRgBIAEoCRISCgptZW1iZXJfaWRzGAIgAygJItgCCgdNZXNzYWdlEgoKAmlkGAEgASgJEhIKCmNoYW5uZWxfaWQYAiABKAkSEQoJYXV0aG9yX2lkGAMgASgJEgwKBHRleHQYBCABKAkSFQoNY3JlYXRlZF9hdF9tcxgFIAEoAxIUCgxlZGl0ZWRfYXRfbXMYBiABKAMSDwoHZGVsZXRlZBgHIAEoCBIWCg50aHJlYWRfcm9vdF9pZBgIIAEoCRITCgtyZXBseV9jb3VudBgJIAEoBRIYChBsYXN0X3JlcGx5X2F0X21zGAogASgDEiYKCXJlYWN0aW9ucxgLIAMoCzITLnNibHVycC52MS5SZWFjdGlvbhIqCgthdHRhY2htZW50cxgMIAMoCzIVLnNibHVycC52MS5BdHRhY2htZW50EhEKCWNsaWVudF9pZBgNIAEoCRILCgNzZXEYDiABKAMSEwoLY3JlYXRlZF9zZXEYDyABKAMiYwoJUmVhZFN0YXRlEhIKCmNoYW5uZWxfaWQYASABKAkSFQoNbGFzdF9yZWFkX3NlcRgCIAEoAxIUCgx1bnJlYWRfY291bnQYAyABKAUSFQoNbWVudGlvbl9jb3VudBgEIAEoBSIWChRHZXRTZXJ2ZXJJbmZvUmVxdWVzdCLSAQoVR2V0U2VydmVySW5mb1Jlc3BvbnNlEgwKBG5hbWUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSEAoIaWNvbl91cmwYAyABKAkSGAoQcHJvdG9jb2xfdmVyc2lvbhgEIAEoBRIXCg90cnVzdGVkX2lzc3VlcnMYBSADKAkSEAoIYmFzZV91cmwYBiABKAkSFAoMbWVtYmVyX2NvdW50GAcgASgFEhQKDGFjY2VudF9jb2xvchgIIAEoCRITCgtpbnZpdGVfb25seRgJIAEoCCJZCgtKb2luUmVxdWVzdBIUCgxkaXNwbGF5X25hbWUYASABKAkSEgoKYXZhdGFyX3VybBgCIAEoCRILCgNiaW8YAyABKAkSEwoLaW52aXRlX2NvZGUYBCABKAkiQgoMSm9pblJlc3BvbnNlEiEKBm1lbWJlchgBIAEoCzIRLnNibHVycC52MS5NZW1iZXISDwoHY3JlYXRlZBgCIAEoCCIOCgxHZXRNZVJlcXVlc3QiMgoNR2V0TWVSZXNwb25zZRIhCgZtZW1iZXIYASABKAsyES5zYmx1cnAudjEuTWVtYmVyItoBChRVcGRhdGVQcm9maWxlUmVxdWVzdBIZCgxkaXNwbGF5X25hbWUYASABKAlIAIgBARIXCgphdmF0YXJfdXJsGAIgASgJSAGIAQESEAoDYmlvGAMgASgJSAKIAQESGAoLc3RhdHVzX3RleHQYBCABKAlIA4gBARIZCgxzdGF0dXNfZW1vamkYBSABKAlIBIgBAUIPCg1fZGlzcGxheV9uYW1lQg0KC19hdmF0YXJfdXJsQgYKBF9iaW9CDgoMX3N0YXR1c190ZXh0Qg8KDV9zdGF0dXNfZW1vamkiOgoVVXBkYXRlUHJvZmlsZVJlc3BvbnNlEiEKBm1lbWJlchgBIAEoCzIRLnNibHVycC52MS5NZW1iZXIiEQoPR2V0U3RhdGVSZXF1ZXN0IoECChBHZXRTdGF0ZVJlc3BvbnNlEh0KAm1lGAEgASgLMhEuc2JsdXJwLnYxLk1lbWJlchIkCghjaGFubmVscxgCIAMoCzISLnNibHVycC52MS5DaGFubmVsEiIKB21lbWJlcnMYAyADKAsyES5zYmx1cnAudjEuTWVtYmVyEikKC3JlYWRfc3RhdGVzGAQgAygLMhQuc2JsdXJwLnYxLlJlYWRTdGF0ZRILCgNzZXEYBSABKAMSHgoFcm9sZXMYBiADKAsyDy5zYmx1cnAudjEuUm9sZRIsCgxjaGFubmVsX21vZGUYByABKA4yFi5zYmx1cnAudjEuQ2hhbm5lbE1vZGUiJQoQU3Vic2NyaWJlUmVxdWVzdBIRCglhZnRlcl9zZXEYASABKAMiTAoLVHlwaW5nRXZlbnQSEgoKY2hhbm5lbF9pZBgBIAEoCRIRCgltZW1iZXJfaWQYAiABKAkSFgoOdGhyZWFkX3Jvb3RfaWQYAyABKAkiSQoNUHJlc2VuY2VFdmVudBIRCgltZW1iZXJfaWQYASABKAkSJQoIcHJlc2VuY2UYAiABKA4yEy5zYmx1cnAudjEuUHJlc2VuY2UixQUKBUV2ZW50EgsKA3NlcRgBIAEoAxINCgVhdF9tcxgCIAEoAxItCg9tZXNzYWdlX2NyZWF0ZWQYCiABKAsyEi5zYmx1cnAudjEuTWVzc2FnZUgAEi0KD21lc3NhZ2VfdXBkYXRlZBgLIAEoCzISLnNibHVycC52MS5NZXNzYWdlSAASLQoPbWVzc2FnZV9kZWxldGVkGAwgASgLMhIuc2JsdXJwLnYxLk1lc3NhZ2VIABItCg9jaGFubmVsX2NyZWF0ZWQYDSABKAsyEi5zYmx1cnAudjEuQ2hhbm5lbEgAEi0KD2NoYW5uZWxfdXBkYXRlZBgOIAEoCzISLnNibHVycC52MS5DaGFubmVsSAASGQoPY2hhbm5lbF9kZWxldGVkGA8gASgJSAASKgoNbWVtYmVyX2pvaW5lZBgQIAEoCzIRLnNibHVycC52MS5NZW1iZXJIABIrCg5tZW1iZXJfdXBkYXRlZBgRIAEoCzIRLnNibHVycC52MS5NZW1iZXJIABIVCgttZW1iZXJfbGVmdBgSIAEoCUgAEioKCnJlYWRfc3RhdGUYEyABKAsyFC5zYmx1cnAudjEuUmVhZFN0YXRlSAASKAoGdHlwaW5nGBQgASgLMhYuc2JsdXJwLnYxLlR5cGluZ0V2ZW50SAASLAoIcHJlc2VuY2UYFSABKAsyGC5zYmx1cnAudjEuUHJlc2VuY2VFdmVudEgAEhMKCWhlYXJ0YmVhdBgWIAEoCEgAEhAKBnJlc3luYxgXIAEoCEgAEicKDHJvbGVfdXBkYXRlZBgYIAEoCzIPLnNibHVycC52MS5Sb2xlSAASFgoMcm9sZV9kZWxldGVkGBkgASgJSAASNgoUY2hhbm5lbF9tb2RlX2NoYW5nZWQYGiABKA4yFi5zYmx1cnAudjEuQ2hhbm5lbE1vZGVIAEIGCgRraW5kImsKFENyZWF0ZUNoYW5uZWxSZXF1ZXN0EgwKBG5hbWUYASABKAkSJAoEa2luZBgCIAEoDjIWLnNibHVycC52MS5DaGFubmVsS2luZBINCgV0b3BpYxgDIAEoCRIQCghjYXRlZ29yeRgEIAEoCSI8ChVDcmVhdGVDaGFubmVsUmVzcG9uc2USIwoHY2hhbm5lbBgBIAEoCzISLnNibHVycC52MS5DaGFubmVsIqwBChRVcGRhdGVDaGFubmVsUmVxdWVzdBISCgpjaGFubmVsX2lkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARISCgV0b3BpYxgDIAEoCUgBiAEBEhUKCGNhdGVnb3J5GAQgASgJSAKIAQESFQoIcG9zaXRpb24YBSABKAVIA4gBAUIHCgVfbmFtZUIICgZfdG9waWNCCwoJX2NhdGVnb3J5QgsKCV9wb3NpdGlvbiI8ChVVcGRhdGVDaGFubmVsUmVzcG9uc2USIwoHY2hhbm5lbBgBIAEoCzISLnNibHVycC52MS5DaGFubmVsIlMKF1NldENoYW5uZWxBY2Nlc3NSZXF1ZXN0EhIKCmNoYW5uZWxfaWQYASABKAkSEAoIcm9sZV9pZHMYAiADKAkSEgoKaXNfZGVmYXVsdBgDIAEoCCI/ChhTZXRDaGFubmVsQWNjZXNzUmVzcG9uc2USIwoHY2hhbm5lbBgBIAEoCzISLnNibHVycC52MS5DaGFubmVsIhcKFUJyb3dzZUNoYW5uZWxzUmVxdWVzdCI+ChZCcm93c2VDaGFubmVsc1Jlc3BvbnNlEiQKCGNoYW5uZWxzGAEgAygLMhIuc2JsdXJwLnYxLkNoYW5uZWwiKAoSSm9pbkNoYW5uZWxSZXF1ZXN0EhIKCmNoYW5uZWxfaWQYASABKAkiOgoTSm9pbkNoYW5uZWxSZXNwb25zZRIjCgdjaGFubmVsGAEgASgLMhIuc2JsdXJwLnYxLkNoYW5uZWwiKQoTTGVhdmVDaGFubmVsUmVxdWVzdBISCgpjaGFubmVsX2lkGAEgASgJIhYKFExlYXZlQ2hhbm5lbFJlc3BvbnNlIiMKDU9wZW5ETVJlcXVlc3QSEgoKbWVtYmVyX2lkcxgBIAMoCSI1Cg5PcGVuRE1SZXNwb25zZRIjCgdjaGFubmVsGAEgASgLMhIuc2JsdXJwLnYxLkNoYW5uZWwiiAEKE0xpc3RNZXNzYWdlc1JlcXVlc3QSEgoKY2hhbm5lbF9pZBgBIAEoCRIWCg50aHJlYWRfcm9vdF9pZBgCIAEoCRIRCgliZWZvcmVfaWQYAyABKAkSDQoFbGltaXQYBCABKAUSEQoJYXJvdW5kX2lkGAUgASgJEhAKCGFmdGVyX2lkGAYgASgJImYKFExpc3RNZXNzYWdlc1Jlc3BvbnNlEiQKCG1lc3NhZ2VzGAEgAygLMhIuc2JsdXJwLnYxLk1lc3NhZ2USEAoIaGFzX21vcmUYAiABKAgSFgoOaGFzX21vcmVfYWZ0ZXIYAyABKAgieQoSU2VuZE1lc3NhZ2VSZXF1ZXN0EhIKCmNoYW5uZWxfaWQYASABKAkSDAoEdGV4dBgCIAEoCRIWCg50aHJlYWRfcm9vdF9pZBgDIAEoCRIRCgljbGllbnRfaWQYBCABKAkSFgoOYXR0YWNobWVudF9pZHMYBSADKAkiOgoTU2VuZE1lc3NhZ2VSZXNwb25zZRIjCgdtZXNzYWdlGAEgASgLMhIuc2JsdXJwLnYxLk1lc3NhZ2UiNgoSRWRpdE1lc3NhZ2VSZXF1ZXN0EhIKCm1lc3NhZ2VfaWQYASABKAkSDAoEdGV4dBgCIAEoCSI6ChNFZGl0TWVzc2FnZVJlc3BvbnNlEiMKB21lc3NhZ2UYASABKAsyEi5zYmx1cnAudjEuTWVzc2FnZSIqChREZWxldGVNZXNzYWdlUmVxdWVzdBISCgptZXNzYWdlX2lkGAEgASgJIhcKFURlbGV0ZU1lc3NhZ2VSZXNwb25zZSJBCgxSZWFjdFJlcXVlc3QSEgoKbWVzc2FnZV9pZBgBIAEoCRINCgVlbW9qaRgCIAEoCRIOCgZyZW1vdmUYAyABKAgiNAoNUmVhY3RSZXNwb25zZRIjCgdtZXNzYWdlGAEgASgLMhIuc2JsdXJwLnYxLk1lc3NhZ2UiMgoPTWFya1JlYWRSZXF1ZXN0EhIKCmNoYW5uZWxfaWQYASABKAkSCwoDc2VxGAIgASgDIjwKEE1hcmtSZWFkUmVzcG9uc2USKAoKcmVhZF9zdGF0ZRgBIAEoCzIULnNibHVycC52MS5SZWFkU3RhdGUiPgoQU2V0VHlwaW5nUmVxdWVzdBISCgpjaGFubmVsX2lkGAEgASgJEhYKDnRocmVhZF9yb290X2lkGAIgASgJIhMKEVNldFR5cGluZ1Jlc3BvbnNlIkEKDVNlYXJjaFJlcXVlc3QSDQoFcXVlcnkYASABKAkSEgoKY2hhbm5lbF9pZBgCIAEoCRINCgVsaW1pdBgDIAEoBSI2Cg5TZWFyY2hSZXNwb25zZRIkCghtZXNzYWdlcxgBIAMoCzISLnNibHVycC52MS5NZXNzYWdlIkIKGEFkZENoYW5uZWxNZW1iZXJzUmVxdWVzdBISCgpjaGFubmVsX2lkGAEgASgJEhIKCm1lbWJlcl9pZHMYAiADKAkiQAoZQWRkQ2hhbm5lbE1lbWJlcnNSZXNwb25zZRIjCgdjaGFubmVsGAEgASgLMhIuc2JsdXJwLnYxLkNoYW5uZWwiQwoaUmVtb3ZlQ2hhbm5lbE1lbWJlclJlcXVlc3QSEgoKY2hhbm5lbF9pZBgBIAEoCRIRCgltZW1iZXJfaWQYAiABKAkiQgobUmVtb3ZlQ2hhbm5lbE1lbWJlclJlc3BvbnNlEiMKB2NoYW5uZWwYASABKAsyEi5zYmx1cnAudjEuQ2hhbm5lbCJOChRTZXRNZW1iZXJSb2xlUmVxdWVzdBIRCgltZW1iZXJfaWQYASABKAkSIwoEcm9sZRgCIAEoDjIVLnNibHVycC52MS5NZW1iZXJSb2xlIjoKFVNldE1lbWJlclJvbGVSZXNwb25zZRIhCgZtZW1iZXIYASABKAsyES5zYmx1cnAudjEuTWVtYmVyIhcKFUxlYXZlQ29tbXVuaXR5UmVxdWVzdCIYChZMZWF2ZUNvbW11bml0eVJlc3BvbnNlIiYKEUtpY2tNZW1iZXJSZXF1ZXN0EhEKCW1lbWJlcl9pZBgBIAEoCSIUChJLaWNrTWVtYmVyUmVzcG9uc2UiJQoQQmFuTWVtYmVyUmVxdWVzdBIRCgltZW1iZXJfaWQYASABKAkiEwoRQmFuTWVtYmVyUmVzcG9uc2UieAoGSW52aXRlEgwKBGNvZGUYASABKAkSEgoKY3JlYXRlZF9ieRgCIAEoCRIVCg1jcmVhdGVkX2F0X21zGAMgASgDEhUKDWV4cGlyZXNfYXRfbXMYBCABKAMSEAoIbWF4X3VzZXMYBSABKAUSDAoEdXNlcxgGIAEoBSJDChNDcmVhdGVJbnZpdGVSZXF1ZXN0EhoKEmV4cGlyZXNfaW5fc2Vjb25kcxgBIAEoAxIQCghtYXhfdXNlcxgCIAEoBSI5ChRDcmVhdGVJbnZpdGVSZXNwb25zZRIhCgZpbnZpdGUYASABKAsyES5zYmx1cnAudjEuSW52aXRlIhQKEkxpc3RJbnZpdGVzUmVxdWVzdCI5ChNMaXN0SW52aXRlc1Jlc3BvbnNlEiIKB2ludml0ZXMYASADKAsyES5zYmx1cnAudjEuSW52aXRlIiMKE1Jldm9rZUludml0ZVJlcXVlc3QSDAoEY29kZRgBIAEoCSIWChRSZXZva2VJbnZpdGVSZXNwb25zZSJ1ChtVcGRhdGVTZXJ2ZXJTZXR0aW5nc1JlcXVlc3QSGAoLaW52aXRlX29ubHkYASABKAhIAIgBARIsCgxjaGFubmVsX21vZGUYAiABKA4yFi5zYmx1cnAudjEuQ2hhbm5lbE1vZGVCDgoMX2ludml0ZV9vbmx5ImEKHFVwZGF0ZVNlcnZlclNldHRpbmdzUmVzcG9uc2USEwoLaW52aXRlX29ubHkYASABKAgSLAoMY2hhbm5lbF9tb2RlGAIgASgOMhYuc2JsdXJwLnYxLkNoYW5uZWxNb2RlIjAKEUNyZWF0ZVJvbGVSZXF1ZXN0EgwKBG5hbWUYASABKAkSDQoFY29sb3IYAiABKAkiMwoSQ3JlYXRlUm9sZVJlc3BvbnNlEh0KBHJvbGUYASABKAsyDy5zYmx1cnAudjEuUm9sZSKCAQoRVXBkYXRlUm9sZVJlcXVlc3QSDwoHcm9sZV9pZBgBIAEoCRIRCgRuYW1lGAIgASgJSACIAQESEgoFY29sb3IYAyABKAlIAYgBARIVCghwb3NpdGlvbhgEIAEoBUgCiAEBQgcKBV9uYW1lQggKBl9jb2xvckILCglfcG9zaXRpb24iMwoSVXBkYXRlUm9sZVJlc3BvbnNlEh0KBHJvbGUYASABKAsyDy5zYmx1cnAudjEuUm9sZSIkChFEZWxldGVSb2xlUmVxdWVzdBIPCgdyb2xlX2lkGAEgASgJIhQKEkRlbGV0ZVJvbGVSZXNwb25zZSI8ChVTZXRNZW1iZXJSb2xlc1JlcXVlc3QSEQoJbWVtYmVyX2lkGAEgASgJEhAKCHJvbGVfaWRzGAIgAygJIjsKFlNldE1lbWJlclJvbGVzUmVzcG9uc2USIQoGbWVtYmVyGAEgASgLMhEuc2JsdXJwLnYxLk1lbWJlciJbChBDcmVhdGVCb3RSZXF1ZXN0EhAKCHVzZXJuYW1lGAEgASgJEhQKDGRpc3BsYXlfbmFtZRgCIAEoCRISCgphdmF0YXJfdXJsGAMgASgJEgsKA2JpbxgEIAEoCSJCChFDcmVhdGVCb3RSZXNwb25zZRIeCgNib3QYASABKAsyES5zYmx1cnAudjEuTWVtYmVyEg0KBXRva2VuGAIgASgJIhEKD0xpc3RCb3RzUmVxdWVzdCIzChBMaXN0Qm90c1Jlc3BvbnNlEh8KBGJvdHMYASADKAsyES5zYmx1cnAudjEuTWVtYmVyIicKFVJvdGF0ZUJvdFRva2VuUmVxdWVzdBIOCgZib3RfaWQYASABKAkiJwoWUm90YXRlQm90VG9rZW5SZXNwb25zZRINCgV0b2tlbhgBIAEoCSIiChBEZWxldGVCb3RSZXF1ZXN0Eg4KBmJvdF9pZBgBIAEoCSITChFEZWxldGVCb3RSZXNwb25zZSpVCgpNZW1iZXJLaW5kEhsKF01FTUJFUl9LSU5EX1VOU1BFQ0lGSUVEEAASFQoRTUVNQkVSX0tJTkRfSFVNQU4QARITCg9NRU1CRVJfS0lORF9CT1QQAiqKAQoKTWVtYmVyUm9sZRIbChdNRU1CRVJfUk9MRV9VTlNQRUNJRklFRBAAEhYKEk1FTUJFUl9ST0xFX01FTUJFUhABEhkKFU1FTUJFUl9ST0xFX01PREVSQVRPUhACEhUKEU1FTUJFUl9ST0xFX0FETUlOEAMSFQoRTUVNQkVSX1JPTEVfT1dORVIQBCpiCghQcmVzZW5jZRIYChRQUkVTRU5DRV9VTlNQRUNJRklFRBAAEhMKD1BSRVNFTkNFX09OTElORRABEhEKDVBSRVNFTkNFX0FXQVkQAhIUChBQUkVTRU5DRV9PRkZMSU5FEAMqXAoLQ2hhbm5lbE1vZGUSHAoYQ0hBTk5FTF9NT0RFX1VOU1BFQ0lGSUVEEAASFgoSQ0hBTk5FTF9NT0RFX1JPTEVTEAESFwoTQ0hBTk5FTF9NT0RFX09QVF9JThACKnEKC0NoYW5uZWxLaW5kEhwKGENIQU5ORUxfS0lORF9VTlNQRUNJRklFRBAAEhUKEUNIQU5ORUxfS0lORF9URVhUEAESGAoUQ0hBTk5FTF9LSU5EX1BSSVZBVEUQAhITCg9DSEFOTkVMX0tJTkRfRE0QAzKiCwoNU2VydmVyU2VydmljZRJUCg1HZXRTZXJ2ZXJJbmZvEh8uc2JsdXJwLnYxLkdldFNlcnZlckluZm9SZXF1ZXN0GiAuc2JsdXJwLnYxLkdldFNlcnZlckluZm9SZXNwb25zZSIAEjkKBEpvaW4SFi5zYmx1cnAudjEuSm9pblJlcXVlc3QaFy5zYmx1cnAudjEuSm9pblJlc3BvbnNlIgASPAoFR2V0TWUSFy5zYmx1cnAudjEuR2V0TWVSZXF1ZXN0Ghguc2JsdXJwLnYxLkdldE1lUmVzcG9uc2UiABJUCg1VcGRhdGVQcm9maWxlEh8uc2JsdXJwLnYxLlVwZGF0ZVByb2ZpbGVSZXF1ZXN0GiAuc2JsdXJwLnYxLlVwZGF0ZVByb2ZpbGVSZXNwb25zZSIAEkUKCEdldFN0YXRlEhouc2JsdXJwLnYxLkdldFN0YXRlUmVxdWVzdBobLnNibHVycC52MS5HZXRTdGF0ZVJlc3BvbnNlIgASPgoJU3Vic2NyaWJlEhsuc2JsdXJwLnYxLlN1YnNjcmliZVJlcXVlc3QaEC5zYmx1cnAudjEuRXZlbnQiADABElQKDVNldE1lbWJlclJvbGUSHy5zYmx1cnAudjEuU2V0TWVtYmVyUm9sZVJlcXVlc3QaIC5zYmx1cnAudjEuU2V0TWVtYmVyUm9sZVJlc3BvbnNlIgASVwoOTGVhdmVDb21tdW5pdHkSIC5zYmx1cnAudjEuTGVhdmVDb21tdW5pdHlSZXF1ZXN0GiEuc2JsdXJwLnYxLkxlYXZlQ29tbXVuaXR5UmVzcG9uc2UiABJLCgpLaWNrTWVtYmVyEhwuc2JsdXJwLnYxLktpY2tNZW1iZXJSZXF1ZXN0Gh0uc2JsdXJwLnYxLktpY2tNZW1iZXJSZXNwb25zZSIAEkgKCUJhbk1lbWJlchIbLnNibHVycC52MS5CYW5NZW1iZXJSZXF1ZXN0Ghwuc2JsdXJwLnYxLkJhbk1lbWJlclJlc3BvbnNlIgASUQoMQ3JlYXRlSW52aXRlEh4uc2JsdXJwLnYxLkNyZWF0ZUludml0ZVJlcXVlc3QaHy5zYmx1cnAudjEuQ3JlYXRlSW52aXRlUmVzcG9uc2UiABJOCgtMaXN0SW52aXRlcxIdLnNibHVycC52MS5MaXN0SW52aXRlc1JlcXVlc3QaHi5zYmx1cnAudjEuTGlzdEludml0ZXNSZXNwb25zZSIAElEKDFJldm9rZUludml0ZRIeLnNibHVycC52MS5SZXZva2VJbnZpdGVSZXF1ZXN0Gh8uc2JsdXJwLnYxLlJldm9rZUludml0ZVJlc3BvbnNlIgASaQoUVXBkYXRlU2VydmVyU2V0dGluZ3MSJi5zYmx1cnAudjEuVXBkYXRlU2VydmVyU2V0dGluZ3NSZXF1ZXN0Gicuc2JsdXJwLnYxLlVwZGF0ZVNlcnZlclNldHRpbmdzUmVzcG9uc2UiABJLCgpDcmVhdGVSb2xlEhwuc2JsdXJwLnYxLkNyZWF0ZVJvbGVSZXF1ZXN0Gh0uc2JsdXJwLnYxLkNyZWF0ZVJvbGVSZXNwb25zZSIAEksKClVwZGF0ZVJvbGUSHC5zYmx1cnAudjEuVXBkYXRlUm9sZVJlcXVlc3QaHS5zYmx1cnAudjEuVXBkYXRlUm9sZVJlc3BvbnNlIgASSwoKRGVsZXRlUm9sZRIcLnNibHVycC52MS5EZWxldGVSb2xlUmVxdWVzdBodLnNibHVycC52MS5EZWxldGVSb2xlUmVzcG9uc2UiABJXCg5TZXRNZW1iZXJSb2xlcxIgLnNibHVycC52MS5TZXRNZW1iZXJSb2xlc1JlcXVlc3QaIS5zYmx1cnAudjEuU2V0TWVtYmVyUm9sZXNSZXNwb25zZSIAMvgKCgtDaGF0U2VydmljZRJUCg1DcmVhdGVDaGFubmVsEh8uc2JsdXJwLnYxLkNyZWF0ZUNoYW5uZWxSZXF1ZXN0GiAuc2JsdXJwLnYxLkNyZWF0ZUNoYW5uZWxSZXNwb25zZSIAElQKDVVwZGF0ZUNoYW5uZWwSHy5zYmx1cnAudjEuVXBkYXRlQ2hhbm5lbFJlcXVlc3QaIC5zYmx1cnAudjEuVXBkYXRlQ2hhbm5lbFJlc3BvbnNlIgASPwoGT3BlbkRNEhguc2JsdXJwLnYxLk9wZW5ETVJlcXVlc3QaGS5zYmx1cnAudjEuT3BlbkRNUmVzcG9uc2UiABJRCgxMaXN0TWVzc2FnZXMSHi5zYmx1cnAudjEuTGlzdE1lc3NhZ2VzUmVxdWVzdBofLnNibHVycC52MS5MaXN0TWVzc2FnZXNSZXNwb25zZSIAEk4KC1NlbmRNZXNzYWdlEh0uc2JsdXJwLnYxLlNlbmRNZXNzYWdlUmVxdWVzdBoeLnNibHVycC52MS5TZW5kTWVzc2FnZVJlc3BvbnNlIgASTgoLRWRpdE1lc3NhZ2USHS5zYmx1cnAudjEuRWRpdE1lc3NhZ2VSZXF1ZXN0Gh4uc2JsdXJwLnYxLkVkaXRNZXNzYWdlUmVzcG9uc2UiABJUCg1EZWxldGVNZXNzYWdlEh8uc2JsdXJwLnYxLkRlbGV0ZU1lc3NhZ2VSZXF1ZXN0GiAuc2JsdXJwLnYxLkRlbGV0ZU1lc3NhZ2VSZXNwb25zZSIAEjwKBVJlYWN0Ehcuc2JsdXJwLnYxLlJlYWN0UmVxdWVzdBoYLnNibHVycC52MS5SZWFjdFJlc3BvbnNlIgASRQoITWFya1JlYWQSGi5zYmx1cnAudjEuTWFya1JlYWRSZXF1ZXN0Ghsuc2JsdXJwLnYxLk1hcmtSZWFkUmVzcG9uc2UiABJICglTZXRUeXBpbmcSGy5zYmx1cnAudjEuU2V0VHlwaW5nUmVxdWVzdBocLnNibHVycC52MS5TZXRUeXBpbmdSZXNwb25zZSIAEj8KBlNlYXJjaBIYLnNibHVycC52MS5TZWFyY2hSZXF1ZXN0Ghkuc2JsdXJwLnYxLlNlYXJjaFJlc3BvbnNlIgASYAoRQWRkQ2hhbm5lbE1lbWJlcnMSIy5zYmx1cnAudjEuQWRkQ2hhbm5lbE1lbWJlcnNSZXF1ZXN0GiQuc2JsdXJwLnYxLkFkZENoYW5uZWxNZW1iZXJzUmVzcG9uc2UiABJmChNSZW1vdmVDaGFubmVsTWVtYmVyEiUuc2JsdXJwLnYxLlJlbW92ZUNoYW5uZWxNZW1iZXJSZXF1ZXN0GiYuc2JsdXJwLnYxLlJlbW92ZUNoYW5uZWxNZW1iZXJSZXNwb25zZSIAEl0KEFNldENoYW5uZWxBY2Nlc3MSIi5zYmx1cnAudjEuU2V0Q2hhbm5lbEFjY2Vzc1JlcXVlc3QaIy5zYmx1cnAudjEuU2V0Q2hhbm5lbEFjY2Vzc1Jlc3BvbnNlIgASVwoOQnJvd3NlQ2hhbm5lbHMSIC5zYmx1cnAudjEuQnJvd3NlQ2hhbm5lbHNSZXF1ZXN0GiEuc2JsdXJwLnYxLkJyb3dzZUNoYW5uZWxzUmVzcG9uc2UiABJOCgtKb2luQ2hhbm5lbBIdLnNibHVycC52MS5Kb2luQ2hhbm5lbFJlcXVlc3QaHi5zYmx1cnAudjEuSm9pbkNoYW5uZWxSZXNwb25zZSIAElEKDExlYXZlQ2hhbm5lbBIeLnNibHVycC52MS5MZWF2ZUNoYW5uZWxSZXF1ZXN0Gh8uc2JsdXJwLnYxLkxlYXZlQ2hhbm5lbFJlc3BvbnNlIgAywAIKCkJvdFNlcnZpY2USSAoJQ3JlYXRlQm90Ehsuc2JsdXJwLnYxLkNyZWF0ZUJvdFJlcXVlc3QaHC5zYmx1cnAudjEuQ3JlYXRlQm90UmVzcG9uc2UiABJFCghMaXN0Qm90cxIaLnNibHVycC52MS5MaXN0Qm90c1JlcXVlc3QaGy5zYmx1cnAudjEuTGlzdEJvdHNSZXNwb25zZSIAElcKDlJvdGF0ZUJvdFRva2VuEiAuc2JsdXJwLnYxLlJvdGF0ZUJvdFRva2VuUmVxdWVzdBohLnNibHVycC52MS5Sb3RhdGVCb3RUb2tlblJlc3BvbnNlIgASSAoJRGVsZXRlQm90Ehsuc2JsdXJwLnYxLkRlbGV0ZUJvdFJlcXVlc3QaHC5zYmx1cnAudjEuRGVsZXRlQm90UmVzcG9uc2UiAEIrWilzYmx1cnAuY2hhdC9zZXJ2ZXIvZ2VuL3NibHVycC92MTtzYmx1cnB2MWIGcHJvdG8z");
 
 /**
  * @generated from message sblurp.v1.Member
@@ -86,6 +86,13 @@ export type Member = Message$1<"sblurp.v1.Member"> & {
    * @generated from field: string status_emoji = 11;
    */
   statusEmoji: string;
+
+  /**
+   * custom roles (visibility only), see Role
+   *
+   * @generated from field: repeated string role_ids = 12;
+   */
+  roleIds: string[];
 };
 
 /**
@@ -94,6 +101,48 @@ export type Member = Message$1<"sblurp.v1.Member"> & {
  */
 export const MemberSchema: GenMessage<Member> = /*@__PURE__*/
   messageDesc(file_sblurp_v1_sblurp, 0);
+
+/**
+ * A custom role, made by admins. Roles only decide which text channels a
+ * member can see (Channel.role_ids). MemberRole still decides permissions;
+ * call that one "Permission" in the UI and these "Roles".
+ *
+ * @generated from message sblurp.v1.Role
+ */
+export type Role = Message$1<"sblurp.v1.Role"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * unique, case-insensitive
+   *
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * "#rrggbb" or empty
+   *
+   * @generated from field: string color = 3;
+   */
+  color: string;
+
+  /**
+   * sort order, low first
+   *
+   * @generated from field: int32 position = 4;
+   */
+  position: number;
+};
+
+/**
+ * Describes the message sblurp.v1.Role.
+ * Use `create(RoleSchema)` to create a new message.
+ */
+export const RoleSchema: GenMessage<Role> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 1);
 
 /**
  * @generated from message sblurp.v1.Channel
@@ -153,6 +202,21 @@ export type Channel = Message$1<"sblurp.v1.Channel"> & {
    * @generated from field: int64 last_message_seq = 9;
    */
   lastMessageSeq: bigint;
+
+  /**
+   * TEXT only. Empty: every member can see the channel. Otherwise only
+   * members with one of these roles (and admins and the owner) can.
+   *
+   * @generated from field: repeated string role_ids = 10;
+   */
+  roleIds: string[];
+
+  /**
+   * TEXT only: OPT_IN mode joins new members to it
+   *
+   * @generated from field: bool is_default = 11;
+   */
+  isDefault: boolean;
 };
 
 /**
@@ -160,7 +224,7 @@ export type Channel = Message$1<"sblurp.v1.Channel"> & {
  * Use `create(ChannelSchema)` to create a new message.
  */
 export const ChannelSchema: GenMessage<Channel> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 1);
+  messageDesc(file_sblurp_v1_sblurp, 2);
 
 /**
  * @generated from message sblurp.v1.Attachment
@@ -211,7 +275,7 @@ export type Attachment = Message$1<"sblurp.v1.Attachment"> & {
  * Use `create(AttachmentSchema)` to create a new message.
  */
 export const AttachmentSchema: GenMessage<Attachment> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 2);
+  messageDesc(file_sblurp_v1_sblurp, 3);
 
 /**
  * @generated from message sblurp.v1.Reaction
@@ -235,7 +299,7 @@ export type Reaction = Message$1<"sblurp.v1.Reaction"> & {
  * Use `create(ReactionSchema)` to create a new message.
  */
 export const ReactionSchema: GenMessage<Reaction> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 3);
+  messageDesc(file_sblurp_v1_sblurp, 4);
 
 /**
  * @generated from message sblurp.v1.Message
@@ -336,7 +400,7 @@ export type Message = Message$1<"sblurp.v1.Message"> & {
  * Use `create(MessageSchema)` to create a new message.
  */
 export const MessageSchema: GenMessage<Message> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 4);
+  messageDesc(file_sblurp_v1_sblurp, 5);
 
 /**
  * @generated from message sblurp.v1.ReadState
@@ -368,7 +432,7 @@ export type ReadState = Message$1<"sblurp.v1.ReadState"> & {
  * Use `create(ReadStateSchema)` to create a new message.
  */
 export const ReadStateSchema: GenMessage<ReadState> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 5);
+  messageDesc(file_sblurp_v1_sblurp, 6);
 
 /**
  * @generated from message sblurp.v1.GetServerInfoRequest
@@ -381,7 +445,7 @@ export type GetServerInfoRequest = Message$1<"sblurp.v1.GetServerInfoRequest"> &
  * Use `create(GetServerInfoRequestSchema)` to create a new message.
  */
 export const GetServerInfoRequestSchema: GenMessage<GetServerInfoRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 6);
+  messageDesc(file_sblurp_v1_sblurp, 7);
 
 /**
  * @generated from message sblurp.v1.GetServerInfoResponse
@@ -448,7 +512,7 @@ export type GetServerInfoResponse = Message$1<"sblurp.v1.GetServerInfoResponse">
  * Use `create(GetServerInfoResponseSchema)` to create a new message.
  */
 export const GetServerInfoResponseSchema: GenMessage<GetServerInfoResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 7);
+  messageDesc(file_sblurp_v1_sblurp, 8);
 
 /**
  * @generated from message sblurp.v1.JoinRequest
@@ -484,7 +548,7 @@ export type JoinRequest = Message$1<"sblurp.v1.JoinRequest"> & {
  * Use `create(JoinRequestSchema)` to create a new message.
  */
 export const JoinRequestSchema: GenMessage<JoinRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 8);
+  messageDesc(file_sblurp_v1_sblurp, 9);
 
 /**
  * @generated from message sblurp.v1.JoinResponse
@@ -508,7 +572,7 @@ export type JoinResponse = Message$1<"sblurp.v1.JoinResponse"> & {
  * Use `create(JoinResponseSchema)` to create a new message.
  */
 export const JoinResponseSchema: GenMessage<JoinResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 9);
+  messageDesc(file_sblurp_v1_sblurp, 10);
 
 /**
  * @generated from message sblurp.v1.GetMeRequest
@@ -521,7 +585,7 @@ export type GetMeRequest = Message$1<"sblurp.v1.GetMeRequest"> & {
  * Use `create(GetMeRequestSchema)` to create a new message.
  */
 export const GetMeRequestSchema: GenMessage<GetMeRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 10);
+  messageDesc(file_sblurp_v1_sblurp, 11);
 
 /**
  * @generated from message sblurp.v1.GetMeResponse
@@ -538,7 +602,7 @@ export type GetMeResponse = Message$1<"sblurp.v1.GetMeResponse"> & {
  * Use `create(GetMeResponseSchema)` to create a new message.
  */
 export const GetMeResponseSchema: GenMessage<GetMeResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 11);
+  messageDesc(file_sblurp_v1_sblurp, 12);
 
 /**
  * @generated from message sblurp.v1.UpdateProfileRequest
@@ -575,7 +639,7 @@ export type UpdateProfileRequest = Message$1<"sblurp.v1.UpdateProfileRequest"> &
  * Use `create(UpdateProfileRequestSchema)` to create a new message.
  */
 export const UpdateProfileRequestSchema: GenMessage<UpdateProfileRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 12);
+  messageDesc(file_sblurp_v1_sblurp, 13);
 
 /**
  * @generated from message sblurp.v1.UpdateProfileResponse
@@ -592,7 +656,7 @@ export type UpdateProfileResponse = Message$1<"sblurp.v1.UpdateProfileResponse">
  * Use `create(UpdateProfileResponseSchema)` to create a new message.
  */
 export const UpdateProfileResponseSchema: GenMessage<UpdateProfileResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 13);
+  messageDesc(file_sblurp_v1_sblurp, 14);
 
 /**
  * Everything a client needs to render the sidebar after connecting.
@@ -607,7 +671,7 @@ export type GetStateRequest = Message$1<"sblurp.v1.GetStateRequest"> & {
  * Use `create(GetStateRequestSchema)` to create a new message.
  */
 export const GetStateRequestSchema: GenMessage<GetStateRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 14);
+  messageDesc(file_sblurp_v1_sblurp, 15);
 
 /**
  * @generated from message sblurp.v1.GetStateResponse
@@ -619,7 +683,7 @@ export type GetStateResponse = Message$1<"sblurp.v1.GetStateResponse"> & {
   me?: Member;
 
   /**
-   * channels visible to me, incl. DMs
+   * channels I am in (my sidebar), incl. DMs
    *
    * @generated from field: repeated sblurp.v1.Channel channels = 2;
    */
@@ -641,6 +705,18 @@ export type GetStateResponse = Message$1<"sblurp.v1.GetStateResponse"> & {
    * @generated from field: int64 seq = 5;
    */
   seq: bigint;
+
+  /**
+   * sorted by position
+   *
+   * @generated from field: repeated sblurp.v1.Role roles = 6;
+   */
+  roles: Role[];
+
+  /**
+   * @generated from field: sblurp.v1.ChannelMode channel_mode = 7;
+   */
+  channelMode: ChannelMode;
 };
 
 /**
@@ -648,7 +724,7 @@ export type GetStateResponse = Message$1<"sblurp.v1.GetStateResponse"> & {
  * Use `create(GetStateResponseSchema)` to create a new message.
  */
 export const GetStateResponseSchema: GenMessage<GetStateResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 15);
+  messageDesc(file_sblurp_v1_sblurp, 16);
 
 /**
  * @generated from message sblurp.v1.SubscribeRequest
@@ -670,7 +746,7 @@ export type SubscribeRequest = Message$1<"sblurp.v1.SubscribeRequest"> & {
  * Use `create(SubscribeRequestSchema)` to create a new message.
  */
 export const SubscribeRequestSchema: GenMessage<SubscribeRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 16);
+  messageDesc(file_sblurp_v1_sblurp, 17);
 
 /**
  * @generated from message sblurp.v1.TypingEvent
@@ -697,7 +773,7 @@ export type TypingEvent = Message$1<"sblurp.v1.TypingEvent"> & {
  * Use `create(TypingEventSchema)` to create a new message.
  */
 export const TypingEventSchema: GenMessage<TypingEvent> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 17);
+  messageDesc(file_sblurp_v1_sblurp, 18);
 
 /**
  * @generated from message sblurp.v1.PresenceEvent
@@ -719,7 +795,7 @@ export type PresenceEvent = Message$1<"sblurp.v1.PresenceEvent"> & {
  * Use `create(PresenceEventSchema)` to create a new message.
  */
 export const PresenceEventSchema: GenMessage<PresenceEvent> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 18);
+  messageDesc(file_sblurp_v1_sblurp, 19);
 
 /**
  * @generated from message sblurp.v1.Event
@@ -840,6 +916,28 @@ export type Event = Message$1<"sblurp.v1.Event"> & {
      */
     value: boolean;
     case: "resync";
+  } | {
+    /**
+     * created or changed
+     *
+     * @generated from field: sblurp.v1.Role role_updated = 24;
+     */
+    value: Role;
+    case: "roleUpdated";
+  } | {
+    /**
+     * role id; drop it from members and channels
+     *
+     * @generated from field: string role_deleted = 25;
+     */
+    value: string;
+    case: "roleDeleted";
+  } | {
+    /**
+     * @generated from field: sblurp.v1.ChannelMode channel_mode_changed = 26;
+     */
+    value: ChannelMode;
+    case: "channelModeChanged";
   } | { case: undefined; value?: undefined };
 };
 
@@ -848,7 +946,7 @@ export type Event = Message$1<"sblurp.v1.Event"> & {
  * Use `create(EventSchema)` to create a new message.
  */
 export const EventSchema: GenMessage<Event> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 19);
+  messageDesc(file_sblurp_v1_sblurp, 20);
 
 /**
  * @generated from message sblurp.v1.CreateChannelRequest
@@ -882,7 +980,7 @@ export type CreateChannelRequest = Message$1<"sblurp.v1.CreateChannelRequest"> &
  * Use `create(CreateChannelRequestSchema)` to create a new message.
  */
 export const CreateChannelRequestSchema: GenMessage<CreateChannelRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 20);
+  messageDesc(file_sblurp_v1_sblurp, 21);
 
 /**
  * @generated from message sblurp.v1.CreateChannelResponse
@@ -899,7 +997,7 @@ export type CreateChannelResponse = Message$1<"sblurp.v1.CreateChannelResponse">
  * Use `create(CreateChannelResponseSchema)` to create a new message.
  */
 export const CreateChannelResponseSchema: GenMessage<CreateChannelResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 21);
+  messageDesc(file_sblurp_v1_sblurp, 22);
 
 /**
  * @generated from message sblurp.v1.UpdateChannelRequest
@@ -936,7 +1034,7 @@ export type UpdateChannelRequest = Message$1<"sblurp.v1.UpdateChannelRequest"> &
  * Use `create(UpdateChannelRequestSchema)` to create a new message.
  */
 export const UpdateChannelRequestSchema: GenMessage<UpdateChannelRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 22);
+  messageDesc(file_sblurp_v1_sblurp, 23);
 
 /**
  * @generated from message sblurp.v1.UpdateChannelResponse
@@ -953,7 +1051,152 @@ export type UpdateChannelResponse = Message$1<"sblurp.v1.UpdateChannelResponse">
  * Use `create(UpdateChannelResponseSchema)` to create a new message.
  */
 export const UpdateChannelResponseSchema: GenMessage<UpdateChannelResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 23);
+  messageDesc(file_sblurp_v1_sblurp, 24);
+
+/**
+ * Who can see a TEXT channel, and whether OPT_IN joins new members to it.
+ * Admins only. Replaces role_ids.
+ *
+ * @generated from message sblurp.v1.SetChannelAccessRequest
+ */
+export type SetChannelAccessRequest = Message$1<"sblurp.v1.SetChannelAccessRequest"> & {
+  /**
+   * @generated from field: string channel_id = 1;
+   */
+  channelId: string;
+
+  /**
+   * @generated from field: repeated string role_ids = 2;
+   */
+  roleIds: string[];
+
+  /**
+   * @generated from field: bool is_default = 3;
+   */
+  isDefault: boolean;
+};
+
+/**
+ * Describes the message sblurp.v1.SetChannelAccessRequest.
+ * Use `create(SetChannelAccessRequestSchema)` to create a new message.
+ */
+export const SetChannelAccessRequestSchema: GenMessage<SetChannelAccessRequest> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 25);
+
+/**
+ * @generated from message sblurp.v1.SetChannelAccessResponse
+ */
+export type SetChannelAccessResponse = Message$1<"sblurp.v1.SetChannelAccessResponse"> & {
+  /**
+   * @generated from field: sblurp.v1.Channel channel = 1;
+   */
+  channel?: Channel;
+};
+
+/**
+ * Describes the message sblurp.v1.SetChannelAccessResponse.
+ * Use `create(SetChannelAccessResponseSchema)` to create a new message.
+ */
+export const SetChannelAccessResponseSchema: GenMessage<SetChannelAccessResponse> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 26);
+
+/**
+ * Every TEXT channel I can see, joined or not (OPT_IN's "Browse channels").
+ *
+ * @generated from message sblurp.v1.BrowseChannelsRequest
+ */
+export type BrowseChannelsRequest = Message$1<"sblurp.v1.BrowseChannelsRequest"> & {
+};
+
+/**
+ * Describes the message sblurp.v1.BrowseChannelsRequest.
+ * Use `create(BrowseChannelsRequestSchema)` to create a new message.
+ */
+export const BrowseChannelsRequestSchema: GenMessage<BrowseChannelsRequest> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 27);
+
+/**
+ * @generated from message sblurp.v1.BrowseChannelsResponse
+ */
+export type BrowseChannelsResponse = Message$1<"sblurp.v1.BrowseChannelsResponse"> & {
+  /**
+   * @generated from field: repeated sblurp.v1.Channel channels = 1;
+   */
+  channels: Channel[];
+};
+
+/**
+ * Describes the message sblurp.v1.BrowseChannelsResponse.
+ * Use `create(BrowseChannelsResponseSchema)` to create a new message.
+ */
+export const BrowseChannelsResponseSchema: GenMessage<BrowseChannelsResponse> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 28);
+
+/**
+ * OPT_IN mode only (FAILED_PRECONDITION in ROLES mode). TEXT channels only.
+ *
+ * @generated from message sblurp.v1.JoinChannelRequest
+ */
+export type JoinChannelRequest = Message$1<"sblurp.v1.JoinChannelRequest"> & {
+  /**
+   * @generated from field: string channel_id = 1;
+   */
+  channelId: string;
+};
+
+/**
+ * Describes the message sblurp.v1.JoinChannelRequest.
+ * Use `create(JoinChannelRequestSchema)` to create a new message.
+ */
+export const JoinChannelRequestSchema: GenMessage<JoinChannelRequest> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 29);
+
+/**
+ * @generated from message sblurp.v1.JoinChannelResponse
+ */
+export type JoinChannelResponse = Message$1<"sblurp.v1.JoinChannelResponse"> & {
+  /**
+   * @generated from field: sblurp.v1.Channel channel = 1;
+   */
+  channel?: Channel;
+};
+
+/**
+ * Describes the message sblurp.v1.JoinChannelResponse.
+ * Use `create(JoinChannelResponseSchema)` to create a new message.
+ */
+export const JoinChannelResponseSchema: GenMessage<JoinChannelResponse> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 30);
+
+/**
+ * @generated from message sblurp.v1.LeaveChannelRequest
+ */
+export type LeaveChannelRequest = Message$1<"sblurp.v1.LeaveChannelRequest"> & {
+  /**
+   * @generated from field: string channel_id = 1;
+   */
+  channelId: string;
+};
+
+/**
+ * Describes the message sblurp.v1.LeaveChannelRequest.
+ * Use `create(LeaveChannelRequestSchema)` to create a new message.
+ */
+export const LeaveChannelRequestSchema: GenMessage<LeaveChannelRequest> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 31);
+
+/**
+ * @generated from message sblurp.v1.LeaveChannelResponse
+ */
+export type LeaveChannelResponse = Message$1<"sblurp.v1.LeaveChannelResponse"> & {
+};
+
+/**
+ * Describes the message sblurp.v1.LeaveChannelResponse.
+ * Use `create(LeaveChannelResponseSchema)` to create a new message.
+ */
+export const LeaveChannelResponseSchema: GenMessage<LeaveChannelResponse> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 32);
 
 /**
  * @generated from message sblurp.v1.OpenDMRequest
@@ -972,7 +1215,7 @@ export type OpenDMRequest = Message$1<"sblurp.v1.OpenDMRequest"> & {
  * Use `create(OpenDMRequestSchema)` to create a new message.
  */
 export const OpenDMRequestSchema: GenMessage<OpenDMRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 24);
+  messageDesc(file_sblurp_v1_sblurp, 33);
 
 /**
  * @generated from message sblurp.v1.OpenDMResponse
@@ -989,7 +1232,7 @@ export type OpenDMResponse = Message$1<"sblurp.v1.OpenDMResponse"> & {
  * Use `create(OpenDMResponseSchema)` to create a new message.
  */
 export const OpenDMResponseSchema: GenMessage<OpenDMResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 25);
+  messageDesc(file_sblurp_v1_sblurp, 34);
 
 /**
  * @generated from message sblurp.v1.ListMessagesRequest
@@ -1043,7 +1286,7 @@ export type ListMessagesRequest = Message$1<"sblurp.v1.ListMessagesRequest"> & {
  * Use `create(ListMessagesRequestSchema)` to create a new message.
  */
 export const ListMessagesRequestSchema: GenMessage<ListMessagesRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 26);
+  messageDesc(file_sblurp_v1_sblurp, 35);
 
 /**
  * @generated from message sblurp.v1.ListMessagesResponse
@@ -1076,7 +1319,7 @@ export type ListMessagesResponse = Message$1<"sblurp.v1.ListMessagesResponse"> &
  * Use `create(ListMessagesResponseSchema)` to create a new message.
  */
 export const ListMessagesResponseSchema: GenMessage<ListMessagesResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 27);
+  messageDesc(file_sblurp_v1_sblurp, 36);
 
 /**
  * @generated from message sblurp.v1.SendMessageRequest
@@ -1115,7 +1358,7 @@ export type SendMessageRequest = Message$1<"sblurp.v1.SendMessageRequest"> & {
  * Use `create(SendMessageRequestSchema)` to create a new message.
  */
 export const SendMessageRequestSchema: GenMessage<SendMessageRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 28);
+  messageDesc(file_sblurp_v1_sblurp, 37);
 
 /**
  * @generated from message sblurp.v1.SendMessageResponse
@@ -1132,7 +1375,7 @@ export type SendMessageResponse = Message$1<"sblurp.v1.SendMessageResponse"> & {
  * Use `create(SendMessageResponseSchema)` to create a new message.
  */
 export const SendMessageResponseSchema: GenMessage<SendMessageResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 29);
+  messageDesc(file_sblurp_v1_sblurp, 38);
 
 /**
  * @generated from message sblurp.v1.EditMessageRequest
@@ -1154,7 +1397,7 @@ export type EditMessageRequest = Message$1<"sblurp.v1.EditMessageRequest"> & {
  * Use `create(EditMessageRequestSchema)` to create a new message.
  */
 export const EditMessageRequestSchema: GenMessage<EditMessageRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 30);
+  messageDesc(file_sblurp_v1_sblurp, 39);
 
 /**
  * @generated from message sblurp.v1.EditMessageResponse
@@ -1171,7 +1414,7 @@ export type EditMessageResponse = Message$1<"sblurp.v1.EditMessageResponse"> & {
  * Use `create(EditMessageResponseSchema)` to create a new message.
  */
 export const EditMessageResponseSchema: GenMessage<EditMessageResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 31);
+  messageDesc(file_sblurp_v1_sblurp, 40);
 
 /**
  * @generated from message sblurp.v1.DeleteMessageRequest
@@ -1188,7 +1431,7 @@ export type DeleteMessageRequest = Message$1<"sblurp.v1.DeleteMessageRequest"> &
  * Use `create(DeleteMessageRequestSchema)` to create a new message.
  */
 export const DeleteMessageRequestSchema: GenMessage<DeleteMessageRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 32);
+  messageDesc(file_sblurp_v1_sblurp, 41);
 
 /**
  * @generated from message sblurp.v1.DeleteMessageResponse
@@ -1201,7 +1444,7 @@ export type DeleteMessageResponse = Message$1<"sblurp.v1.DeleteMessageResponse">
  * Use `create(DeleteMessageResponseSchema)` to create a new message.
  */
 export const DeleteMessageResponseSchema: GenMessage<DeleteMessageResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 33);
+  messageDesc(file_sblurp_v1_sblurp, 42);
 
 /**
  * @generated from message sblurp.v1.ReactRequest
@@ -1228,7 +1471,7 @@ export type ReactRequest = Message$1<"sblurp.v1.ReactRequest"> & {
  * Use `create(ReactRequestSchema)` to create a new message.
  */
 export const ReactRequestSchema: GenMessage<ReactRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 34);
+  messageDesc(file_sblurp_v1_sblurp, 43);
 
 /**
  * @generated from message sblurp.v1.ReactResponse
@@ -1245,7 +1488,7 @@ export type ReactResponse = Message$1<"sblurp.v1.ReactResponse"> & {
  * Use `create(ReactResponseSchema)` to create a new message.
  */
 export const ReactResponseSchema: GenMessage<ReactResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 35);
+  messageDesc(file_sblurp_v1_sblurp, 44);
 
 /**
  * @generated from message sblurp.v1.MarkReadRequest
@@ -1267,7 +1510,7 @@ export type MarkReadRequest = Message$1<"sblurp.v1.MarkReadRequest"> & {
  * Use `create(MarkReadRequestSchema)` to create a new message.
  */
 export const MarkReadRequestSchema: GenMessage<MarkReadRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 36);
+  messageDesc(file_sblurp_v1_sblurp, 45);
 
 /**
  * @generated from message sblurp.v1.MarkReadResponse
@@ -1284,7 +1527,7 @@ export type MarkReadResponse = Message$1<"sblurp.v1.MarkReadResponse"> & {
  * Use `create(MarkReadResponseSchema)` to create a new message.
  */
 export const MarkReadResponseSchema: GenMessage<MarkReadResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 37);
+  messageDesc(file_sblurp_v1_sblurp, 46);
 
 /**
  * @generated from message sblurp.v1.SetTypingRequest
@@ -1306,7 +1549,7 @@ export type SetTypingRequest = Message$1<"sblurp.v1.SetTypingRequest"> & {
  * Use `create(SetTypingRequestSchema)` to create a new message.
  */
 export const SetTypingRequestSchema: GenMessage<SetTypingRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 38);
+  messageDesc(file_sblurp_v1_sblurp, 47);
 
 /**
  * @generated from message sblurp.v1.SetTypingResponse
@@ -1319,7 +1562,7 @@ export type SetTypingResponse = Message$1<"sblurp.v1.SetTypingResponse"> & {
  * Use `create(SetTypingResponseSchema)` to create a new message.
  */
 export const SetTypingResponseSchema: GenMessage<SetTypingResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 39);
+  messageDesc(file_sblurp_v1_sblurp, 48);
 
 /**
  * @generated from message sblurp.v1.SearchRequest
@@ -1348,7 +1591,7 @@ export type SearchRequest = Message$1<"sblurp.v1.SearchRequest"> & {
  * Use `create(SearchRequestSchema)` to create a new message.
  */
 export const SearchRequestSchema: GenMessage<SearchRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 40);
+  messageDesc(file_sblurp_v1_sblurp, 49);
 
 /**
  * @generated from message sblurp.v1.SearchResponse
@@ -1365,7 +1608,7 @@ export type SearchResponse = Message$1<"sblurp.v1.SearchResponse"> & {
  * Use `create(SearchResponseSchema)` to create a new message.
  */
 export const SearchResponseSchema: GenMessage<SearchResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 41);
+  messageDesc(file_sblurp_v1_sblurp, 50);
 
 /**
  * Any member of a private channel may add others to it. The new members get
@@ -1392,7 +1635,7 @@ export type AddChannelMembersRequest = Message$1<"sblurp.v1.AddChannelMembersReq
  * Use `create(AddChannelMembersRequestSchema)` to create a new message.
  */
 export const AddChannelMembersRequestSchema: GenMessage<AddChannelMembersRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 42);
+  messageDesc(file_sblurp_v1_sblurp, 51);
 
 /**
  * @generated from message sblurp.v1.AddChannelMembersResponse
@@ -1409,7 +1652,7 @@ export type AddChannelMembersResponse = Message$1<"sblurp.v1.AddChannelMembersRe
  * Use `create(AddChannelMembersResponseSchema)` to create a new message.
  */
 export const AddChannelMembersResponseSchema: GenMessage<AddChannelMembersResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 43);
+  messageDesc(file_sblurp_v1_sblurp, 52);
 
 /**
  * Removes a member from a private channel. Your own id leaves the channel;
@@ -1436,7 +1679,7 @@ export type RemoveChannelMemberRequest = Message$1<"sblurp.v1.RemoveChannelMembe
  * Use `create(RemoveChannelMemberRequestSchema)` to create a new message.
  */
 export const RemoveChannelMemberRequestSchema: GenMessage<RemoveChannelMemberRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 44);
+  messageDesc(file_sblurp_v1_sblurp, 53);
 
 /**
  * @generated from message sblurp.v1.RemoveChannelMemberResponse
@@ -1453,7 +1696,7 @@ export type RemoveChannelMemberResponse = Message$1<"sblurp.v1.RemoveChannelMemb
  * Use `create(RemoveChannelMemberResponseSchema)` to create a new message.
  */
 export const RemoveChannelMemberResponseSchema: GenMessage<RemoveChannelMemberResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 45);
+  messageDesc(file_sblurp_v1_sblurp, 54);
 
 /**
  * Admin or owner only. The new role must be MEMBER, MODERATOR or ADMIN and
@@ -1478,7 +1721,7 @@ export type SetMemberRoleRequest = Message$1<"sblurp.v1.SetMemberRoleRequest"> &
  * Use `create(SetMemberRoleRequestSchema)` to create a new message.
  */
 export const SetMemberRoleRequestSchema: GenMessage<SetMemberRoleRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 46);
+  messageDesc(file_sblurp_v1_sblurp, 55);
 
 /**
  * @generated from message sblurp.v1.SetMemberRoleResponse
@@ -1495,7 +1738,7 @@ export type SetMemberRoleResponse = Message$1<"sblurp.v1.SetMemberRoleResponse">
  * Use `create(SetMemberRoleResponseSchema)` to create a new message.
  */
 export const SetMemberRoleResponseSchema: GenMessage<SetMemberRoleResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 47);
+  messageDesc(file_sblurp_v1_sblurp, 56);
 
 /**
  * Leave this community. The owner cannot leave. You may Join again later.
@@ -1511,7 +1754,7 @@ export type LeaveCommunityRequest = Message$1<"sblurp.v1.LeaveCommunityRequest">
  * Use `create(LeaveCommunityRequestSchema)` to create a new message.
  */
 export const LeaveCommunityRequestSchema: GenMessage<LeaveCommunityRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 48);
+  messageDesc(file_sblurp_v1_sblurp, 57);
 
 /**
  * @generated from message sblurp.v1.LeaveCommunityResponse
@@ -1524,7 +1767,7 @@ export type LeaveCommunityResponse = Message$1<"sblurp.v1.LeaveCommunityResponse
  * Use `create(LeaveCommunityResponseSchema)` to create a new message.
  */
 export const LeaveCommunityResponseSchema: GenMessage<LeaveCommunityResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 49);
+  messageDesc(file_sblurp_v1_sblurp, 58);
 
 /**
  * Moderator or higher, and a higher rank than the target. The target leaves
@@ -1545,7 +1788,7 @@ export type KickMemberRequest = Message$1<"sblurp.v1.KickMemberRequest"> & {
  * Use `create(KickMemberRequestSchema)` to create a new message.
  */
 export const KickMemberRequestSchema: GenMessage<KickMemberRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 50);
+  messageDesc(file_sblurp_v1_sblurp, 59);
 
 /**
  * @generated from message sblurp.v1.KickMemberResponse
@@ -1558,7 +1801,7 @@ export type KickMemberResponse = Message$1<"sblurp.v1.KickMemberResponse"> & {
  * Use `create(KickMemberResponseSchema)` to create a new message.
  */
 export const KickMemberResponseSchema: GenMessage<KickMemberResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 51);
+  messageDesc(file_sblurp_v1_sblurp, 60);
 
 /**
  * Like KickMember, and the person's login (iss, sub) cannot Join again.
@@ -1577,7 +1820,7 @@ export type BanMemberRequest = Message$1<"sblurp.v1.BanMemberRequest"> & {
  * Use `create(BanMemberRequestSchema)` to create a new message.
  */
 export const BanMemberRequestSchema: GenMessage<BanMemberRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 52);
+  messageDesc(file_sblurp_v1_sblurp, 61);
 
 /**
  * @generated from message sblurp.v1.BanMemberResponse
@@ -1590,7 +1833,7 @@ export type BanMemberResponse = Message$1<"sblurp.v1.BanMemberResponse"> & {
  * Use `create(BanMemberResponseSchema)` to create a new message.
  */
 export const BanMemberResponseSchema: GenMessage<BanMemberResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 53);
+  messageDesc(file_sblurp_v1_sblurp, 62);
 
 /**
  * @generated from message sblurp.v1.Invite
@@ -1642,7 +1885,7 @@ export type Invite = Message$1<"sblurp.v1.Invite"> & {
  * Use `create(InviteSchema)` to create a new message.
  */
 export const InviteSchema: GenMessage<Invite> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 54);
+  messageDesc(file_sblurp_v1_sblurp, 63);
 
 /**
  * @generated from message sblurp.v1.CreateInviteRequest
@@ -1668,7 +1911,7 @@ export type CreateInviteRequest = Message$1<"sblurp.v1.CreateInviteRequest"> & {
  * Use `create(CreateInviteRequestSchema)` to create a new message.
  */
 export const CreateInviteRequestSchema: GenMessage<CreateInviteRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 55);
+  messageDesc(file_sblurp_v1_sblurp, 64);
 
 /**
  * @generated from message sblurp.v1.CreateInviteResponse
@@ -1685,7 +1928,7 @@ export type CreateInviteResponse = Message$1<"sblurp.v1.CreateInviteResponse"> &
  * Use `create(CreateInviteResponseSchema)` to create a new message.
  */
 export const CreateInviteResponseSchema: GenMessage<CreateInviteResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 56);
+  messageDesc(file_sblurp_v1_sblurp, 65);
 
 /**
  * Every invite that was not revoked, newest first, including expired and
@@ -1701,7 +1944,7 @@ export type ListInvitesRequest = Message$1<"sblurp.v1.ListInvitesRequest"> & {
  * Use `create(ListInvitesRequestSchema)` to create a new message.
  */
 export const ListInvitesRequestSchema: GenMessage<ListInvitesRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 57);
+  messageDesc(file_sblurp_v1_sblurp, 66);
 
 /**
  * @generated from message sblurp.v1.ListInvitesResponse
@@ -1718,7 +1961,7 @@ export type ListInvitesResponse = Message$1<"sblurp.v1.ListInvitesResponse"> & {
  * Use `create(ListInvitesResponseSchema)` to create a new message.
  */
 export const ListInvitesResponseSchema: GenMessage<ListInvitesResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 58);
+  messageDesc(file_sblurp_v1_sblurp, 67);
 
 /**
  * @generated from message sblurp.v1.RevokeInviteRequest
@@ -1735,7 +1978,7 @@ export type RevokeInviteRequest = Message$1<"sblurp.v1.RevokeInviteRequest"> & {
  * Use `create(RevokeInviteRequestSchema)` to create a new message.
  */
 export const RevokeInviteRequestSchema: GenMessage<RevokeInviteRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 59);
+  messageDesc(file_sblurp_v1_sblurp, 68);
 
 /**
  * @generated from message sblurp.v1.RevokeInviteResponse
@@ -1748,7 +1991,7 @@ export type RevokeInviteResponse = Message$1<"sblurp.v1.RevokeInviteResponse"> &
  * Use `create(RevokeInviteResponseSchema)` to create a new message.
  */
 export const RevokeInviteResponseSchema: GenMessage<RevokeInviteResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 60);
+  messageDesc(file_sblurp_v1_sblurp, 69);
 
 /**
  * @generated from message sblurp.v1.UpdateServerSettingsRequest
@@ -1758,6 +2001,13 @@ export type UpdateServerSettingsRequest = Message$1<"sblurp.v1.UpdateServerSetti
    * @generated from field: optional bool invite_only = 1;
    */
   inviteOnly?: boolean;
+
+  /**
+   * UNSPECIFIED = leave as is
+   *
+   * @generated from field: sblurp.v1.ChannelMode channel_mode = 2;
+   */
+  channelMode: ChannelMode;
 };
 
 /**
@@ -1765,7 +2015,7 @@ export type UpdateServerSettingsRequest = Message$1<"sblurp.v1.UpdateServerSetti
  * Use `create(UpdateServerSettingsRequestSchema)` to create a new message.
  */
 export const UpdateServerSettingsRequestSchema: GenMessage<UpdateServerSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 61);
+  messageDesc(file_sblurp_v1_sblurp, 70);
 
 /**
  * @generated from message sblurp.v1.UpdateServerSettingsResponse
@@ -1775,6 +2025,11 @@ export type UpdateServerSettingsResponse = Message$1<"sblurp.v1.UpdateServerSett
    * @generated from field: bool invite_only = 1;
    */
   inviteOnly: boolean;
+
+  /**
+   * @generated from field: sblurp.v1.ChannelMode channel_mode = 2;
+   */
+  channelMode: ChannelMode;
 };
 
 /**
@@ -1782,7 +2037,171 @@ export type UpdateServerSettingsResponse = Message$1<"sblurp.v1.UpdateServerSett
  * Use `create(UpdateServerSettingsResponseSchema)` to create a new message.
  */
 export const UpdateServerSettingsResponseSchema: GenMessage<UpdateServerSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 62);
+  messageDesc(file_sblurp_v1_sblurp, 71);
+
+/**
+ * @generated from message sblurp.v1.CreateRoleRequest
+ */
+export type CreateRoleRequest = Message$1<"sblurp.v1.CreateRoleRequest"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * "#rrggbb" or empty
+   *
+   * @generated from field: string color = 2;
+   */
+  color: string;
+};
+
+/**
+ * Describes the message sblurp.v1.CreateRoleRequest.
+ * Use `create(CreateRoleRequestSchema)` to create a new message.
+ */
+export const CreateRoleRequestSchema: GenMessage<CreateRoleRequest> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 72);
+
+/**
+ * @generated from message sblurp.v1.CreateRoleResponse
+ */
+export type CreateRoleResponse = Message$1<"sblurp.v1.CreateRoleResponse"> & {
+  /**
+   * @generated from field: sblurp.v1.Role role = 1;
+   */
+  role?: Role;
+};
+
+/**
+ * Describes the message sblurp.v1.CreateRoleResponse.
+ * Use `create(CreateRoleResponseSchema)` to create a new message.
+ */
+export const CreateRoleResponseSchema: GenMessage<CreateRoleResponse> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 73);
+
+/**
+ * @generated from message sblurp.v1.UpdateRoleRequest
+ */
+export type UpdateRoleRequest = Message$1<"sblurp.v1.UpdateRoleRequest"> & {
+  /**
+   * @generated from field: string role_id = 1;
+   */
+  roleId: string;
+
+  /**
+   * @generated from field: optional string name = 2;
+   */
+  name?: string;
+
+  /**
+   * @generated from field: optional string color = 3;
+   */
+  color?: string;
+
+  /**
+   * @generated from field: optional int32 position = 4;
+   */
+  position?: number;
+};
+
+/**
+ * Describes the message sblurp.v1.UpdateRoleRequest.
+ * Use `create(UpdateRoleRequestSchema)` to create a new message.
+ */
+export const UpdateRoleRequestSchema: GenMessage<UpdateRoleRequest> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 74);
+
+/**
+ * @generated from message sblurp.v1.UpdateRoleResponse
+ */
+export type UpdateRoleResponse = Message$1<"sblurp.v1.UpdateRoleResponse"> & {
+  /**
+   * @generated from field: sblurp.v1.Role role = 1;
+   */
+  role?: Role;
+};
+
+/**
+ * Describes the message sblurp.v1.UpdateRoleResponse.
+ * Use `create(UpdateRoleResponseSchema)` to create a new message.
+ */
+export const UpdateRoleResponseSchema: GenMessage<UpdateRoleResponse> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 75);
+
+/**
+ * Fails with FAILED_PRECONDITION while the role still limits a channel, so
+ * deleting a role never opens a channel to everyone.
+ *
+ * @generated from message sblurp.v1.DeleteRoleRequest
+ */
+export type DeleteRoleRequest = Message$1<"sblurp.v1.DeleteRoleRequest"> & {
+  /**
+   * @generated from field: string role_id = 1;
+   */
+  roleId: string;
+};
+
+/**
+ * Describes the message sblurp.v1.DeleteRoleRequest.
+ * Use `create(DeleteRoleRequestSchema)` to create a new message.
+ */
+export const DeleteRoleRequestSchema: GenMessage<DeleteRoleRequest> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 76);
+
+/**
+ * @generated from message sblurp.v1.DeleteRoleResponse
+ */
+export type DeleteRoleResponse = Message$1<"sblurp.v1.DeleteRoleResponse"> & {
+};
+
+/**
+ * Describes the message sblurp.v1.DeleteRoleResponse.
+ * Use `create(DeleteRoleResponseSchema)` to create a new message.
+ */
+export const DeleteRoleResponseSchema: GenMessage<DeleteRoleResponse> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 77);
+
+/**
+ * Replaces the member's roles. Works for bots too.
+ *
+ * @generated from message sblurp.v1.SetMemberRolesRequest
+ */
+export type SetMemberRolesRequest = Message$1<"sblurp.v1.SetMemberRolesRequest"> & {
+  /**
+   * @generated from field: string member_id = 1;
+   */
+  memberId: string;
+
+  /**
+   * @generated from field: repeated string role_ids = 2;
+   */
+  roleIds: string[];
+};
+
+/**
+ * Describes the message sblurp.v1.SetMemberRolesRequest.
+ * Use `create(SetMemberRolesRequestSchema)` to create a new message.
+ */
+export const SetMemberRolesRequestSchema: GenMessage<SetMemberRolesRequest> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 78);
+
+/**
+ * @generated from message sblurp.v1.SetMemberRolesResponse
+ */
+export type SetMemberRolesResponse = Message$1<"sblurp.v1.SetMemberRolesResponse"> & {
+  /**
+   * @generated from field: sblurp.v1.Member member = 1;
+   */
+  member?: Member;
+};
+
+/**
+ * Describes the message sblurp.v1.SetMemberRolesResponse.
+ * Use `create(SetMemberRolesResponseSchema)` to create a new message.
+ */
+export const SetMemberRolesResponseSchema: GenMessage<SetMemberRolesResponse> = /*@__PURE__*/
+  messageDesc(file_sblurp_v1_sblurp, 79);
 
 /**
  * @generated from message sblurp.v1.CreateBotRequest
@@ -1814,7 +2233,7 @@ export type CreateBotRequest = Message$1<"sblurp.v1.CreateBotRequest"> & {
  * Use `create(CreateBotRequestSchema)` to create a new message.
  */
 export const CreateBotRequestSchema: GenMessage<CreateBotRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 63);
+  messageDesc(file_sblurp_v1_sblurp, 80);
 
 /**
  * @generated from message sblurp.v1.CreateBotResponse
@@ -1838,7 +2257,7 @@ export type CreateBotResponse = Message$1<"sblurp.v1.CreateBotResponse"> & {
  * Use `create(CreateBotResponseSchema)` to create a new message.
  */
 export const CreateBotResponseSchema: GenMessage<CreateBotResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 64);
+  messageDesc(file_sblurp_v1_sblurp, 81);
 
 /**
  * @generated from message sblurp.v1.ListBotsRequest
@@ -1851,7 +2270,7 @@ export type ListBotsRequest = Message$1<"sblurp.v1.ListBotsRequest"> & {
  * Use `create(ListBotsRequestSchema)` to create a new message.
  */
 export const ListBotsRequestSchema: GenMessage<ListBotsRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 65);
+  messageDesc(file_sblurp_v1_sblurp, 82);
 
 /**
  * @generated from message sblurp.v1.ListBotsResponse
@@ -1868,7 +2287,7 @@ export type ListBotsResponse = Message$1<"sblurp.v1.ListBotsResponse"> & {
  * Use `create(ListBotsResponseSchema)` to create a new message.
  */
 export const ListBotsResponseSchema: GenMessage<ListBotsResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 66);
+  messageDesc(file_sblurp_v1_sblurp, 83);
 
 /**
  * @generated from message sblurp.v1.RotateBotTokenRequest
@@ -1885,7 +2304,7 @@ export type RotateBotTokenRequest = Message$1<"sblurp.v1.RotateBotTokenRequest">
  * Use `create(RotateBotTokenRequestSchema)` to create a new message.
  */
 export const RotateBotTokenRequestSchema: GenMessage<RotateBotTokenRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 67);
+  messageDesc(file_sblurp_v1_sblurp, 84);
 
 /**
  * @generated from message sblurp.v1.RotateBotTokenResponse
@@ -1902,7 +2321,7 @@ export type RotateBotTokenResponse = Message$1<"sblurp.v1.RotateBotTokenResponse
  * Use `create(RotateBotTokenResponseSchema)` to create a new message.
  */
 export const RotateBotTokenResponseSchema: GenMessage<RotateBotTokenResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 68);
+  messageDesc(file_sblurp_v1_sblurp, 85);
 
 /**
  * @generated from message sblurp.v1.DeleteBotRequest
@@ -1919,7 +2338,7 @@ export type DeleteBotRequest = Message$1<"sblurp.v1.DeleteBotRequest"> & {
  * Use `create(DeleteBotRequestSchema)` to create a new message.
  */
 export const DeleteBotRequestSchema: GenMessage<DeleteBotRequest> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 69);
+  messageDesc(file_sblurp_v1_sblurp, 86);
 
 /**
  * @generated from message sblurp.v1.DeleteBotResponse
@@ -1932,7 +2351,7 @@ export type DeleteBotResponse = Message$1<"sblurp.v1.DeleteBotResponse"> & {
  * Use `create(DeleteBotResponseSchema)` to create a new message.
  */
 export const DeleteBotResponseSchema: GenMessage<DeleteBotResponse> = /*@__PURE__*/
-  messageDesc(file_sblurp_v1_sblurp, 70);
+  messageDesc(file_sblurp_v1_sblurp, 87);
 
 /**
  * @generated from enum sblurp.v1.MemberKind
@@ -2028,6 +2447,39 @@ export const PresenceSchema: GenEnum<Presence> = /*@__PURE__*/
   enumDesc(file_sblurp_v1_sblurp, 2);
 
 /**
+ * How members get into text channels. Private channels and DMs keep their
+ * explicit member lists in both modes.
+ *
+ * @generated from enum sblurp.v1.ChannelMode
+ */
+export enum ChannelMode {
+  /**
+   * @generated from enum value: CHANNEL_MODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Discord-like: you are in every text channel you can see
+   *
+   * @generated from enum value: CHANNEL_MODE_ROLES = 1;
+   */
+  ROLES = 1,
+
+  /**
+   * Slack-like: browse the channels you can see, join and leave them
+   *
+   * @generated from enum value: CHANNEL_MODE_OPT_IN = 2;
+   */
+  OPT_IN = 2,
+}
+
+/**
+ * Describes the enum sblurp.v1.ChannelMode.
+ */
+export const ChannelModeSchema: GenEnum<ChannelMode> = /*@__PURE__*/
+  enumDesc(file_sblurp_v1_sblurp, 3);
+
+/**
  * @generated from enum sblurp.v1.ChannelKind
  */
 export enum ChannelKind {
@@ -2037,7 +2489,7 @@ export enum ChannelKind {
   UNSPECIFIED = 0,
 
   /**
-   * public to all members
+   * every member can see it, unless role_ids limits it
    *
    * @generated from enum value: CHANNEL_KIND_TEXT = 1;
    */
@@ -2062,7 +2514,7 @@ export enum ChannelKind {
  * Describes the enum sblurp.v1.ChannelKind.
  */
 export const ChannelKindSchema: GenEnum<ChannelKind> = /*@__PURE__*/
-  enumDesc(file_sblurp_v1_sblurp, 3);
+  enumDesc(file_sblurp_v1_sblurp, 4);
 
 /**
  * @generated from service sblurp.v1.ServerService
@@ -2183,6 +2635,38 @@ export const ServerService: GenService<{
     input: typeof UpdateServerSettingsRequestSchema;
     output: typeof UpdateServerSettingsResponseSchema;
   },
+  /**
+   * @generated from rpc sblurp.v1.ServerService.CreateRole
+   */
+  createRole: {
+    methodKind: "unary";
+    input: typeof CreateRoleRequestSchema;
+    output: typeof CreateRoleResponseSchema;
+  },
+  /**
+   * @generated from rpc sblurp.v1.ServerService.UpdateRole
+   */
+  updateRole: {
+    methodKind: "unary";
+    input: typeof UpdateRoleRequestSchema;
+    output: typeof UpdateRoleResponseSchema;
+  },
+  /**
+   * @generated from rpc sblurp.v1.ServerService.DeleteRole
+   */
+  deleteRole: {
+    methodKind: "unary";
+    input: typeof DeleteRoleRequestSchema;
+    output: typeof DeleteRoleResponseSchema;
+  },
+  /**
+   * @generated from rpc sblurp.v1.ServerService.SetMemberRoles
+   */
+  setMemberRoles: {
+    methodKind: "unary";
+    input: typeof SetMemberRolesRequestSchema;
+    output: typeof SetMemberRolesResponseSchema;
+  },
 }> = /*@__PURE__*/
   serviceDesc(file_sblurp_v1_sblurp, 0);
 
@@ -2293,6 +2777,38 @@ export const ChatService: GenService<{
     methodKind: "unary";
     input: typeof RemoveChannelMemberRequestSchema;
     output: typeof RemoveChannelMemberResponseSchema;
+  },
+  /**
+   * @generated from rpc sblurp.v1.ChatService.SetChannelAccess
+   */
+  setChannelAccess: {
+    methodKind: "unary";
+    input: typeof SetChannelAccessRequestSchema;
+    output: typeof SetChannelAccessResponseSchema;
+  },
+  /**
+   * @generated from rpc sblurp.v1.ChatService.BrowseChannels
+   */
+  browseChannels: {
+    methodKind: "unary";
+    input: typeof BrowseChannelsRequestSchema;
+    output: typeof BrowseChannelsResponseSchema;
+  },
+  /**
+   * @generated from rpc sblurp.v1.ChatService.JoinChannel
+   */
+  joinChannel: {
+    methodKind: "unary";
+    input: typeof JoinChannelRequestSchema;
+    output: typeof JoinChannelResponseSchema;
+  },
+  /**
+   * @generated from rpc sblurp.v1.ChatService.LeaveChannel
+   */
+  leaveChannel: {
+    methodKind: "unary";
+    input: typeof LeaveChannelRequestSchema;
+    output: typeof LeaveChannelResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_sblurp_v1_sblurp, 1);

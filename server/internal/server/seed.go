@@ -53,6 +53,19 @@ func (s *Server) seed(ctx context.Context, name string) error {
 			return err
 		}
 		ids[c.Bot.Username], token = bot.Id, tok
+		roles := map[string]string{} // name -> role id
+		for i, r := range c.Roles {
+			roles[r.Name] = newID(now.Add(time.Duration(i) * time.Millisecond))
+			if _, err := t.ExecContext(ctx, "INSERT INTO roles(id, name, color, position, created_at_ms) VALUES (?,?,?,?,?)",
+				roles[r.Name], r.Name, r.Color, i, now.UnixMilli()); err != nil {
+				return err
+			}
+			for _, u := range r.Members {
+				if _, err := t.ExecContext(ctx, "INSERT INTO member_roles(member_id, role_id) VALUES (?,?)", ids[u], roles[r.Name]); err != nil {
+					return err
+				}
+			}
+		}
 
 		type line struct {
 			at      time.Time
@@ -99,7 +112,25 @@ func (s *Server) seed(ctx context.Context, name string) error {
 			if err != nil {
 				return fmt.Errorf("channel %s: %w", ch.Name, err)
 			}
+			if _, err := t.ExecContext(ctx, "UPDATE channels SET is_default = ? WHERE id = ?", ch.Default, created.Id); err != nil {
+				return err
+			}
+			for _, r := range ch.Roles {
+				if _, err := t.ExecContext(ctx, "INSERT INTO channel_roles(channel_id, role_id) VALUES (?,?)", created.Id, roles[r]); err != nil {
+					return err
+				}
+			}
 			addConvos(created.Id, ch.Convos)
+		}
+		// Channels were made in ROLES mode, so everyone is in all they see.
+		// Switching to OPT_IN keeps that, like it does for a live community.
+		if err := s.syncAccess(t, ""); err != nil {
+			return err
+		}
+		if c.OptIn {
+			if err := s.setChannelMode(t, v1.ChannelMode_CHANNEL_MODE_OPT_IN); err != nil {
+				return err
+			}
 		}
 		for _, dm := range c.DMs {
 			var mids []string
