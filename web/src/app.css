@@ -2582,3 +2582,28 @@ li.sw-empty {
 .toggle-row span.row {
   display: flex;
 }
+.input.textarea {
+  height: auto;
+  padding: 8px 12px;
+  resize: vertical;
+  line-height: 1.45;
+}
+.emoji-btn {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  font-size: 18px;
+}
+.msg-text :is(ul, ol) {
+  margin: 2px 0;
+  padding-left: 22px;
+}
+.msg-text ul {
+  list-style: disc;
+}
+.msg-text ol {
+  list-style: decimal;
+}
+.msg-text li::marker {
+  color: var(--graphite);
+}

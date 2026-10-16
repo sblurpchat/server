@@ -1,7 +1,7 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ChannelDialog, CommunitySettings, Invites, PERMISSION } from "./Admin";
-import { ChannelView, RightPane } from "./Chat";
+import { ChannelView, PeoplePicker, RightPane } from "./Chat";
 import { MemberKind, MemberRole, type GetServerInfoResponse } from "./gen/sblurp/v1/sblurp_pb";
 import {
   channelLabel,
@@ -28,6 +28,8 @@ import {
   joinAgain,
   leave,
   leaveCommunity,
+  markAllRead,
+  updateProfile,
   removeMember,
   openDM,
   probe,
@@ -46,7 +48,7 @@ import {
   useApp,
   type Theme,
 } from "./store";
-import { Avatar, CommunityIcon, Dialog, Icon, Pop } from "./ui";
+import { Avatar, CommunityIcon, Dialog, EmojiPicker, emojiChar, Icon, Pop } from "./ui";
 
 export function App() {
   const auth = useApp((s) => s.auth);
@@ -104,6 +106,9 @@ function useShortcuts() {
       } else if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown") && !s.modal) {
         e.preventDefault();
         moveChannel(e.key === "ArrowUp" ? -1 : 1, e.shiftKey);
+      } else if (e.key === "Escape" && e.shiftKey && !s.modal) {
+        e.preventDefault();
+        markAllRead(s.url);
       } else if (e.key === "Escape" && !s.modal && !e.defaultPrevented && !document.querySelector(":popover-open")) {
         if (s.editing) set({ editing: null });
         else if (s.pane) set({ pane: null });
@@ -334,6 +339,9 @@ function Sidebar({ c }: { c: Community }) {
               </button>
             </>
           )}
+          <button role="menuitem" onClick={() => markAllRead(c.url)}>
+            <Icon name="check" size={18} /> Mark all as read
+          </button>
           <hr />
           <button role="menuitem" className="danger" onClick={() => set({ modal: { t: "leave" } })}>
             <Icon name="leave" size={18} /> Leave community
@@ -348,7 +356,6 @@ function Sidebar({ c }: { c: Community }) {
             const shown = shut
               ? sec.channels.filter((ch) => ch.id === channelId || (c.reads[ch.id]?.unreadCount ?? 0) > 0)
               : sec.channels;
-            if (sec.dm && !sec.channels.length) return null;
             return (
               <section key={sec.title} className="side-sec">
                 <h2>
@@ -358,6 +365,11 @@ function Sidebar({ c }: { c: Community }) {
                     </span>
                     {sec.title}
                   </button>
+                  {sec.dm && (
+                    <button className="sec-add" aria-label="New message" title="New message" onClick={() => set({ modal: { t: "newdm" } })}>
+                      <Icon name="plus" size={16} />
+                    </button>
+                  )}
                   {admin && !sec.dm && (
                     <button
                       className="sec-add"
@@ -434,7 +446,7 @@ function MeBar({ c }: { c: Community }) {
         <Avatar m={me} size={32} presence />
         <span className="me-text">
           <b className="truncate">{me?.displayName ?? profile?.displayName ?? "You"}</b>
-          <small className="truncate">{me?.statusText || (me ? "Online" : c.status === "join" || c.status === "removed" ? "Not a member" : "Connecting…")}</small>
+          <small className="truncate">{me?.statusText || me?.statusEmoji ? `${me.statusEmoji} ${me.statusText}`.trim() : (me ? "Online" : c.status === "join" || c.status === "removed" ? "Not a member" : "Connecting…")}</small>
         </span>
       </button>
       <button className="icon-btn" aria-label="Settings" title="Settings" onClick={() => set({ modal: { t: "settings" } })}>
@@ -700,6 +712,10 @@ function Modals() {
       return <ChannelDialog key={modal.id ?? "new"} id={modal.id} category={modal.category} />;
     case "community":
       return <CommunitySettings tab={modal.tab} />;
+    case "newdm":
+      return <NewMessage />;
+    case "profile":
+      return <EditProfile />;
     case "remove":
       return <RemoveMember {...modal} />;
     case "lightbox":
@@ -966,6 +982,116 @@ function CommunityDialog({ kind }: { kind: "info" | "invite" | "leave" }) {
   );
 }
 
+function NewMessage() {
+  const c = useApp((s) => s.cs[s.url]);
+  if (!c?.me) return null;
+  const close = () => set({ modal: null });
+  return (
+    <PeoplePicker
+      c={c}
+      title="New message"
+      exclude={[c.me.id]}
+      max={8}
+      action={(n) => (n > 1 ? "Start group message" : "Message")}
+      busyText="Opening…"
+      empty="Nobody else is here yet."
+      onSubmit={(ids) => openDM(c.url, ids)}
+      onClose={close}
+    />
+  );
+}
+
+function EditProfile() {
+  const c = useApp((s) => s.cs[s.url]);
+  const me = c?.me;
+  const [f, setF] = useState({ displayName: me?.displayName ?? "", statusEmoji: me?.statusEmoji ?? "", statusText: me?.statusText ?? "", bio: me?.bio ?? "" });
+  const [pick, setPick] = useState<DOMRect | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  if (!c || !me) return null;
+  const name = c.info?.name ?? hostOf(c.url);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr("");
+    try {
+      await updateProfile(c.url, { displayName: f.displayName.trim(), statusEmoji: f.statusEmoji, statusText: f.statusText.trim(), bio: f.bio.trim() });
+      set({ modal: null });
+    } catch (x) {
+      setErr(errorText(x, name));
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog label="Edit profile" className="channel-dialog">
+      <form className="stack" onSubmit={submit}>
+        <header className="dialog-head">
+          <h2>Your profile in {name}</h2>
+          <button type="button" className="icon-btn" aria-label="Close" onClick={() => set({ modal: null })}>
+            <Icon name="x" />
+          </button>
+        </header>
+        <label className="field">
+          <b>Display name</b>
+          <input className="input" value={f.displayName} onChange={(e) => setF({ ...f, displayName: e.target.value })} placeholder={me.username} maxLength={64} />
+        </label>
+        <div className="field">
+          <b id="status-label">Status</b>
+          <span className="row">
+            <button
+              type="button"
+              className="btn emoji-btn"
+              aria-label={f.statusEmoji ? `Status emoji ${f.statusEmoji}, change` : "Pick a status emoji"}
+              onClick={(e) => setPick(e.currentTarget.getBoundingClientRect())}
+            >
+              {f.statusEmoji || <Icon name="smile" size={18} />}
+            </button>
+            <input
+              className="input"
+              aria-labelledby="status-label"
+              value={f.statusText}
+              onChange={(e) => setF({ ...f, statusText: e.target.value })}
+              placeholder="What are you up to?"
+              maxLength={100}
+            />
+            {(f.statusText || f.statusEmoji) && (
+              <button type="button" className="btn ghost small" onClick={() => setF({ ...f, statusText: "", statusEmoji: "" })}>
+                Clear
+              </button>
+            )}
+          </span>
+        </div>
+        <label className="field">
+          <b>About</b>
+          <textarea className="input textarea" rows={3} value={f.bio} onChange={(e) => setF({ ...f, bio: e.target.value })} maxLength={500} />
+        </label>
+        <p className="fine">Only {name} sees this. Your sblurp.chat account doesn't change.</p>
+        {err && (
+          <p className="error" role="alert">
+            {err}
+          </p>
+        )}
+        <div className="row-end">
+          <button type="button" className="btn ghost" onClick={() => set({ modal: null })}>
+            Cancel
+          </button>
+          <button className="btn primary" disabled={busy}>
+            Save changes
+          </button>
+        </div>
+      </form>
+      <Pop anchor={pick} onClose={() => setPick(null)} label="Pick a status emoji">
+        <EmojiPicker
+          onPick={(e) => {
+            setPick(null);
+            setF((x) => ({ ...x, statusEmoji: emojiChar(e) }));
+          }}
+        />
+      </Pop>
+    </Dialog>
+  );
+}
+
 function DeleteConfirm({ id }: { id: string }) {
   const c = useApp((s) => s.cs[s.url]);
   const [err, setErr] = useState("");
@@ -1072,7 +1198,9 @@ function ProfilePopover() {
             )}
             {err && <p className="error small">{err}</p>}
             {m.id === me?.id ? (
-              <p className="fine">This is you.</p>
+              <button className="btn wide" onClick={() => set({ popover: null, modal: { t: "profile" } })}>
+                Edit profile and status
+              </button>
             ) : (
               <button className="btn primary wide" onClick={() => openDM(p.url, m.id).catch((e) => setErr(errorText(e)))}>
                 Message

@@ -310,7 +310,12 @@ export type Inline =
   | { t: "link"; href: string; c: Inline[] }
   | { t: "b" | "i" | "s"; c: Inline[] };
 
-export type Block = { t: "p"; c: Inline[] } | { t: "quote"; c: Inline[] } | { t: "pre"; lang: string; v: string };
+export type Block =
+  | { t: "p"; c: Inline[] }
+  | { t: "quote"; c: Inline[] }
+  | { t: "pre"; lang: string; v: string }
+  | { t: "ul"; items: Inline[][] }
+  | { t: "ol"; start: number; items: Inline[][] };
 
 const INLINE =
   /`([^`\n]+)`|<@([\w-]+)>|\[([^\]\n]+)\]\(((?:https?:\/\/|mailto:)[^\s)]+)\)|(https?:\/\/[^\s<]*[^\s<.,:;"')\]!?])|\*\*([^\n]+?)\*\*|~~([^\n]+?)~~|\*([^*\s](?:[^*\n]*[^*\s])?)\*|(?<!\w)_([^_\s](?:[^_\n]*[^_\s])?)_(?!\w)/g;
@@ -339,11 +344,15 @@ export function parseMarkdown(text: string): Block[] {
   const lines = text.split("\n");
   let para: string[] = [];
   let quote: string[] = [];
+  // ponytail: flat lists only; indented items join the list at the same level.
+  let list = null as { t: "ul" | "ol"; start: number; items: string[] } | null;
   const flush = () => {
     if (para.length) blocks.push({ t: "p", c: parseInline(para.join("\n")) });
     if (quote.length) blocks.push({ t: "quote", c: parseInline(quote.join("\n")) });
+    if (list) blocks.push(list.t === "ul" ? { t: "ul", items: list.items.map(parseInline) } : { ...list, items: list.items.map(parseInline) } as Block);
     para = [];
     quote = [];
+    list = null;
   };
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -357,6 +366,19 @@ export function parseMarkdown(text: string): Block[] {
         continue;
       }
     }
+    const li = /^\s*(?:([-*•])|(\d{1,9})[.)])\s+(.*)$/.exec(line);
+    if (li) {
+      const t = li[1] ? "ul" : "ol";
+      if (list?.t !== t) flush();
+      list ??= { t, start: Number(li[2] ?? 1), items: [] };
+      list.items.push(li[3]);
+      continue;
+    }
+    if (list && /^\s+\S/.test(line)) {
+      list.items[list.items.length - 1] += `\n${line.trim()}`;
+      continue;
+    }
+    if (list) flush();
     const q = /^> ?(.*)$/.exec(line);
     if (q) {
       if (para.length) flush();
@@ -484,10 +506,16 @@ export function inviteState(inv: { expiresAtMs: bigint; maxUses: number; uses: n
 
 export const hostOf = (url: string) => new URL(url).host;
 
-export function parseHash(hash: string): { host: string; channelId: string } | null {
-  const m = /^#\/c\/([^/]+)(?:\/([^/]+))?/.exec(hash);
-  return m ? { host: decodeURIComponent(m[1]), channelId: decodeURIComponent(m[2] ?? "") } : null;
+/** #/c/<host>[/<channel>[/<message>[/<thread root>]]] */
+export function parseHash(hash: string): { host: string; channelId: string; messageId: string; rootId: string } | null {
+  const m = /^#\/c\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?(?:\/([^/]+))?/.exec(hash);
+  const d = (i: number) => decodeURIComponent(m![i] ?? "");
+  return m ? { host: d(1), channelId: d(2), messageId: m[2] ? d(3) : "", rootId: m[3] ? d(4) : "" } : null;
 }
+
+/** A link to one message; a thread reply also names its root so the thread opens. */
+export const messageHash = (url: string, m: { id: string; channelId: string; threadRootId: string }) =>
+  `${formatHash(url, m.channelId)}/${encodeURIComponent(m.id)}${m.threadRootId ? `/${encodeURIComponent(m.threadRootId)}` : ""}`;
 
 export const formatHash = (url: string, channelId: string) =>
   `#/c/${encodeURIComponent(hostOf(url))}${channelId ? `/${encodeURIComponent(channelId)}` : ""}`;

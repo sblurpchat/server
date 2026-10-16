@@ -22,6 +22,7 @@ import {
   type Community,
   count,
   communityBadge,
+  messageHash,
 } from "./logic";
 import {
   absUrl,
@@ -501,6 +502,9 @@ function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: 
           <button role="menuitem" onClick={() => navigator.clipboard.writeText(decodeMentions(m.text, c.members))}>
             <Icon name="copy" size={18} /> Copy text
           </button>
+          <button role="menuitem" onClick={() => navigator.clipboard.writeText(location.origin + location.pathname + location.search + messageHash(url, m))}>
+            <Icon name="link" size={18} /> Copy link
+          </button>
           {mine && (
             <button role="menuitem" className="danger" onClick={() => set({ modal: { t: "delete", id: m.id } })}>
               <Icon name="trash" size={18} /> Delete message
@@ -926,7 +930,18 @@ function Members({ c }: { c: Community }) {
           </ul>
         </section>
       ))}
-      {priv && adding && <AddPeople c={c} ch={priv} onClose={() => setAdding(false)} />}
+      {priv && adding && (
+        <PeoplePicker
+          c={c}
+          title={`Add people to #${priv.name}`}
+          exclude={priv.memberIds}
+          action={(n) => (n ? `Add ${count(n, "person", "people")}` : "Add")}
+          busyText="Adding…"
+          empty="Everyone is already here."
+          onSubmit={(ids) => addToChannel(c.url, priv.id, ids)}
+          onClose={() => setAdding(false)}
+        />
+      )}
       {priv && leaving && (
         <Dialog label={`Leave #${priv.name}`} className="confirm" onClose={() => setLeaving(false)}>
           <h2>Leave #{priv.name}?</h2>
@@ -945,32 +960,54 @@ function Members({ c }: { c: Community }) {
   );
 }
 
-function AddPeople({ c, ch, onClose }: { c: Community; ch: Community["channels"][string]; onClose: () => void }) {
+/** Pick people from the community: Add people to a private channel, or start a DM. */
+export function PeoplePicker({
+  c,
+  title,
+  exclude,
+  max = 0,
+  action,
+  busyText,
+  empty,
+  onSubmit,
+  onClose,
+}: {
+  c: Community;
+  title: string;
+  exclude: string[];
+  max?: number;
+  action: (n: number) => string;
+  busyText: string;
+  empty: string;
+  onSubmit: (ids: string[]) => Promise<unknown>;
+  onClose: () => void;
+}) {
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const options = Object.values(c.members)
-    .filter((m) => !ch.memberIds.includes(m.id))
+    .filter((m) => !exclude.includes(m.id))
     .map((m) => ({ m, s: Math.max(matchScore(q, m.username), matchScore(q, m.displayName)) }))
     .filter((x) => x.s >= 0)
     .sort((a, b) => b.s - a.s || (a.m.displayName || a.m.username).localeCompare(b.m.displayName || b.m.username))
     .map((x) => x.m);
+  const full = max > 0 && picked.length >= max;
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!picked.length) return;
     setBusy(true);
     setErr("");
-    addToChannel(c.url, ch.id, picked).then(onClose, (x) => {
+    onSubmit(picked).then(onClose, (x) => {
       setErr(errorText(x, c.info?.name));
       setBusy(false);
     });
   };
   return (
-    <Dialog label={`Add people to #${ch.name}`} className="add-people" onClose={onClose}>
+    <Dialog label={title} className="add-people" onClose={onClose}>
       <form onSubmit={submit}>
         <header className="dialog-head">
-          <h2>Add people to #{ch.name}</h2>
+          <h2>{title}</h2>
           <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
             <Icon name="x" />
           </button>
@@ -983,6 +1020,7 @@ function AddPeople({ c, ch, onClose }: { c: Community; ch: Community["channels"]
                 <input
                   type="checkbox"
                   checked={picked.includes(m.id)}
+                  disabled={full && !picked.includes(m.id)}
                   onChange={(e) => setPicked((p) => (e.target.checked ? [...p, m.id] : p.filter((x) => x !== m.id)))}
                 />
                 <Avatar m={m} size={28} />
@@ -996,8 +1034,9 @@ function AddPeople({ c, ch, onClose }: { c: Community; ch: Community["channels"]
               </label>
             </li>
           ))}
-          {!options.length && <li className="muted pane-note">{q ? `Nobody else matches “${q}”.` : "Everyone is already here."}</li>}
+          {!options.length && <li className="muted pane-note">{q ? `Nobody else matches “${q}”.` : empty}</li>}
         </ul>
+        {full && <p className="fine">A group message holds up to {max} other people.</p>}
         {err && (
           <p className="error small" role="alert">
             {err}
@@ -1008,7 +1047,7 @@ function AddPeople({ c, ch, onClose }: { c: Community; ch: Community["channels"]
             Cancel
           </button>
           <button className="btn primary" disabled={busy || !picked.length}>
-            {busy ? "Adding…" : picked.length ? `Add ${count(picked.length, "person", "people")}` : "Add"}
+            {busy ? busyText : action(picked.length)}
           </button>
         </div>
       </form>

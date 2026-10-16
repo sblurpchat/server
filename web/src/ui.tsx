@@ -29,6 +29,7 @@ const ICONS = {
   file: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6",
   back: "M19 12H5M12 19l-7-7 7-7",
   copy: "M9 9h11v11H9zM5 15H4V4h11v1",
+  link: "M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7",
   info: `${circ(12, 12, 9)}M12 16v-4M12 8h.01`,
   leave: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9",
   invite: `${circ(9, 8, 4)}M2 21v-1a6 6 0 0 1 6-6h2a6 6 0 0 1 6 6v1M19 8v6M22 11h-6`,
@@ -275,6 +276,17 @@ export function Markdown({
           <pre key={i} data-lang={b.lang || undefined}>
             <code>{b.v}</code>
           </pre>
+        ) : b.t === "ul" || b.t === "ol" ? (
+          (() => {
+            const L = b.t;
+            return (
+              <L key={i} start={b.t === "ol" && b.start !== 1 ? b.start : undefined}>
+                {b.items.map((it, j) => (
+                  <li key={j}>{renderInline(it, members, meId, onMention)}</li>
+                ))}
+              </L>
+            );
+          })()
         ) : b.t === "quote" ? (
           <blockquote key={i}>{renderInline(b.c, members, meId, onMention)}</blockquote>
         ) : (

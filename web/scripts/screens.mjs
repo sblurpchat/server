@@ -110,6 +110,16 @@ const shots = {
     await p.getByRole("tab", { name: "Bots" }).click();
     await p.getByRole("button", { name: /^New token for/ }).first().click();
   },
+  newdm: async (p) => {
+    if ((p.viewportSize()?.width ?? 0) < 768) await p.getByRole("button", { name: "Open communities and channels" }).click();
+    await p.getByRole("button", { name: "New message" }).click();
+    await p.locator(".pick-list label").first().click();
+  },
+  editprofile: async (p) => {
+    if ((p.viewportSize()?.width ?? 0) < 768) await p.getByRole("button", { name: "Open communities and channels" }).click();
+    await p.locator(".me-btn").click();
+    await p.getByRole("button", { name: "Edit profile and status" }).click();
+  },
   signin: "signedout",
 };
 

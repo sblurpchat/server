@@ -7,7 +7,12 @@ const server = await createServer({ server: { host: "127.0.0.1", port: 5198, str
 await server.listen();
 const browser = await chromium.launch();
 let failed = false;
-const page = await browser.newPage();
+const jumpTo = async (page, q) => {
+  await page.keyboard.press("Control+k");
+  await page.getByPlaceholder("Jump to a channel or person").fill(q);
+  await page.keyboard.press("Enter");
+};
+const page = await (await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"] })).newPage();
 const errors = [];
 try {
   await page.route("http://localhost:8090/**", (r) => r.abort());
@@ -90,6 +95,39 @@ try {
   await page.locator(".invite-list code", { hasText: code }).waitFor({ state: "detached" });
   await page.keyboard.press("Escape");
 
+  // Everyday: group message, profile status, copy a message link and open it, mark all as read.
+  await page.getByRole("button", { name: "New message" }).click();
+  await page.getByLabel("Search people").fill("an");
+  await page.locator(".pick-list label", { hasText: "Ana Ruiz" }).click();
+  await page.getByLabel("Search people").fill("mei");
+  await page.locator(".pick-list label", { hasText: "Mei Chen" }).click();
+  await page.getByRole("button", { name: "Start group message" }).click();
+  await page.locator(".chan-title", { hasText: "Ana Ruiz, Mei Chen" }).waitFor();
+
+  await page.locator(".me-btn").click();
+  await page.getByRole("button", { name: "Edit profile and status" }).click();
+  await page.getByLabel("Status", { exact: true }).fill("Testing lists");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await page.locator(".mebar", { hasText: "Testing lists" }).waitFor();
+
+  const list = `- one\n- two ${Date.now()}`;
+  await page.locator(".channel .composer-input").fill(list);
+  await page.locator(".channel .composer-input").press("Enter");
+  const listed = page.locator(".channel .msg", { has: page.locator("ul li", { hasText: "two" }) }).last();
+  await listed.waitFor();
+  await listed.hover();
+  await listed.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Copy link" }).click();
+  const link = await page.evaluate(() => navigator.clipboard.readText());
+  if (!/#\/c\/[^/]+\/[^/]+\/[^/]+$/.test(link)) throw new Error(`bad message link: ${link}`);
+  await jumpTo(page, "general");
+  await page.evaluate((h) => (location.hash = h), new URL(link).hash);
+  await page.locator(".channel .msg[data-focus='true'] ul li", { hasText: "two" }).waitFor();
+
+  await page.locator(".side-head").click();
+  await page.getByRole("menuitem", { name: "Mark all as read" }).click();
+  if (await page.locator(".sidebar .chan[data-unread='true']").count()) throw new Error("unread channels left after Mark all as read");
+
   // Admin: create a channel, edit it, move it; then make and delete a bot.
   await page.locator(".side-head").click();
   await page.getByRole("menuitem", { name: "Create channel" }).click();
@@ -137,7 +175,7 @@ try {
   await page.locator(".side-head", { hasText: "Letterpress Club" }).waitFor();
 
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message, errors.join("; "));

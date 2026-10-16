@@ -32,6 +32,7 @@ import {
   channelSlug,
   reorderChannel,
   parseHash,
+  messageHash,
   parseInline,
   parseMarkdown,
   landingChannel,
@@ -151,6 +152,17 @@ describe("markdown", () => {
       { t: "quote", c: [{ t: "text", v: "quoted\nmore" }] },
       { t: "p", c: [{ t: "text", v: "after" }] },
     ]);
+  });
+
+  it("parses bullet and numbered lists", () => {
+    const t = (v: string) => [{ t: "text", v }];
+    expect(parseMarkdown("todo:\n- milk\n* **eggs**\n  large ones\n3. three\n4) four\nafter")).toEqual([
+      { t: "p", c: t("todo:") },
+      { t: "ul", items: [t("milk"), [{ t: "b", c: t("eggs") }, { t: "text", v: "\nlarge ones" }]] },
+      { t: "ol", start: 3, items: [t("three"), t("four")] },
+      { t: "p", c: t("after") },
+    ]);
+    expect(parseMarkdown("-not a list")).toEqual([{ t: "p", c: t("-not a list") }]);
   });
 
   it("treats an unclosed fence as text", () => {
@@ -310,8 +322,19 @@ describe("community URLs", () => {
   });
   it("round-trips the hash route", () => {
     expect(formatHash("http://localhost:8082", "ch-1")).toBe("#/c/localhost%3A8082/ch-1");
-    expect(parseHash("#/c/localhost%3A8082/ch-1")).toEqual({ host: "localhost:8082", channelId: "ch-1" });
+    expect(parseHash("#/c/localhost%3A8082/ch-1")).toEqual({ host: "localhost:8082", channelId: "ch-1", messageId: "", rootId: "" });
+    expect(parseHash("#/c/x.test")).toEqual({ host: "x.test", channelId: "", messageId: "", rootId: "" });
     expect(parseHash("#/nope")).toBeNull();
+  });
+  it("round-trips message links, with the thread root for replies", () => {
+    const url = "https://x.test";
+    expect(messageHash(url, { id: "m1", channelId: "c1", threadRootId: "" })).toBe("#/c/x.test/c1/m1");
+    expect(parseHash(messageHash(url, { id: "m2", channelId: "c1", threadRootId: "m1" }))).toEqual({
+      host: "x.test",
+      channelId: "c1",
+      messageId: "m2",
+      rootId: "m1",
+    });
   });
 });
 

@@ -84,6 +84,8 @@ export type Modal =
   | { t: "delete"; id: string }
   | { t: "channel"; id?: string; category?: string }
   | { t: "community"; tab?: SettingsTab }
+  | { t: "newdm" }
+  | { t: "profile" }
   | { t: "remove"; url: string; memberId: string; ban: boolean }
   | { t: "lightbox"; src: string; name: string };
 export type Theme = "system" | "light" | "dark";
@@ -366,7 +368,8 @@ function applyHash() {
   if (!r) return;
   const url = state.order.find((u) => hostOf(u) === r.host);
   if (!url) return;
-  if (r.channelId) selectChannel(url, r.channelId, false);
+  if (r.messageId) jumpTo(url, { id: r.messageId, channelId: r.channelId, threadRootId: r.rootId });
+  else if (r.channelId) selectChannel(url, r.channelId, false);
   else selectCommunity(url);
 }
 
@@ -406,7 +409,7 @@ export async function loadList(url: string, channelId: string, rootId = "", page
 }
 
 // Opens the channel (and thread) of a search hit and loads the messages around it.
-export function jumpTo(url: string, m: Message) {
+export function jumpTo(url: string, m: Pick<Message, "id" | "channelId" | "threadRootId">) {
   void loadList(url, m.channelId, m.threadRootId, "around", m.id);
   selectChannel(url, m.channelId);
   if (m.threadRootId) set({ pane: { t: "thread", rootId: m.threadRootId } });
@@ -543,8 +546,8 @@ export async function upload(url: string, file: File): Promise<Attachment> {
   return fromJson(AttachmentSchema, j);
 }
 
-export async function openDM(url: string, memberId: string) {
-  const r = await api(url).chat.openDM({ memberIds: [memberId] });
+export async function openDM(url: string, memberIds: string | string[]) {
+  const r = await api(url).chat.openDM({ memberIds: [memberIds].flat() });
   const ch = r.channel!;
   patchC(url, (c) => ({ ...c, channels: { ...c.channels, [ch.id]: ch } }));
   set({ popover: null });
@@ -552,6 +555,16 @@ export async function openDM(url: string, memberId: string) {
 }
 
 const local = (url: string, kind: Event["kind"]) => dispatch(url, { seq: 0n, atMs: 0n, kind } as Event);
+
+export async function updateProfile(url: string, req: { displayName?: string; bio?: string; statusText?: string; statusEmoji?: string }) {
+  const r = await api(url).server.updateProfile(req);
+  if (r.member) local(url, { case: "memberUpdated", value: r.member });
+}
+
+export function markAllRead(url: string) {
+  const c = state.cs[url];
+  for (const [id, rs] of Object.entries(c?.reads ?? {})) if (rs.unreadCount || rs.mentionCount) markRead(url, id);
+}
 
 export async function createChannel(url: string, req: { name: string; kind: ChannelKind; topic: string; category: string }) {
   const r = await api(url).chat.createChannel(req);
@@ -730,6 +743,7 @@ function start() {
   const fromHash = parseHash(location.hash);
   const url = order.find((u) => hostOf(u) === fromHash?.host) ?? order[0] ?? "";
   set({ url, channelId: fromHash?.channelId ?? "" });
+  if (fromHash?.messageId) jumpTo(url, { id: fromHash.messageId, channelId: fromHash.channelId, threadRootId: fromHash.rootId });
 }
 
 export async function boot() {
