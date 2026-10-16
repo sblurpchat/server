@@ -1827,9 +1827,25 @@ li.sw-empty {
   border-color: var(--raspberry);
   box-shadow: 0 0 0 1px var(--raspberry);
 }
-.composer[data-drag="true"] .composer-box {
-  border: 1px dashed var(--raspberry);
-  background: var(--selected);
+/* Drop files anywhere over the channel or thread pane. */
+.channel,
+.pane {
+  position: relative;
+}
+:is(.channel, .pane)[data-drag="true"]::after {
+  content: "Drop files to share them";
+  position: absolute;
+  inset: 8px;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--raspberry);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--selected) 88%, transparent);
+  color: var(--raspberry);
+  font-size: 18px;
+  font-weight: 700;
+  pointer-events: none;
 }
 .composer-row {
   display: flex;

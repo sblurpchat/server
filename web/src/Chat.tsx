@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 import { useCountdown } from "./App";
 import { MemberKind, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
 import {
@@ -561,8 +561,8 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
   const [caret, setCaret] = useState(0);
   const [sel, setSel] = useState(0);
   const [files, setFiles] = useState<Pending[]>([]);
-  const [dragging, setDragging] = useState(false);
   const ref = useAutosize(text);
+  const form = useRef<HTMLFormElement>(null);
   const ac = acQuery(text, caret);
   const options = useMemo(() => {
     if (!ac) return [];
@@ -609,26 +609,41 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
     });
   };
 
-  const onDrop = (e: DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
-  };
+  // Files dropped anywhere over the channel (or the thread pane) land in this composer.
+  const add = useRef(addFiles);
+  add.current = addFiles;
+  useEffect(() => {
+    const zone = form.current?.closest<HTMLElement>(".channel, .pane");
+    if (!zone) return;
+    const files = (e: DragEvent) => !!e.dataTransfer?.types.includes("Files");
+    const over = (e: DragEvent) => {
+      if (!files(e)) return;
+      e.preventDefault();
+      zone.dataset.drag = "true";
+    };
+    const leave = (e: DragEvent) => {
+      if (!zone.contains(e.relatedTarget as Node | null)) delete zone.dataset.drag;
+    };
+    const drop = (e: DragEvent) => {
+      if (!files(e)) return;
+      e.preventDefault();
+      delete zone.dataset.drag;
+      add.current(e.dataTransfer!.files);
+      ref.current?.focus();
+    };
+    zone.addEventListener("dragover", over);
+    zone.addEventListener("dragleave", leave);
+    zone.addEventListener("drop", drop);
+    return () => {
+      zone.removeEventListener("dragover", over);
+      zone.removeEventListener("dragleave", leave);
+      zone.removeEventListener("drop", drop);
+      delete zone.dataset.drag;
+    };
+  }, [ref]);
 
   return (
-    <form
-      className="composer"
-      data-drag={dragging}
-      onSubmit={submit}
-      onDragOver={(e) => {
-        if (e.dataTransfer.types.includes("Files")) {
-          e.preventDefault();
-          setDragging(true);
-        }
-      }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={onDrop}
-    >
+    <form className="composer" ref={form} onSubmit={submit}>
       {options.length > 0 && (
         <ul className="ac" role="listbox" id={`ac-${key}`} aria-label={ac?.kind === "@" ? "Members" : "Emoji"}>
           {options.map((o, i) => (

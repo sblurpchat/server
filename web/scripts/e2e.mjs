@@ -41,8 +41,21 @@ try {
   await sent.locator(".thread-link", { hasText: "1 reply" }).waitFor();
   if (await page.locator(".channel .msg", { hasText: reply }).count()) throw new Error("thread reply leaked into the channel");
 
+  // Drop a file on the message list (not the composer): it shows the overlay, then a chip.
+  const dt = await page.evaluateHandle(() => {
+    const d = new DataTransfer();
+    d.items.add(new File(["glaze notes"], "glaze.txt", { type: "text/plain" }));
+    return d;
+  });
+  await page.dispatchEvent(".channel .scroller", "dragover", { dataTransfer: dt });
+  if ((await page.locator(".channel").getAttribute("data-drag")) !== "true") throw new Error("no drop overlay over the channel");
+  await page.dispatchEvent(".channel .scroller", "drop", { dataTransfer: dt });
+  await page.locator(".channel .chip", { hasText: "glaze.txt" }).waitFor();
+  if (await page.locator(".channel").getAttribute("data-drag")) throw new Error("drop overlay stayed after the drop");
+  await page.locator(".channel .chip", { hasText: "glaze.txt" }).getByRole("button", { name: "Remove glaze.txt" }).click();
+
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, drop)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message);
