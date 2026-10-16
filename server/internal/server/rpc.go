@@ -251,7 +251,7 @@ func channelFor(ctx context.Context, q queryer, id, member string) (*v1.Channel,
 	return cs[0], nil
 }
 
-const messageCols = "id, channel_id, author_id, text, created_at_ms, edited_at_ms, deleted, thread_root_id, reply_count, last_reply_at_ms, client_id, seq"
+const messageCols = "id, channel_id, author_id, text, created_at_ms, edited_at_ms, deleted, thread_root_id, reply_count, last_reply_at_ms, client_id, seq, created_seq"
 
 // ponytail: reactions and attachments load per message (N+1). SQLite is
 // in-process so this is cheap at 200 messages; batch with IN (...) if not.
@@ -264,7 +264,7 @@ func queryMessages(ctx context.Context, q queryer, where string, args ...any) ([
 	for rows.Next() {
 		m := &v1.Message{}
 		if err := rows.Scan(&m.Id, &m.ChannelId, &m.AuthorId, &m.Text, &m.CreatedAtMs, &m.EditedAtMs, &m.Deleted,
-			&m.ThreadRootId, &m.ReplyCount, &m.LastReplyAtMs, &m.ClientId, &m.Seq); err != nil {
+			&m.ThreadRootId, &m.ReplyCount, &m.LastReplyAtMs, &m.ClientId, &m.Seq, &m.CreatedSeq); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -1082,7 +1082,7 @@ func (s *Server) DeleteMessage(ctx context.Context, req *connect.Request[v1.Dele
 		now := s.nowMs()
 		scope := scopeFor(c.Kind, c.Id)
 		gone := &v1.Message{Id: msg.Id, ChannelId: msg.ChannelId, AuthorId: msg.AuthorId, CreatedAtMs: msg.CreatedAtMs,
-			Deleted: true, ThreadRootId: msg.ThreadRootId, ReplyCount: msg.ReplyCount, Seq: seq}
+			Deleted: true, ThreadRootId: msg.ThreadRootId, ReplyCount: msg.ReplyCount, Seq: seq, CreatedSeq: msg.CreatedSeq}
 		if err := t.emit(&v1.Event{Seq: seq, AtMs: now, Kind: &v1.Event_MessageDeleted{MessageDeleted: gone}}, scope, ""); err != nil {
 			return err
 		}

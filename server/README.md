@@ -80,7 +80,9 @@ client. There is no separate apps system. The bot is ~150 lines in
   history as unread. `unread_count` counts top-level messages (not thread
   replies) by others. `mention_count` counts `<@member_id>` in any message
   (thread replies too) and every message in a DM. `MarkRead` with `seq = 0`
-  marks everything read. It emits a `read_state` event (with a seq) to all of
+  marks everything read. To decide if a message is new, compare its
+  `created_seq` (never changes) with `last_read_seq`, not `seq` (which an
+  edit, reaction or reply bumps). It emits a `read_state` event (with a seq) to all of
   that member's subscriptions.
 - **ListMessages** lists top-level messages, or a thread's replies when
   `thread_root_id` is set (the root is not included). A deleted message is

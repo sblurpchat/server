@@ -627,8 +627,9 @@ type Message struct {
 	LastReplyAtMs int64                  `protobuf:"varint,10,opt,name=last_reply_at_ms,json=lastReplyAtMs,proto3" json:"last_reply_at_ms,omitempty"`
 	Reactions     []*Reaction            `protobuf:"bytes,11,rep,name=reactions,proto3" json:"reactions,omitempty"`
 	Attachments   []*Attachment          `protobuf:"bytes,12,rep,name=attachments,proto3" json:"attachments,omitempty"`
-	ClientId      string                 `protobuf:"bytes,13,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"` // echo of SendMessageRequest.client_id, for optimistic UI
-	Seq           int64                  `protobuf:"varint,14,opt,name=seq,proto3" json:"seq,omitempty"`                          // event seq that last changed this message
+	ClientId      string                 `protobuf:"bytes,13,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`        // echo of SendMessageRequest.client_id, for optimistic UI
+	Seq           int64                  `protobuf:"varint,14,opt,name=seq,proto3" json:"seq,omitempty"`                                 // event seq that last changed this message (edits, reactions, replies bump it)
+	CreatedSeq    int64                  `protobuf:"varint,15,opt,name=created_seq,json=createdSeq,proto3" json:"created_seq,omitempty"` // seq of message_created; never changes. Compare this with last_read_seq.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -757,6 +758,13 @@ func (x *Message) GetClientId() string {
 func (x *Message) GetSeq() int64 {
 	if x != nil {
 		return x.Seq
+	}
+	return 0
+}
+
+func (x *Message) GetCreatedSeq() int64 {
+	if x != nil {
+		return x.CreatedSeq
 	}
 	return 0
 }
@@ -3389,7 +3397,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\bReaction\x12\x14\n" +
 	"\x05emoji\x18\x01 \x01(\tR\x05emoji\x12\x1d\n" +
 	"\n" +
-	"member_ids\x18\x02 \x03(\tR\tmemberIds\"\xd4\x03\n" +
+	"member_ids\x18\x02 \x03(\tR\tmemberIds\"\xf5\x03\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -3408,7 +3416,9 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\treactions\x18\v \x03(\v2\x13.sblurp.v1.ReactionR\treactions\x127\n" +
 	"\vattachments\x18\f \x03(\v2\x15.sblurp.v1.AttachmentR\vattachments\x12\x1b\n" +
 	"\tclient_id\x18\r \x01(\tR\bclientId\x12\x10\n" +
-	"\x03seq\x18\x0e \x01(\x03R\x03seq\"\x96\x01\n" +
+	"\x03seq\x18\x0e \x01(\x03R\x03seq\x12\x1f\n" +
+	"\vcreated_seq\x18\x0f \x01(\x03R\n" +
+	"createdSeq\"\x96\x01\n" +
 	"\tReadState\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\"\n" +

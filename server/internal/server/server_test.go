@@ -569,6 +569,11 @@ func TestEditAndDeletePermissions(t *testing.T) {
 	if edited.Text != "typo" || edited.EditedAtMs != e.clock.Now().UnixMilli() || edited.Seq <= msg.Seq {
 		t.Fatalf("edited = %v", edited)
 	}
+	// created_seq stays the seq of message_created (ticket 0303).
+	listed := must(bob.chat.ListMessages(ctx(), connect.NewRequest(&v1.ListMessagesRequest{ChannelId: gen.Id}))).Messages
+	if msg.CreatedSeq == 0 || msg.CreatedSeq != msg.Seq || edited.CreatedSeq != msg.CreatedSeq || listed[0].CreatedSeq != msg.CreatedSeq {
+		t.Fatalf("created_seq: sent %d/%d, edited %d, listed %d", msg.Seq, msg.CreatedSeq, edited.CreatedSeq, listed[0].CreatedSeq)
+	}
 
 	_, err = cy.chat.DeleteMessage(ctx(), connect.NewRequest(&v1.DeleteMessageRequest{MessageId: msg.Id}))
 	wantCode(t, err, connect.CodePermissionDenied)
@@ -578,7 +583,7 @@ func TestEditAndDeletePermissions(t *testing.T) {
 	sub := bob.subscribe(bob.state().Seq)
 	must(ana.chat.DeleteMessage(ctx(), connect.NewRequest(&v1.DeleteMessageRequest{MessageId: msg.Id})))
 	ev := sub.next(func(ev *v1.Event) bool { return ev.GetMessageDeleted() != nil }, nil)
-	if ev.GetMessageDeleted().Id != msg.Id || ev.GetMessageDeleted().Text != "" {
+	if ev.GetMessageDeleted().Id != msg.Id || ev.GetMessageDeleted().Text != "" || ev.GetMessageDeleted().CreatedSeq != msg.CreatedSeq {
 		t.Fatalf("deleted event = %v", ev)
 	}
 	if left := must(ana.chat.ListMessages(ctx(), connect.NewRequest(&v1.ListMessagesRequest{ChannelId: gen.Id}))).Messages; len(left) != 0 {

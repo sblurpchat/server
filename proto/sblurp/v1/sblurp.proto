@@ -98,7 +98,8 @@ message Message {
   repeated Reaction reactions = 11;
   repeated Attachment attachments = 12;
   string client_id = 13;      // echo of SendMessageRequest.client_id, for optimistic UI
-  int64 seq = 14;             // event seq that last changed this message
+  int64 seq = 14;             // event seq that last changed this message (edits, reactions, replies bump it)
+  int64 created_seq = 15;     // seq of message_created; never changes. Compare this with last_read_seq.
 }
 
 message ReadState {
