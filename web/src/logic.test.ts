@@ -29,6 +29,7 @@ import {
   parseHash,
   parseInline,
   parseMarkdown,
+  landingChannel,
   sidebarSections,
   tabTitle,
   tokenFresh,
@@ -303,6 +304,32 @@ describe("helpers", () => {
     expect(typingLabel(["Ana"])).toBe("Ana is typing…");
     expect(typingLabel(["Ana", "Ben"])).toBe("Ana and Ben are typing…");
     expect(typingLabel(["A", "B", "C"])).toBe("Several people are typing…");
+  });
+});
+
+describe("presence", () => {
+  it("updates your own member as well as the member list", () => {
+    const c = community();
+    c.members = { me: c.me!, ana: create(MemberSchema, { id: "ana" }) };
+    const next = applyEvent(c, ev(0n, { case: "presence", value: { memberId: "me", presence: Presence.ONLINE } as never }), T0, null);
+    expect(next.me?.presence).toBe(Presence.ONLINE);
+    expect(next.members.me.presence).toBe(Presence.ONLINE);
+    expect(next.members.ana.presence).toBe(Presence.UNSPECIFIED);
+  });
+});
+
+describe("landingChannel", () => {
+  const ch = (id: string, name: string, position: number, kind = ChannelKind.TEXT) => create(ChannelSchema, { id, name, position, kind, category: "General" });
+  it("prefers #general, then the first unread channel, then the first channel", () => {
+    const c = emptyCommunity("https://x.test");
+    c.channels = { a: ch("a", "announcements", 0), g: ch("g", "general", 1), r: ch("r", "random", 2), d: ch("d", "general", 3, ChannelKind.DM) };
+    c.reads = { r: create(ReadStateSchema, { channelId: "r", unreadCount: 2 }) };
+    expect(landingChannel(c)).toBe("g");
+    delete c.channels.g;
+    expect(landingChannel(c)).toBe("r");
+    c.reads = {};
+    expect(landingChannel(c)).toBe("a");
+    expect(landingChannel(emptyCommunity("https://x.test"))).toBe("");
   });
 });
 

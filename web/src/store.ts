@@ -27,11 +27,11 @@ import {
   HEARTBEAT_TIMEOUT_MS,
   hostOf,
   isDM,
+  landingChannel,
   listKey,
   mentionsMe,
   parseHash,
   plainText,
-  sidebarSections,
   upsertMessage,
   type Community,
   type Info,
@@ -320,7 +320,7 @@ function ensureChannel(url: string, force = false) {
   const c = s.cs[url];
   if (!force && s.channelId && c.channels[s.channelId]) return selectChannel(url, s.channelId, false);
   const last = load<Record<string, string>>("lastChannel", {})[url];
-  const id = last && c.channels[last] ? last : sidebarSections(c)[0]?.channels[0]?.id ?? "";
+  const id = last && c.channels[last] ? last : landingChannel(c);
   if (id) selectChannel(url, id, false);
 }
 

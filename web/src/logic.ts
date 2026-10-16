@@ -205,9 +205,10 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
       return next;
     }
     case "presence": {
-      const m = c.members[k.value.memberId];
-      if (!m) return c;
-      next.members = { ...c.members, [m.id]: { ...m, presence: k.value.presence } };
+      const { memberId: id, presence } = k.value;
+      // c.me is its own copy of your member, so it needs the update too.
+      if (c.members[id]) next.members = { ...c.members, [id]: { ...c.members[id], presence } };
+      if (c.me?.id === id) next.me = { ...c.me, presence };
       return next;
     }
     default:
@@ -528,6 +529,16 @@ export function sidebarSections(c: Community): { title: string; channels: Channe
     .sort((a, b) => Number(b.lastMessageSeq - a.lastMessageSeq));
   sections.push({ title: "Direct messages", channels: dms, dm: true });
   return sections;
+}
+
+/** Where to land in a community with no remembered channel: #general, else the first unread, else the first. */
+export function landingChannel(c: Community): string {
+  const list = sidebarSections(c).flatMap((s) => s.channels);
+  const pick =
+    list.find((ch) => !isDM(ch) && ch.name === "general") ??
+    list.find((ch) => (c.reads[ch.id]?.unreadCount ?? 0) > 0) ??
+    list[0];
+  return pick?.id ?? "";
 }
 
 const ROLE_GROUP: [MemberRole, string][] = [

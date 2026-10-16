@@ -1564,6 +1564,10 @@ li.sw-empty {
   color: var(--cherry-text);
   background: color-mix(in srgb, var(--cherry) 14%, transparent);
 }
+/* "(edited)" follows the last line of text, like Slack. */
+.msg-text p:has(+ .edited) {
+  display: inline;
+}
 .edited {
   font-size: 12px;
   color: var(--graphite);
