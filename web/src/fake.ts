@@ -44,7 +44,7 @@ interface Seed {
   icon: string;
   joined: boolean;
   members: [username: string, name: string, role: MemberRole, presence: Presence, bio: string, status?: string, bot?: true][];
-  channels: [category: string, name: string, topic: string][];
+  channels: [category: string, name: string, topic: string, privateTo?: string[]][];
   dms: string[][];
   messages: Record<string, Line[]>;
   unread: Record<string, number>;
@@ -86,10 +86,12 @@ const SEEDS: Seed[] = [
       ["Talk", "help", "Stuck? Ask here. No question is too small."],
       ["Building", "self-hosting", "Running your own community server"],
       ["Building", "ideas-box", "One idea per message. React to vote."],
+      ["Building", "core-team", "Release dates and things not ready to share", ["ana", "priya"]],
     ],
     dms: [["ana"], ["jun"], ["priya", "marcus"]],
     unread: { general: 3, design: 2, help: 1 },
     messages: {
+      "core-team": [[2 * H, "ana", "Release notes for 0.8 are in the doc. Ship Thursday unless @priya says otherwise."]],
       welcome: [
         [9 * D, "ian", "Welcome to the Sblurp Community. This is where people who run and use Sblurp hang out.\n\nA few things:\n> Be kind. Assume good intent.\n> Ask in #help, share in #show-and-tell.\n> Your profile is only shared with a community when you say so."],
         [9 * D - 2, "ana", "If you want a channel that doesn't exist yet, post it in #ideas-box ✨", { react: { "👍": ["priya", "jun", "sam"] } }],
@@ -360,8 +362,16 @@ function seed(s: Seed, now: number): Fake {
   if (!f.meId) f.meId = id("m");
   const all = [...f.members.values()];
   const chanByKey = new Map<string, Channel>();
-  s.channels.forEach(([category, name, topic], i) => {
-    const ch = create(ChannelSchema, { id: id("c"), kind: ChannelKind.TEXT, name, topic, category, position: i });
+  s.channels.forEach(([category, name, topic, privateTo], i) => {
+    const ch = create(ChannelSchema, {
+      id: id("c"),
+      kind: privateTo ? ChannelKind.PRIVATE : ChannelKind.TEXT,
+      name,
+      topic,
+      category,
+      position: i,
+      memberIds: privateTo ? [f.meId, ...privateTo.map((n) => byName.get(n)!.id)] : [],
+    });
     f.channels.set(ch.id, ch);
     chanByKey.set(name, ch);
   });
@@ -685,6 +695,25 @@ function service(f: Fake) {
       setTyping() {
         need();
         return {};
+      },
+      addChannelMembers(req: { channelId: string; memberIds: string[] }) {
+        need();
+        const ch = f.channels.get(req.channelId);
+        if (!canSee(f, ch) || ch!.kind !== ChannelKind.PRIVATE) throw new ConnectError("channel not found", Code.NotFound);
+        ch!.memberIds = [...new Set([...ch!.memberIds, ...req.memberIds.filter((m) => f.members.has(m))])];
+        emit(f, { case: "channelUpdated", value: ch! });
+        return { channel: ch };
+      },
+      removeChannelMember(req: { channelId: string; memberId: string }) {
+        need();
+        const ch = f.channels.get(req.channelId);
+        if (!canSee(f, ch) || ch!.kind !== ChannelKind.PRIVATE) throw new ConnectError("channel not found", Code.NotFound);
+        const target = f.members.get(req.memberId);
+        if (req.memberId !== f.meId && !(me().role >= MODERATOR && me().role > (target?.role ?? 0)))
+          throw new ConnectError("you can't remove them", Code.PermissionDenied);
+        ch!.memberIds = ch!.memberIds.filter((m) => m !== req.memberId);
+        emit(f, req.memberId === f.meId ? { case: "channelDeleted", value: ch!.id } : { case: "channelUpdated", value: ch! });
+        return { channel: ch };
       },
       search(req: { query: string; channelId: string; limit: number }) {
         need();

@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 import { useCountdown } from "./App";
-import { MemberKind, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
+import { ChannelKind, MemberKind, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
 import {
   acQuery,
+  canRemoveFromChannel,
   buildRows,
   channelLabel,
   dayLabel,
@@ -24,6 +25,7 @@ import {
 } from "./logic";
 import {
   absUrl,
+  addToChannel,
   discardSend,
   edit,
   errorText,
@@ -33,6 +35,7 @@ import {
   jumpTo,
   react,
   refreshMessage,
+  removeFromChannel,
   retryNow,
   retrySend,
   search,
@@ -43,7 +46,7 @@ import {
   upload,
   useApp,
 } from "./store";
-import { Avatar, EMOJI, EmojiPicker, emojiChar, Icon, Markdown, Pop } from "./ui";
+import { Avatar, Dialog, EMOJI, EmojiPicker, emojiChar, Icon, Markdown, Pop } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
 const openProfile = (url: string, memberId: string, el: HTMLElement) =>
@@ -829,6 +832,7 @@ export function RightPane() {
           <h2>{title}</h2>
           {pane.t === "thread" && ch && <p className="muted small truncate">{isDM(ch) ? channelLabel(ch, c.members, c.me?.id) : `#${ch.name}`}</p>}
           {pane.t === "search" && <p className="muted small truncate">“{pane.q}” in {c.info?.name}</p>}
+          {pane.t === "members" && ch?.kind === ChannelKind.PRIVATE && <p className="muted small truncate">#{ch.name}</p>}
         </div>
         <button className="icon-btn" aria-label={`Close ${title.toLowerCase()}`} onClick={close}>
           <Icon name="x" />
@@ -848,38 +852,162 @@ export function RightPane() {
   );
 }
 
+// The community's members, or for a private channel the people in it, with Add people and Remove.
 function Members({ c }: { c: Community }) {
-  const groups = useMemo(() => memberGroups(Object.values(c.members)), [c.members]);
+  const channelId = useApp((s) => s.channelId);
+  const ch = c.channels[channelId];
+  const priv = ch?.kind === ChannelKind.PRIVATE ? ch : undefined;
+  const ids = priv?.memberIds;
+  const groups = useMemo(
+    () => memberGroups(ids ? ids.flatMap((id) => c.members[id] ?? []) : Object.values(c.members)),
+    [c.members, ids],
+  );
+  const [adding, setAdding] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [err, setErr] = useState("");
+  const drop = (id: string) => {
+    setErr("");
+    removeFromChannel(c.url, priv!.id, id).catch((e) => setErr(errorText(e, c.info?.name)));
+  };
   return (
     <div className="pane-scroll members">
+      {priv && (
+        <div className="members-head">
+          <p className="muted small">Private. Only these {count(priv.memberIds.length, "person", "people")} can see #{priv.name}.</p>
+          <button className="btn small" onClick={() => setAdding(true)}>
+            <Icon name="invite" size={16} /> Add people
+          </button>
+          {err && <p className="error small" role="alert">{err}</p>}
+        </div>
+      )}
       {groups.map((g) => (
         <section key={g.title}>
           <h3>
             {g.title} <span className="muted">{g.members.length}</span>
           </h3>
           <ul>
-            {g.members.map((m) => (
-              <li key={m.id}>
-                <button className="member" data-off={g.title === "Offline"} onClick={(e) => openProfile(c.url, m.id, e.currentTarget)}>
-                  <Avatar m={m} size={32} presence />
-                  <span className="member-text">
-                    <span className="member-name">
-                      <b className="truncate">{m.displayName || m.username}</b>
-                      {m.kind === MemberKind.BOT && <span className="tag">Bot</span>}
+            {g.members.map((m) => {
+              const name = m.displayName || m.username;
+              const self = m.id === c.me?.id;
+              return (
+                <li key={m.id} className="member-row">
+                  <button className="member" data-off={g.title === "Offline"} onClick={(e) => openProfile(c.url, m.id, e.currentTarget)}>
+                    <Avatar m={m} size={32} presence />
+                    <span className="member-text">
+                      <span className="member-name">
+                        <b className="truncate">{name}</b>
+                        {m.kind === MemberKind.BOT && <span className="tag">Bot</span>}
+                      </span>
+                      {(m.statusText || m.statusEmoji) && (
+                        <small className="truncate">
+                          {m.statusEmoji} {m.statusText}
+                        </small>
+                      )}
                     </span>
-                    {(m.statusText || m.statusEmoji) && (
-                      <small className="truncate">
-                        {m.statusEmoji} {m.statusText}
-                      </small>
-                    )}
-                  </span>
-                </button>
-              </li>
-            ))}
+                  </button>
+                  {priv && canRemoveFromChannel(c.me, m) && (
+                    <button
+                      className="icon-btn member-remove"
+                      aria-label={self ? `Leave #${priv.name}` : `Remove ${name} from #${priv.name}`}
+                      title={self ? "Leave channel" : "Remove from channel"}
+                      onClick={() => (self ? setLeaving(true) : drop(m.id))}
+                    >
+                      <Icon name={self ? "leave" : "x"} size={16} />
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       ))}
+      {priv && adding && <AddPeople c={c} ch={priv} onClose={() => setAdding(false)} />}
+      {priv && leaving && (
+        <Dialog label={`Leave #${priv.name}`} className="confirm" onClose={() => setLeaving(false)}>
+          <h2>Leave #{priv.name}?</h2>
+          <p className="muted">It's private, so you can't see it again until someone in it adds you back.</p>
+          <div className="row-end">
+            <button className="btn ghost" autoFocus onClick={() => setLeaving(false)}>
+              Cancel
+            </button>
+            <button className="btn danger" onClick={() => (setLeaving(false), drop(c.me!.id))}>
+              Leave
+            </button>
+          </div>
+        </Dialog>
+      )}
     </div>
+  );
+}
+
+function AddPeople({ c, ch, onClose }: { c: Community; ch: Community["channels"][string]; onClose: () => void }) {
+  const [q, setQ] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const options = Object.values(c.members)
+    .filter((m) => !ch.memberIds.includes(m.id))
+    .map((m) => ({ m, s: Math.max(matchScore(q, m.username), matchScore(q, m.displayName)) }))
+    .filter((x) => x.s >= 0)
+    .sort((a, b) => b.s - a.s || (a.m.displayName || a.m.username).localeCompare(b.m.displayName || b.m.username))
+    .map((x) => x.m);
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!picked.length) return;
+    setBusy(true);
+    setErr("");
+    addToChannel(c.url, ch.id, picked).then(onClose, (x) => {
+      setErr(errorText(x, c.info?.name));
+      setBusy(false);
+    });
+  };
+  return (
+    <Dialog label={`Add people to #${ch.name}`} className="add-people" onClose={onClose}>
+      <form onSubmit={submit}>
+        <header className="dialog-head">
+          <h2>Add people to #{ch.name}</h2>
+          <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+            <Icon name="x" />
+          </button>
+        </header>
+        <input className="input" autoFocus placeholder="Search by name" aria-label="Search people" value={q} onChange={(e) => setQ(e.target.value)} />
+        <ul className="pick-list" aria-label="People">
+          {options.map((m) => (
+            <li key={m.id}>
+              <label className="member">
+                <input
+                  type="checkbox"
+                  checked={picked.includes(m.id)}
+                  onChange={(e) => setPicked((p) => (e.target.checked ? [...p, m.id] : p.filter((x) => x !== m.id)))}
+                />
+                <Avatar m={m} size={28} />
+                <span className="member-text">
+                  <span className="member-name">
+                    <b className="truncate">{m.displayName || m.username}</b>
+                    {m.kind === MemberKind.BOT && <span className="tag">Bot</span>}
+                  </span>
+                  <small className="truncate">@{m.username}</small>
+                </span>
+              </label>
+            </li>
+          ))}
+          {!options.length && <li className="muted pane-note">{q ? `Nobody else matches “${q}”.` : "Everyone is already here."}</li>}
+        </ul>
+        {err && (
+          <p className="error small" role="alert">
+            {err}
+          </p>
+        )}
+        <div className="row-end">
+          <button type="button" className="btn ghost" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn primary" disabled={busy || !picked.length}>
+            {busy ? "Adding…" : picked.length ? `Add ${count(picked.length, "person", "people")}` : "Add"}
+          </button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 

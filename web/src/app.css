@@ -2113,6 +2113,54 @@ li.sw-empty {
 .pane .msgs {
   padding-top: 4px;
 }
+.members-head {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin: 0 8px 16px;
+}
+.member-row {
+  display: flex;
+  align-items: center;
+}
+.member-remove {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  opacity: 0;
+}
+.member-row:hover .member-remove,
+.member-remove:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .member-remove {
+    opacity: 1;
+  }
+}
+.add-people {
+  width: min(440px, calc(100vw - 32px));
+}
+.add-people form {
+  display: grid;
+  gap: 12px;
+}
+.pick-list {
+  max-height: min(360px, 50vh);
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pick-list .member {
+  cursor: pointer;
+}
+.pick-list input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--raspberry);
+}
 .members section + section {
   margin-top: 18px;
 }

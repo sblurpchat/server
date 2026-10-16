@@ -566,6 +566,10 @@ export function modActions(me: Member | undefined, target: Member) {
   };
 }
 
+/** Private channel: you can always leave; removing someone else takes moderator and a higher rank (bots too). */
+export const canRemoveFromChannel = (me: Member | undefined, target: Member) =>
+  !!me && (me.id === target.id || (me.role >= MemberRole.MODERATOR && me.role > target.role));
+
 const ROLE_GROUP: [MemberRole, string][] = [
   [MemberRole.OWNER, "Owners"],
   [MemberRole.ADMIN, "Admins"],

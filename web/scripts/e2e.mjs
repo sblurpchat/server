@@ -63,8 +63,23 @@ try {
   if (await page.locator(".channel").getAttribute("data-drag")) throw new Error("drop overlay stayed after the drop");
   await page.locator(".channel .chip", { hasText: "glaze.txt" }).getByRole("button", { name: "Remove glaze.txt" }).click();
 
+  // Private channel: add someone, then remove them.
+  await page.keyboard.press("Control+k");
+  await page.getByPlaceholder("Jump to a channel or person").fill("core-team");
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Members" }).click();
+  await page.locator(".members-head", { hasText: "Only these 3 people" }).waitFor();
+  await page.getByRole("button", { name: "Add people" }).click();
+  await page.getByLabel("Search people").fill("jun");
+  await page.locator(".pick-list label", { hasText: "Jun Park" }).click();
+  await page.getByRole("button", { name: "Add 1 person" }).click();
+  await page.locator(".members-head", { hasText: "Only these 4 people" }).waitFor();
+  await page.locator(".member-row", { hasText: "Jun Park" }).hover();
+  await page.getByRole("button", { name: "Remove Jun Park from #core-team" }).click();
+  await page.locator(".members-head", { hasText: "Only these 3 people" }).waitFor();
+
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message);

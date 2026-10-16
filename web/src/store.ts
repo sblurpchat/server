@@ -544,6 +544,20 @@ export async function openDM(url: string, memberId: string) {
   selectChannel(url, ch.id);
 }
 
+const local = (url: string, kind: Event["kind"]) => dispatch(url, { seq: 0n, atMs: 0n, kind } as Event);
+
+export async function addToChannel(url: string, channelId: string, memberIds: string[]) {
+  const r = await api(url).chat.addChannelMembers({ channelId, memberIds });
+  if (r.channel) local(url, { case: "channelUpdated", value: r.channel });
+}
+
+/** Your own id leaves the channel; the server then sends channelDeleted, applied here at once. */
+export async function removeFromChannel(url: string, channelId: string, memberId: string) {
+  const r = await api(url).chat.removeChannelMember({ channelId, memberId });
+  if (memberId === state.cs[url]?.me?.id) local(url, { case: "channelDeleted", value: channelId });
+  else if (r.channel) local(url, { case: "channelUpdated", value: r.channel });
+}
+
 export async function search(url: string, q: string) {
   return (await api(url).chat.search({ query: q, limit: 30 })).messages;
 }

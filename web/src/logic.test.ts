@@ -32,6 +32,7 @@ import {
   parseMarkdown,
   landingChannel,
   modActions,
+  canRemoveFromChannel,
   sidebarSections,
   tabTitle,
   tokenFresh,
@@ -411,6 +412,19 @@ it("count pluralizes and groups digits", () => {
   expect(count(1, "member", "members")).toBe("1 member");
   expect(count(0, "reply", "replies")).toBe("0 replies");
   expect(count(1204, "member", "members")).toBe("1,204 members");
+});
+
+describe("canRemoveFromChannel", () => {
+  const { MEMBER, MODERATOR, ADMIN } = MemberRole;
+  const mem = (id: string, role: MemberRole, kind = MemberKind.HUMAN) => create(MemberSchema, { id, role, kind });
+  it("lets anyone leave and moderators remove lower ranks, bots included", () => {
+    expect(canRemoveFromChannel(mem("a", MEMBER), mem("a", MEMBER))).toBe(true);
+    expect(canRemoveFromChannel(mem("a", MEMBER), mem("b", MEMBER))).toBe(false);
+    expect(canRemoveFromChannel(mem("a", MODERATOR), mem("b", MEMBER, MemberKind.BOT))).toBe(true);
+    expect(canRemoveFromChannel(mem("a", MODERATOR), mem("b", MODERATOR))).toBe(false);
+    expect(canRemoveFromChannel(mem("a", MODERATOR), mem("b", ADMIN))).toBe(false);
+    expect(canRemoveFromChannel(undefined, mem("b", MEMBER))).toBe(false);
+  });
 });
 
 describe("modActions", () => {

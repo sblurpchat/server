@@ -72,6 +72,17 @@ const shots = {
     });
     await p.dispatchEvent(".channel .scroller", "dragover", { dataTransfer: dt });
   },
+  private: async (p) => {
+    await jump(p, "core-team");
+    await p.getByRole("button", { name: "Members" }).click();
+    await p.locator(".members-head").waitFor();
+  },
+  addpeople: async (p) => {
+    await jump(p, "core-team");
+    await p.getByRole("button", { name: "Members" }).click();
+    await p.getByRole("button", { name: "Add people" }).click();
+    await p.locator(".pick-list label").first().click();
+  },
   signin: "signedout",
 };
 
