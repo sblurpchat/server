@@ -268,8 +268,10 @@ async function connect(url: string) {
         set({ auth: "out" });
         return;
       }
-      if (snapshot && ConnectError.from(e).code === Code.PermissionDenied) {
-        patchC(url, (c) => ({ ...c, status: "join" }));
+      // permission_denied means not a member: never joined, or kicked or banned (the server ends
+      // the stream with resource_exhausted, and the reconnect is then denied). Stop either way.
+      if (ConnectError.from(e).code === Code.PermissionDenied && (snapshot || state.cs[url]?.me)) {
+        patchC(url, (c) => (c.me ? { ...emptyCommunity(url), info: c.info, status: "removed" } : { ...c, status: "join" }));
         return;
       }
       patchC(url, (c) => ({ ...c, error: errorText(e, c.info?.name) }));
@@ -582,6 +584,10 @@ export async function leaveCommunity(url: string) {
     }
   }
   leave(url);
+}
+
+export function joinAgain(url: string) {
+  patchC(url, (c) => ({ ...c, status: "join" }));
 }
 
 // Drops a community from this browser only.

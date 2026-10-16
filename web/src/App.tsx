@@ -22,6 +22,7 @@ import {
   FAKE,
   get,
   join,
+  joinAgain,
   leave,
   leaveCommunity,
   openDM,
@@ -134,6 +135,21 @@ function Shell() {
           />
         ) : c.status === "join" ? (
           <JoinCard url={url} />
+        ) : c.status === "removed" ? (
+          <Empty
+            title={`You were removed from ${c.info?.name ?? hostOf(url)}`}
+            body="You can't read or send messages there anymore. If you were only kicked, you can join again."
+            action={
+              <div className="row-end">
+                <button className="btn" onClick={() => leave(url)}>
+                  Remove
+                </button>
+                <button className="btn ghost" onClick={() => joinAgain(url)}>
+                  Join again
+                </button>
+              </div>
+            }
+          />
         ) : !c.me ? (
           c.error ? (
             <Unreachable c={c} />
@@ -366,7 +382,7 @@ function Sidebar({ c }: { c: Community }) {
               </section>
             );
           })
-        ) : (
+        ) : c.status === "join" || c.status === "removed" ? null : (
           <div className="side-skel" aria-hidden="true">
             {[60, 45, 70, 50, 38].map((w, i) => (
               <b key={i} style={{ width: `${w}%` }} />
@@ -392,7 +408,7 @@ function MeBar({ c }: { c: Community }) {
         <Avatar m={me} size={32} presence />
         <span className="me-text">
           <b className="truncate">{me?.displayName ?? profile?.displayName ?? "You"}</b>
-          <small className="truncate">{me?.statusText || (me ? "Online" : "Connecting…")}</small>
+          <small className="truncate">{me?.statusText || (me ? "Online" : c.status === "join" || c.status === "removed" ? "Not a member" : "Connecting…")}</small>
         </span>
       </button>
       <button className="icon-btn" aria-label="Settings" title="Settings" onClick={() => set({ modal: { t: "settings" } })}>

@@ -17,7 +17,7 @@ import {
 // Community state and the event reducer
 // ---------------------------------------------------------------------------
 
-export type Status = "connecting" | "live" | "reconnecting" | "join" | "error";
+export type Status = "connecting" | "live" | "reconnecting" | "join" | "removed" | "error";
 
 export interface Info {
   name: string;

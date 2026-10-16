@@ -29,11 +29,22 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
   // Sign up, then PKCE sign-in.
   await p.goto(WEB); await shot('signed-out');
   await signIn(p); await p.waitForURL(/8081/); await shot('auth-login');
-  await p.goto('http://localhost:8081/signup');
+  // Auth allows 20 sign-ups an hour per address, so repeated runs fall back to other loopback
+  // addresses. Those leave no session cookie for localhost, so sign-in may show the login form.
   const u = 'ian' + Date.now().toString().slice(-5);
-  await p.fill('#email', u + '@example.com'); await p.fill('#username', u); await p.fill('#password', 'slushie-straw-77'); await p.fill('#dob', '1980-01-01');
-  await p.check('input[name=terms]'); await p.getByRole('button', { name: /create|sign up/i }).click(); await p.waitForLoadState(); await shot('after-signup');
+  let signedUp = false;
+  for (const host of ['localhost', '127.0.0.1', '[::1]']) {
+    await p.goto(`http://${host}:8081/signup`);
+    await p.fill('#email', u + '@example.com'); await p.fill('#username', u); await p.fill('#password', 'slushie-straw-77'); await p.fill('#dob', '1980-01-01');
+    await p.check('input[name=terms]'); await p.getByRole('button', { name: /create|sign up/i }).click(); await p.waitForLoadState();
+    if (!(await p.getByText(/too many sign-ups/i).count())) { signedUp = true; break; }
+  }
+  await shot('after-signup'); ok(signedUp, 'signed up ' + u);
   await p.goto(WEB); await signIn(p);
+  await p.waitForURL(/5173|8081/, { timeout: 15000 });
+  if (p.url().includes('8081')) {
+    await p.fill('#login', u); await p.fill('#password', 'slushie-straw-77'); await p.getByRole('button', { name: 'Sign in' }).click();
+  }
   await p.waitForURL(/5173/, { timeout: 15000 });
   await p.getByRole('button', { name: /^Join Sblurp Community/ }).waitFor({ timeout: 10000 }); await shot('join-card');
   errs.length = 0;
@@ -164,13 +175,23 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
     await p.setViewportSize({ width: 1440, height: 900 });
   }
 
-  // Leave Night Owls on the server; it drops off the rail.
-  const owls = p.getByRole('navigation', { name: 'Communities' }).getByRole('button', { name: /^Night Owls/ });
+  // Leave Night Owls on the server; it drops off the rail. A second tab still has it open, and
+  // the server ends its stream, so that tab shows the removed state instead of reconnecting.
+  const rail = (pg) => pg.getByRole('navigation', { name: 'Communities' }).getByRole('button', { name: /^Night Owls/ });
+  const owls = rail(p);
+  const p3 = await ctx.newPage(); watch(p3, 'tab3');
+  await p3.goto(WEB); await p3.locator('.msg').first().waitFor({ timeout: 15000 });
   await owls.click(); await p.locator('.msg').first().waitFor();
   await p.locator('.side-head').click(); await p.getByRole('menuitem', { name: 'Leave community' }).click();
   await p.locator('dialog').getByRole('button', { name: 'Leave' }).click();
   await owls.waitFor({ state: 'detached', timeout: 10000 });
   ok(true, 'leave removes the community');
+  await rail(p3).click();
+  await p3.getByRole('heading', { name: 'You were removed from Night Owls' }).waitFor({ timeout: 30000 });
+  ok(await p3.locator('.banner').count() === 0, 'the other tab shows "removed", not a reconnect loop');
+  await shot('removed', p3); await p3.close();
+  // Calls that tab made between the server dropping it and the denied reconnect.
+  errs.splice(0, errs.length, ...errs.filter(e => !/^tab3 console: Failed to load resource: (net::ERR_FAILED|.*403)/.test(e)));
 
   console.log('errors:', JSON.stringify(errs.slice(0, 10)));
   ok(errs.length === 0, 'no page errors');
