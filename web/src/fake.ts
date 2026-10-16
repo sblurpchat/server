@@ -417,7 +417,7 @@ function seed(s: Seed, now: number): Fake {
   }
   out.sort((a, b) => Number(a.m.createdAtMs - b.m.createdAtMs));
   for (const { m } of out) {
-    m.seq = ++f.seq;
+    m.seq = m.createdSeq = ++f.seq;
     f.messages.push(m);
     if (!m.threadRootId) f.channels.get(m.channelId)!.lastMessageSeq = m.seq;
   }
@@ -446,6 +446,7 @@ function emit(f: Fake, kind: Event["kind"], ephemeral = false): Event {
   if (!ephemeral) {
     ev.seq = ++f.seq;
     if (kind.case?.startsWith("message")) (kind.value as Message).seq = ev.seq;
+    if (kind.case === "messageCreated") kind.value.createdSeq = ev.seq;
     f.log.push(ev);
   }
   for (const s of f.subs) s(ev);

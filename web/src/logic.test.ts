@@ -41,7 +41,7 @@ import {
 
 const T0 = new Date(2026, 9, 16, 10, 0).getTime();
 const msg = (id: string, author: string, minutes: number, seq = 0n, extra = {}) =>
-  create(MessageSchema, { id, authorId: author, channelId: "c1", text: "hi", createdAtMs: BigInt(T0 + minutes * 60_000), seq, ...extra });
+  create(MessageSchema, { id, authorId: author, channelId: "c1", text: "hi", createdAtMs: BigInt(T0 + minutes * 60_000), seq, createdSeq: seq, ...extra });
 const ev = (seq: bigint, kind: Event["kind"]) => create(EventSchema, { seq, kind });
 
 function community(): Community {
@@ -83,6 +83,11 @@ describe("buildRows", () => {
     );
     expect(rows.map((r) => (r.t === "msg" ? r.m.id : r.t))).toEqual(["day", "a", "b", "new", "c", "d"]);
     expect(rows[4]).toMatchObject({ head: true });
+  });
+
+  it("ignores seq bumps from edits: an old edited message is not new", () => {
+    const rows = buildRows([msg("a", "ana", 0, 9n, { createdSeq: 4n }), msg("b", "ana", 1, 7n)], 5n, "me");
+    expect(rows.map((r) => (r.t === "msg" ? r.m.id : r.t))).toEqual(["day", "a", "new", "b"]);
   });
 
   it("puts no New divider when everything is read", () => {

@@ -263,7 +263,8 @@ export function buildRows(items: Message[], newAfterSeq: bigint | null, meId?: s
       rows.push({ t: "day", key: `day-${dayOf(ms)}`, ms });
       head = true;
     }
-    if (!placedNew && m.seq > (newAfterSeq ?? 0n) && m.authorId !== meId && m.seq > 0n) {
+    // createdSeq, not seq: edits and reactions bump seq, and an old message is not new.
+    if (!placedNew && m.createdSeq > (newAfterSeq ?? 0n) && m.authorId !== meId && m.createdSeq > 0n) {
       rows.push({ t: "new", key: "new" });
       placedNew = true;
       head = true;
