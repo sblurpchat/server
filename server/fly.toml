@@ -1,13 +1,18 @@
-# fly launch --copy-config --no-deploy
-# fly volumes create sblurp_data --size 1
-# fly deploy
+# Sblurp Community (community.sblurp.chat). Setup: deploy/fly/README.md.
+# For your own community: change app, SBLURP_NAME, SBLURP_BASE_URL and
+# BACKUP_NAME, then `fly deploy`. Without R2 secrets it runs without backups.
 app = "sblurp-community"
 primary_region = "sjc"
+# Litestream passes the signal on to the server, which drains streams.
+kill_signal = "SIGTERM"
+kill_timeout = "10s"
 
 [env]
   SBLURP_NAME = "Sblurp Community"
-  SBLURP_BASE_URL = "https://sblurp-community.fly.dev"
+  SBLURP_BASE_URL = "https://community.sblurp.chat"
   SBLURP_TRUSTED_ISSUERS = "https://sblurp.chat"
+  BACKUP_NAME = "community"
+  R2_BUCKET = "sblurp-backups"
 
 [mounts]
   source = "sblurp_data"
@@ -16,17 +21,30 @@ primary_region = "sjc"
 [http_service]
   internal_port = 8080
   force_https = true
-  # Subscribe streams are long-lived; keep one machine up. SQLite means
+  # Subscribe streams are long-lived; keep the machine up. SQLite means
   # exactly one machine: never scale this app past 1.
   auto_stop_machines = "off"
   auto_start_machines = true
   min_machines_running = 1
 
+  # Each open Subscribe stream is one request. The default soft limit (20)
+  # is far too low for one machine that holds every stream.
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 5000
+    hard_limit = 10000
+
   [http_service.http_options]
-    h2_backend = true # the server speaks h2c, so gRPC clients work too
+    h2_backend = true  # the server speaks h2c, so Connect and gRPC streams work
+    idle_timeout = 600 # seconds; Subscribe also sends a heartbeat every 25 s
 
   [[http_service.checks]]
     method = "GET"
     path = "/healthz"
     interval = "30s"
     timeout = "5s"
+    grace_period = "30s" # first boot may restore from R2
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
