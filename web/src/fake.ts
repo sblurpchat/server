@@ -551,6 +551,8 @@ function service(f: Fake) {
         f.subs.add(push);
         ctx.signal.addEventListener("abort", () => wake?.());
         try {
+          // Like the real server: a heartbeat at once, so the client knows the stream is open.
+          yield create(EventSchema, { atMs: BigInt(Date.now()), kind: { case: "heartbeat", value: true } });
           if (req.afterSeq < f.logStart) {
             yield create(EventSchema, { kind: { case: "resync", value: true } });
             return;

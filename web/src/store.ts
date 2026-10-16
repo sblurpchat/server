@@ -239,7 +239,6 @@ async function connect(url: string) {
         snapshot = false;
         ensureChannel(url);
       }
-      patchC(url, (c) => ({ ...c, status: "live", error: undefined, retryAt: undefined }));
       const beat = new AbortController();
       const stop = () => beat.abort();
       ctl.signal.addEventListener("abort", stop);
@@ -249,6 +248,9 @@ async function connect(url: string) {
           clearTimeout(timer);
           timer = setTimeout(stop, HEARTBEAT_TIMEOUT_MS);
           attempt = 0;
+          // Live only once the server answers (it sends a heartbeat at once), so the banner does
+          // not flicker off on every retry while the server is still down.
+          if (state.cs[url]?.status !== "live") patchC(url, (c) => ({ ...c, status: "live", error: undefined, retryAt: undefined }));
           if (ev.kind.case === "resync") {
             snapshot = true;
             break;
