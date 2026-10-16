@@ -135,6 +135,7 @@ func (s *Server) pruneLoop() {
 			if err := s.prune(context.Background()); err != nil {
 				s.log.Error("prune events", "err", err)
 			}
+			s.limiter.sweep()
 		}
 	}
 }
@@ -189,10 +190,9 @@ type limiter struct {
 type bucket struct {
 	tokens float64
 	last   time.Time
+	full   time.Time // when the bucket refills to burst; then it can go
 }
 
-// ponytail: buckets are never evicted; one small struct per member that ever
-// sent a message. Sweep idle ones if member counts get large.
 func (l *limiter) allow(member string, rate float64, burst int) bool {
 	if rate <= 0 {
 		return true
@@ -211,7 +211,21 @@ func (l *limiter) allow(member string, rate float64, burst int) bool {
 		return false
 	}
 	b.tokens--
+	b.full = now.Add(time.Duration((float64(burst) - b.tokens) / rate * float64(time.Second)))
 	return true
+}
+
+// sweep drops buckets that have refilled. A fresh bucket starts full, so
+// this changes nothing for the member.
+func (l *limiter) sweep() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := l.now()
+	for k, b := range l.buckets {
+		if !now.Before(b.full) {
+			delete(l.buckets, k)
+		}
+	}
 }
 
 // DropSubscribers ends every Subscribe stream so an HTTP shutdown does not

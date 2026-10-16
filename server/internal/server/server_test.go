@@ -1253,3 +1253,29 @@ func TestJWKSSlowIssuerDoesNotBlockOthers(t *testing.T) {
 		t.Fatal("fast issuer waited for the slow one")
 	}
 }
+
+// Idle buckets are swept once refilled, and only then (0106).
+func TestLimiterSweep(t *testing.T) {
+	clock := &fakeClock{t: time.Unix(1000, 0)}
+	l := &limiter{now: clock.Now, buckets: map[string]*bucket{}}
+	for range 10 {
+		l.allow("a", 5, 10) // empty: refills in 2s
+	}
+	l.allow("b", 5, 10) // one token used: refills in 0.2s
+	clock.Advance(time.Second)
+	l.sweep()
+	if _, ok := l.buckets["b"]; ok {
+		t.Fatal("refilled bucket b was kept")
+	}
+	if _, ok := l.buckets["a"]; !ok {
+		t.Fatal("bucket a is still refilling and must stay")
+	}
+	if l.allow("a", 5, 10); l.buckets["a"].tokens > 4.01 {
+		t.Fatalf("a got free tokens: %v", l.buckets["a"].tokens)
+	}
+	clock.Advance(3 * time.Second)
+	l.sweep()
+	if len(l.buckets) != 0 {
+		t.Fatalf("%d buckets left", len(l.buckets))
+	}
+}
