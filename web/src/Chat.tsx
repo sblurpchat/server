@@ -331,10 +331,11 @@ function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: 
   const pending = m.seq === 0n && !!m.clientId;
   const failed = pending && c.failed[m.clientId];
   const name = author?.displayName || author?.username || "Unknown member";
+  const h24 = useApp((s) => s.look.clock === "24");
   const time = new Date(Number(m.createdAtMs));
   const timeEl = (
     <time dateTime={time.toISOString()} title={time.toLocaleString()}>
-      {timeLabel(Number(m.createdAtMs))}
+      {timeLabel(Number(m.createdAtMs), h24)}
     </time>
   );
   if (m.deleted) {
@@ -359,16 +360,15 @@ function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: 
       data-fresh={fresh}
       data-focus={focus}
       data-editing={editing}
-      aria-label={`${name}, ${timeLabel(Number(m.createdAtMs))}`}
+      aria-label={`${name}, ${timeLabel(Number(m.createdAtMs), h24)}`}
     >
       <div className="msg-gutter">
-        {head ? (
+        {head && (
           <button className="avatar-btn" aria-label={`${name}'s profile`} onClick={(e) => openProfile(url, m.authorId, e.currentTarget)}>
             <Avatar m={author} />
           </button>
-        ) : (
-          <span className="hover-time">{timeEl}</span>
         )}
+        <span className="hover-time">{timeEl}</span>
       </div>
       <div className="msg-body">
         {head && (
@@ -518,11 +518,12 @@ function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: 
 
 function ThreadLink({ m }: { m: Message }) {
   const open = useApp((s) => s.pane?.t === "thread" && s.pane.rootId === m.id);
+  const h24 = useApp((s) => s.look.clock === "24");
   return (
     <button className="thread-link" aria-pressed={open} onClick={() => set({ pane: { t: "thread", rootId: m.id } })}>
       <Icon name="thread" size={16} />
       <b>{count(m.replyCount, "reply", "replies")}</b>
-      {m.lastReplyAtMs > 0n && <span className="muted">Last reply {timeLabel(Number(m.lastReplyAtMs))}</span>}
+      {m.lastReplyAtMs > 0n && <span className="muted">Last reply {timeLabel(Number(m.lastReplyAtMs), h24)}</span>}
     </button>
   );
 }
@@ -1056,6 +1057,7 @@ export function PeoplePicker({
 }
 
 function SearchResults({ c, q }: { c: Community; q: string }) {
+  const h24 = useApp((s) => s.look.clock === "24");
   const [res, setRes] = useState<Message[] | null>(null);
   const [err, setErr] = useState("");
   useEffect(() => {
@@ -1080,7 +1082,7 @@ function SearchResults({ c, q }: { c: Community; q: string }) {
               <span className="result-meta">
                 <b>{ch ? (isDM(ch) ? channelLabel(ch, c.members, c.me?.id) : `#${ch.name}`) : "Unknown channel"}</b>
                 <span className="muted">
-                  {a?.displayName ?? "Unknown"}, {dayLabel(Number(m.createdAtMs), Date.now())} {timeLabel(Number(m.createdAtMs))}
+                  {a?.displayName ?? "Unknown"}, {dayLabel(Number(m.createdAtMs), Date.now())} {timeLabel(Number(m.createdAtMs), h24)}
                 </span>
               </span>
               <span className="result-text">{decodeMentions(m.text, c.members)}</span>

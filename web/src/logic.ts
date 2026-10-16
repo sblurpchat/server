@@ -296,8 +296,72 @@ export function dayLabel(ms: number, now: number): string {
   });
 }
 
-export const timeLabel = (ms: number) =>
-  new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+export const timeLabel = (ms: number, h24 = false) =>
+  new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hourCycle: h24 ? "h23" : "h12" });
+
+// ---------------------------------------------------------------------------
+// Appearance: per-device settings, parsed defensively because localStorage is user-editable.
+// ---------------------------------------------------------------------------
+
+export const THEMES = ["system", "light", "dark", "midnight", "contrast", "cola", "mint"] as const;
+export type Theme = (typeof THEMES)[number];
+const DENSITIES = ["cozy", "compact", "irc"] as const;
+export interface Appearance {
+  theme: Theme;
+  /** "" keeps the theme's own accent. */
+  accent: string;
+  density: (typeof DENSITIES)[number];
+  sidebar: "cozy" | "compact";
+  /** Message text size in px; everything else scales with it. */
+  fontSize: number;
+  clock: "12" | "24";
+  motion: "system" | "reduce" | "full";
+}
+export const APPEARANCE: Appearance = { theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system" };
+
+export function parseAppearance(v: unknown): Appearance {
+  const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
+  const one = <T>(x: unknown, ok: readonly T[], d: T) => (ok.includes(x as T) ? (x as T) : d);
+  const size = typeof o.fontSize === "number" && Number.isFinite(o.fontSize) ? Math.round(Math.min(20, Math.max(12, o.fontSize))) : APPEARANCE.fontSize;
+  return {
+    theme: one(o.theme, THEMES, APPEARANCE.theme),
+    accent: typeof o.accent === "string" && /^#[0-9a-f]{6}$/i.test(o.accent) ? o.accent.toLowerCase() : "",
+    density: one(o.density, DENSITIES, APPEARANCE.density),
+    sidebar: one(o.sidebar, ["cozy", "compact"] as const, APPEARANCE.sidebar),
+    fontSize: size,
+    clock: one(o.clock, ["12", "24"] as const, APPEARANCE.clock),
+    motion: one(o.motion, ["system", "reduce", "full"] as const, APPEARANCE.motion),
+  };
+}
+
+/** "#rrggbb" or "rgb(r, g, b)" (what getComputedStyle returns) to [r, g, b]. */
+export function parseColor(c: string): [number, number, number] {
+  const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(c.trim());
+  if (hex) return [1, 2, 3].map((i) => parseInt(hex[i], 16)) as [number, number, number];
+  const n = c.match(/[\d.]+/g);
+  if (!n || n.length < 3) throw new Error(`not a color: ${c}`);
+  return [+n[0], +n[1], +n[2]];
+}
+const luminance = (c: string) => {
+  const [r, g, b] = parseColor(c).map((v) => (v / 255 <= 0.04045 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+/** WCAG 2 contrast ratio, 1 to 21. */
+export function contrast(a: string, b: string) {
+  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+const hex = (rgb: number[]) => "#" + rgb.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+/** Darkens or lightens fg, away from the first background, until it reaches min against every background. */
+export function fitContrast(fg: string, bgs: string[], min: number) {
+  const to = luminance(bgs[0]) > 0.18 ? 0 : 255;
+  const rgb = parseColor(fg);
+  for (let t = 0; t <= 1; t += 0.04) {
+    const c = hex(rgb.map((v) => v + (to - v) * t));
+    if (bgs.every((b) => contrast(c, b) >= min)) return c;
+  }
+  return to ? "#ffffff" : "#000000";
+}
 
 // ---------------------------------------------------------------------------
 // Markdown subset → tokens. Rendering builds React nodes from these; no HTML strings.

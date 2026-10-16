@@ -2,7 +2,8 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ChannelDialog, CommunitySettings, Invites, PERMISSION } from "./Admin";
 import { ChannelView, PeoplePicker, RightPane } from "./Chat";
-import { MemberKind, MemberRole, type GetServerInfoResponse } from "./gen/sblurp/v1/sblurp_pb";
+import { create } from "@bufbuild/protobuf";
+import { MemberKind, MemberRole, MemberSchema, type GetServerInfoResponse } from "./gen/sblurp/v1/sblurp_pb";
 import {
   channelLabel,
   communityBadge,
@@ -17,6 +18,10 @@ import {
   tabTitle,
   type Community,
   count,
+  THEMES,
+  timeLabel,
+  type Appearance as Look,
+  type Theme,
 } from "./logic";
 import {
   absUrl,
@@ -41,12 +46,11 @@ import {
   set,
   setRole,
   setNotify,
-  setTheme,
+  setLook,
   signIn,
   signOut,
   toggleCollapsed,
   useApp,
-  type Theme,
 } from "./store";
 import { Avatar, CommunityIcon, Dialog, EmojiPicker, emojiChar, Icon, Pop } from "./ui";
 
@@ -738,16 +742,186 @@ function Modals() {
   }
 }
 
+const THEME_NAMES: Record<Theme, string> = {
+  system: "Match system",
+  light: "Light",
+  dark: "Dark",
+  midnight: "Midnight",
+  contrast: "High contrast",
+  cola: "Cherry cola",
+  mint: "Mint",
+};
+const ACCENTS: [string, string][] = [
+  ["", "Theme default"],
+  ["#d0306a", "Raspberry"],
+  ["#e2681a", "Tangerine"],
+  ["#4f9a1f", "Lime"],
+  ["#0f8b8d", "Teal"],
+  ["#8247d6", "Grape"],
+];
+
+/** A row of radio buttons styled as a segmented control. */
+function Choice<K extends keyof Look>({ k, label, options }: { k: K; label: string; options: [Look[K], string][] }) {
+  const v = useApp((s) => s.look[k]);
+  return (
+    <fieldset className="choice">
+      <legend>{label}</legend>
+      <div className="seg">
+        {options.map(([o, name]) => (
+          <label key={String(o)}>
+            <input type="radio" name={k} checked={v === o} onChange={() => setLook({ [k]: o })} />
+            {name}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+const SAMPLE = [
+  { who: create(MemberSchema, { id: "mei", displayName: "Mei Chen" }), at: 9 * 60 + 41, text: "Kiln's loaded. Firing starts at six.", head: true },
+  { who: null, at: 9 * 60 + 42, text: "Bring a jumper, the shed gets cold.", head: false },
+  { who: create(MemberSchema, { id: "ana", displayName: "Ana Ruiz" }), at: 13 * 60 + 5, text: "Saving you both a seat by the window.", head: true },
+];
+
+function Appearance() {
+  const look = useApp((s) => s.look);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const custom = !!look.accent && !ACCENTS.some(([a]) => a === look.accent);
+  return (
+    <section className="appearance">
+      <h3>Appearance</h3>
+      <div className="preview" inert aria-hidden="true">
+        {SAMPLE.map((m, i) => (
+          <article key={i} className="msg" data-head={m.head}>
+            <div className="msg-gutter">
+              {m.who && (
+                <span className="avatar-btn">
+                  <Avatar m={m.who} />
+                </span>
+              )}
+              <span className="hover-time">
+                <time>{timeLabel(today.getTime() + m.at * 60_000, look.clock === "24")}</time>
+              </span>
+            </div>
+            <div className="msg-body">
+              {m.who && (
+                <header className="msg-head">
+                  <span className="name">{m.who.displayName}</span>
+                  <time>{timeLabel(today.getTime() + m.at * 60_000, look.clock === "24")}</time>
+                </header>
+              )}
+              <div className="msg-text">
+                <p>{m.text}</p>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+      <fieldset className="choice">
+        <legend>Theme</legend>
+        <div className="theme-pick">
+          {THEMES.map((t) => (
+            <label key={t} className="theme-opt">
+              <input type="radio" name="theme" checked={look.theme === t} onChange={() => setLook({ theme: t })} />
+              {t === "system" ? (
+                <span className="theme-swatch split" aria-hidden="true">
+                  {(["light", "dark"] as const).map((half) => (
+                    <span key={half} className="theme-swatch" data-theme={half}>
+                      <i />
+                      <i />
+                      <i>
+                        <b />
+                        <b />
+                      </i>
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                <span className="theme-swatch" data-theme={t} aria-hidden="true">
+                  <i />
+                  <i />
+                  <i>
+                    <b />
+                    <b />
+                  </i>
+                </span>
+              )}
+              {THEME_NAMES[t]}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <fieldset className="choice">
+        <legend>Accent color</legend>
+        <div className="accents">
+          {ACCENTS.map(([a, name]) => (
+            <label key={name} className="accent-opt" title={name}>
+              <input type="radio" name="accent" aria-label={name} checked={look.accent === a} onChange={() => setLook({ accent: a })} />
+              <span style={{ background: a || "var(--raspberry)" }} data-default={!a} />
+            </label>
+          ))}
+          <label className="accent-opt custom" title="Custom color">
+            <input
+              type="color"
+              aria-label="Custom accent color"
+              value={look.accent || "#3550f0"}
+              data-checked={custom}
+              onChange={(e) => setLook({ accent: e.target.value })}
+            />
+          </label>
+        </div>
+        <small className="fine">Sblurp darkens or lightens the color if text on it would be hard to read.</small>
+      </fieldset>
+      <Choice
+        k="density"
+        label="Messages"
+        options={[
+          ["cozy", "Cozy"],
+          ["compact", "Compact"],
+          ["irc", "IRC"],
+        ]}
+      />
+      <Choice
+        k="sidebar"
+        label="Sidebar"
+        options={[
+          ["cozy", "Cozy"],
+          ["compact", "Compact"],
+        ]}
+      />
+      <label className="choice size">
+        <span className="legend">
+          Text size <span>{look.fontSize}px</span>
+        </span>
+        <input type="range" min={12} max={20} step={1} aria-valuetext={`${look.fontSize} pixels`} value={look.fontSize} onChange={(e) => setLook({ fontSize: +e.target.value })} />
+      </label>
+      <Choice
+        k="clock"
+        label="Clock"
+        options={[
+          ["12", "12-hour"],
+          ["24", "24-hour"],
+        ]}
+      />
+      <Choice
+        k="motion"
+        label="Reduce motion"
+        options={[
+          ["system", "Match system"],
+          ["reduce", "On"],
+          ["full", "Off"],
+        ]}
+      />
+    </section>
+  );
+}
+
 function Settings() {
-  const theme = useApp((s) => s.theme);
   const notify = useApp((s) => s.notify);
   const profile = useApp((s) => s.profile);
   const denied = typeof Notification !== "undefined" && Notification.permission === "denied";
-  const themes: [Theme, string][] = [
-    ["system", "Match system"],
-    ["light", "Light"],
-    ["dark", "Dark"],
-  ];
   return (
     <Dialog label="Settings" className="settings">
       <header className="dialog-head">
@@ -756,22 +930,7 @@ function Settings() {
           <Icon name="x" />
         </button>
       </header>
-      <section>
-        <h3>Theme</h3>
-        <div className="theme-pick" role="radiogroup" aria-label="Theme">
-          {themes.map(([t, label]) => (
-            <label key={t} className="theme-opt">
-              <input type="radio" name="theme" checked={theme === t} onChange={() => setTheme(t)} />
-              <span className={`theme-swatch ${t}`} aria-hidden="true">
-                <i />
-                <i />
-                <i />
-              </span>
-              {label}
-            </label>
-          ))}
-        </div>
-      </section>
+      <Appearance />
       <section>
         <h3>Notifications</h3>
         <label className="toggle-row">

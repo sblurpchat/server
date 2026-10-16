@@ -14,5 +14,5 @@ export default defineConfig({
     },
   ],
   server: { port: 5173 },
-  test: { environment: "node" },
+  test: { environment: "node", css: { include: [/app\.css/] } }, // logic.test reads the theme tokens
 });

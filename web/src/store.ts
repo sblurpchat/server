@@ -40,6 +40,10 @@ import {
   type Community,
   type Info,
   type MsgList,
+  APPEARANCE,
+  fitContrast,
+  parseAppearance,
+  type Appearance,
 } from "./logic";
 
 const params = new URLSearchParams(location.search);
@@ -88,7 +92,6 @@ export type Modal =
   | { t: "profile" }
   | { t: "remove"; url: string; memberId: string; ban: boolean }
   | { t: "lightbox"; src: string; name: string };
-export type Theme = "system" | "light" | "dark";
 
 export interface State {
   auth: "loading" | "out" | "in";
@@ -101,7 +104,7 @@ export interface State {
   pane: Pane;
   modal: Modal;
   popover: { url: string; memberId: string; rect: DOMRect } | null;
-  theme: Theme;
+  look: Appearance;
   notify: boolean;
   drawer: boolean;
   collapsed: Record<string, boolean>;
@@ -122,7 +125,7 @@ let state: State = {
   pane: null,
   modal: null,
   popover: null,
-  theme: load<Theme>("theme", "system"),
+  look: parseAppearance(load("appearance", APPEARANCE)),
   notify: load("notify", false),
   drawer: false,
   collapsed: load("collapsed", {}),
@@ -678,14 +681,32 @@ export function reorder(order: string[]) {
 // Preferences
 // ---------------------------------------------------------------------------
 
-export function setTheme(theme: Theme) {
-  set({ theme });
-  save("theme", theme);
-  applyTheme();
+export function setLook(patch: Partial<Appearance>) {
+  set({ look: parseAppearance({ ...state.look, ...patch }) });
+  save("appearance", state.look);
+  applyLook();
 }
-function applyTheme() {
-  if (state.theme === "system") delete document.documentElement.dataset.theme;
-  else document.documentElement.dataset.theme = state.theme;
+/** Puts the appearance on <html>: data attributes for CSS, a font size, and an accent fitted to the theme. */
+function applyLook() {
+  const { theme, density, sidebar, motion, fontSize, accent } = state.look;
+  const root = document.documentElement;
+  const attrs = { theme, density, sidebar, motion };
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === "system" || v === "cozy") delete root.dataset[k];
+    else root.dataset[k] = v;
+  }
+  root.style.fontSize = fontSize === APPEARANCE.fontSize ? "" : `${(fontSize / 15) * 100}%`;
+  for (const v of ["--raspberry", "--accent-fill", "--selected"]) root.style.removeProperty(v);
+  if (!accent) return;
+  // Read the theme's own surfaces, resolved for the current light or dark scheme.
+  const probe = document.body.appendChild(document.createElement("i"));
+  const read = (v: string) => ((probe.style.color = `var(${v})`), getComputedStyle(probe).color);
+  const [paper, frost, onAccent] = [read("--paper"), read("--frost"), read("--on-accent")];
+  probe.remove();
+  const min = theme === "contrast" ? 7 : 4.5;
+  root.style.setProperty("--raspberry", fitContrast(accent, [paper, frost], min));
+  root.style.setProperty("--accent-fill", fitContrast(accent, [onAccent], min));
+  root.style.setProperty("--selected", "color-mix(in srgb, var(--raspberry) 22%, var(--paper))");
 }
 
 export async function setNotify(on: boolean) {
@@ -747,8 +768,8 @@ function start() {
 }
 
 export async function boot() {
-  applyTheme();
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+  applyLook();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyLook);
   addEventListener("popstate", applyHash);
   if (FAKE) {
     if (params.has("signedout")) set({ auth: "out" });

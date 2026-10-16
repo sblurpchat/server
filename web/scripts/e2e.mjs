@@ -128,6 +128,27 @@ try {
   await page.getByRole("menuitem", { name: "Mark all as read" }).click();
   if (await page.locator(".sidebar .chan[data-unread='true']").count()) throw new Error("unread channels left after Mark all as read");
 
+  // Appearance: theme, density and text size apply at once and survive a reload.
+  const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const before = await bg();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("radio", { name: "Midnight" }).check();
+  if ((await bg()) === before || (await bg()) !== "rgb(23, 34, 48)") throw new Error(`Midnight did not repaint the page: ${await bg()}`);
+  await page.getByRole("radio", { name: "Compact" }).first().check();
+  if (await page.locator(".channel .msg .avatar-btn").first().isVisible()) throw new Error("compact density still shows avatars");
+  await page.getByRole("slider", { name: /Text size/ }).fill("18");
+  const px = await page.evaluate(() => getComputedStyle(document.body).fontSize);
+  if (px !== "18px") throw new Error(`text size 18 gave ${px}`);
+  await page.reload();
+  await page.locator(".channel .msg").first().waitFor();
+  if ((await bg()) !== "rgb(23, 34, 48)" || (await page.locator(".channel .msg .avatar-btn").first().isVisible())) throw new Error("appearance did not survive a reload");
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("radio", { name: "Match system" }).first().check();
+  await page.getByRole("radio", { name: "Cozy" }).first().check();
+  await page.getByRole("slider", { name: /Text size/ }).fill("15");
+  await page.keyboard.press("Escape");
+  await page.locator(".channel .msg .avatar-btn").first().waitFor();
+
   // Admin: create a channel, edit it, move it; then make and delete a bot.
   await page.locator(".side-head").click();
   await page.getByRole("menuitem", { name: "Create channel" }).click();
@@ -175,7 +196,7 @@ try {
   await page.locator(".side-head", { hasText: "Letterpress Club" }).waitFor();
 
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, appearance)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message, errors.join("; "));

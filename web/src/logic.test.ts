@@ -1,5 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
+import css from "./app.css?raw";
 import {
   ChannelKind,
   ChannelSchema,
@@ -13,6 +14,11 @@ import {
   type Event,
 } from "./gen/sblurp/v1/sblurp_pb";
 import {
+  THEMES,
+  contrast,
+  fitContrast,
+  parseAppearance,
+  timeLabel,
   acQuery,
   applyEvent,
   backoffMs,
@@ -513,5 +519,94 @@ describe("reorderChannel", () => {
   it("does nothing past the ends", () => {
     expect(reorderChannel([ch("a", 0), ch("b", 1)], "a", -1)).toEqual([]);
     expect(reorderChannel([ch("a", 0), ch("b", 1)], "b", 1)).toEqual([]);
+  });
+});
+
+describe("appearance", () => {
+  it("parses stored settings and drops bad values field by field", () => {
+    expect(parseAppearance(null)).toEqual({ theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system" });
+    expect(parseAppearance("dark")).toMatchObject({ theme: "system" });
+    const bad = parseAppearance({ theme: "neon", accent: "red", density: "COMPACT", sidebar: 1, fontSize: "18", clock: 24, motion: true });
+    expect(bad).toEqual({ theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system" });
+    expect(parseAppearance({ theme: "mint", accent: "#D0306A", density: "irc", fontSize: 99, clock: "24", motion: "reduce" })).toMatchObject({
+      theme: "mint",
+      accent: "#d0306a",
+      density: "irc",
+      fontSize: 20,
+      clock: "24",
+      motion: "reduce",
+    });
+    expect(parseAppearance({ fontSize: 3 }).fontSize).toBe(12);
+    expect(parseAppearance({ fontSize: NaN }).fontSize).toBe(15);
+    expect(parseAppearance({ accent: "#12345" }).accent).toBe("");
+  });
+
+  it("formats 12 and 24 hour clocks", () => {
+    const t = new Date(2026, 0, 2, 21, 5).getTime();
+    expect(timeLabel(t)).toBe("9:05 PM");
+    expect(timeLabel(t, true)).toBe("21:05");
+    expect(timeLabel(new Date(2026, 0, 2, 0, 7).getTime(), true)).toBe("00:07");
+  });
+
+  it("computes WCAG contrast ratios", () => {
+    expect(contrast("#ffffff", "#000000")).toBeCloseTo(21, 5);
+    expect(contrast("#777777", "#ffffff")).toBeCloseTo(4.48, 2);
+    expect(contrast("rgb(255, 255, 255)", "#3550f0")).toBeCloseTo(contrast("#3550f0", "#ffffff"), 9);
+  });
+
+  it("fits an accent until it reads on every background", () => {
+    // Yellow on white is about 1.07:1; the fitted color must reach 4.5 on both papers.
+    const fitted = fitContrast("#ffff00", ["#ffffff", "#eef1f6"], 4.5);
+    expect(contrast(fitted, "#ffffff")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(fitted, "#eef1f6")).toBeGreaterThanOrEqual(4.5);
+    expect(fitted).not.toBe("#000000");
+    // On a dark paper it lightens instead.
+    const light = fitContrast("#3550f0", ["#1d1f2d"], 4.5);
+    expect(contrast(light, "#1d1f2d")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast("#3550f0", "#1d1f2d")).toBeLessThan(4.5);
+    // A color that already passes comes back unchanged.
+    expect(fitContrast("#0a6e54", ["#ffffff"], 4.5)).toBe("#0a6e54");
+  });
+
+  // Reads the real stylesheet so a token edit that breaks contrast fails here.
+  it("every theme meets contrast (AA, AAA for high contrast)", () => {
+    const block = (sel: string) => {
+      const i = css.indexOf(sel);
+      if (i < 0) throw new Error(`missing ${sel}`);
+      const body = css.slice(css.indexOf("{", i) + 1, css.indexOf("}", i));
+      return Object.fromEntries([...body.matchAll(/--([\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()])) as Record<string, string>;
+    };
+    const base = block(':root,\n[data-theme="light"],\n[data-theme="dark"] {');
+    const side = (v: string, i: number) => v.match(/^light-dark\((#\w+),\s*(#\w+)\)$/)?.[i + 1] ?? v;
+    const themes: Record<string, Record<string, string>> = {
+      light: Object.fromEntries(Object.entries(base).map(([k, v]) => [k, side(v, 0)])),
+      dark: Object.fromEntries(Object.entries(base).map(([k, v]) => [k, side(v, 1)])),
+    };
+    for (const t of THEMES.filter((t) => !["system", "light", "dark"].includes(t))) themes[t] = { ...themes.light, ...block(`[data-theme="${t}"] {`) };
+    expect(Object.keys(themes)).toHaveLength(THEMES.length - 1);
+    const pairs = [
+      ["text", "paper"],
+      ["ink", "frost"],
+      ["ink", "selected"],
+      ["text", "msg-hover"],
+      ["text", "mention-bg"],
+      ["graphite", "paper"],
+      ["graphite", "frost"],
+      ["raspberry", "paper"],
+      ["raspberry", "frost"],
+      ["cherry-text", "paper"],
+      ["on-accent", "accent-fill"],
+      ["on-accent", "badge"],
+      ["on-tip", "tip"],
+    ];
+    const fails: string[] = [];
+    for (const [name, tk] of Object.entries(themes)) {
+      const min = name === "contrast" ? 7 : 4.5;
+      for (const [fg, bg] of pairs) {
+        const r = contrast(tk[fg], tk[bg]);
+        if (r < min) fails.push(`${name}: --${fg} on --${bg} is ${r.toFixed(2)}`);
+      }
+    }
+    expect(fails).toEqual([]);
   });
 });

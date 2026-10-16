@@ -123,7 +123,27 @@ const shots = {
   signin: "signedout",
 };
 
-for (const scheme of ["light", "dark"]) {
+// node scripts/screens.mjs themes: every theme in cozy, compact and IRC at desktop size.
+if (only === "themes") {
+  for (const theme of ["light", "dark", "midnight", "contrast", "cola", "mint"]) {
+    for (const density of ["cozy", "compact", "irc"]) {
+      const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
+      await ctx.route("http://localhost:8090/**", (r) => r.abort());
+      await ctx.addInitScript((v) => localStorage.setItem("sblurp.fake.appearance", v), JSON.stringify({ theme, density }));
+      const page = await ctx.newPage();
+      await page.goto(base, { waitUntil: "domcontentloaded" });
+      await page.evaluate(() => document.fonts.ready);
+      await page.locator(".msg").first().waitFor();
+      await jump(page, "general");
+      await page.waitForTimeout(250);
+      const file = `${OUT}theme-${theme}-${density}.png`;
+      await page.screenshot({ path: file });
+      console.log(file);
+      await ctx.close();
+    }
+  }
+}
+for (const scheme of only === "themes" ? [] : ["light", "dark"]) {
   for (const [vw, vh, tag] of [[1440, 900, "desktop"], [390, 844, "mobile"]]) {
     const ctx = await browser.newContext({ viewport: { width: vw, height: vh }, deviceScaleFactor: 2, colorScheme: scheme });
     await ctx.route("http://localhost:8090/**", (r) => r.abort());
