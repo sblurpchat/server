@@ -438,6 +438,21 @@ export function discardSend(url: string, m: Message) {
 const updateLocal = (url: string, m: Message | undefined) =>
   m && patchC(url, (c) => applyEvent(c, { seq: 0n, atMs: 0n, kind: { case: "messageUpdated", value: m } } as Event, Date.now(), null));
 
+// Attachment URLs are signed and expire after one to two hours. A broken image asks the server
+// for the message again (once a minute at most) to get fresh URLs.
+const refreshedAt = new Map<string, number>();
+export async function refreshMessage(url: string, m: Message) {
+  const k = `${url} ${m.id}`;
+  if (Date.now() - (refreshedAt.get(k) ?? 0) < 60_000) return;
+  refreshedAt.set(k, Date.now());
+  try {
+    const r = await api(url).chat.listMessages({ channelId: m.channelId, threadRootId: m.threadRootId, aroundId: m.id, limit: 1 });
+    updateLocal(url, r.messages.find((x) => x.id === m.id));
+  } catch {
+    // The image stays broken; the next error after a minute tries again.
+  }
+}
+
 export async function edit(url: string, id: string, text: string) {
   const r = await api(url).chat.editMessage({ messageId: id, text });
   updateLocal(url, r.message);

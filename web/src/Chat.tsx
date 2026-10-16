@@ -30,6 +30,7 @@ import {
   loadList,
   markRead,
   react,
+  refreshMessage,
   retryNow,
   retrySend,
   search,
@@ -357,7 +358,7 @@ function MessageRow({ url, m, head, inThread, fresh }: { url: string; m: Message
         {m.attachments.length > 0 && (
           <div className="atts">
             {m.attachments.map((a) => (
-              <AttachmentView key={a.id} url={url} a={a} />
+              <AttachmentView key={a.id} url={url} a={a} m={m} />
             ))}
           </div>
         )}
@@ -445,7 +446,7 @@ function ThreadLink({ m }: { m: Message }) {
   );
 }
 
-function AttachmentView({ url, a }: { url: string; a: Attachment }) {
+function AttachmentView({ url, a, m }: { url: string; a: Attachment; m: Message }) {
   const src = absUrl(url, a.url);
   if (a.contentType.startsWith("image/")) {
     const w = a.width || 360;
@@ -453,7 +454,7 @@ function AttachmentView({ url, a }: { url: string; a: Attachment }) {
     const scale = Math.min(1, 360 / w, 280 / h);
     return (
       <button className="att-img" aria-label={`Open ${a.name}`} onClick={() => set({ modal: { t: "lightbox", src, name: a.name } })}>
-        <img src={src} alt={a.name} width={Math.round(w * scale)} height={Math.round(h * scale)} loading="lazy" />
+        <img src={src} alt={a.name} width={Math.round(w * scale)} height={Math.round(h * scale)} loading="lazy" onError={() => refreshMessage(url, m)} />
       </button>
     );
   }
