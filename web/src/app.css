@@ -1745,7 +1745,9 @@ li.sw-empty {
 .pane .scroller {
   justify-content: flex-end;
 }
+/* Never the scroll anchor: it stays on top as pages load above, and anchoring to it pinned the view to the top. */
 .list-note {
+  overflow-anchor: none;
   display: flex;
   gap: 12px;
   align-items: center;

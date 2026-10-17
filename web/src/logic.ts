@@ -115,6 +115,13 @@ export function upsertMessage(items: Message[], m: Message): Message[] {
   return [...items.slice(0, at), m, ...items.slice(at)];
 }
 
+/** A list being left keeps only its newest messages, so coming back mounts fast. A window from a search jump is dropped
+ *  (undefined) because it is not the newest; a list mid-load is kept whole so the page in flight still lines up. */
+export function trimList(l: MsgList, keep = 100): MsgList | undefined {
+  if (l.loading || l.items.length <= keep) return l;
+  return l.hasMoreAfter ? undefined : { ...l, items: l.items.slice(-keep), hasMore: true, focusId: undefined };
+}
+
 function mapLists(c: Community, fn: (items: Message[]) => Message[]): Record<string, MsgList> {
   const out: Record<string, MsgList> = {};
   for (const [k, l] of Object.entries(c.lists)) out[k] = { ...l, items: fn(l.items) };

@@ -40,6 +40,7 @@ import {
   upsertMessage,
   type Community,
   type Info,
+  trimList,
   type MsgList,
   APPEARANCE,
   fitContrast,
@@ -166,6 +167,18 @@ function patchC(url: string, fn: (c: Community) => Community) {
 }
 function patchList(url: string, key: string, fn: (l: MsgList) => MsgList) {
   patchC(url, (c) => ({ ...c, lists: { ...c.lists, [key]: fn(c.lists[key] ?? { items: [], hasMore: true }) } }));
+}
+
+export function leaveList(url: string, key: string) {
+  const l = state.cs[url]?.lists[key];
+  const t = l && trimList(l);
+  if (!l || t === l) return;
+  patchC(url, (c) => {
+    const lists = { ...c.lists };
+    if (t) lists[key] = t;
+    else delete lists[key];
+    return { ...c, lists };
+  });
 }
 
 // ---------------------------------------------------------------------------

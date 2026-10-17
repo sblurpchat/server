@@ -475,6 +475,14 @@ function seed(s: Seed, now: number): Fake {
       }
     }
   }
+  // Performance runs: ?fake=1&big=5000 adds that many older messages to #show-and-tell.
+  const big = Math.min(Number(new URLSearchParams(location.search).get("big")) || 0, 50_000);
+  const filler = chanByKey.get("show-and-tell");
+  const people = [...byName.values()];
+  for (let i = 0; big && filler && i < big; i++) {
+    const text = `Message ${i + 1}. ${i % 7 ? "Kiln log for batch" : "**Bold** note with `code` about batch"} ${i % 97}, cone ${6 + (i % 5)}.`;
+    out.push({ m: create(MessageSchema, { id: id("x"), channelId: filler.id, authorId: people[i % people.length].id, text, createdAtMs: at(20 * D + (big - i) * 7) }), key: "show-and-tell" });
+  }
   out.sort((a, b) => Number(a.m.createdAtMs - b.m.createdAtMs));
   for (const { m } of out) {
     m.seq = m.createdSeq = ++f.seq;

@@ -8,6 +8,7 @@ pnpm typecheck
 pnpm test         # vitest: logic.ts and auth.ts
 pnpm build
 pnpm e2e          # fake-mode smoke test on 127.0.0.1:5198, then an axe-core scan (light, dark, 1280px, 390px) on :5197
+pnpm perf         # 5,000 messages (BIG=n to change): history load, scroll frames, channel switch
 pnpm screens      # light/dark x desktop/mobile PNGs into ../artifacts/web/
 ```
 
@@ -41,6 +42,7 @@ Things DESIGN.md and ARCHITECTURE.md left open, and what I picked.
 - **Keyboard**: Cmd/Ctrl+/ opens the shortcuts sheet (also in Settings). The message list is one tab stop; arrow keys, Home and End move between messages.
 - **Avatar and community initials** are drawn with CSS `content: attr(data-i)`. They repeat the button's name, so screen readers and the label-in-name check skip them.
 - **Role name colors** are fitted to 4.5:1 against the paper, hover and mention backgrounds, not just the paper.
+- **Long history** is not virtualized. At 5,000 messages in the DOM, scrolling holds 60fps (p95 about 18ms a frame). Rows are memoized so a page of history renders only the new rows, and leaving a channel keeps only its newest 100 messages. Virtualize if `pnpm perf` says otherwise.
 - **Routing** is `#/c/<host>/<channel-id>` with `pushState`, so back/forward walk channel history. A community with no channel in the hash opens its last channel.
 - **Message list** uses `flex-direction: column-reverse`. The browser keeps it pinned to the bottom and holds position when older pages prepend, with no scroll math. Thread panes top-align instead.
 - **Read state**: a channel is marked read only when the list is scrolled to the bottom, the tab is visible and focused. Each seq is sent to the server once.

@@ -58,6 +58,7 @@ import {
   upsertMessage,
   type Community,
   count,
+  trimList,
 } from "./logic";
 
 const T0 = new Date(2026, 9, 16, 10, 0).getTime();
@@ -680,5 +681,22 @@ describe("sentence", () => {
 describe("swatch", () => {
   it("gives every avatar fill 4.5:1 against white initials", () => {
     for (let i = 0; i < 200; i++) expect(contrast(swatch(`m${i}`), "#ffffff")).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("trimList", () => {
+  const items = Array.from({ length: 150 }, (_, i) => create(MessageSchema, { id: `m${i}` }));
+  it("keeps the newest 100 of a long latest list and marks older history as available", () => {
+    const t = trimList({ items, hasMore: false, focusId: "m3" })!;
+    expect(t.items.map((m) => m.id)).toEqual(Array.from({ length: 100 }, (_, i) => `m${i + 50}`));
+    expect(t.hasMore).toBe(true);
+    expect(t.focusId).toBeUndefined();
+  });
+  it("drops a search window, and leaves short or loading lists alone", () => {
+    expect(trimList({ items, hasMore: true, hasMoreAfter: true })).toBeUndefined();
+    const loading = { items, hasMore: true, loading: true };
+    expect(trimList(loading)).toBe(loading);
+    const short = { items: items.slice(0, 100), hasMore: false };
+    expect(trimList(short)).toBe(short);
   });
 });

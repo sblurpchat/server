@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "node scripts/e2e.mjs && node scripts/a11y.mjs",
+    "perf": "node scripts/perf.mjs",
     "screens": "node scripts/screens.mjs"
   },
   "dependencies": {

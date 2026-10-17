@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from "react";
 import { useCountdown } from "./App";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
 import {
@@ -32,6 +32,7 @@ import {
   edit,
   errorText,
   get,
+  leaveList,
   loadList,
   markRead,
   jumpTo,
@@ -194,6 +195,7 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
   useEffect(() => {
     if (!list) void loadList(url, channelId, rootId);
   }, [url, channelId, rootId, list]);
+  useEffect(() => () => leaveList(url, key), [url, key]);
 
   const check = () => {
     const el = scroller.current;
@@ -347,8 +349,14 @@ function moveFocus(e: KeyboardEvent<HTMLElement>) {
   next.focus();
 }
 
-function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: Message; head: boolean; inThread: boolean; fresh: boolean; focus?: boolean }) {
-  const c = useC();
+// Memoized, and it reads only the community fields it shows, so loading a page of history renders only the new rows.
+const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: Message; head: boolean; inThread: boolean; fresh: boolean; focus?: boolean }) {
+  const c = {
+    members: useApp((s) => s.cs[s.url]!.members),
+    me: useApp((s) => s.cs[s.url]!.me),
+    roles: useApp((s) => s.cs[s.url]!.roles),
+    failed: useApp((s) => s.cs[s.url]!.failed),
+  };
   const editing = useApp((s) => s.editing === m.id);
   const [pick, setPick] = useState<DOMRect | null>(null);
   const [more, setMore] = useState<DOMRect | null>(null);
@@ -554,7 +562,7 @@ function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: 
       </Pop>
     </article>
   );
-}
+});
 
 function ThreadLink({ m }: { m: Message }) {
   const open = useApp((s) => s.pane?.t === "thread" && s.pane.rootId === m.id);
