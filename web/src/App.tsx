@@ -1336,6 +1336,7 @@ const KEYS: [keys: string[][], what: string][] = [
   [[["Esc"]], "Cancel an edit, close the side panel or menu"],
   [[["Enter"]], "Send a message"],
   [[["Shift", "Enter"]], "New line in a message"],
+  [[["Shift", "Drop"]], "Send dropped files right away, without the message box"],
   [[["↑"]], "Edit your last message, from an empty message box"],
   [[["Tab"]], "Move to the message list; Tab again reaches a message's actions"],
   [[["↑"], ["↓"]], "Move between messages in the list"],

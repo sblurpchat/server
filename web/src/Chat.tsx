@@ -881,6 +881,14 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
   // Files dropped anywhere over the channel (or the thread pane) land in this composer.
   const add = useRef(addFiles);
   add.current = addFiles;
+  // Shift-drop sends the files at once as their own message, leaving the draft alone (1199).
+  // If an upload fails, the files go to the composer instead, where the error shows on the chip.
+  const sendNow = useRef<(list: File[]) => void>(() => {});
+  sendNow.current = (list) =>
+    void Promise.all(list.map((f) => upload(url, f))).then(
+      (atts) => send(url, channelId, rootId, "", atts),
+      () => addFiles(list),
+    );
   useEffect(() => {
     const zone = form.current?.closest<HTMLElement>(".channel, .pane");
     if (!zone) return;
@@ -897,6 +905,7 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
       if (!files(e)) return;
       e.preventDefault();
       delete zone.dataset.drag;
+      if (e.shiftKey) return sendNow.current(Array.from(e.dataTransfer!.files));
       add.current(e.dataTransfer!.files);
       ref.current?.focus();
     };
