@@ -455,6 +455,7 @@ function ServerVersion({ url }: { url: string }) {
 // ---------------------------------------------------------------------------
 
 const TABS = [
+  ["about", "About"],
   ["members", "Members"],
   ["roles", "Roles"],
   ["channels", "Channels"],
@@ -462,11 +463,10 @@ const TABS = [
   ["bans", "Bans"],
   ["bots", "Bots"],
   ["emoji", "Emoji"],
-  ["about", "About"],
 ] as const;
 export type SettingsTab = (typeof TABS)[number][0];
 
-export function CommunitySettings({ tab = "members" }: { tab?: SettingsTab }) {
+export function CommunitySettings({ tab = "about" }: { tab?: SettingsTab }) {
   const c = useApp((s) => s.cs[s.url]);
   if (!c?.me) return null;
   const name = c.info?.name ?? hostOf(c.url);
