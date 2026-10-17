@@ -19,6 +19,12 @@ const shots = {
   },
   composer: () => jump(globalThis.page, "help"),
   code: () => jump(globalThis.page, "self-hosting"),
+  // Scrollbars: idle (hidden) and with the pointer over the message list (thin thumb).
+  scroll: () => jump(globalThis.page, "general"),
+  scrollhover: async (p) => {
+    await jump(p, "general");
+    await p.locator(".scroller").hover();
+  },
 };
 for (const [vw, vh] of [[+w, +h], [390, 844]]) for (const theme of ["dark", "light"]) {
   const ctx = await browser.newContext({ viewport: { width: vw, height: vh }, deviceScaleFactor: 2, colorScheme: theme });
