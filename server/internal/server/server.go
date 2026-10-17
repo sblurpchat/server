@@ -69,6 +69,7 @@ type Server struct {
 	pluginTimeout   time.Duration
 	writeWait       time.Duration
 	updateAvailable atomic.Pointer[string]
+	emoji           emojiCache
 	wg              sync.WaitGroup
 	stop            chan struct{}
 }
@@ -188,6 +189,10 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(sblurpv1connect.NewBotServiceHandler(s, opts))
 	mux.HandleFunc("POST /upload", s.upload)
 	mux.HandleFunc("GET /files/{id}/{name}", s.serveFile)
+	mux.HandleFunc("GET /emoji", s.listEmoji)
+	mux.HandleFunc("POST /emoji", s.uploadEmoji)
+	mux.HandleFunc("GET /emoji.zip", s.exportEmoji)
+	mux.HandleFunc("GET /emoji/{id}", s.serveEmoji)
 	mux.HandleFunc("GET /invite/{code}", s.inviteRedirect)
 	mux.HandleFunc("GET /i/{code}", s.inviteRedirect)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok\n")) })

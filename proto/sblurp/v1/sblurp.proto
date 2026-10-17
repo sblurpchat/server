@@ -257,6 +257,7 @@ message Event {
     string role_deleted = 25;       // role id; drop it from members and channels
     ChannelMode channel_mode_changed = 26;
     bool server_updated = 27;       // description, banner or icon changed; call GetServerInfo
+    bool emoji_changed = 28;        // custom emoji added or deleted; refetch GET /emoji
   }
 }
 
@@ -505,6 +506,49 @@ message SetMemberRolesRequest {
 message SetMemberRolesResponse { Member member = 1; }
 
 // ---------------------------------------------------------------------------
+// Custom emoji
+//
+// Messages and reactions use a custom emoji as ":name:". Unknown names are
+// plain text. The list and the uploads are plain HTTP, see server/README.md:
+//   GET  {base}/emoji      ListEmojiResponse as protojson, with an ETag.
+//                          Send If-None-Match; 304 means nothing changed.
+//   POST {base}/emoji      multipart "file" parts (images or .zip files);
+//                          moderator or higher. Reply: UploadEmojiResponse.
+//   GET  {base}/emoji.zip  every emoji as name.ext in one zip.
+//   GET  {base}/emoji/{id} the image, public, cached forever.
+// After a change every member gets Event.emoji_changed.
+// ---------------------------------------------------------------------------
+
+message CustomEmoji {
+  string name = 1;            // 1 to 64 of a-z, 0-9, - and _; unique on this server
+  string url = 2;             // relative to the server base URL; never changes, cache forever
+}
+
+message ListEmojiResponse {
+  repeated CustomEmoji emoji = 1; // sorted by name
+}
+
+enum EmojiUploadStatus {
+  EMOJI_UPLOAD_STATUS_UNSPECIFIED = 0;
+  EMOJI_UPLOAD_STATUS_ADDED = 1;
+  EMOJI_UPLOAD_STATUS_EXISTS = 2;   // skipped: the name is taken
+  EMOJI_UPLOAD_STATUS_REJECTED = 3; // see error
+}
+
+message EmojiUploadResult {
+  string file = 1;            // the file name, or its path inside a zip
+  string name = 2;            // emoji name made from the file name
+  EmojiUploadStatus status = 3;
+  string error = 4;           // why it was rejected
+}
+
+message UploadEmojiResponse { repeated EmojiUploadResult results = 1; }
+
+// Moderator or higher.
+message DeleteEmojiRequest { string name = 1; }
+message DeleteEmojiResponse {}
+
+// ---------------------------------------------------------------------------
 // Bots
 // ---------------------------------------------------------------------------
 
@@ -555,6 +599,7 @@ service ServerService {
   rpc UpdateRole(UpdateRoleRequest) returns (UpdateRoleResponse) {}
   rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse) {}
   rpc SetMemberRoles(SetMemberRolesRequest) returns (SetMemberRolesResponse) {}
+  rpc DeleteEmoji(DeleteEmojiRequest) returns (DeleteEmojiResponse) {}
 }
 
 service ChatService {
