@@ -1214,6 +1214,15 @@ func TestSeed(t *testing.T) {
 		if st.Me.Kind != v1.MemberKind_MEMBER_KIND_BOT || len(st.Channels) < 5 {
 			t.Fatalf("%s: bot state = %v channels", name, len(st.Channels))
 		}
+		// Every seeded member has a stored avatar the server serves (1196).
+		if code := getStatus(t, st.Me.AvatarUrl); !strings.HasPrefix(st.Me.AvatarUrl, e.url+"/files/") || code != http.StatusOK {
+			t.Fatalf("%s: bot avatar %q -> %d", name, st.Me.AvatarUrl, code)
+		}
+		var bare int
+		e.s.db.r.QueryRow("SELECT COUNT(*) FROM members WHERE avatar_url NOT LIKE '/files/%'").Scan(&bare)
+		if bare != 0 {
+			t.Fatalf("%s: %d seeded members without an avatar", name, bare)
+		}
 		// The first real person to join owns the place.
 		if p := e.join("ian"); p.me.Role != v1.MemberRole_MEMBER_ROLE_OWNER {
 			t.Fatalf("%s: first human role = %v", name, p.me.Role)
@@ -1238,6 +1247,24 @@ func TestSeed(t *testing.T) {
 	e.s.db.r.QueryRow("SELECT COUNT(*) FROM members WHERE kind = 2").Scan(&n)
 	if n != 1 {
 		t.Fatalf("reseed created %d bots", n)
+	}
+	// Starting with -seed again backfills empty avatars only: never a
+	// changed one, never a real person's.
+	e.s.db.w.Exec("UPDATE members SET avatar_url = '' WHERE username IN ('margot', 'ian')")
+	e.s.db.w.Exec("UPDATE members SET avatar_url = 'https://x.test/a.png' WHERE username = 'yuki'")
+	if err := e.s.seed(ctx(), "owls"); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	rows, _ := e.s.db.r.Query("SELECT username, avatar_url FROM members WHERE username IN ('margot', 'ian', 'yuki')")
+	for rows.Next() {
+		var u, a string
+		rows.Scan(&u, &a)
+		got[u] = a
+	}
+	rows.Close()
+	if !strings.HasPrefix(got["margot"], "/files/") || got["ian"] != "" || got["yuki"] != "https://x.test/a.png" {
+		t.Fatalf("backfill = %v", got)
 	}
 }
 

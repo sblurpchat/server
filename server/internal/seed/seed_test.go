@@ -1,6 +1,7 @@
 package seed
 
 import (
+	"bytes"
 	"regexp"
 	"testing"
 )
@@ -21,6 +22,9 @@ func TestCommunities(t *testing.T) {
 			checkCommunity(t, c)
 		})
 	}
+	if Avatar("nope") != nil {
+		t.Error("Avatar(nope) should be nil")
+	}
 	if _, ok := Get("nope"); ok {
 		t.Error("Get(nope) should be false")
 	}
@@ -33,7 +37,7 @@ func checkCommunity(t *testing.T, c Community) {
 	if n := len(c.Members); n < 8 || n > 15 {
 		t.Errorf("member count %d", n)
 	}
-	known := map[string]bool{}
+	known, pics := map[string]bool{}, map[string]bool{}
 	for _, m := range append(append([]Member{}, c.Members...), c.Bot) {
 		if !userRe.MatchString(m.Username) {
 			t.Errorf("bad username %q", m.Username)
@@ -42,6 +46,15 @@ func checkCommunity(t *testing.T, c Community) {
 			t.Errorf("duplicate username %q", m.Username)
 		}
 		known[m.Username] = true
+		// Each member's picture is its own WebP, picked by username.
+		pic := Avatar(m.Username)
+		if len(pic) < 1000 || string(pic[:4]) != "RIFF" || string(pic[8:12]) != "WEBP" || !bytes.Equal(pic, Avatar(m.Username)) {
+			t.Errorf("%s: bad avatar (%d bytes)", m.Username, len(pic))
+		}
+		if pics[string(pic)] {
+			t.Errorf("%s: avatar used twice", m.Username)
+		}
+		pics[string(pic)] = true
 		if m.Display == "" || len([]rune(m.Display)) > 80 {
 			t.Errorf("bad display %q", m.Display)
 		}

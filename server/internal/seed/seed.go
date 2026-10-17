@@ -2,6 +2,20 @@
 // data; the server package turns it into members, channels and messages.
 package seed
 
+import "embed"
+
+// Each seeded member and bot has avatars/<username>.webp (credits in
+// avatars/CREDITS.txt).
+//
+//go:embed avatars/*.webp
+var avatars embed.FS
+
+// Avatar returns the seeded picture (WebP, 256x256) for username, or nil.
+func Avatar(username string) []byte {
+	b, _ := avatars.ReadFile("avatars/" + username + ".webp")
+	return b
+}
+
 // Community is everything one demo server starts with.
 type Community struct {
 	Description string

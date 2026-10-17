@@ -34,7 +34,12 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
   await signIn(p); await p.waitForURL(at(AUTH)); await shot('auth-login');
   // Auth allows 20 sign-ups an hour per address, so repeated runs fall back to other loopback
   // addresses, straight to the port. Those leave no session cookie, so sign-in may show the login form.
-  const u = 'ian' + Date.now().toString().slice(-5);
+  // A different made-up person each run; the time suffix keeps the username unique.
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  const first = pick(['Robin', 'Maya', 'Elena', 'Jonas', 'Aisha', 'Diego', 'Hana', 'Oscar', 'Nadia', 'Felix', 'Ruth', 'Tariq', 'Mei', 'Liam']);
+  const last = pick(['Ellis', 'Novak', 'Castillo', 'Lindgren', 'Mensah', 'Park', 'Duarte', 'Rossi', 'Sato', 'Brennan', 'Ahmadi', 'Weber']);
+  const display = `${first} ${last}`;
+  const u = `${first}_${last}${Date.now() % 10000}`.toLowerCase();
   let signedUp = false;
   for (const base of [AUTH, 'http://127.0.0.1:8081', 'http://[::1]:8081']) {
     await p.goto(`${base}/signup`);
@@ -53,6 +58,11 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
     await p.fill('#login', u); await p.fill('#password', 'slushie-straw-77'); await p.getByRole('button', { name: 'Sign in' }).click();
   }
   await p.waitForURL(at(WEB), { timeout: 15000 });
+  // Give the account a display name before joining, so communities show it.
+  await p.goto(AUTH + '/account'); await p.fill('#display_name', display);
+  await p.getByRole('button', { name: 'Save profile' }).click(); await p.waitForLoadState();
+  ok(await p.inputValue('#display_name') === display, 'display name ' + display);
+  await p.goto(WEB);
   await p.getByRole('button', { name: /^Join Sblurp Community/ }).waitFor({ timeout: 10000 }); await shot('join-card');
   errs.length = 0;
 

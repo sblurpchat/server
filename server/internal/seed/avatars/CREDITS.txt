@@ -1,0 +1,29 @@
+Seed member avatars. Photos from Unsplash, free under the Unsplash License
+(https://unsplash.com/license). Cropped square and resized to 256px WebP.
+File: photographer, photo URL
+
+priya.webp: Rosesh Bhandari, https://unsplash.com/photos/W4E6TBnQJP4
+marcus.webp: Jadon Johnson, https://unsplash.com/photos/g9Et-rzQBkA
+sofia.g.webp: Anastasia Vityukova, https://unsplash.com/photos/nBE8-s0BG0Q
+kenji.webp: Vitaly Gariev, https://unsplash.com/photos/TOJiro5qBQg
+amara.webp: Jadon Johnson, https://unsplash.com/photos/gbR310ta_nE
+lukas.webp: Vitaly Gariev, https://unsplash.com/photos/B3KY1FbcG3o
+fatima.webp: Menor Degu, https://unsplash.com/photos/H92peKMv8xc
+tomk.webp: Noah Blaine Clark, https://unsplash.com/photos/644AhjsZNQs
+noa.webp: Lesha Tuman, https://unsplash.com/photos/19tzpQzwPmc
+jules.webp: Giorgio Trovato, https://unsplash.com/photos/t-tkjeiOd_o
+teo.webp: Filip Rankovic Grobgaard, https://unsplash.com/photos/uKk8TOyPMAc
+sam_h.webp: Age Cymru, https://unsplash.com/photos/KBRytaQYDGA
+slurpy.webp: Alvan Nee, https://unsplash.com/photos/rRhnANi1yb0
+margot.webp: Susanna Marsiglia, https://unsplash.com/photos/SDfkKh7MSbs
+desmond.webp: Bunting Kargbo, https://unsplash.com/photos/Nj-KnR69o60
+yuki.webp: Vii Nguyenn, https://unsplash.com/photos/saIzqY_w9Pw
+rosa.m.webp: Jadon Johnson, https://unsplash.com/photos/WoGLaHIVoVA
+aleks.webp: Vitaly Gariev, https://unsplash.com/photos/4HNK1yce-Vg
+hannah_b.webp: Vitaly Gariev, https://unsplash.com/photos/v9tBjeSX6oU
+omar.webp: Christian Buehner, https://unsplash.com/photos/JQFHdpOKz2k
+leilani.webp: Vitaly Gariev, https://unsplash.com/photos/4RxZe_7zA4o
+theo.webp: Henry Ravenscroft, https://unsplash.com/photos/Fg6BNki8QpE
+ines.webp: Meg von Haartman, https://unsplash.com/photos/wCnXOZaLrTc
+kwame.webp: Mike Santos, https://unsplash.com/photos/L86XoLxEd-I
+hoot.webp: Daniel Mačura, https://unsplash.com/photos/E6xfioiJmms

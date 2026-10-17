@@ -3,6 +3,8 @@ package server
 import (
 	"cmp"
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"math/rand/v2"
 	"os"
@@ -29,8 +31,11 @@ func (s *Server) seed(ctx context.Context, name string) error {
 	s.cfg.Description = cmp.Or(s.cfg.Description, c.Description)
 	s.cfg.Accent = cmp.Or(s.cfg.Accent, c.Accent)
 	var members int
-	if err := s.db.r.QueryRowContext(ctx, "SELECT COUNT(*) FROM members").Scan(&members); err != nil || members > 0 {
+	if err := s.db.r.QueryRowContext(ctx, "SELECT COUNT(*) FROM members").Scan(&members); err != nil {
 		return err
+	}
+	if members > 0 {
+		return s.seedAvatars(ctx, c)
 	}
 	now := s.now()
 	rng := rand.New(rand.NewPCG(7, 7))
@@ -188,5 +193,54 @@ func (s *Server) seed(ctx context.Context, name string) error {
 		return err
 	}
 	s.log.Info("wrote seeded bot token", "bot", c.Bot.Username, "path", path)
-	return nil
+	return s.seedAvatars(ctx, c)
+}
+
+// seedAvatars gives each seeded member (and the bot) that has no avatar its
+// picture from the seed package, stored like an uploaded avatar. It runs on
+// every start with -seed, so data seeded before avatars existed gets them.
+// It never replaces an avatar, and skips people who log in (iss is set).
+func (s *Server) seedAvatars(ctx context.Context, c seed.Community) error {
+	return s.writeTx(ctx, func(t *wtx) error {
+		n := 0
+		for _, m := range append(slices.Clone(c.Members), c.Bot) {
+			b := seed.Avatar(m.Username)
+			var mid string
+			err := t.QueryRowContext(ctx, "SELECT id FROM members WHERE username = ? AND avatar_url = '' AND iss IS NULL AND deleted = 0", m.Username).Scan(&mid)
+			if errors.Is(err, sql.ErrNoRows) || b == nil {
+				continue
+			}
+			if err != nil {
+				return err
+			}
+			now := s.now()
+			id, name := newID(now), m.Username+".webp"
+			if err := os.WriteFile(filepath.Join(s.filesDir, id), b, 0o600); err != nil {
+				return err
+			}
+			if _, err := t.ExecContext(ctx, `INSERT INTO attachments(id, uploader_id, name, content_type, size, width, height, created_at_ms)
+				VALUES (?,?,?,?,?,?,?,?)`, id, mid, name, "image/webp", len(b), 256, 256, now.UnixMilli()); err != nil {
+				return err
+			}
+			if _, err := t.ExecContext(ctx, "UPDATE members SET avatar_url = ? WHERE id = ?", fileURL(id, name), mid); err != nil {
+				return err
+			}
+			out, err := s.loadMember(ctx, t, "id = ?", mid)
+			if err != nil {
+				return err
+			}
+			seq, err := t.nextSeq()
+			if err != nil {
+				return err
+			}
+			if err := t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberUpdated{MemberUpdated: out.Member}}, "", ""); err != nil {
+				return err
+			}
+			n++
+		}
+		if n > 0 {
+			s.log.Info("gave seeded members avatars", "count", n)
+		}
+		return nil
+	})
 }
