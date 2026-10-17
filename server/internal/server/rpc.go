@@ -2056,9 +2056,11 @@ func (s *Server) iconURL(ctx context.Context, q queryer) (string, error) {
 	return signedFileURL(s.fileKey, a.Id, a.Name, s.now()), nil
 }
 
+// isInviteOnly is true until an admin opens the community, so a new private
+// server is never open to everyone by accident.
 func isInviteOnly(ctx context.Context, q queryer) (bool, error) {
 	var on bool
-	err := q.QueryRowContext(ctx, "SELECT COALESCE((SELECT value = '1' FROM settings WHERE key = 'invite_only'), 0)").Scan(&on)
+	err := q.QueryRowContext(ctx, "SELECT COALESCE((SELECT value = '1' FROM settings WHERE key = 'invite_only'), 1)").Scan(&on)
 	return on, err
 }
 

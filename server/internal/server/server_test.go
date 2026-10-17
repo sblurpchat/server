@@ -116,6 +116,10 @@ func newEnv(t *testing.T, mods ...func(*Config)) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// New communities are invite only; most tests want an open one.
+	if _, err := e.s.db.w.Exec("INSERT INTO settings(key, value) VALUES ('invite_only', '0')"); err != nil {
+		t.Fatal(err)
+	}
 	hs := &httptest.Server{Listener: ln, Config: &http.Server{Handler: e.s.Handler(), Protocols: new(http.Protocols)}}
 	hs.Config.Protocols.SetHTTP1(true)
 	hs.Config.Protocols.SetUnencryptedHTTP2(true)
@@ -1591,6 +1595,17 @@ func must2[T any](v T, err error) T {
 // Invite-only communities need a usable invite code to Join (0103).
 func TestInvites(t *testing.T) {
 	e := newEnv(t)
+	// A new community is invite only, but its first person still gets in as owner (1161).
+	e.s.db.w.Exec("DELETE FROM settings WHERE key = 'invite_only'")
+	if !must(e.client("").srv.GetServerInfo(ctx(), connect.NewRequest(&v1.GetServerInfoRequest{}))).InviteOnly {
+		t.Fatal("a new community must be invite only")
+	}
+	if c := e.join("first"); c.me.Role != v1.MemberRole_MEMBER_ROLE_OWNER {
+		t.Fatalf("first person: %v", c.me.Role)
+	}
+	_, err := e.client(e.token("second")).srv.Join(ctx(), connect.NewRequest(&v1.JoinRequest{}))
+	wantCode(t, err, connect.CodePermissionDenied)
+	e = newEnv(t)
 	ana, bob := e.join("ana"), e.join("bob")
 	info := func() bool {
 		return must(e.client("").srv.GetServerInfo(ctx(), connect.NewRequest(&v1.GetServerInfoRequest{}))).InviteOnly
@@ -1607,9 +1622,9 @@ func TestInvites(t *testing.T) {
 		return err
 	}
 	if info() {
-		t.Fatal("a new community must be open")
+		t.Fatal("this community was opened")
 	}
-	_, err := bob.srv.CreateInvite(ctx(), connect.NewRequest(&v1.CreateInviteRequest{}))
+	_, err = bob.srv.CreateInvite(ctx(), connect.NewRequest(&v1.CreateInviteRequest{}))
 	wantCode(t, err, connect.CodePermissionDenied)
 	wantCode(t, setInviteOnly(bob, true), connect.CodePermissionDenied)
 	_, err = ana.srv.CreateInvite(ctx(), connect.NewRequest(&v1.CreateInviteRequest{MaxUses: -1}))

@@ -171,9 +171,9 @@ client. There is no separate apps system. The bot is ~150 lines in
   the same issuer still holds the name, they renamed on the account server
   since, so they move to `name2` and get their new name on their next
   request. A bot or someone from another issuer keeps the name.
-- **Invites**: a community is open (anyone with a login from a trusted
-  issuer may `Join`) until an admin calls
-  `UpdateServerSettings{invite_only: true}`. `GetServerInfo.invite_only`
+- **Invites**: a new community is invite only until an admin calls
+  `UpdateServerSettings{invite_only: false}` to open it (then anyone with
+  a login from a trusted issuer may `Join`). `GetServerInfo.invite_only`
   tells the join screen to ask for a code. Then `Join` needs
   `invite_code` (case-insensitive, spaces trimmed), except for the first
   person (the owner) and current members; someone who left or was kicked
