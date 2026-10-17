@@ -25,6 +25,13 @@ func (l *listFlag) Set(v string) error {
 	return nil
 }
 
+// Set at build time with -ldflags "-X main.version=... -X main.track=... -X main.updateURL=...".
+var (
+	version   = "dev"
+	track     = "stable"
+	updateURL = ""
+)
+
 func env(key, def string) string {
 	if v, ok := os.LookupEnv(key); ok {
 		return v
@@ -49,6 +56,12 @@ func main() {
 	flag.Float64Var(&cfg.BotRate, "bot-rate", botRate, "bot messages per second, 0 = unlimited (SBLURP_BOT_RATE)")
 	flag.IntVar(&cfg.BotBurst, "bot-burst", botBurst, "bot message burst (SBLURP_BOT_BURST)")
 	flag.Parse()
+	cfg.Version = version
+	cfg.Track = env("SBLURP_TRACK", track)
+	cfg.UpdateURL = env("SBLURP_UPDATE_URL", updateURL)
+	if env("SBLURP_UPDATE_CHECK", "on") == "off" {
+		cfg.UpdateURL = ""
+	}
 
 	cfg.TrustedIssuers = issuers
 	if len(issuers) == 0 && os.Getenv("SBLURP_TRUSTED_ISSUERS") != "" {
@@ -89,7 +102,7 @@ func main() {
 		defer cancel()
 		srv.Shutdown(sctx)
 	}()
-	log.Info("listening", "addr", *addr, "name", cfg.Name, "base_url", cfg.BaseURL, "trusted_issuers", cfg.TrustedIssuers)
+	log.Info("listening", "version", cfg.Version, "track", cfg.Track, "addr", *addr, "name", cfg.Name, "base_url", cfg.BaseURL, "trusted_issuers", cfg.TrustedIssuers)
 	if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		log.Error("serve", "err", err)
 		os.Exit(1)

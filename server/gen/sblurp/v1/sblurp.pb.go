@@ -1305,10 +1305,14 @@ func (*GetMeRequest) Descriptor() ([]byte, []int) {
 }
 
 type GetMeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Member        *Member                `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Member *Member                `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
+	// The next three are for admins and the owner only; empty for others.
+	ServerVersion   string `protobuf:"bytes,2,opt,name=server_version,json=serverVersion,proto3" json:"server_version,omitempty"`       // "1.2.3", "1.3.0-beta.1", "nightly-20261016-abc1234" or "dev"
+	ServerTrack     string `protobuf:"bytes,3,opt,name=server_track,json=serverTrack,proto3" json:"server_track,omitempty"`             // "stable", "beta" or "nightly"
+	UpdateAvailable string `protobuf:"bytes,4,opt,name=update_available,json=updateAvailable,proto3" json:"update_available,omitempty"` // a newer version on server_track, or ""
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GetMeResponse) Reset() {
@@ -1346,6 +1350,27 @@ func (x *GetMeResponse) GetMember() *Member {
 		return x.Member
 	}
 	return nil
+}
+
+func (x *GetMeResponse) GetServerVersion() string {
+	if x != nil {
+		return x.ServerVersion
+	}
+	return ""
+}
+
+func (x *GetMeResponse) GetServerTrack() string {
+	if x != nil {
+		return x.ServerTrack
+	}
+	return ""
+}
+
+func (x *GetMeResponse) GetUpdateAvailable() string {
+	if x != nil {
+		return x.UpdateAvailable
+	}
+	return ""
 }
 
 type UpdateProfileRequest struct {
@@ -5446,9 +5471,12 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\fJoinResponse\x12)\n" +
 	"\x06member\x18\x01 \x01(\v2\x11.sblurp.v1.MemberR\x06member\x12\x18\n" +
 	"\acreated\x18\x02 \x01(\bR\acreated\"\x0e\n" +
-	"\fGetMeRequest\":\n" +
+	"\fGetMeRequest\"\xaf\x01\n" +
 	"\rGetMeResponse\x12)\n" +
-	"\x06member\x18\x01 \x01(\v2\x11.sblurp.v1.MemberR\x06member\"\x90\x02\n" +
+	"\x06member\x18\x01 \x01(\v2\x11.sblurp.v1.MemberR\x06member\x12%\n" +
+	"\x0eserver_version\x18\x02 \x01(\tR\rserverVersion\x12!\n" +
+	"\fserver_track\x18\x03 \x01(\tR\vserverTrack\x12)\n" +
+	"\x10update_available\x18\x04 \x01(\tR\x0fupdateAvailable\"\x90\x02\n" +
 	"\x14UpdateProfileRequest\x12&\n" +
 	"\fdisplay_name\x18\x01 \x01(\tH\x00R\vdisplayName\x88\x01\x01\x12\"\n" +
 	"\n" +

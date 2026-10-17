@@ -39,6 +39,14 @@ Every flag can also come from an environment variable.
 | `-seed` | `SBLURP_SEED` | | `community` or `owls`. Fills an empty database with demo data. Ignored when the database has members. |
 | `-bot-rate` | `SBLURP_BOT_RATE` | `0` (no limit) | SendMessage per second for bots. |
 | `-bot-burst` | `SBLURP_BOT_BURST` | `20` | Burst for bots. |
+| | `SBLURP_TRACK` | set at build (`stable`, `beta`, `nightly`) | Release track for the update check. |
+| | `SBLURP_UPDATE_URL` | set at build | Release manifest (`releases.json`). Empty in local builds. |
+| | `SBLURP_UPDATE_CHECK` | `on` | `off` stops the daily update check. |
+
+Once a day the server does a plain GET of the release manifest. It sends no
+data. When its track has a newer version, `GetMe` tells admins and the owner
+in `update_available`. The server never updates itself; see
+`deploy/README.md`.
 
 People are limited to 5 messages per second, burst 10.
 
@@ -285,6 +293,10 @@ when `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `R2_ENDPOINT` and
 SQLite means one machine. Do not scale past 1.
 
 ## Docker
+
+Released images are at `ghcr.io/<owner>/sblurp-server` (`:stable`, `:beta`,
+`:nightly`). Compose files, auto-update and provenance checks are in
+`deploy/README.md`. To build your own:
 
 ```sh
 docker build -t sblurp-server .

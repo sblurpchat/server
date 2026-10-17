@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -33,6 +34,9 @@ type Config struct {
 	BotBurst       int
 	PluginMemory   int           // bytes per plugin; default 32 MB
 	PluginTimeout  time.Duration // per hook call; default 1s
+	Version        string        // build version, e.g. "1.2.3" or "nightly-20261016-abc1234"
+	Track          string        // stable, beta or nightly
+	UpdateURL      string        // release manifest; "" turns the daily update check off
 
 	// For tests.
 	Now        func() time.Time
@@ -44,24 +48,25 @@ type Config struct {
 }
 
 type Server struct {
-	cfg           Config
-	db            *db
-	hub           *hub
-	jwks          *jwks
-	limiter       *limiter
-	log           *slog.Logger
-	now           func() time.Time
-	heartbeat     time.Duration
-	keepEvents    int
-	keepFor       time.Duration
-	filesDir      string
-	fileKey       []byte
-	plugins       []*plugin
-	pluginJobs    chan func()
-	pluginMemory  int
-	pluginTimeout time.Duration
-	wg            sync.WaitGroup
-	stop          chan struct{}
+	cfg             Config
+	db              *db
+	hub             *hub
+	jwks            *jwks
+	limiter         *limiter
+	log             *slog.Logger
+	now             func() time.Time
+	heartbeat       time.Duration
+	keepEvents      int
+	keepFor         time.Duration
+	filesDir        string
+	fileKey         []byte
+	plugins         []*plugin
+	pluginJobs      chan func()
+	pluginMemory    int
+	pluginTimeout   time.Duration
+	updateAvailable atomic.Pointer[string]
+	wg              sync.WaitGroup
+	stop            chan struct{}
 }
 
 // New opens (or creates) the database under cfg.DataDir and seeds it if asked.
@@ -132,6 +137,10 @@ func New(cfg Config) (*Server, error) {
 	}
 	s.wg.Add(1)
 	go s.pruneLoop()
+	if cfg.UpdateURL != "" {
+		s.wg.Add(1)
+		go s.updateLoop()
+	}
 	s.loadPlugins()
 	return s, nil
 }

@@ -540,7 +540,15 @@ func (s *Server) Join(ctx context.Context, req *connect.Request[v1.JoinRequest])
 }
 
 func (s *Server) GetMe(ctx context.Context, _ *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error) {
-	return connect.NewResponse(&v1.GetMeResponse{Member: me(ctx).Member}), nil
+	m := me(ctx)
+	resp := &v1.GetMeResponse{Member: m.Member}
+	if isAdmin(m) {
+		resp.ServerVersion, resp.ServerTrack = s.cfg.Version, s.cfg.Track
+		if v := s.updateAvailable.Load(); v != nil {
+			resp.UpdateAvailable = *v
+		}
+	}
+	return connect.NewResponse(resp), nil
 }
 
 func (s *Server) UpdateProfile(ctx context.Context, req *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
