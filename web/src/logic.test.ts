@@ -60,6 +60,8 @@ import {
   reorderChannel,
   parseHash,
   messageHash,
+  parsePermalink,
+  permalinks,
   parseInline,
   parseMarkdown,
   landingChannel,
@@ -394,6 +396,30 @@ describe("community URLs", () => {
       messageId: "m2",
       rootId: "m1",
     });
+  });
+});
+
+describe("message link previews", () => {
+  const app = "http://app.sblurp.localhost:1355/";
+  it("reads a message link from this app only", () => {
+    const want = { host: "community.sblurp.localhost:1355", channelId: "c1", messageId: "m1", rootId: "" };
+    expect(parsePermalink(`${app}#/c/community.sblurp.localhost%3A1355/c1/m1`, app)).toEqual(want);
+    expect(parsePermalink(`${app}#/c/community.sblurp.localhost%3A1355/c1/m1?thread=m1`, app)).toEqual(want);
+    expect(parsePermalink(`${app}?fake#/c/community.sblurp.localhost%3A1355/c1/m1`, app)).toEqual(want);
+    expect(parsePermalink(`${app}#/c/community.sblurp.localhost%3A1355/c1?thread=m1`, app)).toEqual(want);
+    expect(parsePermalink(`${app}#/c/x.test/c1/m2/m1`, app)).toEqual({ host: "x.test", channelId: "c1", messageId: "m2", rootId: "m1" });
+    expect(parsePermalink(`${app}#/c/x.test/c1`, app)).toBeNull();
+    expect(parsePermalink(`${app}#/c/x.test`, app)).toBeNull();
+    expect(parsePermalink("https://evil.test/#/c/x.test/c1/m1", app)).toBeNull();
+    expect(parsePermalink("http://app.sblurp.localhost:1355/other#/c/x.test/c1/m1", app)).toBeNull();
+    expect(parsePermalink("not a url", app)).toBeNull();
+  });
+  it("finds each linked message once, at most three", () => {
+    const l = (m: string) => `${app}#/c/x.test/c1/${m}`;
+    expect(permalinks(`see ${l("m1")}, and (${l("m2")}). Again ${l("m1")} https://example.com`, app).map((x) => x.messageId)).toEqual(["m1", "m2"]);
+    expect(permalinks(`[here](${l("m9")})`, app).map((x) => x.messageId)).toEqual(["m9"]);
+    expect(permalinks([1, 2, 3, 4].map((i) => l(`m${i}`)).join(" "), app)).toHaveLength(3);
+    expect(permalinks("no links", app)).toEqual([]);
   });
 });
 

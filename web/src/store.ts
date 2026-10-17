@@ -59,6 +59,7 @@ import {
   joinHashInput,
   readDelay,
   isExpired,
+  type Permalink,
 } from "./logic";
 
 const params = new URLSearchParams(location.search);
@@ -478,6 +479,29 @@ export function jumpTo(url: string, m: Pick<Message, "id" | "channelId" | "threa
   if (push) history.pushState(null, "", location.hash);
   selectChannel(url, m.channelId, !push);
   if (m.threadRootId) set({ pane: { t: "thread", rootId: m.threadRootId } });
+}
+
+// Message link previews (1109). One fetch per linked message, shared by every row that links it,
+// through the viewer's own connection so the server's access checks decide. Any failure (no
+// access, private channel, deleted, expired) is null: the link stays a plain link.
+// ponytail: kept for the session; an edit or delete of the linked message shows after a reload.
+export const unfurled = new Map<string, Message | null>();
+const unfurling = new Map<string, Promise<Message | null>>();
+export const unfurlKey = (url: string, l: Permalink) => `${url}\n${l.messageId}`;
+export function unfurl(url: string, l: Permalink): Promise<Message | null> {
+  const k = unfurlKey(url, l);
+  let p = unfurling.get(k);
+  if (!p) {
+    p = api(url)
+      .chat.listMessages({ channelId: l.channelId, threadRootId: l.rootId, aroundId: l.messageId, limit: 1 })
+      .then(
+        (r) => r.messages.find((m) => m.id === l.messageId && !m.deleted) ?? null,
+        () => null,
+      )
+      .then((m) => (unfurled.set(k, m), m));
+    unfurling.set(k, p);
+  }
+  return p;
 }
 
 export async function send(url: string, channelId: string, rootId: string, text: string, attachments: Attachment[] = []) {

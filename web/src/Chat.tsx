@@ -29,6 +29,8 @@ import {
   nameColor,
   listStep,
   pasteTarget,
+  permalinks,
+  type Permalink,
 } from "./logic";
 import {
   absUrl,
@@ -56,6 +58,9 @@ import {
   useApp,
   joinChannel,
   leaveChannel,
+  unfurl,
+  unfurled,
+  unfurlKey,
 } from "./store";
 import { Avatar, Dialog, EMOJI, EmojiPicker, emojiChar, Icon, Markdown, Pop, Resizer, useClamped } from "./ui";
 
@@ -420,6 +425,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
     failed: useApp((s) => s.cs[s.url]!.failed),
   };
   const editing = useApp((s) => s.editing === m.id);
+  const links = useMemo(() => permalinks(m.text, location.origin + location.pathname), [m.text]);
   const [pick, setPick] = useState<DOMRect | null>(null);
   const [more, setMore] = useState<DOMRect | null>(null);
   const [who, setWho] = useState<{ emoji: string; rect: DOMRect } | null>(null);
@@ -498,6 +504,9 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
             {m.editedAtMs > 0n && <span className="edited">(edited)</span>}
           </div>
         )}
+        {links.map((l) => (
+          <Unfurl key={`${l.host}/${l.messageId}`} link={l} />
+        ))}
         {m.attachments.length > 0 && (
           <div className="atts">
             {m.attachments.map((a) => (
@@ -625,6 +634,41 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
     </article>
   );
 });
+
+// A preview of a linked message (1109), only once the viewer's own server returns it.
+function Unfurl({ link }: { link: Permalink }) {
+  const u = useApp((s) => s.order.find((x) => hostOf(x) === link.host));
+  const here = useApp((s) => s.url === u);
+  const [m, setM] = useState(() => (u ? unfurled.get(unfurlKey(u, link)) : null));
+  useEffect(() => {
+    let live = true;
+    if (u && m === undefined) void unfurl(u, link).then((x) => live && setM(x));
+    return () => {
+      live = false;
+    };
+  }, [u]); // eslint-disable-line react-hooks/exhaustive-deps
+  const c = useApp((s) => (u ? s.cs[u] : undefined));
+  const h24 = useApp((s) => s.look.clock === "24");
+  if (!u || !m || !c) return null;
+  const author = c.members[m.authorId];
+  const name = author?.displayName || author?.username || "Unknown member";
+  const ch = c.channels[m.channelId];
+  const where = (ch ? (isDM(ch) ? channelLabel(ch, c.members, c.me?.id) : `#${ch.name}`) : "a channel") + (here ? "" : ` in ${c.info?.name ?? link.host}`);
+  const at = Number(m.createdAtMs);
+  const text = decodeMentions(m.text, c.members) || count(m.attachments.length, "attachment", "attachments");
+  return (
+    <button className="unfurl" onClick={() => jumpTo(u, m, true)} aria-label={`Message from ${name} in ${where}: ${text}`}>
+      <span className="unfurl-head">
+        <Avatar m={author} size={20} />
+        <b>{name}</b>
+        <span className="muted truncate">
+          {where}, {dayLabel(at, Date.now())} {timeLabel(at, h24)}
+        </span>
+      </span>
+      <span className="unfurl-text">{text}</span>
+    </button>
+  );
+}
 
 function ThreadLink({ m }: { m: Message }) {
   const open = useApp((s) => s.pane?.t === "thread" && s.pane.rootId === m.id);

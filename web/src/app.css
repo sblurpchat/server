@@ -2422,6 +2422,45 @@ li.sw-empty {
   background: var(--paper);
   border-color: var(--line);
 }
+/* A linked message's preview (1109): a quote bar that warms to the accent on hover. */
+.unfurl {
+  display: grid;
+  gap: 2px;
+  width: min(100%, 520px);
+  margin: 6px 0 2px;
+  padding: 6px 12px 7px;
+  border-left: 3px solid var(--line);
+  border-radius: 2px 8px 8px 2px;
+  background: color-mix(in srgb, var(--frost) 55%, transparent);
+  text-align: left;
+  animation: rise-in 160ms ease-out;
+  transition:
+    border-color 140ms ease-out,
+    background-color 140ms ease-out;
+}
+.unfurl:hover {
+  border-left-color: var(--raspberry);
+  background: var(--frost);
+}
+.unfurl-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 0.8125rem;
+}
+.unfurl-head b {
+  white-space: nowrap;
+}
+.unfurl-text {
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .thread-count {
   display: flex;
   align-items: center;

@@ -35,7 +35,7 @@ import {
   type ReadState,
   type Role,
 } from "./gen/sblurp/v1/sblurp_pb";
-import { BANNER_TYPES, encodeMentions, mentionsMe } from "./logic";
+import { BANNER_TYPES, encodeMentions, mentionsMe, messageHash } from "./logic";
 
 type Extra = {
   replies?: [number, string, string][];
@@ -1056,6 +1056,23 @@ function init() {
   if (fakes.size) return;
   const now = Date.now();
   for (const s of SEEDS) fakes.set(s.url, seed(s, now));
+  // Message link previews (1109): links to a message here, one in another community, one in a
+  // community I have not joined and one that does not exist. Only the first two get a preview.
+  const app = location.origin + location.pathname + location.search;
+  const [sb, owls, press] = SEEDS.filter((s) => s.url !== "https://pottery.thursdays.club").map((s) => fakes.get(s.url)!);
+  const first = (f: Fake, name: string) => f.messages.find((m) => f.channels.get(m.channelId)!.name === name && !m.threadRootId)!;
+  const link = (f: Fake, m: Pick<Message, "id" | "channelId" | "threadRootId">) => app + messageHash(f.info.baseUrl, m);
+  const general = [...sb.channels.values()].find((c) => c.name === "general")!;
+  const m = create(MessageSchema, {
+    id: id("x"),
+    channelId: general.id,
+    authorId: [...sb.members.values()].find((x) => x.username === "jun")!.id,
+    text: `Two threads worth reading before the call: ${link(sb, first(sb, "design"))} and the night window idea ${link(owls, first(owls, "3am-thoughts"))}\n\nThese should stay plain links: ${link(press, press.messages[0] ?? { id: "x", channelId: "c", threadRootId: "" })} ${link(sb, { id: "x-gone", channelId: general.id, threadRootId: "" })}`,
+    createdAtMs: BigInt(now - 60_000),
+  });
+  m.seq = m.createdSeq = ++sb.seq;
+  sb.messages.push(m);
+  general.lastMessageSeq = sb.logStart = sb.seq;
 }
 
 /** Transport for a fake community, or null when no fake server lives at that URL. */

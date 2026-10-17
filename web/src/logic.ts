@@ -787,6 +787,37 @@ export function parseHash(hash: string): { host: string; channelId: string; mess
 export const messageHash = (url: string, m: { id: string; channelId: string; threadRootId: string }) =>
   `${formatHash(url, m.channelId)}/${encodeURIComponent(m.id)}${m.threadRootId ? `/${encodeURIComponent(m.threadRootId)}` : ""}`;
 
+export type Permalink = { host: string; channelId: string; messageId: string; rootId: string };
+
+/** A message link in this app at `app` (origin and path), as Copy link makes it (1109).
+ *  A channel link with ?thread=<root> and no message id points at the root. */
+export function parsePermalink(href: string, app: string): Permalink | null {
+  let u: URL, a: URL;
+  try {
+    u = new URL(href);
+    a = new URL(app);
+  } catch {
+    return null;
+  }
+  if (u.origin !== a.origin || u.pathname !== a.pathname) return null;
+  const r = parseHash(u.hash);
+  if (!r?.channelId) return null;
+  if (r.messageId) return r;
+  const p = parsePane(u.hash);
+  return p?.t === "thread" ? { ...r, messageId: p.rootId } : null;
+}
+
+/** The message links in a message's text to preview: each message once, at most three. */
+export function permalinks(text: string, app: string): Permalink[] {
+  const out: Permalink[] = [];
+  for (const [href] of text.matchAll(/https?:\/\/[^\s<]*[^\s<.,:;"')\]!?]/g)) {
+    const l = parsePermalink(href, app);
+    if (l && !out.some((x) => x.host === l.host && x.messageId === l.messageId)) out.push(l);
+    if (out.length === 3) break;
+  }
+  return out;
+}
+
 export const formatHash = (url: string, channelId: string) =>
   `#/c/${encodeURIComponent(hostOf(url))}${channelId ? `/${encodeURIComponent(channelId)}` : ""}`;
 
