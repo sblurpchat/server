@@ -4,13 +4,14 @@ go 1.26.2
 
 require (
 	connectrpc.com/connect v1.21.1
+	github.com/fastschema/qjs v0.0.6
 	google.golang.org/protobuf v1.36.12
 	modernc.org/sqlite v1.56.0
+	rsc.io/qr v0.2.0
 )
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/fastschema/qjs v0.0.6 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect

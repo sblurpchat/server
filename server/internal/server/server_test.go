@@ -1785,3 +1785,47 @@ func TestUsernameFollowsAccount(t *testing.T) {
 		t.Fatalf("username %q, want robo2", got)
 	}
 }
+
+// A browser at / sees what this server is and how to join (splash page).
+func TestSplashPage(t *testing.T) {
+	e := newEnv(t)
+	ana := e.join("ana")
+	page := func() string {
+		res, err := http.Get(e.url + "/")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		b, _ := io.ReadAll(res.Body)
+		if res.StatusCode != http.StatusOK || !strings.HasPrefix(res.Header.Get("Content-Type"), "text/html") {
+			t.Fatalf("splash: %d %q", res.StatusCode, res.Header.Get("Content-Type"))
+		}
+		return string(b)
+	}
+	host := strings.TrimPrefix(e.url, "http://")
+	join := "https://app.sblurp.chat/#/join?url=" + url.QueryEscape(e.url)
+	p := page()
+	for _, want := range []string{"<code>" + host + "</code>", `href="` + strings.ReplaceAll(join, "&", "&amp;") + `"`, `<svg class="qr"`, "https://sblurp.chat", "1 member<"} {
+		if !strings.Contains(p, want) {
+			t.Fatalf("splash missing %q", want)
+		}
+	}
+	if strings.Contains(p, "invite only") {
+		t.Fatal("open community must not say invite only")
+	}
+	on := true
+	if _, err := ana.srv.UpdateServerSettings(ctx(), connect.NewRequest(&v1.UpdateServerSettingsRequest{InviteOnly: &on})); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(page(), "invite only") {
+		t.Fatal("invite-only community must say so")
+	}
+	res, err := http.Get(e.url + "/sblurp-logo.png")
+	if err != nil || res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "image/png" {
+		t.Fatalf("logo: %v %v", err, res)
+	}
+	res.Body.Close()
+	if res, _ := http.Get(e.url + "/nope"); res.StatusCode != http.StatusNotFound {
+		t.Fatalf("unknown path: %d", res.StatusCode)
+	}
+}

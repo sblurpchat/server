@@ -206,6 +206,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /unfurl/{id}", s.serveUnfurlImage)
 	mux.HandleFunc("GET /invite/{code}", s.inviteRedirect)
 	mux.HandleFunc("GET /i/{code}", s.inviteRedirect)
+	mux.HandleFunc("GET /{$}", s.splash)
+	mux.HandleFunc("GET /sblurp-logo.png", s.splashLogo)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok\n")) })
 	return cors(mux)
 }
