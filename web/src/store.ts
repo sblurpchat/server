@@ -725,10 +725,10 @@ export async function setInviteOnly(url: string, inviteOnly: boolean) {
   patchC(url, (c) => ({ ...c, info: c.info && { ...c.info, inviteOnly: r.inviteOnly } }));
 }
 
-/** Banner and Markdown description (1026). bannerId "" removes the banner. */
-export async function setCommunityProfile(url: string, req: { description?: string; bannerId?: string }) {
+/** Banner, icon and Markdown description (1026, 1044). An id of "" removes that image. */
+export async function setCommunityProfile(url: string, req: { description?: string; bannerId?: string; iconId?: string }) {
   const r = await api(url).server.updateServerSettings(req);
-  patchC(url, (c) => ({ ...c, info: c.info && { ...c.info, description: r.description, bannerUrl: r.banner?.url } }));
+  patchC(url, (c) => ({ ...c, info: c.info && { ...c.info, description: r.description, bannerUrl: r.banner?.url, iconUrl: r.iconUrl } }));
 }
 
 // ---------------------------------------------------------------------------

@@ -73,6 +73,7 @@ import {
   paneQuery,
   parsePane,
   bannerFileError,
+  squareCrop,
   cssUrl,
 } from "./logic";
 
@@ -863,5 +864,13 @@ describe("readDelay (1040)", () => {
       }
     }
     expect(sends).toBe(4);
+  });
+});
+
+describe("squareCrop", () => {
+  it("takes the centered square and shrinks it to max", () => {
+    expect(squareCrop(1200, 800, 512)).toEqual({ sx: 200, sy: 0, side: 800, out: 512 });
+    expect(squareCrop(300, 501, 512)).toEqual({ sx: 0, sy: 100, side: 300, out: 300 });
+    expect(squareCrop(64, 64, 512)).toEqual({ sx: 0, sy: 0, side: 64, out: 64 });
   });
 });

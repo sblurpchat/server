@@ -700,12 +700,13 @@ function service(f: Fake) {
         f.invites = f.invites.filter((i) => i.code !== req.code);
         return {};
       },
-      updateServerSettings(req: { inviteOnly?: boolean; channelMode: ChannelMode; description?: string; bannerId?: string }) {
+      updateServerSettings(req: { inviteOnly?: boolean; channelMode: ChannelMode; description?: string; bannerId?: string; iconId?: string }) {
         admin();
         if (req.inviteOnly !== undefined) f.info.inviteOnly = req.inviteOnly;
         if (req.description !== undefined) f.info.description = req.description.trim();
         if (req.bannerId !== undefined) f.info.banner = req.bannerId ? image(req.bannerId) : undefined;
-        if (req.description !== undefined || req.bannerId !== undefined) emit(f, { case: "serverUpdated", value: true });
+        if (req.iconId !== undefined) f.info.iconUrl = req.iconId ? image(req.iconId).url : "";
+        if (req.description !== undefined || req.bannerId !== undefined || req.iconId !== undefined) emit(f, { case: "serverUpdated", value: true });
         if (req.channelMode && req.channelMode !== f.mode) {
           f.mode = req.channelMode;
           // OPT_IN to ROLES puts everyone in everything they can see.
@@ -715,7 +716,7 @@ function service(f: Fake) {
           }
           emit(f, { case: "channelModeChanged", value: f.mode });
         }
-        return { inviteOnly: f.info.inviteOnly, channelMode: f.mode, description: f.info.description, banner: f.info.banner };
+        return { inviteOnly: f.info.inviteOnly, channelMode: f.mode, description: f.info.description, banner: f.info.banner, iconUrl: f.info.iconUrl };
       },
       createRole(req: { name: string; color: string }) {
         admin();

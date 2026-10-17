@@ -709,6 +709,12 @@ export function bannerFileError(f: { type: string; size: number }): string {
   return "";
 }
 
+/** The centered square of a w x h image, and its size once shrunk to at most max px (1044). */
+export function squareCrop(w: number, h: number, max: number) {
+  const side = Math.min(w, h);
+  return { sx: Math.floor((w - side) / 2), sy: Math.floor((h - side) / 2), side, out: Math.min(side, max) };
+}
+
 /** A CSS url() for an inline style; quotes and backslashes in the URL cannot end the string. */
 export const cssUrl = (u: string) => (u ? `url("${u.replace(/["\\\n]/g, (ch) => `\\${ch === "\n" ? "a " : ch}`)}")` : "");
 

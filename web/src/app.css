@@ -3470,3 +3470,17 @@ li.sw-empty {
 .image-field .row {
   margin-top: 6px;
 }
+.image-preview.square {
+  width: 72px;
+  height: 72px;
+  border-radius: 28%;
+}
+.image-field {
+  border-radius: 8px;
+  outline: 2px dashed transparent;
+  outline-offset: 4px;
+  transition: outline-color 150ms ease-out;
+}
+.image-field[data-over] {
+  outline-color: var(--accent-fill);
+}

@@ -1,7 +1,7 @@
 // Admin screens: create and edit channels, and community settings (members, invites, bots).
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Ban, type Channel, type GetMeResponse, type Invite, type Member, type Role } from "./gen/sblurp/v1/sblurp_pb";
-import { BANNER_TYPES, bannerFileError, banDetail, channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, reorderChannel, sidebarSections } from "./logic";
+import { BANNER_TYPES, bannerFileError, banDetail, channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, reorderChannel, sidebarSections, squareCrop } from "./logic";
 import {
   absUrl,
   setCommunityProfile,
@@ -187,10 +187,40 @@ export function ChannelDialog({ id, category = "" }: { id?: string; category?: s
 }
 
 /** Uploads a banner or header image and applies it at once; "" removes it. Checked like the server checks it. */
-function ImageField({ label, hint, src, onChange }: { label: string; hint: string; src: string; onChange: (id: string) => Promise<void> }) {
+/** A square, at most 512 px copy of an image for the community icon (1044). GIFs stay as they are to keep animation. */
+async function squareIcon(file: File): Promise<File> {
+  if (file.type === "image/gif") return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const { sx, sy, side, out } = squareCrop(bmp.width, bmp.height, 512);
+    if (out === bmp.width && out === bmp.height) return file;
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = out;
+    cv.getContext("2d")!.drawImage(bmp, sx, sy, side, side, 0, 0, out, out);
+    const blob = await new Promise<Blob | null>((r) => cv.toBlob(r, "image/webp", 0.9));
+    return blob ? new File([blob], `${file.name.replace(/\.\w+$/, "")}.${blob.type.split("/")[1]}`, { type: blob.type }) : file;
+  } catch {
+    return file; // the server checks it anyway
+  }
+}
+
+function ImageField({
+  label,
+  hint,
+  src,
+  square,
+  onChange,
+}: {
+  label: string;
+  hint: string;
+  src: string;
+  square?: boolean;
+  onChange: (id: string) => Promise<void>;
+}) {
   const c = useApp((s) => s.cs[s.url]);
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [over, setOver] = useState(false);
   const [err, setErr] = useState("");
   const run = async (f: () => Promise<void>) => {
     setBusy(true);
@@ -204,14 +234,33 @@ function ImageField({ label, hint, src, onChange }: { label: string; hint: strin
   };
   const pick = (file?: File) => {
     if (!file || !c) return;
-    const bad = bannerFileError(file);
+    // Icons are shrunk first, so only their type is checked before that.
+    const bad = bannerFileError(square ? { type: file.type, size: 0 } : file);
     if (bad) return setErr(bad);
-    void run(async () => onChange((await upload(c.url, file)).id));
+    void run(async () => {
+      const f = square ? await squareIcon(file) : file;
+      const big = bannerFileError(f);
+      if (big) return setErr(big);
+      await onChange((await upload(c.url, f)).id);
+    });
   };
   return (
-    <div className="field image-field">
+    <div
+      className="field image-field"
+      data-over={over || undefined}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setOver(false);
+        pick(e.dataTransfer.files[0]);
+      }}
+    >
       <b>{label}</b>
-      {src && <img className="image-preview" src={src} alt={`Current ${label.toLowerCase()}`} />}
+      {src && <img className={square ? "image-preview square" : "image-preview"} src={src} alt={`Current ${label.toLowerCase()}`} />}
       <small className="muted">{hint}</small>
       <span className="row">
         <button type="button" className="btn small" disabled={busy} onClick={() => input.current?.click()}>
@@ -269,6 +318,13 @@ function AboutTab({ url }: { url: string }) {
         hint="Shown behind the community name in everyone's sidebar. Wide images work best. PNG, JPEG, GIF, WebP or AVIF, up to 8 MB."
         src={absUrl(url, c.info?.bannerUrl ?? "")}
         onChange={(id) => setCommunityProfile(url, { bannerId: id })}
+      />
+      <ImageField
+        label="Icon"
+        hint="Shown in everyone's community rail, cropped to a square. Big images are shrunk before upload. Drop an image here or pick one."
+        src={absUrl(url, c.info?.iconUrl ?? "")}
+        square
+        onChange={(id) => setCommunityProfile(url, { iconId: id })}
       />
       <form className="field" onSubmit={submit}>
         <label htmlFor="about-desc">
