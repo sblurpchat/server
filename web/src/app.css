@@ -2136,6 +2136,13 @@ li.sw-empty {
   padding: 1px 20px 1px 16px;
   position: relative;
 }
+/* Skip layout and paint for rows far off screen: thousands of loaded rows
+   made every keystroke repaint them all (1160). "auto" keeps each row's
+   real height once seen, so the scroller keeps its place. */
+.channel .msg {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 64px;
+}
 .msg[data-head="true"] {
   margin-top: 14px;
   padding-top: 3px;
