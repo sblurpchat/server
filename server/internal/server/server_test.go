@@ -412,7 +412,7 @@ func TestPrivateChannelAndDMVisibility(t *testing.T) {
 	bobSub := bob.subscribe(start)
 
 	secret := ana.channel("secret", v1.ChannelKind_CHANNEL_KIND_PRIVATE)
-	ana.send(secret.Id, "private plans")
+	plans := ana.send(secret.Id, "private plans")
 	dm := must(ana.chat.OpenDM(ctx(), connect.NewRequest(&v1.OpenDMRequest{MemberIds: []string{bob.me.Id}}))).Channel
 	if dm.Kind != v1.ChannelKind_CHANNEL_KIND_DM || len(dm.MemberIds) != 2 {
 		t.Fatalf("dm = %v", dm)
@@ -448,6 +448,9 @@ func TestPrivateChannelAndDMVisibility(t *testing.T) {
 		}
 	}
 	_, err := eve.chat.ListMessages(ctx(), connect.NewRequest(&v1.ListMessagesRequest{ChannelId: secret.Id}))
+	wantCode(t, err, connect.CodeNotFound)
+	// A message link preview (1109) fetches one message this way; a non-member gets nothing.
+	_, err = eve.chat.ListMessages(ctx(), connect.NewRequest(&v1.ListMessagesRequest{ChannelId: secret.Id, AroundId: plans.Id, Limit: 1}))
 	wantCode(t, err, connect.CodeNotFound)
 	_, err = eve.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: dm.Id, Text: "hi"}))
 	wantCode(t, err, connect.CodeNotFound)
@@ -927,6 +930,7 @@ func TestListMessagesAroundAndAfter(t *testing.T) {
 		more, after bool
 	}{
 		{&v1.ListMessagesRequest{AroundId: ids[5], Limit: 4}, "m3,m4,m5,m6", true, true},
+		{&v1.ListMessagesRequest{AroundId: ids[5], Limit: 1}, "m5", true, true}, // one message, for link previews (1109)
 		{&v1.ListMessagesRequest{AroundId: ids[9], Limit: 4}, "m7,m8,m9", true, false},
 		{&v1.ListMessagesRequest{AroundId: ids[0], Limit: 4}, "m0,m1,m2,m3", false, true},
 		{&v1.ListMessagesRequest{AfterId: ids[6], Limit: 5}, "m7,m8,m9", false, false},
