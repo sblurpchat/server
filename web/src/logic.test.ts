@@ -85,6 +85,7 @@ import {
   bannerFileError,
   squareCrop,
   cssUrl,
+  toolsInside,
 } from "./logic";
 
 const T0 = new Date(2026, 9, 16, 10, 0).getTime();
@@ -988,5 +989,14 @@ describe("plugins", () => {
     const e = create(EventSchema, { seq: 5n, kind: { case: "pluginsChanged", value: true } });
     const c = applyEvent(applyEvent(emptyCommunity("u"), e, 0, null), create(EventSchema, { seq: 6n, kind: { case: "pluginsChanged", value: true } }), 0, null);
     expect(c.pluginsRev).toBe(2);
+  });
+});
+
+describe("toolsInside", () => {
+  it("moves the toolbar inside only near the scroller top", () => {
+    expect(toolsInside(100, 100)).toBe(true);
+    expect(toolsInside(135, 100)).toBe(true);
+    expect(toolsInside(136, 100)).toBe(false);
+    expect(toolsInside(400, 100)).toBe(false);
   });
 });

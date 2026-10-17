@@ -1094,3 +1094,7 @@ export function shownPreviews<T extends { url: string }>(ps: T[], app: string): 
 export function unsavedBlock(dirty: readonly string[], from: string, to: string | null): string | null {
   return from === to ? null : (dirty[0] ?? null);
 }
+
+// The hover toolbar sits 16px above its message; the scroller's top 20px fade out under a mask.
+// A message closer to the top than that gets its toolbar inside instead of clipped (1193).
+export const toolsInside = (msgTop: number, scrollerTop: number) => msgTop - scrollerTop < 16 + 20;

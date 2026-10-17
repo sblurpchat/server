@@ -32,6 +32,7 @@ import {
   pasteTarget,
   permalinks,
   type Permalink,
+  toolsInside,
 } from "./logic";
 import {
   absUrl,
@@ -236,6 +237,12 @@ function Banner({ c }: { c: Community }) {
 // bottom and keeps the reading position when older messages are added on top.
 // ---------------------------------------------------------------------------
 
+/** Keeps a message's hover toolbar inside the scroller when the message is at the top edge (1193). */
+function placeTools(e: React.SyntheticEvent<HTMLElement>) {
+  const msg = (e.target as Element).closest<HTMLElement>(".msg");
+  msg?.toggleAttribute("data-tools-inside", toolsInside(msg.getBoundingClientRect().top, e.currentTarget.getBoundingClientRect().top));
+}
+
 function MessageList({ url, channelId, rootId }: { url: string; channelId: string; rootId: string }) {
   const c = useC();
   const key = listKey(channelId, rootId);
@@ -301,7 +308,16 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
           New messages above <Icon name="chevron" size={14} />
         </button>
       )}
-      <div className="scroller" ref={scroller} onScroll={check} onKeyDown={moveFocus} tabIndex={0} aria-label="Message list. Arrow keys move between messages.">
+      <div
+        className="scroller"
+        ref={scroller}
+        onScroll={check}
+        onKeyDown={moveFocus}
+        onPointerOver={placeTools}
+        onFocus={placeTools}
+        tabIndex={0}
+        aria-label="Message list. Arrow keys move between messages."
+      >
         <div className="msgs" role="log" aria-live="polite" aria-relevant="additions" aria-label="Messages">
           {list?.error ? (
             <div className="list-note">

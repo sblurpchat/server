@@ -2701,6 +2701,9 @@ li.sw-empty {
 .msg:focus-within .toolbar {
   display: flex;
 }
+.msg[data-tools-inside] .toolbar {
+  top: 4px;
+}
 .toolbar button {
   display: grid;
   place-items: center;
