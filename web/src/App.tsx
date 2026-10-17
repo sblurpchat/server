@@ -964,7 +964,9 @@ function Appearance() {
   const who = (m: Member) => Object.values(c?.members ?? {}).find((x) => x.username === m.username) ?? m;
   return (
     <section className="appearance">
-      <h3>Appearance</h3>
+      <h3>
+        Appearance <small className="scope">Synced to your account</small>
+      </h3>
       <div className="preview" inert aria-hidden="true">
         {SAMPLE.map((m, i) => (
           <article key={i} className="msg" data-head={m.head}>
@@ -1129,14 +1131,19 @@ function Settings() {
   return (
     <Dialog label="Settings" className="settings">
       <header className="dialog-head">
-        <h2>Settings</h2>
+        <div>
+          <h2>Settings</h2>
+          <p className="dialog-sub">The same in every community you join.</p>
+        </div>
         <button className="icon-btn" aria-label="Close" onClick={() => set({ modal: null })}>
           <Icon name="x" />
         </button>
       </header>
       <Appearance />
       <section>
-        <h3>Notifications</h3>
+        <h3>
+          Notifications <small className="scope">On this device</small>
+        </h3>
         <label className="toggle-row">
           <span>
             <b>Mentions and direct messages</b>

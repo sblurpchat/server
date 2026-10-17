@@ -1297,7 +1297,8 @@ kbd {
   gap: 14px;
 }
 .dialog-head > :nth-child(2):not(button),
-.dialog-head h2:first-child {
+.dialog-head h2:first-child,
+.dialog-head > div:first-child {
   flex: 1;
   min-width: 0;
 }
@@ -1440,6 +1441,21 @@ kbd {
 
 .settings {
   width: min(560px, calc(100vw - 32px));
+}
+/* Where a setting lives: on the account or only in this browser. */
+.dialog-sub {
+  margin-top: 2px;
+  font-size: 0.8125rem;
+  color: var(--graphite);
+}
+.settings h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.settings h3 .scope {
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 /* The preview stays in view while the options below it scroll. */
 .preview {

@@ -388,7 +388,7 @@ export function browseDetail(ch: Channel): string {
 }
 
 // ---------------------------------------------------------------------------
-// Appearance: per-device settings, parsed defensively because localStorage is user-editable.
+// Appearance: synced to the account as an opaque blob, parsed defensively because localStorage and the blob are user-editable.
 // ---------------------------------------------------------------------------
 
 export const THEMES = ["system", "light", "dark", "midnight", "contrast", "cvd", "cola", "mint", "cocoa", "fjord", "sand", "grape", "black", "custom"] as const;
