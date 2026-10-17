@@ -117,6 +117,8 @@ export function ChannelDialog({ id, category = "", name: initial = "", focusTopi
               onChange={(e) => setName(e.target.value)}
               placeholder="book-club"
               spellCheck={false}
+              autoComplete="off"
+              data-1p-ignore
               autoCapitalize="off"
               aria-describedby="chan-name-hint"
             />
@@ -803,6 +805,8 @@ function BotsTab({ url }: { url: string }) {
               onChange={(e) => setForm({ ...form, username: e.target.value })}
               placeholder="kiln-bot"
               spellCheck={false}
+              autoComplete="off"
+              data-1p-ignore
               autoCapitalize="off"
             />
           </label>
