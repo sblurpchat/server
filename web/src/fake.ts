@@ -73,7 +73,7 @@ const SEEDS: Seed[] = [
     url: "https://community.sblurp.chat",
     name: "Sblurp Community",
     description: "Where people who use Sblurp help each other, share what they build, and argue about fonts.",
-    accent: "#189E33",
+    accent: "#3550F0",
     icon: "/fake/sblurp.svg",
     joined: true,
     members: [
@@ -105,7 +105,7 @@ const SEEDS: Seed[] = [
     ],
     optIn: { defaults: ["announcements", "general", "help"], notIn: ["reading-room", "off-topic", "maintainers"] },
     roles: [
-      ["Maintainers", "#189e33", ["ian", "ana", "priya"], ["maintainers"]],
+      ["Maintainers", "#3550f0", ["ian", "ana", "priya"], ["maintainers"]],
       ["Designers", "#d0306a", ["ana", "mei"], []],
       ["Helpers", "#0f8b8d", ["jun", "sam"], []],
     ],
@@ -165,7 +165,7 @@ const SEEDS: Seed[] = [
             [2 * D - 12, "ian", "Agreed. Shipping it."],
           ],
         }],
-        [D + 4 * H, "mei", "Dark theme pass. I pushed the message area to `#0C1F12` so the sidebar can sit one step darker.", { image: ["dark-theme.svg", "image/svg+xml", 800, 500] }],
+        [D + 4 * H, "mei", "Dark theme pass. I pushed the message area to `#1D1F2D` so the sidebar can sit one step darker.", { image: ["dark-theme.svg", "image/svg+xml", 800, 500] }],
         [D + 4 * H - 1, "ana", "Much calmer. The raspberry focus ring still pops."],
         [40, "jun", "Writeup on the VoiceOver changes:\n1. Day dividers are `role=\"heading\"` level 2\n2. Each message has an accessible name: author, time, text\n3. Reactions announce the count and whether you reacted"],
         [30, "ana", "This is **exactly** what I wanted. Pinning it in my head forever."],

@@ -1,41 +1,38 @@
 /* Sblurp web client. Tokens from docs/DESIGN.md. */
 
-/* Light (Lily pad) and dark (Night pond) share one block through light-dark(); color-scheme picks the side.
+/* Light and dark share one block through light-dark(); color-scheme picks the side.
    A named theme is only token values on [data-theme]. Components never hard-code a color. */
 :root,
 [data-theme="light"],
 [data-theme="dark"] {
-  --ink: light-dark(#0d2414, #e3f6e5);
-  --rail: light-dark(#0d2414, #030a05);
-  --frost: light-dark(#f3faf2, #061209);
-  --paper: light-dark(#ffffff, #0c1f12);
-  --raspberry: light-dark(#13802b, #31c843); /* accent as text and links */
-  --accent-fill: #31c843; /* buttons with --on-accent text */
-  --on-accent: #04210b;
-  --cherry: light-dark(#d42a44, #ff6b78);
-  --cherry-text: light-dark(#c42640, #ff7d88); /* cherry as small text: 4.5:1 on paper */
-  --badge: #c8243f; /* --on-fill text on it */
-  --graphite: light-dark(#4a6852, #8baa93);
-  --line: light-dark(#d3e8d3, #1b3623);
-  --line-strong: light-dark(#a9cdb0, #3c6b49);
-  --hover: light-dark(#e2f1e1, #12291a);
-  --selected: light-dark(#cdeed3, #173d22);
-  --text: light-dark(#0d2414, #e3f6e5);
-  --msg-hover: light-dark(#f6fbf5, #10261a);
-  --mention-bg: light-dark(#d7f5db, #123d1d);
-  --mention-ink: light-dark(#0f6b24, #7ceb8c);
-  --raised: light-dark(#ffffff, #12291a);
-  --shadow-c: light-dark(rgb(13 36 20 / 0.1), rgb(0 0 0 / 0.45));
-  --scrim: light-dark(rgb(6 18 9 / 0.5), rgb(2 6 3 / 0.7));
-  --online: light-dark(#189e33, #31c843);
+  --ink: light-dark(#1a1c2b, #e7e9f2);
+  --rail: light-dark(#1a1c2b, #0f1019);
+  --frost: light-dark(#eef1f6, #171925);
+  --paper: light-dark(#ffffff, #1d1f2d);
+  --raspberry: light-dark(#3550f0, #6f82ff);
+  --accent-fill: light-dark(#3550f0, #4a5ef2); /* buttons with --on-accent text */
+  --cherry: light-dark(#e8344e, #ff5a70);
+  --cherry-text: light-dark(#d42a44, #ff5a70); /* cherry as small text: 5:1 on paper */
+  --badge: #d42a44; /* --on-accent text on it: 5:1 */
+  --graphite: light-dark(#5d6274, #9499ad);
+  --line: light-dark(#e1e5ee, #2a2d3e);
+  --hover: light-dark(#e4e8f0, #22253a);
+  --selected: light-dark(#dce2fd, #262d5a);
+  --text: light-dark(#1a1c2b, #e7e9f2);
+  --msg-hover: light-dark(#f6f7fa, #222435);
+  --mention-bg: light-dark(#fdeef0, #33232f);
+  --raised: light-dark(#ffffff, #24273a);
+  --shadow-c: light-dark(rgb(26 28 43 / 0.1), rgb(0 0 0 / 0.4));
+  --scrim: light-dark(rgb(15 16 25 / 0.5), rgb(5 6 12 / 0.65));
+  --online: light-dark(#1f9d5c, #3ccf80);
   --away: light-dark(#e0962a, #f0aa45);
-  --code-bg: light-dark(#eaf5e9, #071509);
-  --on-fill: #ffffff; /* initials and badge text on darkened fills */
+  --code-bg: light-dark(#f1f3f8, #161825);
+  --on-accent: #ffffff;
   --knob: #ffffff;
-  --tip: #030a05;
+  --tip: #0f1019;
   --on-tip: #ffffff;
-  --add: #7ceb8c;
-  --add-hover: #31c843;
+  --add: #7ee0a8;
+  --add-hover: #1f9d5c;
   color-scheme: light dark;
 }
 [data-theme="light"] {
@@ -49,27 +46,51 @@
   --sans: "Schibsted Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
 }
+/* Midnight: a dim, low-glare blue dark. */
+[data-theme="midnight"] {
+  --ink: #dde3ec;
+  --rail: #0b1118;
+  --frost: #121a24;
+  --paper: #172230;
+  --raspberry: #84a9ff;
+  --accent-fill: #3a64d8;
+  --cherry: #ff6f83;
+  --cherry-text: #ff8597;
+  --badge: #c8243f;
+  --graphite: #8d9bb0;
+  --line: #24334a;
+  --hover: #1d2a3b;
+  --selected: #1f3154;
+  --text: #c8d2e0;
+  --msg-hover: #1b2736;
+  --mention-bg: #33263a;
+  --raised: #1c2939;
+  --shadow-c: rgb(0 0 0 / 0.45);
+  --scrim: rgb(3 6 10 / 0.7);
+  --online: #3cc982;
+  --away: #e8a64a;
+  --code-bg: #111a25;
+  --tip: #05080c;
+  color-scheme: dark;
+}
 /* High contrast: AAA (7:1) for text and the accent. */
 [data-theme="contrast"] {
   --ink: #000000;
   --rail: #000000;
   --frost: #f0f0f0;
   --paper: #ffffff;
-  --raspberry: #0b5a1e;
-  --accent-fill: #0b5a1e;
-  --on-accent: #ffffff;
+  --raspberry: #0030c0;
+  --accent-fill: #0030c0;
   --cherry: #b00020;
   --cherry-text: #a0001c;
   --badge: #a0001c;
   --graphite: #333333;
   --line: #767676;
-  --line-strong: #333333;
   --hover: #dedede;
-  --selected: #cdebd2;
+  --selected: #d0dbff;
   --text: #000000;
   --msg-hover: #f0f0f0;
-  --mention-bg: #d7f5db;
-  --mention-ink: #0b5a1e;
+  --mention-bg: #ffe3e8;
   --raised: #ffffff;
   --shadow-c: rgb(0 0 0 / 0.25);
   --scrim: rgb(0 0 0 / 0.6);
@@ -78,7 +99,61 @@
   --code-bg: #ececec;
   --tip: #000000;
   --add: #8ff0b8;
-  --add-hover: #8ff0b8;
+  --add-hover: #006b2c;
+  color-scheme: light;
+}
+/* Cherry cola: warm brown-red dark with a cherry fizz accent. */
+[data-theme="cola"] {
+  --ink: #fbe9e4;
+  --rail: #160a0c;
+  --frost: #21100f;
+  --paper: #2a1513;
+  --raspberry: #ff8fa0;
+  --accent-fill: #c8243f;
+  --cherry: #ff6b7f;
+  --cherry-text: #ff8597;
+  --badge: #c8243f;
+  --graphite: #c9a8a0;
+  --line: #44241f;
+  --hover: #3a1e1b;
+  --selected: #5c2430;
+  --text: #f3dfd9;
+  --msg-hover: #331a17;
+  --mention-bg: #4a2d18;
+  --raised: #351b18;
+  --shadow-c: rgb(0 0 0 / 0.45);
+  --scrim: rgb(10 3 4 / 0.7);
+  --online: #5fd394;
+  --away: #f2b35b;
+  --code-bg: #1d0d0c;
+  --tip: #0e0506;
+  color-scheme: dark;
+}
+/* Mint: cool, fresh light with a deep green accent. */
+[data-theme="mint"] {
+  --ink: #0e2621;
+  --rail: #0f3a33;
+  --frost: #e2f3ec;
+  --paper: #f8fdfb;
+  --raspberry: #0a6e54;
+  --accent-fill: #0a6e54;
+  --cherry: #d42a44;
+  --cherry-text: #c42640;
+  --badge: #c42640;
+  --graphite: #4a625b;
+  --line: #cde3da;
+  --hover: #d3ebe2;
+  --selected: #bce5d6;
+  --text: #0e2621;
+  --msg-hover: #eef8f4;
+  --mention-bg: #fff0dc;
+  --raised: #ffffff;
+  --shadow-c: rgb(14 38 33 / 0.12);
+  --scrim: rgb(6 20 17 / 0.5);
+  --online: #1a8f55;
+  --away: #b86e00;
+  --code-bg: #e4f2ec;
+  --tip: #0a221d;
   color-scheme: light;
 }
 
@@ -214,7 +289,7 @@ kbd {
 .btn.danger {
   background: var(--badge);
   border-color: transparent;
-  color: var(--on-fill);
+  color: var(--on-accent);
 }
 .btn.ghost {
   border-color: transparent;
@@ -334,7 +409,7 @@ kbd {
   width: 100%;
   height: 38px;
   padding: 0 12px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--paper);
 }
@@ -389,7 +464,7 @@ kbd {
   padding: 0 5px;
   border-radius: 9px;
   background: var(--badge);
-  color: var(--on-fill);
+  color: var(--on-accent);
   font-size: 0.71875rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -452,7 +527,7 @@ kbd {
   height: 100%;
   border-radius: var(--r);
   object-fit: cover;
-  color: var(--on-fill);
+  color: var(--on-accent);
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1;
@@ -493,7 +568,7 @@ kbd {
   place-items: center;
   flex: none;
   border-radius: 28%;
-  color: var(--on-fill);
+  color: var(--on-accent);
   font-weight: 700;
   letter-spacing: -0.02em;
   overflow: hidden;
@@ -1456,7 +1531,7 @@ li.sw-empty {
 .menu .danger:hover,
 .menu .danger:focus-visible {
   background: var(--badge);
-  color: var(--on-fill);
+  color: var(--on-accent);
 }
 .menu hr {
   border: 0;
@@ -1800,7 +1875,7 @@ li.sw-empty {
 }
 .msg[data-mention="true"] {
   background: var(--mention-bg);
-  box-shadow: inset 3px 0 0 var(--accent-fill);
+  box-shadow: inset 3px 0 0 var(--cherry);
 }
 .msg[data-pending="true"] .msg-text {
   color: var(--graphite);
@@ -1954,8 +2029,8 @@ li.sw-empty {
   background: color-mix(in srgb, var(--raspberry) 22%, transparent);
 }
 .mention.me {
-  color: var(--mention-ink);
-  background: color-mix(in srgb, var(--mention-ink) 16%, transparent);
+  color: color-mix(in srgb, var(--cherry-text) 65%, var(--text));
+  background: color-mix(in srgb, var(--cherry) 14%, transparent);
 }
 /* "(edited)" follows the last line of text, like Slack. */
 .msg-text p:has(+ .edited) {
@@ -2241,7 +2316,7 @@ li.sw-empty {
 .jump-new {
   top: 10px;
   background: var(--badge);
-  color: var(--on-fill);
+  color: var(--on-accent);
 }
 .jump-new .icon {
   transform: rotate(180deg);

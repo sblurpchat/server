@@ -489,7 +489,7 @@ function SignIn() {
   return (
     <div className="signin">
       <div className="signin-rail" aria-hidden="true">
-        {["#189E33", "#7B5CE6", "#D9822B", "#0F9D8A"].map((c, i) => (
+        {["#3550F0", "#7B5CE6", "#D9822B", "#0F9D8A"].map((c, i) => (
           <span key={c} className="cicon" data-on={i === 0} style={{ background: c }} />
         ))}
       </div>
@@ -794,16 +794,19 @@ function Modals() {
 }
 
 const THEME_NAMES: Record<Theme, string> = {
-  dark: "Night pond",
-  light: "Lily pad",
   system: "Match system",
+  light: "Light",
+  dark: "Dark",
+  midnight: "Midnight",
   contrast: "High contrast",
+  cola: "Cherry cola",
+  mint: "Mint",
 };
 const ACCENTS: [string, string][] = [
   ["", "Theme default"],
   ["#d0306a", "Raspberry"],
   ["#e2681a", "Tangerine"],
-  ["#2c8bd6", "Sky"],
+  ["#4f9a1f", "Lime"],
   ["#0f8b8d", "Teal"],
   ["#8247d6", "Grape"],
 ];
@@ -920,7 +923,7 @@ function Appearance() {
             <input
               type="color"
               aria-label="Custom accent color"
-              value={look.accent || "#31c843"}
+              value={look.accent || "#3550f0"}
               data-checked={custom}
               onChange={(e) => setLook({ accent: e.target.value })}
             />

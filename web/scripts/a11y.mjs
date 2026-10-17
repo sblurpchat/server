@@ -68,7 +68,6 @@ try {
     for (const [w, h] of [[1280, 800], [390, 844]]) {
       const ctx = await browser.newContext({ viewport: { width: w, height: h }, colorScheme: scheme, reducedMotion: "reduce" });
       await ctx.route("http://localhost:8090/**", (r) => r.abort());
-      await ctx.addInitScript((v) => localStorage.setItem("sblurp.fake.appearance", v), JSON.stringify({ theme: scheme }));
       for (const [name, act] of Object.entries(views)) {
         if (process.env.ONLY && !process.env.ONLY.split(",").includes(name)) continue;
         const p = await ctx.newPage();

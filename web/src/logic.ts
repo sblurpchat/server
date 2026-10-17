@@ -371,7 +371,7 @@ export function browseDetail(ch: Channel): string {
 // Appearance: per-device settings, parsed defensively because localStorage is user-editable.
 // ---------------------------------------------------------------------------
 
-export const THEMES = ["dark", "light", "system", "contrast"] as const;
+export const THEMES = ["system", "light", "dark", "midnight", "contrast", "cola", "mint"] as const;
 export type Theme = (typeof THEMES)[number];
 const DENSITIES = ["cozy", "compact", "irc"] as const;
 export interface Appearance {
@@ -385,7 +385,7 @@ export interface Appearance {
   clock: "12" | "24";
   motion: "system" | "reduce" | "full";
 }
-export const APPEARANCE: Appearance = { theme: "dark", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system" };
+export const APPEARANCE: Appearance = { theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system" };
 
 export function parseAppearance(v: unknown): Appearance {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
@@ -743,8 +743,8 @@ export const initials = (name: string) =>
     .map((w) => [...w][0]!.toUpperCase())
     .join("") || "?";
 
-/** Stable pond color for a name, used for avatars without images. */
-const SWATCHES = ["#189E33", "#E8344E", "#7B5CE6", "#D9822B", "#0F9D8A", "#2C8BD6", "#C2457A", "#4F7A28"];
+/** Stable soda-fountain color for a name, used for avatars without images. */
+const SWATCHES = ["#3550F0", "#E8344E", "#7B5CE6", "#D9822B", "#0F9D8A", "#2C8BD6", "#C2457A", "#4F7A28"];
 let swatchFills: string[] | null = null;
 export function swatch(seed: string): string {
   let h = 0;

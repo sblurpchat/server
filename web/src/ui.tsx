@@ -74,7 +74,7 @@ export function Avatar({ m, size = 36, presence = false }: { m?: Member; size?: 
 
 export function CommunityIcon({ name, icon, accent, size = 48 }: { name: string; icon?: string; accent?: string; size?: number }) {
   return (
-    <span className="cicon" aria-hidden="true" data-i={icon ? undefined : initials(name)} style={{ width: size, height: size, background: accent ? onWhite(accent) : "var(--accent-fill)", color: accent ? undefined : "var(--on-accent)", fontSize: Math.round(size * 0.34) }}>
+    <span className="cicon" aria-hidden="true" data-i={icon ? undefined : initials(name)} style={{ width: size, height: size, background: accent ? onWhite(accent) : "var(--accent-fill)", fontSize: Math.round(size * 0.34) }}>
       {icon && <img src={icon} alt="" />}
     </span>
   );

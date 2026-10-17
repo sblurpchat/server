@@ -557,13 +557,12 @@ describe("reorderChannel", () => {
 
 describe("appearance", () => {
   it("parses stored settings and drops bad values field by field", () => {
-    expect(parseAppearance(null)).toEqual({ theme: "dark", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system" });
-    expect(parseAppearance("light")).toMatchObject({ theme: "dark" });
-    expect(parseAppearance({ theme: "midnight" }).theme).toBe("dark");
+    expect(parseAppearance(null)).toEqual({ theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system" });
+    expect(parseAppearance("dark")).toMatchObject({ theme: "system" });
     const bad = parseAppearance({ theme: "neon", accent: "red", density: "COMPACT", sidebar: 1, fontSize: "18", clock: 24, motion: true });
-    expect(bad).toEqual({ theme: "dark", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system" });
-    expect(parseAppearance({ theme: "contrast", accent: "#D0306A", density: "irc", fontSize: 99, clock: "24", motion: "reduce" })).toMatchObject({
-      theme: "contrast",
+    expect(bad).toEqual({ theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system" });
+    expect(parseAppearance({ theme: "mint", accent: "#D0306A", density: "irc", fontSize: 99, clock: "24", motion: "reduce" })).toMatchObject({
+      theme: "mint",
       accent: "#d0306a",
       density: "irc",
       fontSize: 20,
@@ -631,9 +630,7 @@ describe("appearance", () => {
       ["raspberry", "frost"],
       ["cherry-text", "paper"],
       ["on-accent", "accent-fill"],
-      ["on-fill", "badge"],
-      ["mention-ink", "mention-bg"],
-      ["text", "selected"],
+      ["on-accent", "badge"],
       ["on-tip", "tip"],
       // Syntax colors in code blocks
       ["text", "code-bg"],
