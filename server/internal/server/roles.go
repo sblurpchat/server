@@ -114,6 +114,11 @@ func addToTextChannel(t *wtx, channelID, memberID string) error {
 	if err != nil {
 		return err
 	}
+	// Old history is not unread for a new channel member (as in AddChannelMembers).
+	if _, err := t.ExecContext(t.ctx, `INSERT INTO read_states(member_id, channel_id, last_read_seq) VALUES (?,?,?)
+		ON CONFLICT(member_id, channel_id) DO UPDATE SET last_read_seq = MAX(last_read_seq, excluded.last_read_seq)`, memberID, channelID, seq); err != nil {
+		return err
+	}
 	return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_ChannelCreated{ChannelCreated: cs[0]}}, "", memberID)
 }
 

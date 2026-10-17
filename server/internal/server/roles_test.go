@@ -283,7 +283,8 @@ func TestChannelModesAndRoles(t *testing.T) {
 	}
 	ana.send(fresh.Id, "hello joiner")
 	joeSub.next(isCreated("hello joiner"), nil)
-	if rs := readStateFor(joe.state(), fresh.Id); rs == nil || rs.UnreadCount != 2 {
+	// "fresh news" came before the join, so only "hello joiner" is unread.
+	if rs := readStateFor(joe.state(), fresh.Id); rs == nil || rs.UnreadCount != 1 {
 		t.Fatalf("joe's read state = %v", rs)
 	}
 	if err := joe.leaveChannel(fresh.Id); err != nil {
