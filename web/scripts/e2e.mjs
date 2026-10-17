@@ -130,14 +130,17 @@ try {
 
   // Appearance: theme, density and text size apply at once and survive a reload.
   const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  const before = await bg();
+  // A fresh device starts on Night pond whatever the OS says.
+  if ((await bg()) !== "rgb(12, 31, 18)") throw new Error(`default theme gave ${await bg()}, want Night pond`);
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByRole("radio", { name: "Dark", exact: true }).check();
-  if ((await bg()) !== "rgb(29, 31, 45)") throw new Error(`Dark gave ${await bg()}`);
-  await page.getByRole("radio", { name: "Light", exact: true }).check();
-  if ((await bg()) !== "rgb(255, 255, 255)") throw new Error(`Light gave ${await bg()}`);
-  await page.getByRole("radio", { name: "Midnight" }).check();
-  if ((await bg()) === before || (await bg()) !== "rgb(23, 34, 48)") throw new Error(`Midnight did not repaint the page: ${await bg()}`);
+  await page.getByRole("radio", { name: "Lily pad" }).check();
+  if ((await bg()) !== "rgb(255, 255, 255)") throw new Error(`Lily pad gave ${await bg()}`);
+  await page.getByRole("radio", { name: "Match system" }).first().check();
+  await page.emulateMedia({ colorScheme: "dark" });
+  if ((await bg()) !== "rgb(12, 31, 18)") throw new Error(`Match system on a dark OS gave ${await bg()}`);
+  await page.emulateMedia({ colorScheme: "light" });
+  if ((await bg()) !== "rgb(255, 255, 255)") throw new Error(`Match system did not follow the OS to light: ${await bg()}`);
+  await page.getByRole("radio", { name: "Lily pad" }).check();
   await page.getByRole("radio", { name: "Compact" }).first().check();
   if (await page.locator(".channel .msg .avatar-btn").first().isVisible()) throw new Error("compact density still shows avatars");
   await page.getByRole("slider", { name: /Text size/ }).fill("18");
@@ -145,9 +148,9 @@ try {
   if (px !== "18px") throw new Error(`text size 18 gave ${px}`);
   await page.reload();
   await page.locator(".channel .msg").first().waitFor();
-  if ((await bg()) !== "rgb(23, 34, 48)" || (await page.locator(".channel .msg .avatar-btn").first().isVisible())) throw new Error("appearance did not survive a reload");
+  if ((await bg()) !== "rgb(255, 255, 255)" || (await page.locator(".channel .msg .avatar-btn").first().isVisible())) throw new Error("appearance did not survive a reload");
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.getByRole("radio", { name: "Match system" }).first().check();
+  await page.getByRole("radio", { name: "Night pond" }).check();
   await page.getByRole("radio", { name: "Cozy" }).first().check();
   await page.getByRole("slider", { name: /Text size/ }).fill("15");
   await page.keyboard.press("Escape");
@@ -313,7 +316,7 @@ try {
   await phone.close();
 
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, light, dark and midnight themes, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, Night pond default, Lily pad, live Match system, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message, errors.join("; "));

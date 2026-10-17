@@ -148,7 +148,7 @@ const shots = {
 
 // node scripts/screens.mjs themes: every theme in cozy, compact and IRC at desktop size.
 if (only === "themes") {
-  for (const theme of ["light", "dark", "midnight", "contrast", "cola", "mint"]) {
+  for (const theme of ["light", "dark", "contrast"]) {
     for (const density of ["cozy", "compact", "irc"]) {
       const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
       await ctx.route("http://localhost:8090/**", (r) => r.abort());
@@ -170,6 +170,7 @@ for (const scheme of only === "themes" ? [] : ["light", "dark"]) {
   for (const [vw, vh, tag] of [[1440, 900, "desktop"], [390, 844, "mobile"]]) {
     const ctx = await browser.newContext({ viewport: { width: vw, height: vh }, deviceScaleFactor: 2, colorScheme: scheme });
     await ctx.route("http://localhost:8090/**", (r) => r.abort());
+    await ctx.addInitScript((v) => localStorage.setItem("sblurp.fake.appearance", v), JSON.stringify({ theme: scheme }));
     for (const [name, act] of Object.entries(shots)) {
       if (only && !name.includes(only)) continue;
       const page = await ctx.newPage();
