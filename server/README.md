@@ -192,6 +192,9 @@ client. There is no separate apps system. The bot is ~150 lines in
   `permission_denied`, `not_found` (also for channels you may not see),
   `already_exists`, `resource_exhausted`, `unauthenticated`.
 - Channel names are normalized: `"Book Club"` becomes `book-club`.
+- `GET /invite/{code}` (and `/i/{code}`) redirects a browser to the web client's
+  join screen: `{web}/#/join?url={base}&invite={code}`. Set the web client with
+  `-web-url` / `SBLURP_WEB_URL` (default `https://app.sblurp.chat`).
 - `GET /healthz` returns `ok`.
 
 ## Plugins

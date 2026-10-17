@@ -49,6 +49,7 @@ func main() {
 	flag.StringVar(&cfg.IconURL, "icon-url", env("SBLURP_ICON_URL", ""), "icon URL (SBLURP_ICON_URL)")
 	flag.StringVar(&cfg.Accent, "accent", env("SBLURP_ACCENT", ""), "accent color #rrggbb (SBLURP_ACCENT)")
 	flag.StringVar(&cfg.BaseURL, "base-url", env("SBLURP_BASE_URL", ""), "public base URL, also the JWT audience (SBLURP_BASE_URL)")
+	flag.StringVar(&cfg.WebURL, "web-url", env("SBLURP_WEB_URL", "https://app.sblurp.chat"), "web client that invite links open (SBLURP_WEB_URL)")
 	flag.Var(&issuers, "trusted-issuer", "trusted login issuer; repeat for more (SBLURP_TRUSTED_ISSUERS, comma separated)")
 	flag.StringVar(&cfg.Seed, "seed", env("SBLURP_SEED", ""), "seed an empty database with demo data: community or owls (SBLURP_SEED)")
 	botRate, _ := strconv.ParseFloat(env("SBLURP_BOT_RATE", "0"), 64)

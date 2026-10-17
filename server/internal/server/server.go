@@ -3,11 +3,13 @@
 package server
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,6 +29,7 @@ type Config struct {
 	IconURL        string
 	Accent         string
 	BaseURL        string // canonical URL, also the JWT audience
+	WebURL         string // web client that opens invite links; default https://app.sblurp.chat
 	TrustedIssuers []string
 	DataDir        string
 	Seed           string  // "community", "owls" or ""; only used on an empty database
@@ -75,6 +78,7 @@ func New(cfg Config) (*Server, error) {
 	if cfg.BaseURL == "" {
 		return nil, errors.New("base URL is required")
 	}
+	cfg.WebURL = cmp.Or(strings.TrimRight(cfg.WebURL, "/"), "https://app.sblurp.chat")
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
@@ -182,8 +186,17 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle(sblurpv1connect.NewBotServiceHandler(s, opts))
 	mux.HandleFunc("POST /upload", s.upload)
 	mux.HandleFunc("GET /files/{id}/{name}", s.serveFile)
+	mux.HandleFunc("GET /invite/{code}", s.inviteRedirect)
+	mux.HandleFunc("GET /i/{code}", s.inviteRedirect)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok\n")) })
 	return cors(mux)
+}
+
+// inviteRedirect sends a browser that opened an invite link to the web
+// client's join screen, with this server and the code filled in.
+func (s *Server) inviteRedirect(w http.ResponseWriter, r *http.Request) {
+	q := url.Values{"url": {s.cfg.BaseURL}, "invite": {r.PathValue("code")}}
+	http.Redirect(w, r, s.cfg.WebURL+"/#/join?"+q.Encode(), http.StatusFound)
 }
 
 // cors allows any origin: any client may talk to any community server.

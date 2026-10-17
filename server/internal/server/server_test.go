@@ -18,6 +18,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -1508,5 +1509,21 @@ func TestInvites(t *testing.T) {
 	}
 	if err := joinWith("frank", ""); err != nil {
 		t.Fatalf("open community: %v", err)
+	}
+}
+
+func TestInviteLinkRedirectsToWebClient(t *testing.T) {
+	e := newEnv(t)
+	noFollow := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	for _, path := range []string{"/invite/ABCD234567", "/i/ABCD234567"} {
+		res, err := noFollow.Get(e.url + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		want := "https://app.sblurp.chat/#/join?invite=ABCD234567&url=" + url.QueryEscape(e.url)
+		if res.StatusCode != http.StatusFound || res.Header.Get("Location") != want {
+			t.Fatalf("%s: %d %q, want %q", path, res.StatusCode, res.Header.Get("Location"), want)
+		}
 	}
 }
