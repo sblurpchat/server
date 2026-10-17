@@ -99,7 +99,7 @@ const SEEDS: Seed[] = [
       ["Talk", "general", "Anything about Sblurp, or anything at all"],
       ["Talk", "design", "Critique, screenshots and type nerdery"],
       ["Talk", "show-and-tell", "Things you made with or for Sblurp"],
-      ["Talk", "help", "Stuck? Ask here. No question is too small.\nCheck the [self-hosting guide](https://sblurp.chat/docs) first, and paste `sblurp-server -version` with your question. **Be kind** to people who are new."],
+      ["Talk", "help", "Stuck? Ask here. No question is too small.\nCheck the [self-hosting guide](https://sblurp.chat/docs/self-host) first, and paste `sblurp-server -version` with your question. **Be kind** to people who are new."],
       ["Building", "self-hosting", "Running your own community server"],
       ["Building", "ideas-box", "One idea per message. React to vote."],
       ["Building", "core-team", "Release dates and things not ready to share", ["ana", "priya"]],
