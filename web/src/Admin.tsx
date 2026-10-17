@@ -1,10 +1,17 @@
 // Admin screens: create and edit channels, and community settings (members, invites, bots).
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { ChannelKind, MemberKind, MemberRole, type Invite, type Member } from "./gen/sblurp/v1/sblurp_pb";
-import { channelSlug, hostOf, inviteLink, inviteState, matchScore, modActions, reorderChannel, sidebarSections } from "./logic";
+import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Channel, type Invite, type Member, type Role } from "./gen/sblurp/v1/sblurp_pb";
+import { channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, reorderChannel, sidebarSections } from "./logic";
 import {
+  browseChannels,
   createBot,
   createChannel,
+  createRole,
+  deleteRole,
+  setChannelAccess,
+  setChannelMode,
+  setMemberRoles,
+  updateRole,
   createInvite,
   deleteBot,
   errorText,
@@ -170,6 +177,8 @@ export function ChannelDialog({ id, category = "" }: { id?: string; category?: s
 
 const TABS = [
   ["members", "Members"],
+  ["roles", "Roles"],
+  ["channels", "Channels"],
   ["invites", "Invites"],
   ["bots", "Bots"],
 ] as const;
@@ -210,6 +219,8 @@ export function CommunitySettings({ tab = "members" }: { tab?: SettingsTab }) {
         </nav>
         <div role="tabpanel" id="cs-panel" aria-labelledby={`cs-tab-${tab}`} className="cs-panel">
           {tab === "members" && <MembersTab url={c.url} />}
+          {tab === "roles" && <RolesTab url={c.url} />}
+          {tab === "channels" && <ChannelsTab url={c.url} />}
           {tab === "invites" && <Invites url={c.url} inviteOnly={!!c.info?.inviteOnly} />}
           {tab === "bots" && <BotsTab url={c.url} />}
         </div>
@@ -529,6 +540,247 @@ export function Invites({ url, inviteOnly }: { url: string; inviteOnly: boolean 
           })}
         </ul>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Roles and channel access (ticket 1011). Roles only decide who sees which channels;
+// the Permission rank decides what people may do.
+// ---------------------------------------------------------------------------
+
+/** A member's roles as chips. Admins get checkboxes to give or take roles. */
+export function RoleChips({ url, m, edit }: { url: string; m: Member; edit: boolean }) {
+  const roles = useApp((s) => s.cs[url]?.roles ?? NO_ROLES);
+  const [open, setOpen] = useState(false);
+  const [err, setErr] = useState("");
+  const mine = memberRoles(m, roles);
+  const name = m.displayName || m.username;
+  const toggle = (id: string, on: boolean) => {
+    setErr("");
+    const ids = on ? [...m.roleIds, id] : m.roleIds.filter((r) => r !== id);
+    setMemberRoles(url, m.id, ids).catch((x) => setErr(errorText(x)));
+  };
+  return (
+    <div className="role-chips">
+      <ul aria-label={`${name}'s roles`}>
+        {mine.map((r) => (
+          <li key={r.id} className="role-chip" style={{ ["--role" as string]: r.color || "var(--graphite)" }}>
+            {r.name}
+          </li>
+        ))}
+        {!mine.length && <li className="muted small">No roles</li>}
+        {edit && (
+          <li>
+            <button className="btn ghost small" aria-expanded={open} onClick={() => setOpen(!open)}>
+              {open ? "Done" : "Edit roles"}
+            </button>
+          </li>
+        )}
+      </ul>
+      {edit && open && (
+        <fieldset className="role-checks">
+          <legend className="visually-hidden">Roles for {name}</legend>
+          {roles.map((r) => (
+            <label key={r.id}>
+              <input type="checkbox" checked={m.roleIds.includes(r.id)} onChange={(e) => toggle(r.id, e.target.checked)} />
+              <span className="role-dot" style={{ ["--role" as string]: r.color || "var(--graphite)" }} />
+              {r.name}
+            </label>
+          ))}
+          {!roles.length && <p className="muted small">No roles yet. Create them in Community settings.</p>}
+        </fieldset>
+      )}
+      {err && (
+        <p className="error small" role="alert">
+          {err}
+        </p>
+      )}
+    </div>
+  );
+}
+const NO_ROLES: Role[] = [];
+
+function RolesTab({ url }: { url: string }) {
+  const c = useApp((s) => s.cs[url]);
+  const [f, setF] = useState({ name: "", color: "#3550f0" });
+  const [err, setErr] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const fail = (x: unknown) => setErr(errorText(x));
+  const counts = (id: string) => Object.values(c.members).filter((m) => m.roleIds.includes(id)).length;
+  const make = (e: FormEvent) => {
+    e.preventDefault();
+    setErr("");
+    createRole(url, f.name.trim(), f.color).then(() => setF({ ...f, name: "" }), fail);
+  };
+  // Positions become the list index, so equal or sparse positions reorder predictably.
+  const move = async (i: number, d: -1 | 1) => {
+    const order = c.roles.slice();
+    [order[i], order[i + d]] = [order[i + d], order[i]];
+    setErr("");
+    try {
+      for (const [p, r] of order.entries()) if (r.position !== p) await updateRole(url, r.id, { position: p });
+    } catch (x) {
+      fail(x);
+    }
+  };
+  return (
+    <div className="stack">
+      <p className="muted small">Roles decide who can see which channels. What someone may do comes from their Permission, on the Members tab.</p>
+      {err && (
+        <p className="error" role="alert">
+          {err}
+        </p>
+      )}
+      {c.roles.length > 0 && (
+        <ul className="admin-list roles-list" aria-label="Roles">
+          {c.roles.map((r, i) => (
+            <li key={r.id}>
+              <input
+                type="color"
+                className="role-color"
+                aria-label={`Color for ${r.name}`}
+                value={r.color || "#5d6274"}
+                onChange={(e) => updateRole(url, r.id, { color: e.target.value }).catch(fail)}
+              />
+              <span className="truncate">
+                <input
+                  className="input small"
+                  aria-label={`Name of ${r.name}`}
+                  defaultValue={r.name}
+                  key={r.name}
+                  onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== r.name && updateRole(url, r.id, { name: e.target.value.trim() }).catch(fail)}
+                  onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                />
+                <small className="muted">{count(counts(r.id), "member", "members")}</small>
+              </span>
+              {confirm === r.id ? (
+                <span className="row">
+                  <button className="btn ghost small" onClick={() => setConfirm("")}>
+                    Keep
+                  </button>
+                  <button className="btn danger small" onClick={() => deleteRole(url, r.id).then(() => setConfirm(""), (x) => (setConfirm(""), fail(x)))}>
+                    Delete {r.name}
+                  </button>
+                </span>
+              ) : (
+                <span className="row">
+                  <button className="icon-btn flip" aria-label={`Move ${r.name} up`} disabled={i === 0} onClick={() => move(i, -1)}>
+                    <Icon name="chevron" size={16} />
+                  </button>
+                  <button className="icon-btn" aria-label={`Move ${r.name} down`} disabled={i === c.roles.length - 1} onClick={() => move(i, 1)}>
+                    <Icon name="chevron" size={16} />
+                  </button>
+                  <button className="btn danger-ghost small" aria-label={`Delete ${r.name}`} onClick={() => setConfirm(r.id)}>
+                    Delete
+                  </button>
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <form className="stack" onSubmit={make}>
+        <h3>Create a role</h3>
+        <div className="row-fields">
+          <label className="field">
+            <span>Name</span>
+            <input className="input" required maxLength={40} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Film club" />
+          </label>
+          <label className="field">
+            <span>Color</span>
+            <input type="color" className="role-color" value={f.color} onChange={(e) => setF({ ...f, color: e.target.value })} />
+          </label>
+        </div>
+        <button className="btn primary" disabled={!f.name.trim()}>
+          Create role
+        </button>
+      </form>
+      <p className="muted small">Give someone a role from their profile: click their name, then Edit roles.</p>
+    </div>
+  );
+}
+
+function ChannelsTab({ url }: { url: string }) {
+  const c = useApp((s) => s.cs[url]);
+  const [chans, setChans] = useState<Channel[] | null>(null);
+  const [err, setErr] = useState("");
+  const fail = (x: unknown) => setErr(errorText(x));
+  useEffect(() => {
+    browseChannels(url).then(setChans, (x) => setErr(errorText(x)));
+  }, [url]);
+  const optIn = c.mode === ChannelMode.OPT_IN;
+  const access = (ch: Channel, roleIds: string[], isDefault: boolean) => {
+    setErr("");
+    setChannelAccess(url, ch.id, roleIds, isDefault).then((n) => n && setChans((l) => l && l.map((x) => (x.id === n.id ? n : x))), fail);
+  };
+  const text = (chans ?? []).filter((ch) => ch.kind === ChannelKind.TEXT).sort((a, b) => a.name.localeCompare(b.name));
+  return (
+    <div className="stack">
+      <fieldset className="mode-pick">
+        <legend>How people get channels</legend>
+        {[
+          [ChannelMode.ROLES, "Everyone is in every channel they can see", "Like Discord. Roles decide what each person sees, and there is nothing to join."],
+          [ChannelMode.OPT_IN, "People pick the channels they join", "Like Slack. People browse the channels they can see and join or leave them. New members start in the default channels."],
+        ].map(([m, title, help]) => (
+          <label key={m} className="mode-opt">
+            <input type="radio" name="mode" checked={c.mode === m} onChange={() => setChannelMode(url, m as ChannelMode).catch(fail)} />
+            <span>
+              <b>{title}</b>
+              <small>{help}</small>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+      {err && (
+        <p className="error" role="alert">
+          {err}
+        </p>
+      )}
+      <h3>Who can see each channel</h3>
+      {!chans && !err && <p className="muted small">Loading channels…</p>}
+      <ul className="access-list" aria-label="Channel access">
+        {text.map((ch) => {
+          const who = c.roles.filter((r) => ch.roleIds.includes(r.id)).map((r) => r.name);
+          return (
+            <li key={ch.id}>
+              <details>
+                <summary>
+                  <b>#{ch.name}</b>
+                  <small className="muted">
+                    {who.length ? who.join(", ") : "Everyone"}
+                    {optIn && ch.isDefault ? ", joined by default" : ""}
+                  </small>
+                </summary>
+                <fieldset className="role-checks">
+                  <legend>Only people with these roles (none ticked means everyone). Admins always see it.</legend>
+                  {c.roles.map((r) => (
+                    <label key={r.id}>
+                      <input
+                        type="checkbox"
+                        checked={ch.roleIds.includes(r.id)}
+                        onChange={(e) => access(ch, e.target.checked ? [...ch.roleIds, r.id] : ch.roleIds.filter((x) => x !== r.id), ch.isDefault)}
+                      />
+                      <span className="role-dot" style={{ ["--role" as string]: r.color || "var(--graphite)" }} />
+                      {r.name}
+                    </label>
+                  ))}
+                  {!c.roles.length && <p className="muted small">No roles yet. Create one on the Roles tab to limit a channel.</p>}
+                </fieldset>
+                {optIn && (
+                  <label className="toggle-row">
+                    <span>
+                      <b>Join by default</b>
+                      <small>New members start in this channel.</small>
+                    </span>
+                    <input type="checkbox" role="switch" className="switch" checked={ch.isDefault} onChange={(e) => access(ch, ch.roleIds, e.target.checked)} />
+                  </label>
+                )}
+              </details>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

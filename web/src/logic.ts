@@ -2,6 +2,7 @@
 import { create } from "@bufbuild/protobuf";
 import {
   ChannelKind,
+  ChannelMode,
   MemberKind,
   MemberRole,
   Presence,
@@ -12,6 +13,7 @@ import {
   type Member,
   type Message,
   type ReadState,
+  type Role,
 } from "./gen/sblurp/v1/sblurp_pb";
 
 // ---------------------------------------------------------------------------
@@ -47,7 +49,12 @@ export interface Community {
   retryAt?: number;
   me?: Member;
   members: Record<string, Member>;
+  /** My sidebar: in OPT_IN mode only the channels I joined. */
   channels: Record<string, Channel>;
+  /** A visible channel I have not joined, open read-only from Browse channels. */
+  peek?: Channel;
+  roles: Role[];
+  mode: ChannelMode;
   reads: Record<string, ReadState>;
   seq: bigint;
   /** Message lists keyed by channel id, or `t:<rootId>` for a thread. */
@@ -64,6 +71,8 @@ export const emptyCommunity = (url: string, info?: Info): Community => ({
   status: "connecting",
   members: {},
   channels: {},
+  roles: [],
+  mode: ChannelMode.ROLES,
   reads: {},
   seq: 0n,
   lists: {},
@@ -83,6 +92,8 @@ export function applySnapshot(c: Community, s: GetStateResponse): Community {
     me: s.me,
     members: Object.fromEntries(s.members.map((m) => [m.id, m])),
     channels: Object.fromEntries(s.channels.map((ch) => [ch.id, ch])),
+    roles: s.roles,
+    mode: s.channelMode || ChannelMode.ROLES,
     reads: Object.fromEntries(s.readStates.map((r) => [r.channelId, r])),
     seq: s.seq,
     // Lists may have missed events; the open view reloads them.
@@ -184,6 +195,7 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
     case "channelCreated":
     case "channelUpdated":
       next.channels = { ...c.channels, [k.value.id]: k.value };
+      if (c.peek?.id === k.value.id) next.peek = undefined;
       return next;
     case "channelDeleted": {
       const { [k.value]: _, ...rest } = c.channels;
@@ -200,6 +212,21 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
       next.members = rest;
       return next;
     }
+    case "roleUpdated":
+      next.roles = [...c.roles.filter((r) => r.id !== k.value.id), k.value].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name));
+      return next;
+    case "roleDeleted": {
+      const gone = k.value;
+      const strip = <T extends { roleIds: string[] }>(x: T): T => (x.roleIds.includes(gone) ? { ...x, roleIds: x.roleIds.filter((r) => r !== gone) } : x);
+      next.roles = c.roles.filter((r) => r.id !== gone);
+      next.members = Object.fromEntries(Object.entries(c.members).map(([id, m]) => [id, strip(m)]));
+      next.channels = Object.fromEntries(Object.entries(c.channels).map(([id, ch]) => [id, strip(ch)]));
+      if (c.me) next.me = strip(c.me);
+      return next;
+    }
+    case "channelModeChanged":
+      next.mode = k.value || c.mode;
+      return next;
     case "readState":
       next.reads = { ...c.reads, [k.value.channelId]: k.value };
       return next;
@@ -298,6 +325,28 @@ export function dayLabel(ms: number, now: number): string {
 
 export const timeLabel = (ms: number, h24 = false) =>
   new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hourCycle: h24 ? "h23" : "h12" });
+
+/** A member's roles, in role order. */
+export const memberRoles = (m: Member | undefined, roles: Role[]) => (m ? roles.filter((r) => m.roleIds.includes(r.id)) : []);
+
+const fitted = new Map<string, string>();
+/** Name color from a member's first colored role, made readable on the paper color. "" when none. */
+export function nameColor(m: Member | undefined, roles: Role[], paper: string) {
+  const color = memberRoles(m, roles).find((r) => r.color)?.color;
+  if (!color || !paper) return "";
+  const k = `${color} ${paper}`;
+  if (!fitted.has(k)) fitted.set(k, fitContrast(color, [paper], 4.5));
+  return fitted.get(k)!;
+}
+
+/** Browse channels: matching channels by name or topic, joined state attached, sorted by name. */
+export function browseList(all: Channel[], joined: Record<string, Channel>, q: string) {
+  const s = q.trim().toLowerCase().replace(/^#/, "");
+  return all
+    .filter((ch) => !s || ch.name.includes(s) || ch.topic.toLowerCase().includes(s))
+    .map((ch) => ({ ch, joined: !!joined[ch.id] }))
+    .sort((a, b) => a.ch.name.localeCompare(b.ch.name));
+}
 
 // ---------------------------------------------------------------------------
 // Appearance: per-device settings, parsed defensively because localStorage is user-editable.

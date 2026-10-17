@@ -1511,7 +1511,8 @@ li.sw-empty {
 .profile {
   width: 300px;
   padding: 0;
-  overflow: hidden;
+  max-height: calc(100dvh - 16px);
+  overflow: hidden auto;
 }
 .profile-band {
   height: 64px;
@@ -2898,4 +2899,202 @@ li.sw-empty {
 }
 .msg-text li::marker {
   color: var(--graphite);
+}
+
+/* Channel modes and roles (ticket 1011) */
+.browse-btn {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+.browse-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  max-height: min(420px, 55vh);
+  overflow-y: auto;
+}
+.browse-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.browse-list li:last-child {
+  border-bottom: 0;
+}
+.browse-open {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 10px 6px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.browse-open:hover {
+  background: var(--hover);
+}
+.browse-open b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.browse-open small {
+  color: var(--graphite);
+  font-size: 0.8125rem;
+}
+.join-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between;
+  margin: 4px 20px 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--frost);
+}
+.join-bar p {
+  margin: 0;
+  color: var(--graphite);
+}
+@media (max-width: 520px) {
+  .join-bar {
+    flex-direction: column;
+    align-items: stretch;
+    margin: 4px 12px 12px;
+  }
+}
+.role-chips ul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+}
+.role-chip::before,
+.role-dot {
+  content: "";
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--role);
+}
+.role-checks {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  border: 0;
+}
+.role-checks legend {
+  padding: 0;
+  margin-bottom: 6px;
+  color: var(--graphite);
+  font-size: 0.8125rem;
+}
+.role-checks label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.role-checks input {
+  accent-color: var(--raspberry);
+}
+.role-color {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  cursor: pointer;
+}
+.roles-list .input {
+  height: 30px;
+}
+.icon-btn.flip svg {
+  transform: rotate(180deg);
+}
+.mode-pick {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.mode-pick legend {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.mode-opt {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.mode-opt:has(:checked) {
+  border-color: var(--raspberry);
+  background: var(--selected);
+}
+.mode-opt input {
+  margin-top: 3px;
+  accent-color: var(--raspberry);
+}
+.mode-opt span {
+  display: grid;
+  gap: 2px;
+}
+.mode-opt small {
+  color: var(--graphite);
+}
+.access-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.access-list li {
+  border-bottom: 1px solid var(--line);
+}
+.access-list summary {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 10px 0;
+  cursor: pointer;
+}
+.access-list details[open] {
+  padding-bottom: 12px;
+}
+.access-list .toggle-row {
+  margin-top: 12px;
 }

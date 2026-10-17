@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import css from "./app.css?raw";
 import {
   ChannelKind,
+  ChannelMode,
   ChannelSchema,
   EventSchema,
   MemberKind,
@@ -11,10 +12,13 @@ import {
   Presence,
   MessageSchema,
   ReadStateSchema,
+  RoleSchema,
   type Event,
 } from "./gen/sblurp/v1/sblurp_pb";
 import {
   THEMES,
+  browseList,
+  memberRoles,
   contrast,
   fitContrast,
   parseAppearance,
@@ -608,5 +612,56 @@ describe("appearance", () => {
       }
     }
     expect(fails).toEqual([]);
+  });
+});
+
+describe("channel modes and roles", () => {
+  const role = (id: string, name: string, position: number) => create(RoleSchema, { id, name, position });
+
+  it("upserts roles in position order and strips a deleted role from members, channels and me", () => {
+    let c = community();
+    c.me = create(MemberSchema, { id: "me", roleIds: ["r1", "r2"] });
+    c.members = { me: c.me, ana: create(MemberSchema, { id: "ana", roleIds: ["r1"] }) };
+    c.channels.c1 = create(ChannelSchema, { id: "c1", kind: ChannelKind.TEXT, name: "general", roleIds: ["r1", "r2"] });
+    c = applyEvent(c, ev(11n, { case: "roleUpdated", value: role("r2", "Zed", 2) }), T0, null);
+    c = applyEvent(c, ev(12n, { case: "roleUpdated", value: role("r1", "Alpha", 5) }), T0, null);
+    expect(c.roles.map((r) => r.name)).toEqual(["Zed", "Alpha"]);
+    c = applyEvent(c, ev(13n, { case: "roleUpdated", value: role("r2", "Zed", 9) }), T0, null);
+    expect(c.roles.map((r) => r.id)).toEqual(["r1", "r2"]);
+    c = applyEvent(c, ev(14n, { case: "roleDeleted", value: "r1" }), T0, null);
+    expect(c.roles.map((r) => r.id)).toEqual(["r2"]);
+    expect(c.members.ana.roleIds).toEqual([]);
+    expect(c.me?.roleIds).toEqual(["r2"]);
+    expect(c.channels.c1.roleIds).toEqual(["r2"]);
+  });
+
+  it("switches mode, and a joined channel stops being a preview", () => {
+    let c = community();
+    c.peek = create(ChannelSchema, { id: "c9", kind: ChannelKind.TEXT, name: "book-club" });
+    c = applyEvent(c, ev(11n, { case: "channelModeChanged", value: ChannelMode.OPT_IN }), T0, null);
+    expect(c.mode).toBe(ChannelMode.OPT_IN);
+    c = applyEvent(c, ev(12n, { case: "channelCreated", value: c.peek! }), T0, null);
+    expect(c.peek).toBeUndefined();
+    expect(c.channels.c9.name).toBe("book-club");
+    c = applyEvent(c, ev(13n, { case: "channelDeleted", value: "c9" }), T0, null);
+    expect(c.channels.c9).toBeUndefined();
+  });
+
+  it("filters Browse channels by name or topic and marks what I joined", () => {
+    const all = [
+      create(ChannelSchema, { id: "a", name: "general", topic: "Anything" }),
+      create(ChannelSchema, { id: "b", name: "book-club", topic: "One novel a month" }),
+      create(ChannelSchema, { id: "c", name: "art", topic: "" }),
+    ];
+    const joined = { a: all[0] };
+    expect(browseList(all, joined, "").map((x) => `${x.ch.name}:${x.joined}`)).toEqual(["art:false", "book-club:false", "general:true"]);
+    expect(browseList(all, joined, "#BOOK").map((x) => x.ch.id)).toEqual(["b"]);
+    expect(browseList(all, joined, "novel").map((x) => x.ch.id)).toEqual(["b"]);
+  });
+
+  it("lists a member's roles in role order", () => {
+    const roles = [role("r1", "Core", 1), role("r2", "Design", 2), role("r3", "Film", 3)];
+    expect(memberRoles(create(MemberSchema, { roleIds: ["r3", "r1"] }), roles).map((r) => r.name)).toEqual(["Core", "Film"]);
+    expect(memberRoles(undefined, roles)).toEqual([]);
   });
 });

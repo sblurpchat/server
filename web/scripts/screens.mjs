@@ -120,6 +120,29 @@ const shots = {
     await p.locator(".me-btn").click();
     await p.getByRole("button", { name: "Edit profile and status" }).click();
   },
+  browse: async (p) => {
+    if ((p.viewportSize()?.width ?? 0) < 768) await p.getByRole("button", { name: "Open communities and channels" }).click();
+    await p.getByRole("button", { name: "Browse channels" }).click();
+    await p.locator(".browse-open").first().waitFor();
+  },
+  peek: async (p) => {
+    await shots.browse(p);
+    await p.locator(".browse-open", { hasText: "reading-room" }).click();
+    await p.locator(".join-bar").waitFor();
+  },
+  roles: async (p) => {
+    await shots.admin(p);
+    await p.getByRole("tab", { name: "Roles" }).click();
+  },
+  access: async (p) => {
+    await shots.admin(p);
+    await p.getByRole("tab", { name: "Channels" }).click();
+    await p.locator(".access-list summary", { hasText: "#maintainers" }).click();
+  },
+  rolechips: async (p) => {
+    await p.locator(".channel .msg", { hasText: "Reminder: design crit" }).locator(".avatar-btn").click();
+    await p.getByRole("button", { name: "Edit roles" }).click();
+  },
   signin: "signedout",
 };
 

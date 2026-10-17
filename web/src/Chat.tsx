@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 import { useCountdown } from "./App";
-import { ChannelKind, MemberKind, MemberRole, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
+import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
 import {
   acQuery,
   canRemoveFromChannel,
@@ -23,6 +23,7 @@ import {
   count,
   communityBadge,
   messageHash,
+  nameColor,
 } from "./logic";
 import {
   absUrl,
@@ -46,6 +47,8 @@ import {
   typing,
   upload,
   useApp,
+  joinChannel,
+  leaveChannel,
 } from "./store";
 import { Avatar, Dialog, EMOJI, EmojiPicker, emojiChar, Icon, Markdown, Pop } from "./ui";
 
@@ -61,8 +64,10 @@ export function ChannelView() {
   const c = useC();
   const channelId = useApp((s) => s.channelId);
   const pane = useApp((s) => s.pane);
-  const ch = c.channels[channelId];
+  const joined = !!c.channels[channelId];
+  const ch = c.channels[channelId] ?? (c.peek?.id === channelId ? c.peek : undefined);
   const [q, setQ] = useState(pane?.t === "search" ? pane.q : "");
+  const [joinErr, setJoinErr] = useState("");
   // Mobile hides the rail and sidebar, so the menu button carries a dot for unread anywhere.
   const elsewhere = useApp((s) =>
     Object.values(s.cs).some((x) => {
@@ -115,6 +120,11 @@ export function ChannelView() {
             <Icon name="edit" />
           </button>
         )}
+        {joined && !dm && ch.kind === ChannelKind.TEXT && c.mode === ChannelMode.OPT_IN && (
+          <button className="icon-btn" aria-label={`Leave #${title}`} title="Leave channel" onClick={() => leaveChannel(c.url, ch.id).catch(() => {})}>
+            <Icon name="leave" />
+          </button>
+        )}
         <button
           className="icon-btn"
           aria-label="Members"
@@ -127,7 +137,21 @@ export function ChannelView() {
       </header>
       <Banner c={c} />
       <MessageList url={c.url} channelId={channelId} rootId="" />
-      <Composer url={c.url} channelId={channelId} rootId="" placeholder={dm ? `Message ${title}` : `Message #${title}`} />
+      {joined ? (
+        <Composer url={c.url} channelId={channelId} rootId="" placeholder={dm ? `Message ${title}` : `Message #${title}`} />
+      ) : (
+        <div className="join-bar">
+          <p>
+            You're previewing <b>#{title}</b>. {joinErr || "Join to post and get its messages in your sidebar."}
+          </p>
+          <button
+            className="btn primary"
+            onClick={() => joinChannel(c.url, ch.id).then(() => setJoinErr(""), (e) => setJoinErr(errorText(e)))}
+          >
+            Join channel
+          </button>
+        </div>
+      )}
       <TypingLine c={c} k={channelId} />
     </section>
   );
@@ -332,6 +356,8 @@ function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: 
   const failed = pending && c.failed[m.clientId];
   const name = author?.displayName || author?.username || "Unknown member";
   const h24 = useApp((s) => s.look.clock === "24");
+  const paper = useApp((s) => s.paper);
+  const color = nameColor(author, c.roles, paper);
   const time = new Date(Number(m.createdAtMs));
   const timeEl = (
     <time dateTime={time.toISOString()} title={time.toLocaleString()}>
@@ -373,7 +399,7 @@ function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: 
       <div className="msg-body">
         {head && (
           <header className="msg-head">
-            <button className="name" onClick={(e) => openProfile(url, m.authorId, e.currentTarget)}>
+            <button className="name" style={color ? { color } : undefined} onClick={(e) => openProfile(url, m.authorId, e.currentTarget)}>
               {name}
             </button>
             {author?.kind === MemberKind.BOT && <span className="tag">Bot</span>}

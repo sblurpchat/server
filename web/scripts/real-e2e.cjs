@@ -1,5 +1,5 @@
 // Real-mode run against make dev (auth 8081, servers 8082/8083, web 5173): sign up, PKCE sign-in,
-// join both communities, send, thread reply, react, upload, edit, delete, reload, reconnect after a
+// join both communities, browse/preview/join/leave (OPT_IN) and a role-gated channel (ROLES), send, thread reply, react, upload, edit, delete, reload, reconnect after a
 // server restart (tmux window sblurp7:owls), token refresh in two tabs at once, and screenshots
 // (light, dark, 390px) into artifacts/integ/. Run: node scripts/real-e2e.cjs
 // TMUX_TARGET overrides the window to restart; SKIP_RESTART=1 skips that step.
@@ -55,6 +55,22 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
   ok(await p.locator('.chan-title').innerText() === 'general', 'join lands on #general');
   ok(await p.locator('.mebar .presence.on').count() === 1, 'own avatar shows online');
   await shot('joined-community');
+
+  // Sblurp Community is OPT_IN: a new member starts in the default channels and browses the rest.
+  const sideChan = (name) => p.locator('.side-scroll .chan', { hasText: new RegExp(`^${name}$`) });
+  ok(await sideChan('help').count() === 1 && await sideChan('random').count() === 0, 'opt-in: only default channels at first');
+  await p.getByRole('button', { name: 'Browse channels' }).click();
+  await p.locator('.browse-open', { hasText: 'random' }).click();
+  await p.locator('.join-bar', { hasText: 'previewing #random' }).waitFor({ timeout: 10000 });
+  await p.locator('.channel .msg').first().waitFor({ timeout: 10000 });
+  ok(await sideChan('random').count() === 0, 'browse previews #random without joining');
+  await shot('preview');
+  await p.getByRole('button', { name: 'Join channel' }).click();
+  await p.locator('.channel .composer').waitFor({ timeout: 10000 });
+  await sideChan('random').waitFor({ timeout: 10000 }); ok(true, 'join puts #random in the sidebar');
+  await p.getByRole('button', { name: 'Leave #random' }).click();
+  await sideChan('random').waitFor({ state: 'detached', timeout: 10000 }); ok(true, 'leave takes #random out');
+  await sideChan('general').click(); await p.locator('.channel .msg').first().waitFor();
 
   const sent = (pg, text) => pg.locator('.channel .msg[data-pending=false]', { hasText: text });
   const row = (text, scope = '.channel') => p.locator(`${scope} .msg`, { hasText: text });
@@ -124,6 +140,14 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
   await p.getByRole('button', { name: /^Night Owls/ }).click();
   await p.getByRole('button', { name: /^Join Night Owls/ }).click();
   await p.locator('.msg').first().waitFor({ timeout: 10000 }); await shot('joined-owls');
+  // Night Owls is ROLES: everyone is in every channel they can see, and #film-club needs the Film club role.
+  ok(await p.locator('.side-scroll .chan', { hasText: 'now-reading' }).count() === 1, 'roles mode: in every visible channel');
+  // The first person to join a fresh server owns it, and admins see every channel.
+  await p.locator('.side-head').click();
+  const admin = await p.getByRole('menuitem', { name: 'Community settings' }).count() === 1;
+  await p.keyboard.press('Escape');
+  ok(await p.locator('.side-scroll .chan', { hasText: 'film-club' }).count() === (admin ? 1 : 0), `role-gated #film-club is ${admin ? 'shown to an admin' : 'hidden without the role'}`);
+  ok(await p.getByRole('button', { name: 'Browse channels' }).count() === 0, 'roles mode has no Browse channels');
   await p.reload(); await p.locator('.msg').first().waitFor({ timeout: 10000 });
   ok(await p.locator('.chan-title').count() === 1, 'reload restores the channel');
 

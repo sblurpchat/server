@@ -183,6 +183,55 @@ try {
   await page.locator(".members-head, .cs-panel").first().waitFor();
   await page.keyboard.press("Escape");
 
+  // Channel modes and roles (ticket 1011). Sblurp Community is OPT_IN in fake mode.
+  const side = page.locator(".side-scroll");
+  await page.getByRole("button", { name: "Browse channels" }).click();
+  await page.locator(".browse-open", { hasText: "reading-room" }).click();
+  await page.locator(".join-bar", { hasText: "previewing #reading-room" }).waitFor();
+  await page.locator(".channel .msg", { hasText: "Chapter 2" }).waitFor();
+  if (await side.locator(".chan", { hasText: "reading-room" }).count()) throw new Error("a previewed channel is in the sidebar");
+  await page.getByRole("button", { name: "Join channel" }).click();
+  await page.locator(".channel .composer").waitFor();
+  await side.locator(".chan", { hasText: "reading-room" }).waitFor();
+  await page.getByRole("button", { name: "Leave #reading-room" }).click();
+  await side.locator(".chan", { hasText: "reading-room" }).waitFor({ state: "detached" });
+  await page.getByRole("button", { name: "Browse channels" }).click();
+  await page.getByRole("button", { name: "Join #off-topic" }).click();
+  await page.getByRole("button", { name: "Leave #off-topic" }).waitFor();
+  await page.keyboard.press("Escape");
+  await side.locator(".chan", { hasText: "off-topic" }).waitFor();
+
+  await jumpTo(page, "general");
+  await page.locator(".channel .msg", { hasText: "Reminder: design crit" }).locator(".avatar-btn").click();
+  const anaRoles = page.getByRole("list", { name: "Ana Ruiz's roles" });
+  await anaRoles.getByText("Designers").waitFor();
+  await page.getByRole("button", { name: "Edit roles" }).click();
+  await page.getByRole("checkbox", { name: "Helpers" }).check();
+  await anaRoles.getByText("Helpers").waitFor();
+  await page.keyboard.press("Escape");
+
+  await page.locator(".side-head").click();
+  await page.getByRole("menuitem", { name: "Community settings" }).click();
+  await page.getByRole("tab", { name: "Roles" }).click();
+  await page.getByLabel("Name", { exact: true }).fill("Film club");
+  await page.getByRole("button", { name: "Create role" }).click();
+  await page.getByLabel("Name of Film club").waitFor();
+  await page.getByRole("button", { name: "Move Film club up" }).click();
+  await page.waitForFunction(() => [...document.querySelectorAll(".roles-list li input.input")].map((i) => i.value).join() === "Maintainers,Designers,Film club,Helpers");
+  await page.getByRole("button", { name: "Delete Maintainers" }).click();
+  await page.getByRole("button", { name: "Delete Maintainers" }).click();
+  await page.getByRole("alert").filter({ hasText: "#maintainers" }).waitFor();
+  await page.getByRole("tab", { name: "Channels" }).click();
+  await page.locator(".access-list summary", { hasText: "#general" }).click();
+  await page.getByRole("checkbox", { name: "Film club" }).check();
+  await page.locator(".access-list summary", { hasText: "Film club" }).waitFor();
+  await page.getByRole("radio", { name: /Everyone is in every channel/ }).check();
+  await side.locator(".chan", { hasText: "reading-room" }).waitFor();
+  if (await page.getByRole("button", { name: "Browse channels" }).count()) throw new Error("Browse channels shown in ROLES mode");
+  await page.getByRole("radio", { name: /People pick the channels/ }).check();
+  await page.getByRole("button", { name: "Browse channels" }).waitFor();
+  await page.keyboard.press("Escape");
+
   // An invite link fills in the server and the code; a bad code is refused.
   await page.getByRole("button", { name: "Add a community" }).click();
   await page.getByLabel("Community address or invite link").fill("https://letterpress.club/invite/WRONG");
@@ -196,7 +245,7 @@ try {
   await page.locator(".side-head", { hasText: "Letterpress Club" }).waitFor();
 
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, appearance)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, appearance, browse, preview, join, leave, roles, channel access, channel mode)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message, errors.join("; "));

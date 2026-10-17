@@ -10,6 +10,7 @@ import {
   AttachmentSchema,
   BotService,
   ChannelKind,
+  ChannelMode,
   ChatService,
   ReadStateSchema,
   MessageSchema,
@@ -89,6 +90,7 @@ export type Modal =
   | { t: "channel"; id?: string; category?: string }
   | { t: "community"; tab?: SettingsTab }
   | { t: "newdm" }
+  | { t: "browse" }
   | { t: "profile" }
   | { t: "remove"; url: string; memberId: string; ban: boolean }
   | { t: "lightbox"; src: string; name: string };
@@ -105,6 +107,8 @@ export interface State {
   modal: Modal;
   popover: { url: string; memberId: string; rect: DOMRect } | null;
   look: Appearance;
+  /** The page background as rgb(), for fitting role colors to it. */
+  paper: string;
   notify: boolean;
   drawer: boolean;
   collapsed: Record<string, boolean>;
@@ -126,6 +130,7 @@ let state: State = {
   modal: null,
   popover: null,
   look: parseAppearance(load("appearance", APPEARANCE)),
+  paper: "",
   notify: load("notify", false),
   drawer: false,
   collapsed: load("collapsed", {}),
@@ -655,6 +660,56 @@ export async function setInviteOnly(url: string, inviteOnly: boolean) {
   patchC(url, (c) => ({ ...c, info: c.info && { ...c.info, inviteOnly: r.inviteOnly } }));
 }
 
+// ---------------------------------------------------------------------------
+// Channel modes and roles (ticket 1011). Admin calls apply their result locally at once;
+// the server's own event for the same change is an idempotent upsert.
+// ---------------------------------------------------------------------------
+
+const dropList = (lists: Community["lists"], k: string) => Object.fromEntries(Object.entries(lists).filter(([x]) => x !== k));
+
+export async function setChannelMode(url: string, channelMode: ChannelMode) {
+  const r = await api(url).server.updateServerSettings({ channelMode });
+  local(url, { case: "channelModeChanged", value: r.channelMode });
+}
+export const browseChannels = async (url: string) => (await api(url).chat.browseChannels({})).channels;
+
+/** Opens a channel I have not joined, read-only. */
+export function peekChannel(url: string, ch: Channel) {
+  patchC(url, (c) => ({ ...c, peek: ch, lists: dropList(c.lists, ch.id) }));
+  selectChannel(url, ch.id);
+}
+export async function joinChannel(url: string, channelId: string) {
+  const r = await api(url).chat.joinChannel({ channelId });
+  if (r.channel) local(url, { case: "channelCreated", value: r.channel });
+  // A preview list missed live events; reload it as a member.
+  patchC(url, (c) => ({ ...c, lists: dropList(c.lists, channelId) }));
+}
+export async function leaveChannel(url: string, channelId: string) {
+  await api(url).chat.leaveChannel({ channelId });
+  local(url, { case: "channelDeleted", value: channelId });
+}
+export async function setChannelAccess(url: string, channelId: string, roleIds: string[], isDefault: boolean) {
+  const r = await api(url).chat.setChannelAccess({ channelId, roleIds, isDefault });
+  if (r.channel && state.cs[url]?.channels[channelId]) local(url, { case: "channelUpdated", value: r.channel });
+  return r.channel;
+}
+export async function createRole(url: string, name: string, color: string) {
+  const r = await api(url).server.createRole({ name, color });
+  if (r.role) local(url, { case: "roleUpdated", value: r.role });
+}
+export async function updateRole(url: string, roleId: string, patch: { name?: string; color?: string; position?: number }) {
+  const r = await api(url).server.updateRole({ roleId, ...patch });
+  if (r.role) local(url, { case: "roleUpdated", value: r.role });
+}
+export async function deleteRole(url: string, roleId: string) {
+  await api(url).server.deleteRole({ roleId });
+  local(url, { case: "roleDeleted", value: roleId });
+}
+export async function setMemberRoles(url: string, memberId: string, roleIds: string[]) {
+  const r = await api(url).server.setMemberRoles({ memberId, roleIds });
+  if (r.member) local(url, { case: "memberUpdated", value: r.member });
+}
+
 export function joinAgain(url: string) {
   patchC(url, (c) => ({ ...c, status: "join" }));
 }
@@ -697,12 +752,13 @@ function applyLook() {
   }
   root.style.fontSize = fontSize === APPEARANCE.fontSize ? "" : `${(fontSize / 15) * 100}%`;
   for (const v of ["--raspberry", "--accent-fill", "--selected"]) root.style.removeProperty(v);
-  if (!accent) return;
   // Read the theme's own surfaces, resolved for the current light or dark scheme.
   const probe = document.body.appendChild(document.createElement("i"));
   const read = (v: string) => ((probe.style.color = `var(${v})`), getComputedStyle(probe).color);
   const [paper, frost, onAccent] = [read("--paper"), read("--frost"), read("--on-accent")];
   probe.remove();
+  if (paper !== state.paper) set({ paper });
+  if (!accent) return;
   const min = theme === "contrast" ? 7 : 4.5;
   root.style.setProperty("--raspberry", fitContrast(accent, [paper, frost], min));
   root.style.setProperty("--accent-fill", fitContrast(accent, [onAccent], min));

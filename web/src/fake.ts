@@ -6,6 +6,7 @@ import {
   AttachmentSchema,
   BotService,
   ChannelKind,
+  ChannelMode,
   ChannelSchema,
   ChatService,
   EventSchema,
@@ -18,6 +19,7 @@ import {
   Presence,
   ReactionSchema,
   ReadStateSchema,
+  RoleSchema,
   ServerService,
   type Attachment,
   type Channel,
@@ -27,6 +29,7 @@ import {
   type Member,
   type Message,
   type ReadState,
+  type Role,
 } from "./gen/sblurp/v1/sblurp_pb";
 import { encodeMentions, mentionsMe } from "./logic";
 
@@ -52,6 +55,8 @@ interface Seed {
   messages: Record<string, Line[]>;
   unread: Record<string, number>;
   chatter: [channel: string, user: string, text: string][];
+  optIn?: { defaults: string[]; notIn: string[] }; // OPT_IN mode: default channels and the ones I have not joined
+  roles?: [name: string, color: string, users: string[], gates: string[]][];
 }
 
 const { OWNER, ADMIN, MODERATOR, MEMBER } = MemberRole;
@@ -90,10 +95,24 @@ const SEEDS: Seed[] = [
       ["Building", "self-hosting", "Running your own community server"],
       ["Building", "ideas-box", "One idea per message. React to vote."],
       ["Building", "core-team", "Release dates and things not ready to share", ["ana", "priya"]],
+      ["Talk", "reading-room", "What we're reading. This month: The Mythical Man-Month"],
+      ["Talk", "off-topic", "Pets, food, weather and everything else"],
+      ["Building", "maintainers", "Reviews and release planning for people who maintain Sblurp"],
+    ],
+    optIn: { defaults: ["announcements", "general", "help"], notIn: ["reading-room", "off-topic", "maintainers"] },
+    roles: [
+      ["Maintainers", "#3550f0", ["ian", "ana", "priya"], ["maintainers"]],
+      ["Designers", "#d0306a", ["ana", "mei"], []],
+      ["Helpers", "#0f8b8d", ["jun", "sam"], []],
     ],
     dms: [["ana"], ["jun"], ["priya", "marcus"]],
     unread: { general: 3, design: 2, help: 1 },
     messages: {
+      "reading-room": [
+        [3 * D, "theo", "Chapter 2 is the one everybody quotes. Adding people to a late project makes it later."],
+        [3 * D - 4, "lotte", "Still true fifty years on, sadly.", { react: { "📚": ["theo", "mei"] } }],
+      ],
+      maintainers: [[D, "priya", "Release branch for 0.8 is cut. Reviews welcome on the sync patch."]],
       "core-team": [[2 * H, "ana", "Release notes for 0.8 are in the doc. Ship Thursday unless @priya says otherwise."]],
       welcome: [
         [9 * D, "ian", "Welcome to the Sblurp Community. This is where people who run and use Sblurp hang out.\n\nA few things:\n> Be kind. Assume good intent.\n> Ask in #help, share in #show-and-tell.\n> Your profile is only shared with a community when you say so."],
@@ -261,6 +280,11 @@ const SEEDS: Seed[] = [
       ["", "studio", "Thursdays at 7"],
       ["", "glaze-lab", "Recipes, tests and happy accidents"],
       ["", "kiln-schedule", "Bisque Mondays, glaze Wednesdays"],
+      ["", "kiln-crew", "Loading, firing and unloading rota"],
+    ],
+    roles: [
+      ["Glaze nerds", "#2f8f5b", ["hana", "ian"], []],
+      ["Kiln crew", "#c2410c", ["bea", "tomas"], ["kiln-crew"]],
     ],
     dms: [],
     unread: { "glaze-lab": 1 },
@@ -275,6 +299,7 @@ const SEEDS: Seed[] = [
         [D - 6, "hana", "Recipe, for anyone who wants it:\n```\nCustom celadon, cone 6\nNepheline syenite  30\nSilica             25\nWhiting            20\nEPK kaolin         15\nFrit 3134          10\n+ red iron oxide    1\n```"],
         [35, "olu", "Mine came out the colour of weak tea. Did I apply it too thin?"],
       ],
+      "kiln-crew": [[D, "bea", "Tomás, can you unload Thursday morning?"]],
       "kiln-schedule": [[3 * D, "bea", "Glaze firing Wednesday. Shelves loaded by Tuesday 9 p.m. please."]],
     },
     chatter: [
@@ -314,6 +339,9 @@ interface Fake {
   subs: Set<(e: Event) => void>;
   uploads: Map<string, Attachment>;
   chatter: Seed["chatter"];
+  mode: ChannelMode;
+  roles: Role[];
+  notIn: Set<string>; // OPT_IN: visible text channels I have not joined
 }
 
 let nextId = 1;
@@ -345,6 +373,9 @@ function seed(s: Seed, now: number): Fake {
     subs: new Set(),
     uploads: new Map(),
     chatter: s.chatter,
+    mode: s.optIn ? ChannelMode.OPT_IN : ChannelMode.ROLES,
+    roles: [],
+    notIn: new Set(),
   };
   const byName = new Map<string, Member>();
   for (const [username, displayName, role, presence, bio, statusText = "", bot] of s.members) {
@@ -382,6 +413,14 @@ function seed(s: Seed, now: number): Fake {
     f.channels.set(ch.id, ch);
     chanByKey.set(name, ch);
   });
+  s.roles?.forEach(([name, color, users, gates], position) => {
+    const r = create(RoleSchema, { id: id("r"), name, color, position });
+    f.roles.push(r);
+    for (const u of users) (u === "ian" ? (f.members.get(f.meId) ?? null) : byName.get(u))?.roleIds.push(r.id);
+    for (const g of gates) chanByKey.get(g)!.roleIds.push(r.id);
+  });
+  for (const n of s.optIn?.defaults ?? []) chanByKey.get(n)!.isDefault = true;
+  for (const n of s.optIn?.notIn ?? []) f.notIn.add(chanByKey.get(n)!.id);
   for (const names of s.dms) {
     const ch = create(ChannelSchema, {
       id: id("d"),
@@ -467,12 +506,26 @@ function emit(f: Fake, kind: Event["kind"], ephemeral = false): Event {
     if (kind.case === "messageCreated") kind.value.createdSeq = ev.seq;
     f.log.push(ev);
   }
-  for (const s of f.subs) s(ev);
+  if (delivered(f, ev)) for (const s of f.subs) s(ev);
   return ev;
 }
 
+/** Whether I may see a channel at all: preview, browse and read it. */
 function canSee(f: Fake, ch: Channel | undefined) {
-  return !!ch && (ch.kind === ChannelKind.TEXT || ch.memberIds.includes(f.meId));
+  if (!ch) return false;
+  if (ch.kind !== ChannelKind.TEXT) return ch.memberIds.includes(f.meId);
+  const me = f.members.get(f.meId);
+  return !ch.roleIds.length || (!!me && (me.role >= MemberRole.ADMIN || ch.roleIds.some((r) => me.roleIds.includes(r))));
+}
+/** Whether a channel is in my sidebar: visible and, in OPT_IN, joined. */
+function inside(f: Fake, ch: Channel | undefined) {
+  return canSee(f, ch) && !(ch!.kind === ChannelKind.TEXT && f.mode === ChannelMode.OPT_IN && f.notIn.has(ch!.id));
+}
+/** Events about channels outside my sidebar never reach me, like on the real server. */
+function delivered(f: Fake, e: Event) {
+  const k = e.kind;
+  const chId = k.case?.startsWith("message") ? (k.value as Message).channelId : k.case === "typing" ? k.value.channelId : "";
+  return !chId || inside(f, f.channels.get(chId));
 }
 
 function post(f: Fake, channelId: string, authorId: string, text: string, threadRootId = "", clientId = "", attachments: Attachment[] = []) {
@@ -577,10 +630,55 @@ function service(f: Fake) {
         f.invites = f.invites.filter((i) => i.code !== req.code);
         return {};
       },
-      updateServerSettings(req: { inviteOnly?: boolean }) {
+      updateServerSettings(req: { inviteOnly?: boolean; channelMode: ChannelMode }) {
         admin();
         if (req.inviteOnly !== undefined) f.info.inviteOnly = req.inviteOnly;
-        return { inviteOnly: f.info.inviteOnly };
+        if (req.channelMode && req.channelMode !== f.mode) {
+          f.mode = req.channelMode;
+          // OPT_IN to ROLES puts everyone in everything they can see.
+          if (f.mode === ChannelMode.ROLES) {
+            for (const cid of f.notIn) emit(f, { case: "channelCreated", value: f.channels.get(cid)! });
+            f.notIn.clear();
+          }
+          emit(f, { case: "channelModeChanged", value: f.mode });
+        }
+        return { inviteOnly: f.info.inviteOnly, channelMode: f.mode };
+      },
+      createRole(req: { name: string; color: string }) {
+        admin();
+        if (!req.name.trim()) throw new ConnectError("a role needs a name", Code.InvalidArgument);
+        if (f.roles.some((r) => r.name.toLowerCase() === req.name.trim().toLowerCase())) throw new ConnectError("a role with that name exists", Code.AlreadyExists);
+        const role = create(RoleSchema, { id: id("r"), name: req.name.trim(), color: req.color, position: f.roles.length });
+        f.roles.push(role);
+        emit(f, { case: "roleUpdated", value: role });
+        return { role };
+      },
+      updateRole(req: { roleId: string; name?: string; color?: string; position?: number }) {
+        admin();
+        const role = f.roles.find((r) => r.id === req.roleId);
+        if (!role) throw new ConnectError("role not found", Code.NotFound);
+        if (req.name !== undefined) role.name = req.name;
+        if (req.color !== undefined) role.color = req.color;
+        if (req.position !== undefined) role.position = req.position;
+        emit(f, { case: "roleUpdated", value: role });
+        return { role };
+      },
+      deleteRole(req: { roleId: string }) {
+        admin();
+        const gated = [...f.channels.values()].filter((c) => c.roleIds.includes(req.roleId));
+        if (gated.length) throw new ConnectError(`this role limits ${gated.map((c) => `#${c.name}`).join(", ")}; change who can see those channels first`, Code.FailedPrecondition);
+        f.roles = f.roles.filter((r) => r.id !== req.roleId);
+        for (const m of f.members.values()) m.roleIds = m.roleIds.filter((r) => r !== req.roleId);
+        emit(f, { case: "roleDeleted", value: req.roleId });
+        return {};
+      },
+      setMemberRoles(req: { memberId: string; roleIds: string[] }) {
+        admin();
+        const m = f.members.get(req.memberId);
+        if (!m) throw new ConnectError("member not found", Code.NotFound);
+        m.roleIds = req.roleIds.filter((r) => f.roles.some((x) => x.id === r));
+        emit(f, { case: "memberUpdated", value: m });
+        return { member: m };
       },
       getMe() {
         need();
@@ -599,9 +697,11 @@ function service(f: Fake) {
         need();
         return {
           me: me(),
-          channels: [...f.channels.values()].filter((c) => canSee(f, c)),
+          channels: [...f.channels.values()].filter((c) => inside(f, c)),
           members: [...f.members.values()],
-          readStates: [...f.reads.values()].filter((r) => canSee(f, f.channels.get(r.channelId))),
+          readStates: [...f.reads.values()].filter((r) => inside(f, f.channels.get(r.channelId))),
+          roles: [...f.roles].sort((a, b) => a.position - b.position),
+          channelMode: f.mode,
           seq: f.seq,
         };
       },
@@ -622,7 +722,7 @@ function service(f: Fake) {
             yield create(EventSchema, { kind: { case: "resync", value: true } });
             return;
           }
-          for (const e of f.log) if (e.seq > req.afterSeq) yield e;
+          for (const e of f.log) if (e.seq > req.afterSeq && delivered(f, e)) yield e;
           while (!ctx.signal.aborted) {
             if (!queue.length) {
               await new Promise<void>((r) => {
@@ -665,6 +765,36 @@ function service(f: Fake) {
         emit(f, { case: "channelUpdated", value: ch });
         return { channel: ch };
       },
+      browseChannels() {
+        need();
+        return { channels: [...f.channels.values()].filter((c) => c.kind === ChannelKind.TEXT && canSee(f, c)) };
+      },
+      joinChannel(req: { channelId: string }) {
+        need();
+        const ch = f.channels.get(req.channelId);
+        if (f.mode !== ChannelMode.OPT_IN) throw new ConnectError("everyone is in every channel they can see here", Code.FailedPrecondition);
+        if (!canSee(f, ch) || ch!.kind !== ChannelKind.TEXT) throw new ConnectError("channel not found", Code.NotFound);
+        if (f.notIn.delete(ch!.id)) emit(f, { case: "channelCreated", value: ch! });
+        return { channel: ch };
+      },
+      leaveChannel(req: { channelId: string }) {
+        need();
+        const ch = f.channels.get(req.channelId);
+        if (f.mode !== ChannelMode.OPT_IN) throw new ConnectError("everyone is in every channel they can see here", Code.FailedPrecondition);
+        if (!inside(f, ch) || ch!.kind !== ChannelKind.TEXT) throw new ConnectError("channel not found", Code.NotFound);
+        emit(f, { case: "channelDeleted", value: ch!.id });
+        f.notIn.add(ch!.id);
+        return {};
+      },
+      setChannelAccess(req: { channelId: string; roleIds: string[]; isDefault: boolean }) {
+        admin();
+        const ch = f.channels.get(req.channelId);
+        if (!ch || ch.kind !== ChannelKind.TEXT) throw new ConnectError("channel not found", Code.NotFound);
+        ch.roleIds = req.roleIds.filter((r) => f.roles.some((x) => x.id === r));
+        ch.isDefault = req.isDefault;
+        emit(f, { case: "channelUpdated", value: ch });
+        return { channel: ch };
+      },
       openDM(req: { memberIds: string[] }) {
         need();
         const want = [...new Set([f.meId, ...req.memberIds])].sort().join();
@@ -698,7 +828,7 @@ function service(f: Fake) {
       },
       sendMessage(req: { channelId: string; text: string; threadRootId: string; clientId: string; attachmentIds: string[] }) {
         need();
-        if (!canSee(f, f.channels.get(req.channelId))) throw new ConnectError("channel not found", Code.NotFound);
+        if (!inside(f, f.channels.get(req.channelId))) throw new ConnectError("channel not found", Code.NotFound);
         if (!req.text.trim() && !req.attachmentIds.length) throw new ConnectError("message is empty", Code.InvalidArgument);
         const dup = req.clientId && f.messages.find((m) => m.clientId === req.clientId);
         if (dup) return { message: dup };
@@ -775,8 +905,7 @@ function service(f: Fake) {
           (m) =>
             !m.deleted &&
             m.text.toLowerCase().includes(q) &&
-            canSee(f, f.channels.get(m.channelId)) &&
-            (!req.channelId || m.channelId === req.channelId),
+            (req.channelId ? m.channelId === req.channelId && canSee(f, f.channels.get(m.channelId)) : inside(f, f.channels.get(m.channelId))),
         );
         return { messages: hits.reverse().slice(0, req.limit || 20) };
       },

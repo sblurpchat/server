@@ -1,9 +1,9 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ChannelDialog, CommunitySettings, Invites, PERMISSION } from "./Admin";
+import { ChannelDialog, CommunitySettings, Invites, PERMISSION, RoleChips } from "./Admin";
 import { ChannelView, PeoplePicker, RightPane } from "./Chat";
 import { create } from "@bufbuild/protobuf";
-import { MemberKind, MemberRole, MemberSchema, type GetServerInfoResponse } from "./gen/sblurp/v1/sblurp_pb";
+import { ChannelKind, ChannelMode, MemberKind, MemberRole, MemberSchema, type Channel, type GetServerInfoResponse } from "./gen/sblurp/v1/sblurp_pb";
 import {
   channelLabel,
   communityBadge,
@@ -18,6 +18,7 @@ import {
   tabTitle,
   type Community,
   count,
+  browseList,
   THEMES,
   timeLabel,
   type Appearance as Look,
@@ -51,6 +52,10 @@ import {
   signOut,
   toggleCollapsed,
   useApp,
+  browseChannels,
+  joinChannel,
+  leaveChannel,
+  peekChannel,
 } from "./store";
 import { Avatar, CommunityIcon, Dialog, EmojiPicker, emojiChar, Icon, Pop } from "./ui";
 
@@ -353,6 +358,14 @@ function Sidebar({ c }: { c: Community }) {
         </div>
       </Pop>
       <nav className="side-scroll" aria-label="Channels">
+        {c.me && c.mode === ChannelMode.OPT_IN && (
+          <button className="chan browse-btn" onClick={() => set({ modal: { t: "browse" } })}>
+            <span className="chan-icon">
+              <Icon name="search" size={16} />
+            </span>
+            Browse channels
+          </button>
+        )}
         {c.me ? (
           sections.map((sec) => {
             const key = `${c.url}|${sec.title}`;
@@ -718,6 +731,8 @@ function Modals() {
       return <CommunitySettings tab={modal.tab} />;
     case "newdm":
       return <NewMessage />;
+    case "browse":
+      return <BrowseChannels />;
     case "profile":
       return <EditProfile />;
     case "remove":
@@ -1141,6 +1156,76 @@ function CommunityDialog({ kind }: { kind: "info" | "invite" | "leave" }) {
   );
 }
 
+function BrowseChannels() {
+  const c = useApp((s) => s.cs[s.url]);
+  const url = c?.url ?? "";
+  const [all, setAll] = useState<Channel[] | null>(null);
+  const [q, setQ] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState("");
+  useEffect(() => {
+    if (url) browseChannels(url).then(setAll, (x) => setErr(errorText(x)));
+  }, [url]);
+  if (!c) return null;
+  const rows = browseList(all ?? [], c.channels, q);
+  const act = (id: string, f: () => Promise<unknown>) => {
+    setBusy(id);
+    setErr("");
+    f().then(
+      () => setBusy(""),
+      (x) => (setBusy(""), setErr(errorText(x))),
+    );
+  };
+  return (
+    <Dialog label="Browse channels" className="browse">
+      <header className="dialog-head">
+        <h2>Browse channels</h2>
+        <button className="icon-btn" aria-label="Close" onClick={() => set({ modal: null })}>
+          <Icon name="x" />
+        </button>
+      </header>
+      <input className="input" type="search" aria-label="Search channels" placeholder="Search by name or topic" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+      {err && (
+        <p className="error small" role="alert">
+          {err}
+        </p>
+      )}
+      {!all && !err && <p className="fine">Loading channels…</p>}
+      {all && !rows.length && <p className="fine">{q ? `No channel matches "${q}".` : "There are no channels you can join yet."}</p>}
+      <ul className="browse-list">
+        {rows.map(({ ch, joined }) => (
+          <li key={ch.id}>
+            <button
+              className="browse-open"
+              onClick={() => {
+                if (joined) selectChannel(url, ch.id);
+                else peekChannel(url, ch);
+                set({ modal: null });
+              }}
+            >
+              <b>
+                <Icon name={ch.kind === ChannelKind.PRIVATE ? "lock" : "hash"} size={16} />
+                {ch.name}
+                {joined && <span className="tag">Joined</span>}
+              </b>
+              {ch.topic && <small className="truncate">{ch.topic}</small>}
+            </button>
+            {joined ? (
+              <button className="btn small" disabled={busy === ch.id} aria-label={`Leave #${ch.name}`} onClick={() => act(ch.id, () => leaveChannel(url, ch.id))}>
+                Leave
+              </button>
+            ) : (
+              <button className="btn small primary" disabled={busy === ch.id} aria-label={`Join #${ch.name}`} onClick={() => act(ch.id, () => joinChannel(url, ch.id))}>
+                Join
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Dialog>
+  );
+}
+
 function NewMessage() {
   const c = useApp((s) => s.cs[s.url]);
   if (!c?.me) return null;
@@ -1318,18 +1403,19 @@ function RemoveMember({ url, memberId, ban }: { url: string; memberId: string; b
   );
 }
 
-
 function ProfilePopover() {
   const p = useApp((s) => s.popover);
   const m = useApp((s) => (s.popover ? s.cs[s.popover.url]?.members[s.popover.memberId] : undefined));
   const me = useApp((s) => (s.popover ? s.cs[s.popover.url]?.me : undefined));
+  const roleCount = useApp((s) => (s.popover ? s.cs[s.popover.url]?.roles.length ?? 0 : 0));
+  const admin = (me?.role ?? 0) >= MemberRole.ADMIN;
   const [err, setErr] = useState("");
   const mod = m ? modActions(me, m) : { remove: false, roles: [] };
   return (
     <Pop anchor={p && m ? p.rect : null} side="right" className="profile" label="Profile" onClose={() => (setErr(""), set({ popover: null }))}>
       {m && p && (
         <>
-          <div className="profile-band" style={{ background: `color-mix(in srgb, ${"var(--raspberry)"} 18%, var(--paper))` }} />
+          <div className="profile-band" style={{ background: "color-mix(in srgb, var(--raspberry) 18%, var(--paper))" }} />
           <div className="profile-body">
             <Avatar m={m} size={72} presence />
             <h3>
@@ -1343,6 +1429,12 @@ function ProfilePopover() {
                 {m.statusEmoji} {m.statusText}
               </p>
             )}
+            {(roleCount > 0 && admin) || m.roleIds.length > 0 ? (
+              <>
+                <h4>Roles</h4>
+                <RoleChips url={p.url} m={m} edit={admin} />
+              </>
+            ) : null}
             {m.bio && (
               <>
                 <h4>About</h4>
