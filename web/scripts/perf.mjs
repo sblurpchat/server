@@ -49,10 +49,19 @@ try {
   );
   frames.sort((a, b) => a - b);
   const pct = (q) => frames[Math.floor(frames.length * q)].toFixed(1);
+  // Typing with every message in the DOM: Event Timing gives each key's input-to-paint time.
+  await p.locator(".channel textarea").first().focus();
+  await p.evaluate(() => {
+    window.__keys = [];
+    new PerformanceObserver((l) => l.getEntries().forEach((e) => e.name === "keydown" && window.__keys.push(e.duration))).observe({ type: "event", durationThreshold: 16, buffered: false });
+  });
+  await p.keyboard.type("the quick brown fox jumps over the lazy dog", { delay: 30 });
+  await p.waitForTimeout(300);
+  const slow = await p.evaluate(() => window.__keys);
   const away = await open("general");
   const back = await open("show-and-tell");
   console.log(
-    `perf: ${BIG} seeded, ${dom} in the DOM; first open ${first}ms, load all ${(loadAll / 1000).toFixed(1)}s; scroll frame median ${pct(0.5)}ms, p95 ${pct(0.95)}ms, max ${frames.at(-1).toFixed(1)}ms; switch away ${away}ms, back ${back}ms`,
+    `perf: ${BIG} seeded, ${dom} in the DOM; first open ${first}ms, load all ${(loadAll / 1000).toFixed(1)}s; scroll frame median ${pct(0.5)}ms, p95 ${pct(0.95)}ms, max ${frames.at(-1).toFixed(1)}ms; typing ${slow.length}/43 keys over 16ms (max ${Math.max(0, ...slow).toFixed(0)}ms); switch away ${away}ms, back ${back}ms`,
   );
 } catch (e) {
   failed = true;
