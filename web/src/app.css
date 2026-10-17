@@ -1847,16 +1847,13 @@ li.sw-empty {
 .chan-title > .icon {
   color: var(--graphite);
 }
-/* Title and topic share a baseline (1027); the topic clamps to two lines. */
+/* Title and topic are centered in the bar like the search box (1041); the topic clamps to two lines. */
 .chan-id {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   flex: 1;
   min-width: 0;
-}
-.chan-title > .truncate {
-  align-self: baseline;
 }
 .chan-topic {
   flex: 1;
