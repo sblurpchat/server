@@ -632,9 +632,9 @@ export function inviteState(inv: { expiresAtMs: bigint; maxUses: number; uses: n
 
 export const hostOf = (url: string) => new URL(url).host;
 
-/** #/c/<host>[/<channel>[/<message>[/<thread root>]]] */
+/** #/c/<host>[/<channel>[/<message>[/<thread root>]]][?<pane>] */
 export function parseHash(hash: string): { host: string; channelId: string; messageId: string; rootId: string } | null {
-  const m = /^#\/c\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?(?:\/([^/]+))?/.exec(hash);
+  const m = /^#\/c\/([^/?]+)(?:\/([^/?]+))?(?:\/([^/?]+))?(?:\/([^/?]+))?/.exec(hash);
   const d = (i: number) => decodeURIComponent(m![i] ?? "");
   return m ? { host: d(1), channelId: d(2), messageId: m[2] ? d(3) : "", rootId: m[3] ? d(4) : "" } : null;
 }
@@ -645,6 +645,26 @@ export const messageHash = (url: string, m: { id: string; channelId: string; thr
 
 export const formatHash = (url: string, channelId: string) =>
   `#/c/${encodeURIComponent(hostOf(url))}${channelId ? `/${encodeURIComponent(channelId)}` : ""}`;
+
+/** The right-hand pane, kept after the route so a reload reopens it: ?thread=<root>, ?members, ?search=<q>. */
+export type Pane = null | { t: "thread"; rootId: string } | { t: "members" } | { t: "search"; q: string };
+
+export function paneQuery(p: Pane): string {
+  if (!p) return "";
+  if (p.t === "members") return "?members";
+  return `?${new URLSearchParams(p.t === "thread" ? { thread: p.rootId } : { search: p.q })}`;
+}
+
+export function parsePane(hash: string): Pane {
+  const i = hash.indexOf("?");
+  if (i < 0) return null;
+  const q = new URLSearchParams(hash.slice(i + 1));
+  const thread = q.get("thread");
+  const search = q.get("search");
+  if (thread) return { t: "thread", rootId: thread };
+  if (search) return { t: "search", q: search };
+  return q.has("members") ? { t: "members" } : null;
+}
 
 // ---------------------------------------------------------------------------
 // Small helpers

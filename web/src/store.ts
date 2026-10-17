@@ -36,6 +36,9 @@ import {
   listKey,
   mentionsMe,
   parseHash,
+  parsePane,
+  paneQuery,
+  type Pane,
   plainText,
   upsertMessage,
   type Community,
@@ -79,7 +82,6 @@ function save(key: string, v: unknown) {
 // Store
 // ---------------------------------------------------------------------------
 
-export type Pane = null | { t: "thread"; rootId: string } | { t: "members" } | { t: "search"; q: string };
 export type Modal =
   | null
   | { t: "settings" }
@@ -152,6 +154,7 @@ export function set(patch: Partial<State> | ((s: State) => Partial<State>)) {
     queued = true;
     queueMicrotask(() => {
       queued = false;
+      syncPaneHash();
       subs.forEach((f) => f());
     });
   }
@@ -383,7 +386,7 @@ export function selectChannel(url: string, channelId: string, push = true) {
   }));
   save("lastChannel", { ...load("lastChannel", {}), [url]: channelId });
   const hash = formatHash(url, channelId);
-  if (location.hash !== hash) history[push ? "pushState" : "replaceState"](null, "", hash);
+  if (location.hash.split("?")[0] !== hash) history[push ? "pushState" : "replaceState"](null, "", hash);
 }
 
 function applyHash() {
@@ -392,8 +395,19 @@ function applyHash() {
   const url = state.order.find((u) => hostOf(u) === r.host);
   if (!url) return;
   if (r.messageId) jumpTo(url, { id: r.messageId, channelId: r.channelId, threadRootId: r.rootId });
-  else if (r.channelId) selectChannel(url, r.channelId, false);
-  else selectCommunity(url);
+  else if (r.channelId) {
+    selectChannel(url, r.channelId, false);
+    set({ pane: parsePane(location.hash) });
+  } else selectCommunity(url);
+}
+
+// The open pane rides on the current route with replaceState, so a reload (or Back) reopens it.
+// Only the ?pane part is touched; the route itself is pushed by selectChannel.
+function syncPaneHash() {
+  if (!state.url || !state.channelId) return;
+  const base = formatHash(state.url, state.channelId);
+  const hash = base + paneQuery(state.pane);
+  if (location.hash !== hash && location.hash.split("?")[0] === base) history.replaceState(null, "", hash);
 }
 
 // ---------------------------------------------------------------------------
@@ -835,7 +849,7 @@ function start() {
   order.forEach((u) => void connect(u));
   const fromHash = parseHash(location.hash);
   const url = order.find((u) => hostOf(u) === fromHash?.host) ?? order[0] ?? "";
-  set({ url, channelId: fromHash?.channelId ?? "" });
+  set({ url, channelId: fromHash?.channelId ?? "", pane: fromHash?.channelId ? parsePane(location.hash) : null });
   if (fromHash?.messageId) jumpTo(url, { id: fromHash.messageId, channelId: fromHash.channelId, threadRootId: fromHash.rootId });
 }
 

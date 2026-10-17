@@ -62,6 +62,8 @@ import {
   PANELS,
   clampWidth,
   keyWidth,
+  paneQuery,
+  parsePane,
 } from "./logic";
 
 const T0 = new Date(2026, 9, 16, 10, 0).getTime();
@@ -341,6 +343,18 @@ describe("community URLs", () => {
     expect(parseHash("#/c/localhost%3A8082/ch-1")).toEqual({ host: "localhost:8082", channelId: "ch-1", messageId: "", rootId: "" });
     expect(parseHash("#/c/x.test")).toEqual({ host: "x.test", channelId: "", messageId: "", rootId: "" });
     expect(parseHash("#/nope")).toBeNull();
+  });
+  it("keeps the open pane after the route", () => {
+    expect(paneQuery(null)).toBe("");
+    expect(paneQuery({ t: "thread", rootId: "m1" })).toBe("?thread=m1");
+    expect(paneQuery({ t: "members" })).toBe("?members");
+    expect(paneQuery({ t: "search", q: "a b&c" })).toBe("?search=a+b%26c");
+    expect(parsePane("#/c/x.test/c1?thread=m1")).toEqual({ t: "thread", rootId: "m1" });
+    expect(parsePane("#/c/x.test/c1?members")).toEqual({ t: "members" });
+    expect(parsePane("#/c/x.test/c1?search=a+b%26c")).toEqual({ t: "search", q: "a b&c" });
+    expect(parsePane("#/c/x.test/c1")).toBeNull();
+    expect(parsePane("#/c/x.test/c1?thread=")).toBeNull();
+    expect(parseHash("#/c/x.test/c1?thread=m1")).toEqual({ host: "x.test", channelId: "c1", messageId: "", rootId: "" });
   });
   it("round-trips message links, with the thread root for replies", () => {
     const url = "https://x.test";
