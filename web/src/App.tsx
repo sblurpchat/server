@@ -818,7 +818,7 @@ function Modals() {
     case "lightbox":
       return (
         <Dialog label={modal.name} className="lightbox">
-          <img src={modal.src} alt={modal.name} />
+          {modal.video ? <video src={modal.src} controls autoPlay playsInline aria-label={modal.name} /> : <img src={modal.src} alt={modal.name} />}
           <div className="lightbox-bar">
             <span className="truncate">{modal.name}</span>
             <a className="btn ghost small" href={modal.src} target="_blank" rel="noopener noreferrer">

@@ -1599,7 +1599,8 @@ li.sw-empty {
   box-shadow: none;
   overflow: visible;
 }
-.lightbox img {
+.lightbox img,
+.lightbox video {
   display: block;
   max-width: calc(100vw - 48px);
   max-height: calc(100dvh - 120px);
@@ -2573,6 +2574,40 @@ li.sw-empty {
   height: auto;
   display: block;
   background: var(--frost);
+}
+.att-video {
+  position: relative;
+  width: fit-content;
+  max-width: min(100%, 420px);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  line-height: 0;
+  background: #000;
+}
+.att-video video {
+  display: block;
+  max-width: 100%;
+  max-height: 300px;
+}
+.att-max {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: #fff;
+  background: rgb(0 0 0 / 0.55);
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+.att-video:hover .att-max,
+.att-max:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .att-max { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .att-max { transition: none; }
 }
 .att-file {
   display: flex;

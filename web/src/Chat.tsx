@@ -696,6 +696,17 @@ function AttachmentView({ url, a, m }: { url: string; a: Attachment; m: Message 
       </button>
     );
   }
+  if (a.contentType.startsWith("video/")) {
+    // preload="metadata" plus #t=0.1 makes the browser draw the first frame as the still (1198).
+    return (
+      <div className="att-video">
+        <video src={`${src}#t=0.1`} controls preload="metadata" playsInline aria-label={a.name} onError={() => refreshMessage(url, m)} />
+        <button className="att-max icon-btn" aria-label={`Maximize ${a.name}`} onClick={() => set({ modal: { t: "lightbox", src, name: a.name, video: true } })}>
+          <Icon name="maximize" size={18} />
+        </button>
+      </div>
+    );
+  }
   return (
     <a className="att-file" href={src} download={a.name} target="_blank" rel="noopener noreferrer">
       <span className="att-icon">

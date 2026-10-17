@@ -109,7 +109,7 @@ export type Modal =
   | { t: "keys" }
   | { t: "profile" }
   | { t: "remove"; url: string; memberId: string; ban: boolean }
-  | { t: "lightbox"; src: string; name: string };
+  | { t: "lightbox"; src: string; name: string; video?: boolean };
 
 export interface State {
   auth: "loading" | "out" | "in";
