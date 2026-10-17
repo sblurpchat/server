@@ -5387,7 +5387,7 @@ func (x *SetMemberRolesResponse) GetMember() *Member {
 
 type CustomEmoji struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"` // 1 to 64 of a-z, 0-9, - and _; unique on this server
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"` // 1 to 62 of a-z, 0-9, - and _; unique on this server
 	Url           string                 `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`   // relative to the server base URL; never changes, cache forever
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

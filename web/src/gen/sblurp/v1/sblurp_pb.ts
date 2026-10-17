@@ -2426,7 +2426,7 @@ export const SetMemberRolesResponseSchema: GenMessage<SetMemberRolesResponse> = 
  */
 export type CustomEmoji = Message$1<"sblurp.v1.CustomEmoji"> & {
   /**
-   * 1 to 64 of a-z, 0-9, - and _; unique on this server
+   * 1 to 62 of a-z, 0-9, - and _; unique on this server
    *
    * @generated from field: string name = 1;
    */

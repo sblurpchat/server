@@ -31,7 +31,8 @@ const (
 	maxZipEntries   = 10000
 )
 
-var emojiNameRE = regexp.MustCompile(`^[a-z0-9_-]{1,64}$`)
+// 62, so ":name:" fits a reaction (64 bytes).
+var emojiNameRE = regexp.MustCompile(`^[a-z0-9_-]{1,62}$`)
 
 var emojiExt = map[string]string{"image/png": ".png", "image/gif": ".gif", "image/webp": ".webp"}
 
@@ -56,7 +57,7 @@ func emojiName(file string) string {
 			gap = true
 		}
 	}
-	return strings.Trim(b.String()[:min(b.Len(), 64)], "_-")
+	return strings.Trim(b.String()[:min(b.Len(), 62)], "_-")
 }
 
 // checkEmojiImage returns the image's content type, or why it cannot be an

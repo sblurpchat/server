@@ -114,7 +114,7 @@ client. There is no separate apps system. The bot is ~150 lines in
   Then send the id in `SendMessage.attachment_ids` (max 10, only your own
   unused uploads). Errors are `{"error": "..."}` with status 400, 401, 403
   or 413.
-- **Custom emoji**: messages and reactions use `:name:`. Names are 1 to 64
+- **Custom emoji**: messages and reactions use `:name:`. Names are 1 to 62
   of `a-z`, `0-9`, `-` and `_`, unique per server.
   - `GET /emoji` (Bearer, any member): `ListEmojiResponse` as protojson,
     sorted by name, gzipped when asked, with a weak `ETag` and

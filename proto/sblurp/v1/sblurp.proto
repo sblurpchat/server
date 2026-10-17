@@ -520,7 +520,7 @@ message SetMemberRolesResponse { Member member = 1; }
 // ---------------------------------------------------------------------------
 
 message CustomEmoji {
-  string name = 1;            // 1 to 64 of a-z, 0-9, - and _; unique on this server
+  string name = 1;            // 1 to 62 of a-z, 0-9, - and _; unique on this server
   string url = 2;             // relative to the server base URL; never changes, cache forever
 }
 

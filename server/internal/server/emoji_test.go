@@ -31,7 +31,7 @@ func TestEmojiName(t *testing.T) {
 		"  héllo wörld .png":             "h_llo_w_rld",
 		"日本.png":                         "",
 		".png":                           "png",
-		strings.Repeat("a", 70) + ".png": strings.Repeat("a", 64),
+		strings.Repeat("a", 70) + ".png": strings.Repeat("a", 62),
 	} {
 		if got := emojiName(in); got != want {
 			t.Errorf("emojiName(%q) = %q, want %q", in, got, want)
