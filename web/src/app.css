@@ -2367,11 +2367,12 @@ li.sw-empty {
   width: 22px;
   text-align: center;
 }
+/* Slack-like: a thin row under the composer, so the box sits about 20px from the bottom. */
 .typing {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 26px;
+  height: 20px;
   padding: 0 22px;
   font-size: 0.78125rem;
   font-weight: 500;
