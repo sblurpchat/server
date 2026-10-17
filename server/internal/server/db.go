@@ -249,6 +249,102 @@ func (s *Server) prune(ctx context.Context) error {
 
 const orphanAfter = 24 * time.Hour
 
+// maxRetentionDays caps the retention setting at about ten years.
+const maxRetentionDays = 3650
+
+// retentionDays is the community's message retention; 0 keeps forever.
+func retentionDays(ctx context.Context, q queryer) (int32, error) {
+	var d int32
+	err := q.QueryRowContext(ctx, "SELECT COALESCE((SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'retention_days'), 0)").Scan(&d)
+	return d, err
+}
+
+// retentionCutoff is the created_at_ms below which messages are gone; 0 = keep all.
+func (s *Server) retentionCutoff(ctx context.Context, q queryer) (int64, error) {
+	d, err := retentionDays(ctx, q)
+	if err != nil || d <= 0 {
+		return 0, err
+	}
+	return s.now().Add(-time.Duration(d) * 24 * time.Hour).UnixMilli(), nil
+}
+
+const pruneBatch = 500
+
+var prunePause = 50 * time.Millisecond
+
+// pruneMessages deletes what the retention setting expires: top-level
+// messages older than the cutoff with all their thread replies, reactions and
+// files, plus old events (they hold message text too). The messages_ad
+// trigger drops the search rows. Each batch of pruneBatch roots is its own
+// short write tx with a pause after it, so chat writes get the writer between
+// batches. Clients get no per-message events; they hide messages older than
+// the cutoff from GetServerInfo.retention_days.
+func (s *Server) pruneMessages(ctx context.Context) error {
+	for {
+		cutoff, err := s.retentionCutoff(ctx, s.db.r)
+		if err != nil || cutoff == 0 {
+			return err
+		}
+		var files []string
+		var msgs, evs int64
+		err = s.writeTx(ctx, func(t *wtx) error {
+			var ids string // JSON array of the roots and their replies
+			err := t.QueryRowContext(ctx, `WITH r AS (SELECT id FROM messages WHERE thread_root_id = '' AND created_at_ms < ? ORDER BY created_at_ms LIMIT ?)
+				SELECT json_group_array(id) FROM (SELECT id FROM r UNION ALL SELECT id FROM messages WHERE thread_root_id IN (SELECT id FROM r))`,
+				cutoff, pruneBatch).Scan(&ids)
+			if err != nil {
+				return err
+			}
+			if _, err := t.ExecContext(ctx, "DELETE FROM reactions WHERE message_id IN (SELECT value FROM json_each(?))", ids); err != nil {
+				return err
+			}
+			rows, err := t.QueryContext(ctx, "DELETE FROM attachments WHERE message_id IN (SELECT value FROM json_each(?)) RETURNING id", ids)
+			if err != nil {
+				return err
+			}
+			for rows.Next() {
+				var id string
+				if err := rows.Scan(&id); err != nil {
+					rows.Close()
+					return err
+				}
+				files = append(files, id)
+			}
+			rows.Close()
+			if err := rows.Err(); err != nil {
+				return err
+			}
+			res, err := t.ExecContext(ctx, "DELETE FROM messages WHERE id IN (SELECT value FROM json_each(?))", ids)
+			if err != nil {
+				return err
+			}
+			msgs, _ = res.RowsAffected()
+			res, err = t.ExecContext(ctx, "DELETE FROM events WHERE seq IN (SELECT seq FROM events WHERE at_ms < ? ORDER BY seq LIMIT ?)", cutoff, pruneBatch)
+			if err != nil {
+				return err
+			}
+			evs, _ = res.RowsAffected()
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		for _, id := range files {
+			os.Remove(filepath.Join(s.filesDir, id))
+		}
+		if msgs < pruneBatch && evs < pruneBatch {
+			return nil
+		}
+		select {
+		case <-time.After(prunePause):
+		case <-s.stop:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
 // newID returns a UUIDv7: 48-bit unix ms, version 7, variant 10, random rest.
 func newID(now time.Time) string {
 	var b [16]byte

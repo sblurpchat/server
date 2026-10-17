@@ -153,6 +153,11 @@ message GetServerInfoResponse {
   // and send the answers in JoinRequest.answers, in the same order.
   repeated string join_questions = 10;
   Attachment banner = 11;              // optional image above the name in the sidebar
+  // Message retention. 0 = keep forever. Otherwise the server deletes
+  // messages (with their thread replies, reactions and files) older than this
+  // many days, and ListMessages stops returning them. Clients hide loaded
+  // messages older than now minus this many days; no per-message events.
+  int32 retention_days = 12;
 }
 
 // ---------------------------------------------------------------------------
@@ -486,6 +491,7 @@ message UpdateServerSettingsRequest {
   optional string description = 3;    // Markdown; "" falls back to the server's -description
   optional string banner_id = 4;      // an uploaded image's id (POST /upload); "" removes it
   optional string icon_id = 5;        // rail icon, an uploaded image's id; "" falls back to -icon-url
+  optional int32 retention_days = 6;  // 0 = keep forever, else 1 to 3650
 }
 message UpdateServerSettingsResponse {
   bool invite_only = 1;
@@ -493,6 +499,7 @@ message UpdateServerSettingsResponse {
   string description = 3;
   Attachment banner = 4;
   string icon_url = 5;
+  int32 retention_days = 6;
 }
 
 // Roles (admins only, except that everyone sees them in GetState).

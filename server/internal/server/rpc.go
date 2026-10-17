@@ -458,6 +458,10 @@ func (s *Server) GetServerInfo(ctx context.Context, _ *connect.Request[v1.GetSer
 	if err != nil {
 		return nil, err
 	}
+	days, err := retentionDays(ctx, s.db.r)
+	if err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&v1.GetServerInfoResponse{
 		Name:            s.cfg.Name,
 		Description:     desc,
@@ -470,6 +474,7 @@ func (s *Server) GetServerInfo(ctx context.Context, _ *connect.Request[v1.GetSer
 		AccentColor:     s.cfg.Accent,
 		InviteOnly:      inviteOnly,
 		JoinQuestions:   s.joinQuestions(),
+		RetentionDays:   days,
 	}), nil
 }
 
@@ -1097,6 +1102,11 @@ func (s *Server) ListMessages(ctx context.Context, req *connect.Request[v1.ListM
 			return nil, err
 		}
 	}
+	// Expired messages the prune has not reached yet are already gone.
+	cutoff, err := s.retentionCutoff(ctx, s.db.r)
+	if err != nil {
+		return nil, err
+	}
 	// page returns up to n messages on one side of seq, nearest first, and
 	// whether there are more.
 	page := func(op string, seq int64, n int) ([]*v1.Message, bool, error) {
@@ -1104,8 +1114,8 @@ func (s *Server) ListMessages(ctx context.Context, req *connect.Request[v1.ListM
 		if op == "<" {
 			order = "DESC"
 		}
-		ms, err := queryMessages(ctx, s.db.r, `channel_id = ? AND thread_root_id = ? AND created_seq `+op+` ? AND (deleted = 0 OR reply_count > 0)
-			ORDER BY created_seq `+order+` LIMIT ?`, r.ChannelId, r.ThreadRootId, seq, n+1)
+		ms, err := queryMessages(ctx, s.db.r, `channel_id = ? AND thread_root_id = ? AND created_seq `+op+` ? AND (deleted = 0 OR reply_count > 0) AND created_at_ms >= ?
+			ORDER BY created_seq `+order+` LIMIT ?`, r.ChannelId, r.ThreadRootId, seq, cutoff, n+1)
 		if len(ms) > n {
 			return ms[:n], true, err
 		}
@@ -1113,7 +1123,6 @@ func (s *Server) ListMessages(ctx context.Context, req *connect.Request[v1.ListM
 	}
 	out := &v1.ListMessagesResponse{}
 	var older, newer []*v1.Message
-	var err error
 	switch field {
 	case "after_id":
 		newer, out.HasMoreAfter, err = page(">", at, limit)
@@ -2028,6 +2037,9 @@ func (s *Server) UpdateServerSettings(ctx context.Context, req *connect.Request[
 			return nil, err
 		}
 	}
+	if r.RetentionDays != nil && (*r.RetentionDays < 0 || *r.RetentionDays > maxRetentionDays) {
+		return nil, errf(connect.CodeInvalidArgument, "retention_days must be 0 (keep forever) to %d", maxRetentionDays)
+	}
 	out := &v1.UpdateServerSettingsResponse{}
 	err := s.writeTx(ctx, func(t *wtx) error {
 		profile := map[string]*string{"description": r.Description, "banner": r.BannerId, "icon": r.IconId}
@@ -2045,6 +2057,12 @@ func (s *Server) UpdateServerSettings(ctx context.Context, req *connect.Request[
 				continue
 			}
 			if _, err := t.ExecContext(ctx, "INSERT INTO settings(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", key, strings.TrimSpace(*v)); err != nil {
+				return err
+			}
+			changed = true
+		}
+		if r.RetentionDays != nil {
+			if _, err := t.ExecContext(ctx, "INSERT INTO settings(key, value) VALUES ('retention_days', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", *r.RetentionDays); err != nil {
 				return err
 			}
 			changed = true
@@ -2080,13 +2098,16 @@ func (s *Server) UpdateServerSettings(ctx context.Context, req *connect.Request[
 		if out.ChannelMode, err = channelMode(ctx, t); err != nil {
 			return err
 		}
+		if out.RetentionDays, err = retentionDays(ctx, t); err != nil {
+			return err
+		}
 		out.InviteOnly, err = isInviteOnly(ctx, t)
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
-	s.log.Info("settings updated", "by", me(ctx).Id, "invite_only", out.InviteOnly, "channel_mode", out.ChannelMode.String())
+	s.log.Info("settings updated", "by", me(ctx).Id, "invite_only", out.InviteOnly, "channel_mode", out.ChannelMode.String(), "retention_days", out.RetentionDays)
 	return connect.NewResponse(out), nil
 }
 

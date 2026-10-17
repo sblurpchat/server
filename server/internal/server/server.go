@@ -159,6 +159,9 @@ func (s *Server) pruneLoop() {
 	t := time.NewTicker(time.Hour)
 	defer t.Stop()
 	for {
+		if err := s.pruneMessages(context.Background()); err != nil {
+			s.log.Error("prune messages", "err", err)
+		}
 		select {
 		case <-s.stop:
 			return

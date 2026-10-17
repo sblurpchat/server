@@ -1104,6 +1104,11 @@ type GetServerInfoResponse struct {
 	// and send the answers in JoinRequest.answers, in the same order.
 	JoinQuestions []string    `protobuf:"bytes,10,rep,name=join_questions,json=joinQuestions,proto3" json:"join_questions,omitempty"`
 	Banner        *Attachment `protobuf:"bytes,11,opt,name=banner,proto3" json:"banner,omitempty"` // optional image above the name in the sidebar
+	// Message retention. 0 = keep forever. Otherwise the server deletes
+	// messages (with their thread replies, reactions and files) older than this
+	// many days, and ListMessages stops returning them. Clients hide loaded
+	// messages older than now minus this many days; no per-message events.
+	RetentionDays int32 `protobuf:"varint,12,opt,name=retention_days,json=retentionDays,proto3" json:"retention_days,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1213,6 +1218,13 @@ func (x *GetServerInfoResponse) GetBanner() *Attachment {
 		return x.Banner
 	}
 	return nil
+}
+
+func (x *GetServerInfoResponse) GetRetentionDays() int32 {
+	if x != nil {
+		return x.RetentionDays
+	}
+	return 0
 }
 
 type JoinRequest struct {
@@ -4926,6 +4938,7 @@ type UpdateServerSettingsRequest struct {
 	Description   *string                `protobuf:"bytes,3,opt,name=description,proto3,oneof" json:"description,omitempty"`                                          // Markdown; "" falls back to the server's -description
 	BannerId      *string                `protobuf:"bytes,4,opt,name=banner_id,json=bannerId,proto3,oneof" json:"banner_id,omitempty"`                                // an uploaded image's id (POST /upload); "" removes it
 	IconId        *string                `protobuf:"bytes,5,opt,name=icon_id,json=iconId,proto3,oneof" json:"icon_id,omitempty"`                                      // rail icon, an uploaded image's id; "" falls back to -icon-url
+	RetentionDays *int32                 `protobuf:"varint,6,opt,name=retention_days,json=retentionDays,proto3,oneof" json:"retention_days,omitempty"`                // 0 = keep forever, else 1 to 3650
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4995,6 +5008,13 @@ func (x *UpdateServerSettingsRequest) GetIconId() string {
 	return ""
 }
 
+func (x *UpdateServerSettingsRequest) GetRetentionDays() int32 {
+	if x != nil && x.RetentionDays != nil {
+		return *x.RetentionDays
+	}
+	return 0
+}
+
 type UpdateServerSettingsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	InviteOnly    bool                   `protobuf:"varint,1,opt,name=invite_only,json=inviteOnly,proto3" json:"invite_only,omitempty"`
@@ -5002,6 +5022,7 @@ type UpdateServerSettingsResponse struct {
 	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
 	Banner        *Attachment            `protobuf:"bytes,4,opt,name=banner,proto3" json:"banner,omitempty"`
 	IconUrl       string                 `protobuf:"bytes,5,opt,name=icon_url,json=iconUrl,proto3" json:"icon_url,omitempty"`
+	RetentionDays int32                  `protobuf:"varint,6,opt,name=retention_days,json=retentionDays,proto3" json:"retention_days,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5069,6 +5090,13 @@ func (x *UpdateServerSettingsResponse) GetIconUrl() string {
 		return x.IconUrl
 	}
 	return ""
+}
+
+func (x *UpdateServerSettingsResponse) GetRetentionDays() int32 {
+	if x != nil {
+		return x.RetentionDays
+	}
+	return 0
 }
 
 type CreateRoleRequest struct {
@@ -6203,7 +6231,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\rlast_read_seq\x18\x02 \x01(\x03R\vlastReadSeq\x12!\n" +
 	"\funread_count\x18\x03 \x01(\x05R\vunreadCount\x12#\n" +
 	"\rmention_count\x18\x04 \x01(\x05R\fmentionCount\"\x16\n" +
-	"\x14GetServerInfoRequest\"\x94\x03\n" +
+	"\x14GetServerInfoRequest\"\xbb\x03\n" +
 	"\x15GetServerInfoResponse\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x19\n" +
@@ -6217,7 +6245,8 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"inviteOnly\x12%\n" +
 	"\x0ejoin_questions\x18\n" +
 	" \x03(\tR\rjoinQuestions\x12-\n" +
-	"\x06banner\x18\v \x01(\v2\x15.sblurp.v1.AttachmentR\x06banner\"\x9c\x01\n" +
+	"\x06banner\x18\v \x01(\v2\x15.sblurp.v1.AttachmentR\x06banner\x12%\n" +
+	"\x0eretention_days\x18\f \x01(\x05R\rretentionDays\"\x9c\x01\n" +
 	"\vJoinRequest\x12!\n" +
 	"\fdisplay_name\x18\x01 \x01(\tR\vdisplayName\x12\x1d\n" +
 	"\n" +
@@ -6458,27 +6487,30 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\ainvites\x18\x01 \x03(\v2\x11.sblurp.v1.InviteR\ainvites\")\n" +
 	"\x13RevokeInviteRequest\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\"\x16\n" +
-	"\x14RevokeInviteResponse\"\x9f\x02\n" +
+	"\x14RevokeInviteResponse\"\xde\x02\n" +
 	"\x1bUpdateServerSettingsRequest\x12$\n" +
 	"\vinvite_only\x18\x01 \x01(\bH\x00R\n" +
 	"inviteOnly\x88\x01\x01\x129\n" +
 	"\fchannel_mode\x18\x02 \x01(\x0e2\x16.sblurp.v1.ChannelModeR\vchannelMode\x12%\n" +
 	"\vdescription\x18\x03 \x01(\tH\x01R\vdescription\x88\x01\x01\x12 \n" +
 	"\tbanner_id\x18\x04 \x01(\tH\x02R\bbannerId\x88\x01\x01\x12\x1c\n" +
-	"\aicon_id\x18\x05 \x01(\tH\x03R\x06iconId\x88\x01\x01B\x0e\n" +
+	"\aicon_id\x18\x05 \x01(\tH\x03R\x06iconId\x88\x01\x01\x12*\n" +
+	"\x0eretention_days\x18\x06 \x01(\x05H\x04R\rretentionDays\x88\x01\x01B\x0e\n" +
 	"\f_invite_onlyB\x0e\n" +
 	"\f_descriptionB\f\n" +
 	"\n" +
 	"_banner_idB\n" +
 	"\n" +
-	"\b_icon_id\"\xe6\x01\n" +
+	"\b_icon_idB\x11\n" +
+	"\x0f_retention_days\"\x8d\x02\n" +
 	"\x1cUpdateServerSettingsResponse\x12\x1f\n" +
 	"\vinvite_only\x18\x01 \x01(\bR\n" +
 	"inviteOnly\x129\n" +
 	"\fchannel_mode\x18\x02 \x01(\x0e2\x16.sblurp.v1.ChannelModeR\vchannelMode\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12-\n" +
 	"\x06banner\x18\x04 \x01(\v2\x15.sblurp.v1.AttachmentR\x06banner\x12\x19\n" +
-	"\bicon_url\x18\x05 \x01(\tR\aiconUrl\"=\n" +
+	"\bicon_url\x18\x05 \x01(\tR\aiconUrl\x12%\n" +
+	"\x0eretention_days\x18\x06 \x01(\x05R\rretentionDays\"=\n" +
 	"\x11CreateRoleRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05color\x18\x02 \x01(\tR\x05color\"9\n" +
