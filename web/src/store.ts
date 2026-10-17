@@ -670,6 +670,8 @@ export async function search(url: string, q: string) {
 // Communities
 // ---------------------------------------------------------------------------
 
+export const getMe = (url: string) => api(url).server.getMe({});
+
 export async function probe(url: string): Promise<GetServerInfoResponse> {
   return api(url).server.getServerInfo({}, { timeoutMs: 8000 });
 }

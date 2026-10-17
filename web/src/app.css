@@ -3110,6 +3110,35 @@ li.sw-empty {
 .cs-panel h3 {
   margin: 8px 0 0;
 }
+.server-version {
+  animation: fade-in 150ms ease-out;
+}
+.server-version p {
+  margin: 0;
+}
+.update-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--selected);
+  color: var(--text);
+}
+.update-note > .icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--raspberry);
+}
+.update-note a {
+  color: inherit; /* raspberry on the --selected tint is under 4.5:1 in dark themes */
+  font-weight: 600;
+  white-space: nowrap;
+}
+.update-note a .icon {
+  display: inline;
+  vertical-align: -2px;
+}
 @media (max-width: 640px) {
   .cs-body {
     grid-template-columns: minmax(0, 1fr);

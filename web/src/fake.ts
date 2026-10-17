@@ -755,7 +755,9 @@ function service(f: Fake) {
       },
       getMe() {
         need();
-        return { member: me() };
+        // 1038: version fields go to admins and the owner only, like the server.
+        if (me().role < MemberRole.ADMIN) return { member: me() };
+        return { member: me(), serverVersion: "0.7.2", serverTrack: "stable", updateAvailable: "0.7.3" };
       },
       updateProfile(req: Partial<Member>) {
         need();

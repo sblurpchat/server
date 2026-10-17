@@ -1,6 +1,6 @@
 // Admin screens: create and edit channels, and community settings (members, invites, bots).
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Ban, type Channel, type Invite, type Member, type Role } from "./gen/sblurp/v1/sblurp_pb";
+import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Ban, type Channel, type GetMeResponse, type Invite, type Member, type Role } from "./gen/sblurp/v1/sblurp_pb";
 import { BANNER_TYPES, bannerFileError, banDetail, channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, reorderChannel, sidebarSections } from "./logic";
 import {
   absUrl,
@@ -18,6 +18,7 @@ import {
   createInvite,
   deleteBot,
   errorText,
+  getMe,
   listBans,
   listBots,
   listInvites,
@@ -286,7 +287,37 @@ function AboutTab({ url }: { url: string }) {
           </button>
         </div>
       </form>
+      <ServerVersion url={url} />
     </div>
+  );
+}
+
+/** Version and update track, for admins and the owner (1038). The server leaves them empty for others. */
+function ServerVersion({ url }: { url: string }) {
+  const [me, setMe] = useState<GetMeResponse>();
+  useEffect(() => {
+    getMe(url).then(setMe, () => {});
+  }, [url]);
+  if (!me?.serverVersion) return null;
+  return (
+    <section className="field server-version">
+      <b>Server</b>
+      <p className="muted">
+        Version {me.serverVersion}
+        {me.serverTrack && ` on the ${me.serverTrack} track`}
+      </p>
+      {me.updateAvailable && (
+        <p className="update-note">
+          <Icon name="info" size={16} />
+          <span>
+            Update available: v{me.updateAvailable}.{" "}
+            <a href="https://sblurp.chat/docs/self-host" target="_blank" rel="noreferrer">
+              How to update <Icon name="external" size={14} />
+            </a>
+          </span>
+        </p>
+      )}
+    </section>
   );
 }
 

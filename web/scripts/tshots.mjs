@@ -21,6 +21,14 @@ const shots = {
   code: () => jump(globalThis.page, "self-hosting"),
   // Scrollbars: idle (hidden) and with the pointer over the message list (thin thumb).
   scroll: () => jump(globalThis.page, "general"),
+  // Community settings > About: server version and update note (1038).
+  about: async (p) => {
+    if (p.viewportSize().width < 768) await p.getByRole("button", { name: "Open communities and channels" }).click();
+    await p.locator(".side-head").click();
+    await p.getByRole("menuitem", { name: "Community settings" }).click();
+    await p.getByRole("tab", { name: "About" }).click();
+    await p.locator(".update-note").scrollIntoViewIfNeeded();
+  },
   scrollhover: async (p) => {
     await jump(p, "general");
     await p.locator(".scroller").hover();

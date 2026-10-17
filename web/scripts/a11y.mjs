@@ -35,6 +35,11 @@ const views = {
     await views.admin(p);
     await p.getByRole("tab", { name: "Roles" }).click();
   },
+  about: async (p) => {
+    await views.admin(p);
+    await p.getByRole("tab", { name: "About" }).click();
+    await p.locator(".update-note").waitFor();
+  },
   access: async (p) => {
     await views.admin(p);
     await p.getByRole("tab", { name: "Channels" }).click();
