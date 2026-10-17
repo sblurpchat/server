@@ -1,7 +1,7 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { ChannelDialog, CommunitySettings, Invites, PERMISSION, RoleChips } from "./Admin";
-import { ChannelView, PeoplePicker, RightPane } from "./Chat";
+import { ChannelView, openProfile, PeoplePicker, RightPane } from "./Chat";
 import { create } from "@bufbuild/protobuf";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, MemberSchema, type Channel, type GetServerInfoResponse, type Member } from "./gen/sblurp/v1/sblurp_pb";
 import {
@@ -27,6 +27,7 @@ import {
   type Theme,
   sentence,
   listStep,
+  cssUrl,
 } from "./logic";
 import {
   absUrl,
@@ -61,7 +62,7 @@ import {
   leaveChannel,
   peekChannel,
 } from "./store";
-import { Avatar, CommunityIcon, Dialog, EmojiPicker, emojiChar, Icon, Pop, Resizer } from "./ui";
+import { Avatar, CommunityIcon, Dialog, EmojiPicker, emojiChar, Icon, Markdown, Pop, Resizer, useClamped } from "./ui";
 
 export function App() {
   const auth = useApp((s) => s.auth);
@@ -324,6 +325,25 @@ function Rail() {
 // Sidebar
 // ---------------------------------------------------------------------------
 
+/** The community description under its name: three lines, then "Show more". */
+function SideAbout({ c, text }: { c: Community; text: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const cut = useClamped(ref, text);
+  return (
+    <div className="side-about">
+      <div ref={ref} id="side-about-text" className="side-about-text msg-text" data-open={open}>
+        <Markdown text={text} members={c.members} meId={c.me?.id} onMention={(id, el) => openProfile(c.url, id, el)} />
+      </div>
+      {(cut || open) && (
+        <button className="link-btn" aria-expanded={open} aria-controls="side-about-text" onClick={() => setOpen(!open)}>
+          {open ? "Show less" : "Show more"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function Sidebar({ c }: { c: Community }) {
   const channelId = useApp((s) => s.channelId);
   const collapsed = useApp((s) => s.collapsed);
@@ -331,13 +351,21 @@ function Sidebar({ c }: { c: Community }) {
   const name = c.info?.name ?? hostOf(c.url);
   const sections = useMemo(() => sidebarSections(c), [c.channels]); // eslint-disable-line react-hooks/exhaustive-deps
   const admin = (c.me?.role ?? 0) >= MemberRole.ADMIN;
+  const banner = absUrl(c.url, c.info?.bannerUrl ?? "");
   return (
     <aside className="sidebar" aria-label={name}>
       <Resizer panel="side" label="Resize sidebar" />
-      <button className="side-head" aria-haspopup="menu" onClick={(e) => setMenu(e.currentTarget.getBoundingClientRect())}>
+      <button
+        className="side-head"
+        aria-haspopup="menu"
+        data-banner={banner ? true : undefined}
+        style={banner ? ({ "--banner": cssUrl(banner) } as CSSProperties) : undefined}
+        onClick={(e) => setMenu(e.currentTarget.getBoundingClientRect())}
+      >
         <span className="truncate">{name}</span>
         <Icon name="chevron" size={18} />
       </button>
+      {c.info?.description && <SideAbout c={c} text={c.info.description} />}
       <Pop anchor={menu} onClose={() => setMenu(null)} className="menu" label={`${name} menu`}>
         <div role="menu" onClick={() => setMenu(null)}>
           <button role="menuitem" onClick={() => set({ modal: { t: "info" } })}>

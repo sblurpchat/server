@@ -803,6 +803,44 @@ kbd {
 .side-head .icon {
   color: var(--graphite);
 }
+/* Banner (1026): the image fades into the sidebar behind the name, so the name reads in every theme. */
+.side-head[data-banner] {
+  --veil: var(--frost);
+  align-items: flex-end;
+  height: 128px;
+  padding-bottom: 14px;
+  background:
+    linear-gradient(to bottom, transparent, color-mix(in srgb, var(--veil) 70%, transparent) 50%, color-mix(in srgb, var(--veil) 95%, transparent)),
+    var(--banner) center / cover no-repeat;
+  animation: fade-in 150ms ease-out;
+}
+.side-head[data-banner]:hover {
+  --veil: var(--hover);
+}
+.side-about {
+  flex: none;
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--graphite);
+  animation: fade-in 150ms ease-out;
+}
+.side-about-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.side-about-text[data-open="true"] {
+  display: block;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.side-about .link-btn {
+  margin: 4px 0 0;
+  font-size: 0.8125rem;
+}
 .side-scroll {
   flex: 1;
   overflow-y: auto;
@@ -1741,12 +1779,58 @@ li.sw-empty {
 .chan-title > .icon {
   color: var(--graphite);
 }
+/* Title and topic share a baseline (1027); the topic clamps to two lines. */
+.chan-id {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.chan-title > .truncate {
+  align-self: baseline;
+}
 .chan-topic {
   flex: 1;
+  min-width: 0;
   font-size: 0.875rem;
+  line-height: 1.35;
   color: var(--graphite);
   padding-left: 12px;
   border-left: 1px solid var(--line);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.chan-topic p + p,
+.chan-topic blockquote,
+.chan-topic pre {
+  margin: 0;
+}
+.topic-more {
+  flex: none;
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  margin-left: -8px;
+}
+.topic-pop {
+  max-width: min(480px, calc(100vw - 32px));
+  padding: 12px 14px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  animation: fade-in 150ms ease-out;
+}
+/* Header image: a veil of the page color keeps the title and topic readable in every theme. */
+.chan-head[data-img] {
+  --veil: color-mix(in srgb, var(--paper) 80%, transparent);
+  background:
+    linear-gradient(var(--veil), var(--veil)),
+    var(--head-img) center / cover no-repeat;
+}
+.chan-head[data-img] .chan-topic {
+  color: var(--text);
 }
 .chan-search {
   display: flex;
@@ -2743,7 +2827,8 @@ li.sw-empty {
     max-width: none;
     flex: 1;
   }
-  .chan-topic {
+  .chan-topic,
+  .topic-more {
     display: none;
   }
   .chan-search {
@@ -3273,4 +3358,18 @@ li.sw-empty {
 }
 .keys-list dd {
   margin: 0;
+}
+
+/* Banner and header image pickers (1026, 1027) */
+.image-preview {
+  width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  margin: 4px 0;
+  animation: fade-in 150ms ease-out;
+}
+.image-field .row {
+  margin-top: 6px;
 }

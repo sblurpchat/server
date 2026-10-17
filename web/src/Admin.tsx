@@ -1,8 +1,11 @@
 // Admin screens: create and edit channels, and community settings (members, invites, bots).
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Ban, type Channel, type Invite, type Member, type Role } from "./gen/sblurp/v1/sblurp_pb";
-import { banDetail, channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, reorderChannel, sidebarSections } from "./logic";
+import { BANNER_TYPES, bannerFileError, banDetail, channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, reorderChannel, sidebarSections } from "./logic";
 import {
+  absUrl,
+  setCommunityProfile,
+  upload,
   browseChannels,
   createBot,
   createChannel,
@@ -117,8 +120,17 @@ export function ChannelDialog({ id, category = "" }: { id?: string; category?: s
         </label>
         <label className="field">
           <b>Topic</b>
-          <input className="input" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="What this channel is for" />
+          <textarea className="input textarea" rows={3} maxLength={500} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="What this channel is for" />
+          <small className="muted">Markdown works. The header shows two lines; people can open the rest.</small>
         </label>
+        {ch && (
+          <ImageField
+            label="Header image"
+            hint="Shown faintly behind the channel name and topic. PNG, JPEG, GIF, WebP or AVIF, up to 8 MB."
+            src={absUrl(c.url, ch.headerImage?.url ?? "")}
+            onChange={(id) => updateChannel(c.url, { channelId: ch.id, headerImageId: id })}
+          />
+        )}
         <label className="field">
           <b>Category</b>
           <input className="input" list="chan-cats" value={cat} onChange={(e) => setCat(e.target.value)} placeholder="None" />
@@ -173,6 +185,111 @@ export function ChannelDialog({ id, category = "" }: { id?: string; category?: s
   );
 }
 
+/** Uploads a banner or header image and applies it at once; "" removes it. Checked like the server checks it. */
+function ImageField({ label, hint, src, onChange }: { label: string; hint: string; src: string; onChange: (id: string) => Promise<void> }) {
+  const c = useApp((s) => s.cs[s.url]);
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const run = async (f: () => Promise<void>) => {
+    setBusy(true);
+    setErr("");
+    try {
+      await f();
+    } catch (x) {
+      setErr(errorText(x, c?.info?.name));
+    }
+    setBusy(false);
+  };
+  const pick = (file?: File) => {
+    if (!file || !c) return;
+    const bad = bannerFileError(file);
+    if (bad) return setErr(bad);
+    void run(async () => onChange((await upload(c.url, file)).id));
+  };
+  return (
+    <div className="field image-field">
+      <b>{label}</b>
+      {src && <img className="image-preview" src={src} alt={`Current ${label.toLowerCase()}`} />}
+      <small className="muted">{hint}</small>
+      <span className="row">
+        <button type="button" className="btn small" disabled={busy} onClick={() => input.current?.click()}>
+          <Icon name="image" size={16} /> {busy ? "Saving..." : src ? "Replace" : "Upload image"}
+        </button>
+        {src && (
+          <button type="button" className="btn small ghost" disabled={busy} onClick={() => run(() => onChange(""))}>
+            Remove
+          </button>
+        )}
+      </span>
+      <input
+        ref={input}
+        type="file"
+        hidden
+        aria-label={`${label} file`}
+        accept={BANNER_TYPES.join(",")}
+        onChange={(e) => {
+          pick(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
+      {err && (
+        <p className="error" role="alert">
+          {err}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Banner and Markdown description, shown at the top of everyone's sidebar (1026). */
+function AboutTab({ url }: { url: string }) {
+  const c = useApp((s) => s.cs[url]);
+  const saved = c?.info?.description ?? "";
+  const [desc, setDesc] = useState(saved);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  if (!c) return null;
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr("");
+    try {
+      await setCommunityProfile(url, { description: desc.trim() });
+    } catch (x) {
+      setErr(errorText(x, c.info?.name));
+    }
+    setBusy(false);
+  };
+  return (
+    <div className="stack">
+      <ImageField
+        label="Banner"
+        hint="Shown behind the community name in everyone's sidebar. Wide images work best. PNG, JPEG, GIF, WebP or AVIF, up to 8 MB."
+        src={absUrl(url, c.info?.bannerUrl ?? "")}
+        onChange={(id) => setCommunityProfile(url, { bannerId: id })}
+      />
+      <form className="field" onSubmit={submit}>
+        <label htmlFor="about-desc">
+          <b>Description</b>
+        </label>
+        <textarea id="about-desc" className="input textarea" rows={5} maxLength={2000} value={desc} onChange={(e) => setDesc(e.target.value)} />
+        <small className="muted">Markdown works: **bold**, _italic_, `code` and [links](https://example.com). Shown under the name in everyone's sidebar.</small>
+        {err && (
+          <p className="error" role="alert">
+            {err}
+          </p>
+        )}
+        <div className="row-end">
+          <button className="btn primary" disabled={busy || desc.trim() === saved}>
+            Save description
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Community settings
 // ---------------------------------------------------------------------------
@@ -184,6 +301,7 @@ const TABS = [
   ["invites", "Invites"],
   ["bans", "Bans"],
   ["bots", "Bots"],
+  ["about", "About"],
 ] as const;
 export type SettingsTab = (typeof TABS)[number][0];
 
@@ -227,6 +345,7 @@ export function CommunitySettings({ tab = "members" }: { tab?: SettingsTab }) {
           {tab === "invites" && <Invites url={c.url} inviteOnly={!!c.info?.inviteOnly} />}
           {tab === "bans" && <BansTab url={c.url} />}
           {tab === "bots" && <BotsTab url={c.url} />}
+          {tab === "about" && <AboutTab url={c.url} />}
         </div>
       </div>
     </Dialog>

@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type FormEvent, type KeyboardEvent } from "react";
 import { useCountdown } from "./App";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
 import {
@@ -20,6 +20,7 @@ import {
   typingLabel,
   reactorsLabel,
   type Community,
+  cssUrl,
   count,
   communityBadge,
   messageHash,
@@ -52,11 +53,34 @@ import {
   joinChannel,
   leaveChannel,
 } from "./store";
-import { Avatar, Dialog, EMOJI, EmojiPicker, emojiChar, Icon, Markdown, Pop, Resizer } from "./ui";
+import { Avatar, Dialog, EMOJI, EmojiPicker, emojiChar, Icon, Markdown, Pop, Resizer, useClamped } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
-const openProfile = (url: string, memberId: string, el: HTMLElement) =>
+export const openProfile = (url: string, memberId: string, el: HTMLElement) =>
   set({ popover: { url, memberId, rect: el.getBoundingClientRect() } });
+
+/** A channel topic in Markdown, clamped to two lines; the button shows all of it. */
+function Topic({ c, topic, title }: { c: Community; topic: string; title: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const cut = useClamped(ref, topic);
+  const [full, setFull] = useState<DOMRect | null>(null);
+  const md = <Markdown text={topic} members={c.members} meId={c.me?.id} onMention={(id, el) => openProfile(c.url, id, el)} />;
+  return (
+    <>
+      <div ref={ref} className="chan-topic msg-text">
+        {md}
+      </div>
+      {cut && (
+        <button className="icon-btn topic-more" aria-label="Show full topic" title="Show full topic" onClick={(e) => setFull(e.currentTarget.getBoundingClientRect())}>
+          <Icon name="chevron" size={16} />
+        </button>
+      )}
+      <Pop anchor={full} onClose={() => setFull(null)} className="topic-pop" label={`#${title} topic`}>
+        <div className="topic-full msg-text">{md}</div>
+      </Pop>
+    </>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Channel view
@@ -92,10 +116,15 @@ export function ChannelView() {
   const title = channelLabel(ch, c.members, c.me?.id);
   const other = dm ? c.members[ch.memberIds.find((id) => id !== c.me?.id) ?? ""] : undefined;
   const canEdit = !dm && (c.me?.role ?? 0) >= MemberRole.ADMIN;
+  const headImg = absUrl(c.url, ch.headerImage?.url ?? "");
   const canLeave = joined && !dm && !ch.isDefault && ch.kind === ChannelKind.TEXT && c.mode === ChannelMode.OPT_IN;
   return (
     <section className="channel" aria-label={dm ? title : `#${title}`}>
-      <header className="chan-head">
+      <header
+        className="chan-head"
+        data-img={headImg ? true : undefined}
+        style={headImg ? ({ "--head-img": cssUrl(headImg) } as CSSProperties) : undefined}
+      >
         <button
           className="icon-btn only-mobile menu-btn"
           aria-label={elsewhere ? "Open communities and channels, unread messages" : "Open communities and channels"}
@@ -104,11 +133,13 @@ export function ChannelView() {
         >
           <Icon name="menu" />
         </button>
-        <h1 className="chan-title">
-          {dm ? <Avatar m={other} size={24} presence={ch.memberIds.length === 2} /> : <Icon name={ch.kind === 2 ? "lock" : "hash"} size={20} />}
-          <span className="truncate">{title}</span>
-        </h1>
-        {ch.topic && <p className="chan-topic truncate">{ch.topic}</p>}
+        <div className="chan-id">
+          <h1 className="chan-title">
+            {dm ? <Avatar m={other} size={24} presence={ch.memberIds.length === 2} /> : <Icon name={ch.kind === 2 ? "lock" : "hash"} size={20} />}
+            <span className="truncate">{title}</span>
+          </h1>
+          {ch.topic && <Topic c={c} topic={ch.topic} title={title} />}
+        </div>
         <form
           role="search"
           className="chan-search"
@@ -282,8 +313,13 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
                     : `This is the start of #${ch.name}. Say hello.`
                   : isDM(ch)
                     ? `This is the start of your conversation with ${channelLabel(ch, c.members, c.me?.id)}.`
-                    : `This is the start of #${ch.name}.${ch.topic ? ` ${ch.topic}` : ""}`}
+                    : `This is the start of #${ch.name}.`}
               </p>
+              {!empty && !isDM(ch) && ch.topic && (
+                <div className="muted msg-text chan-start-topic">
+                  <Markdown text={ch.topic} members={c.members} meId={c.me?.id} onMention={(id, el) => openProfile(c.url, id, el)} />
+                </div>
+              )}
             </div>
           ) : null}
           {rootId && root && (

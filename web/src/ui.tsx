@@ -36,6 +36,7 @@ const ICONS = {
   down: "M12 5v14M19 12l-7 7-7-7",
   check: "M20 6 9 17l-5-5",
   external: "M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6",
+  image: "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2H5a2 2 0 0 1 -2 -2V5a2 2 0 0 1 2 -2zM7 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0M21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21",
   retry: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5",
 };
 export type IconName = keyof typeof ICONS;
@@ -310,6 +311,21 @@ export function Markdown({
       )}
     </>
   );
+}
+
+/** Whether a line-clamped element cuts its content off; rechecks when it resizes or `dep` changes. */
+export function useClamped(ref: { current: HTMLElement | null }, dep: unknown) {
+  const [cut, setCut] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setCut(el.scrollHeight > el.clientHeight + 1);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref, dep]);
+  return cut;
 }
 
 // ---------------------------------------------------------------------------
