@@ -525,13 +525,11 @@ function SignIn() {
   const err = useApp((s) => s.authError);
   return (
     <div className="signin">
-      <div className="signin-rail" aria-hidden="true">
-        {["#3550F0", "#7B5CE6", "#D9822B", "#0F9D8A"].map((c, i) => (
-          <span key={c} className="cicon" data-on={i === 0} style={{ background: c }} />
-        ))}
-      </div>
       <div className="signin-body">
-        <h1 className="wordmark">Sblurp</h1>
+        <h1 className="wordmark">
+          <img src="/logo.png" alt="" />
+          Sblurp
+        </h1>
         <p className="signin-lede">Every community you belong to, in one window. Each runs its own server; your sign-in works in all of them.</p>
         <div className="signin-actions">
           <button className="btn primary big" onClick={() => signIn(false)}>

@@ -1819,29 +1819,29 @@ li.sw-empty {
 
 /* --------------------------------------------------------------- sign in */
 
+/* Signed out wears the marketing site's look (auth/cmd/auth/static/site.css):
+   Night pond in dark, Lily pad in light, following the system like the site does.
+   Scoped to .signin so the chat themes stay untouched. */
 .signin {
+  color-scheme: light dark;
+  --paper: light-dark(#f3faf2, #061209);
+  --ink: light-dark(#0d2414, #e3f6e5);
+  --text: var(--ink);
+  --graphite: light-dark(#4a6852, #8baa93);
+  --line: light-dark(#0d2414, #3c6b49);
+  --hover: light-dark(#e8f4e7, #11291a);
+  --accent-fill: #31c843;
+  --on-accent: #04210b;
+  --raspberry: #31c843;
+  --cherry-text: light-dark(#c62d3a, #e5484d);
   display: grid;
-  grid-template-columns: 72px 1fr;
   min-height: 100dvh;
   background: var(--paper);
+  color: var(--text);
 }
-.signin-rail {
-  background: var(--rail);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding-top: 12px;
-}
-.signin-rail .cicon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  opacity: 0.9;
-}
-.signin-rail .cicon[data-on="true"] {
-  border-radius: 16px;
-  opacity: 1;
+.signin .btn.primary:hover {
+  background: var(--accent-fill);
+  filter: brightness(1.08);
 }
 .signin-body {
   align-self: center;
@@ -1855,6 +1855,13 @@ li.sw-empty {
   line-height: 0.86;
   color: var(--ink);
   margin-left: -0.06em;
+  display: flex;
+  align-items: center;
+  gap: 0.12em;
+}
+.wordmark img {
+  width: 0.78em;
+  height: 0.78em;
 }
 .signin-lede {
   font-size: clamp(18px, 2vw, 22px);
@@ -3096,14 +3103,7 @@ li.sw-empty {
   .toolbar {
     right: 8px;
   }
-  /* On a phone the rail of sample icons read as real, unlabeled communities. */
-  .signin {
-    grid-template-columns: 1fr;
-  }
   .tip {
-    display: none;
-  }
-  .signin-rail {
     display: none;
   }
   .signin-body {
