@@ -1,7 +1,7 @@
 // Admin screens: create and edit channels, and community settings (members, invites, bots).
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Ban, type Channel, type GetMeResponse, type Invite, type Member, type Role } from "./gen/sblurp/v1/sblurp_pb";
-import { BANNER_TYPES, bannerFileError, banDetail, channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, reorderChannel, sidebarSections, squareCrop } from "./logic";
+import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Ban, type Channel, type GetMeResponse, type Invite, type Member, type Plugin, type Role } from "./gen/sblurp/v1/sblurp_pb";
+import { BANNER_TYPES, bannerFileError, banDetail, channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, pluginFormError, pluginNameFromFile, pluginStatus, tokenBots, reorderChannel, sidebarSections, squareCrop } from "./logic";
 import {
   absUrl,
   setCommunityProfile,
@@ -17,7 +17,11 @@ import {
   updateRole,
   createInvite,
   deleteBot,
+  deletePlugin,
   errorText,
+  installPlugin,
+  listPlugins,
+  setPluginEnabled,
   getMe,
   listBans,
   listBots,
@@ -652,14 +656,17 @@ function TokenOnce({ who, token, onDone }: { who: string; token: string; onDone:
 }
 
 function BotsTab({ url }: { url: string }) {
-  const [bots, setBots] = useState<Member[] | null>(null);
+  const [all, setBots] = useState<Member[] | null>(null);
+  const [plugins, setPlugins] = useState<Plugin[] | null>(null);
   const [token, setToken] = useState<{ who: string; token: string } | null>(null);
   const [form, setForm] = useState({ username: "", displayName: "", bio: "" });
   const [confirm, setConfirm] = useState("");
   const [err, setErr] = useState("");
+  const rev = useApp((s) => s.cs[url]?.pluginsRev ?? 0);
   const fail = (e: unknown) => setErr(errorText(e));
-  const load = () => listBots(url).then(setBots, fail);
-  useEffect(() => void load(), [url]);
+  const load = () => Promise.all([listBots(url).then(setBots), listPlugins(url).then(setPlugins)]).catch(fail);
+  useEffect(() => void load(), [url, rev]);
+  const bots = all && plugins ? tokenBots(all, plugins) : null;
   const make = async (e: FormEvent) => {
     e.preventDefault();
     setErr("");
@@ -674,18 +681,21 @@ function BotsTab({ url }: { url: string }) {
   };
   return (
     <div className="stack">
-      <p className="muted small">
-        A bot posts with a token, using the same API as this app. Run one with the example in the server README.
-      </p>
-      {token && <TokenOnce {...token} onDone={() => setToken(null)} />}
       {err && (
         <p className="error" role="alert">
           {err}
         </p>
       )}
-      {bots && !bots.length && <p className="muted small">No bots yet.</p>}
+      {plugins && <Plugins url={url} plugins={plugins} reload={load} />}
+      <h3>Token bots</h3>
+      <p className="muted small">
+        A token bot runs on your own computer and posts with a token, using the same API as this app. Run one with the example in the server
+        README.
+      </p>
+      {token && <TokenOnce {...token} onDone={() => setToken(null)} />}
+      {bots && !bots.length && <p className="muted small">No token bots yet.</p>}
       {!!bots?.length && (
-        <ul className="admin-list" aria-label="Bots">
+        <ul className="admin-list" aria-label="Token bots">
           {bots.map((b) => {
             const name = b.displayName || b.username;
             return (
@@ -732,7 +742,7 @@ function BotsTab({ url }: { url: string }) {
         </ul>
       )}
       <form className="bot-new stack" onSubmit={make}>
-        <h3>Add a bot</h3>
+        <h3>Add a token bot</h3>
         <div className="row-fields">
           <label className="field">
             <b>Username</b>
@@ -762,6 +772,149 @@ function BotsTab({ url }: { url: string }) {
         </div>
       </form>
     </div>
+  );
+}
+
+/** JavaScript plugins that run inside the server (1090). Each one is a bot named after its file. */
+function Plugins({ url, plugins, reload }: { url: string; plugins: Plugin[]; reload: () => Promise<unknown> }) {
+  const [err, setErr] = useState("");
+  const [name, setName] = useState("");
+  const [source, setSource] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [confirm, setConfirm] = useState("");
+  const file = useRef<HTMLInputElement>(null);
+  const formErr = pluginFormError(name, source);
+  const replaces = plugins.some((p) => p.name === name);
+  const pick = async (f?: File) => {
+    if (!f) return;
+    setSource(await f.text());
+    if (!name) setName(pluginNameFromFile(f.name));
+  };
+  const act = async (fn: () => Promise<unknown>) => {
+    setErr("");
+    setBusy(true);
+    try {
+      await fn();
+    } catch (x) {
+      setErr(errorText(x));
+    }
+    await reload();
+    setBusy(false);
+  };
+  const install = (e: FormEvent) => {
+    e.preventDefault();
+    void act(async () => {
+      await installPlugin(url, name, source);
+      setName("");
+      setSource("");
+      if (file.current) file.current.value = "";
+    });
+  };
+  return (
+    <section className="stack plugins">
+      <h3>Plugins</h3>
+      <p className="muted small">
+        A plugin is a JavaScript file that runs inside this server as a bot. It can answer commands, greet people and check who joins.{" "}
+        <a href="https://sblurp.chat/docs/plugins" target="_blank" rel="noreferrer">
+          How to write one <Icon name="external" size={14} />
+        </a>
+      </p>
+      {!plugins.length && <p className="muted small">No plugins yet.</p>}
+      {!!plugins.length && (
+        <ul className="admin-list" aria-label="Plugins">
+          {plugins.map((p) => {
+            const st = pluginStatus(p);
+            return (
+              <li key={p.name} className="plugin-row" data-confirm={confirm === p.name || undefined}>
+                <span className="plugin-icon" data-tone={st.tone}>
+                  <Icon name="puzzle" size={18} />
+                </span>
+                <span className="truncate">
+                  <b>{p.name}</b>
+                  <small className="plugin-status" data-tone={st.tone}>
+                    {st.label}
+                  </small>
+                  {p.error && p.enabled && <code className="plugin-error">{p.error}</code>}
+                </span>
+                {confirm === p.name ? (
+                  <span className="row">
+                    <button className="btn ghost small" onClick={() => setConfirm("")}>
+                      Keep
+                    </button>
+                    <button className="btn danger small" disabled={busy} onClick={() => act(() => deletePlugin(url, p.name)).then(() => setConfirm(""))}>
+                      Delete {p.name}
+                    </button>
+                  </span>
+                ) : (
+                  <span className="row">
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      className="switch"
+                      aria-label={`Run ${p.name}`}
+                      checked={p.enabled}
+                      disabled={busy}
+                      onChange={(e) => act(() => setPluginEnabled(url, p.name, e.target.checked))}
+                    />
+                    <button className="btn danger-ghost small" aria-label={`Delete ${p.name}`} onClick={() => setConfirm(p.name)}>
+                      <Icon name="trash" size={16} />
+                    </button>
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <form className="bot-new stack" onSubmit={install}>
+        <h3>Install a plugin</h3>
+        <div className="row-fields">
+          <label className="field">
+            <b>File</b>
+            <input ref={file} type="file" accept=".js,text/javascript" className="input plugin-file" onChange={(e) => pick(e.target.files?.[0])} />
+          </label>
+          <label className="field">
+            <b>Name</b>
+            <input
+              className="input"
+              value={name}
+              onChange={(e) => setName(e.target.value.trim().toLowerCase())}
+              placeholder="dice"
+              spellCheck={false}
+              autoCapitalize="off"
+            />
+          </label>
+        </div>
+        <label className="field">
+          <b>Source</b>
+          <textarea
+            className="input textarea plugin-source"
+            rows={6}
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            placeholder={'function onCommand(name, args) {\n  if (name === "hello") return "Hi!";\n}'}
+            spellCheck={false}
+          />
+        </label>
+        {replaces && (
+          <p className="update-note" style={{ animation: "fade-in 150ms ease-out" }}>
+            <Icon name="info" size={16} />
+            <span>This replaces the installed {name} plugin. If the new code does not load, the old one keeps running.</span>
+          </p>
+        )}
+        {err && (
+          <p className="error" role="alert" style={{ animation: "fade-in 150ms ease-out" }}>
+            {err}
+          </p>
+        )}
+        <div className="row-end">
+          {(name || source) && formErr && <small className="muted">{formErr}</small>}
+          <button className="btn primary" disabled={busy || !!formErr}>
+            <Icon name="upload" size={16} /> {replaces ? "Replace" : "Install"}
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }
 

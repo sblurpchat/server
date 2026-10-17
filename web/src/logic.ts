@@ -66,6 +66,8 @@ export interface Community {
   typing: Record<string, Record<string, number>>;
   /** client_ids of optimistic messages that failed to send. */
   failed: Record<string, true>;
+  /** Bumped by a plugins_changed event, so the admin plugin list reloads (1090). */
+  pluginsRev?: number;
 }
 
 export const emptyCommunity = (url: string, info?: Info): Community => ({
@@ -266,6 +268,9 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
       }
       return next;
     }
+    case "pluginsChanged":
+      next.pluginsRev = (c.pluginsRev ?? 0) + 1;
+      return next;
     default:
       return next; // heartbeat; resync is handled by the connection loop
   }
@@ -986,3 +991,40 @@ export const readDelay = (lastSentMs: number | undefined, nowMs: number, everyMs
 // when it was the last place touched and a thread is open there; otherwise the main channel.
 export const pasteTarget = (editable: boolean, hasFiles: boolean, last: "pane" | "channel" | null, threadOpen: boolean) =>
   editable || !hasFiles ? null : last === "pane" && threadOpen ? "pane" : "channel";
+
+// ---------------------------------------------------------------------------
+// Plugins (1090)
+// ---------------------------------------------------------------------------
+
+export const MAX_PLUGIN_BYTES = 256 * 1024;
+
+/** A plugin name from a file name: "Dice Roller.js" becomes "dice-roller". The server re-checks it. */
+export function pluginNameFromFile(file: string): string {
+  return file
+    .replace(/\.js$/i, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32);
+}
+
+/** Why the install form cannot be sent yet, or "" when it can. */
+export function pluginFormError(name: string, source: string): string {
+  if (!/^[a-z0-9_.-]{2,32}$/.test(name)) return "Names use 2 to 32 of a-z, 0-9, _, . and -.";
+  if (!source.trim()) return "Choose a .js file or paste the source.";
+  if (new TextEncoder().encode(source).length > MAX_PLUGIN_BYTES) return "The source is over 256 KB.";
+  return "";
+}
+
+/** The status line for a plugin row. */
+export function pluginStatus(p: { enabled: boolean; running: boolean; error: string }): { label: string; tone: "ok" | "off" | "bad" } {
+  if (!p.enabled) return { label: "Off", tone: "off" };
+  if (!p.running) return { label: "Did not load", tone: "bad" };
+  return p.error ? { label: "Running, with an error", tone: "bad" } : { label: "Running", tone: "ok" };
+}
+
+/** Bots created with a token, not by a plugin (a plugin's bot has the plugin's name). */
+export function tokenBots<B extends { username: string }>(bots: B[], plugins: { name: string }[]): B[] {
+  const names = new Set(plugins.map((p) => p.name));
+  return bots.filter((b) => !names.has(b.username));
+}

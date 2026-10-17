@@ -17,6 +17,8 @@ import {
   MemberRole,
   MemberSchema,
   MessageSchema,
+  PluginSchema,
+  type Plugin,
   Presence,
   ReactionSchema,
   ReadStateSchema,
@@ -355,6 +357,7 @@ interface Fake {
   roles: Role[];
   notIn: Set<string>; // OPT_IN: visible text channels I have not joined
   bans: Ban[];
+  plugins: Plugin[];
 }
 
 let nextId = 1;
@@ -395,6 +398,11 @@ function seed(s: Seed, now: number): Fake {
     roles: [],
     notIn: new Set(),
     bans: [],
+    plugins: [
+      create(PluginSchema, { name: "dice", enabled: true, running: true }),
+      create(PluginSchema, { name: "greeter", enabled: false }),
+      create(PluginSchema, { name: "verify", enabled: true, error: "SyntaxError: expecting ')' at verify.js:12" }),
+    ],
   };
   const byName = new Map<string, Member>();
   for (const [username, displayName, role, presence, bio, statusText = "", bot] of s.members) {
@@ -1011,6 +1019,30 @@ function service(f: Fake) {
         admin();
         f.members.delete(req.botId);
         emit(f, { case: "memberLeft", value: req.botId });
+        return {};
+      },
+      listPlugins() {
+        admin();
+        return { plugins: f.plugins };
+      },
+      installPlugin(req: { name: string; source: string }) {
+        admin();
+        if (/^\s*function \(/.test(req.source)) throw new ConnectError("plugin did not load: SyntaxError: unexpected token", Code.InvalidArgument);
+        const p = create(PluginSchema, { name: req.name, enabled: true, running: true, botId: id("m") });
+        f.plugins = [...f.plugins.filter((x) => x.name !== req.name), p].sort((a, b) => a.name.localeCompare(b.name));
+        emit(f, { case: "pluginsChanged", value: true });
+        return { plugin: p };
+      },
+      setPluginEnabled(req: { name: string; enabled: boolean }) {
+        admin();
+        f.plugins = f.plugins.map((p) => (p.name === req.name ? { ...p, enabled: req.enabled, running: req.enabled && !p.error.startsWith("SyntaxError") } : p));
+        emit(f, { case: "pluginsChanged", value: true });
+        return { plugin: f.plugins.find((p) => p.name === req.name) };
+      },
+      deletePlugin(req: { name: string }) {
+        admin();
+        f.plugins = f.plugins.filter((p) => p.name !== req.name);
+        emit(f, { case: "pluginsChanged", value: true });
         return {};
       },
     },

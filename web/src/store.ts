@@ -666,6 +666,10 @@ export const createBot = (url: string, req: { username: string; displayName: str
 export const listBots = async (url: string) => (await api(url).bot.listBots({})).bots;
 export const rotateBotToken = async (url: string, botId: string) => (await api(url).bot.rotateBotToken({ botId })).token;
 export const deleteBot = (url: string, botId: string) => api(url).bot.deleteBot({ botId });
+export const listPlugins = async (url: string) => (await api(url).bot.listPlugins({})).plugins;
+export const installPlugin = (url: string, name: string, source: string) => api(url).bot.installPlugin({ name, source });
+export const setPluginEnabled = (url: string, name: string, enabled: boolean) => api(url).bot.setPluginEnabled({ name, enabled });
+export const deletePlugin = (url: string, name: string) => api(url).bot.deletePlugin({ name });
 
 export async function addToChannel(url: string, channelId: string, memberIds: string[]) {
   const r = await api(url).chat.addChannelMembers({ channelId, memberIds });

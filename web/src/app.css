@@ -510,6 +510,7 @@ kbd {
 }
 .switch::before {
   content: "";
+  transition: left 150ms ease-out;
   position: absolute;
   top: 3px;
   left: 3px;
@@ -3256,6 +3257,72 @@ li.sw-empty {
 .token-once .copy-row {
   margin: 0;
   width: 100%;
+}
+
+/* Plugins (1090) */
+.plugins {
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.plugin-row {
+  animation: fade-in 150ms ease-out;
+}
+.plugin-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--frost);
+  color: var(--graphite);
+  transition: color 150ms ease-out;
+}
+.plugin-icon[data-tone="ok"] {
+  color: var(--online);
+}
+.plugin-icon[data-tone="bad"] {
+  color: var(--cherry-text);
+}
+.plugin-status {
+  color: var(--graphite);
+}
+.plugin-status[data-tone="bad"] {
+  color: var(--cherry-text);
+}
+.plugin-error {
+  font: 0.75rem var(--mono);
+  color: var(--graphite);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* Delete confirm buttons go on their own line under the name. */
+.plugin-row[data-confirm] {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.plugin-row[data-confirm] > .truncate {
+  flex-basis: calc(100% - 44px);
+}
+.plugin-row[data-confirm] > .row {
+  margin-left: 44px;
+}
+.plugin-row .btn.danger-ghost {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+}
+.plugin-row .btn.danger-ghost:hover {
+  background: var(--hover);
+}
+.plugin-source {
+  font: 0.8125rem/1.5 var(--mono);
+  font-variant-ligatures: none;
+}
+.plugin-file {
+  padding: 6px 8px;
 }
 .toggle-row span.row {
   display: flex;

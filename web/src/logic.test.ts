@@ -36,6 +36,11 @@ import {
   acQuery,
   listStep,
   applyEvent,
+  pluginNameFromFile,
+  pluginFormError,
+  pluginStatus,
+  tokenBots,
+  MAX_PLUGIN_BYTES,
   backoffMs,
   buildRows,
   communityBadge,
@@ -912,5 +917,37 @@ describe("appearanceSync", () => {
     expect(appearanceSync(7, 7)).toBe("keep");
     expect(appearanceSync(7, null)).toBe("push"); // nothing on the server yet
     expect(appearanceSync(0, null)).toBe("keep"); // nothing anywhere
+  });
+});
+
+describe("plugins", () => {
+  it("names a plugin after its file", () => {
+    expect(pluginNameFromFile("Dice Roller.js")).toBe("dice-roller");
+    expect(pluginNameFromFile("../welcome.JS")).toBe("..-welcome");
+    expect(pluginNameFromFile("x".repeat(40) + ".js")).toHaveLength(32);
+  });
+  it("checks the install form", () => {
+    expect(pluginFormError("dice", "1")).toBe("");
+    expect(pluginFormError("d", "1")).toMatch(/2 to 32/);
+    expect(pluginFormError("a/b", "1")).toMatch(/2 to 32/);
+    expect(pluginFormError("dice", "  ")).toMatch(/Choose/);
+    expect(pluginFormError("dice", "x".repeat(MAX_PLUGIN_BYTES))).toBe("");
+    // Bytes, not characters: "é" is two bytes.
+    expect(pluginFormError("dice", "é".repeat(MAX_PLUGIN_BYTES / 2 + 1))).toMatch(/256 KB/);
+  });
+  it("labels status", () => {
+    expect(pluginStatus({ enabled: false, running: false, error: "x" })).toEqual({ label: "Off", tone: "off" });
+    expect(pluginStatus({ enabled: true, running: false, error: "SyntaxError" }).tone).toBe("bad");
+    expect(pluginStatus({ enabled: true, running: true, error: "" })).toEqual({ label: "Running", tone: "ok" });
+    expect(pluginStatus({ enabled: true, running: true, error: "onCommand: boom" }).tone).toBe("bad");
+  });
+  it("leaves plugin bots out of the token bots", () => {
+    const bots = [{ username: "dice" }, { username: "kiln-bot" }];
+    expect(tokenBots(bots, [{ name: "dice" }])).toEqual([{ username: "kiln-bot" }]);
+  });
+  it("bumps pluginsRev on plugins_changed", () => {
+    const e = create(EventSchema, { seq: 5n, kind: { case: "pluginsChanged", value: true } });
+    const c = applyEvent(applyEvent(emptyCommunity("u"), e, 0, null), create(EventSchema, { seq: 6n, kind: { case: "pluginsChanged", value: true } }), 0, null);
+    expect(c.pluginsRev).toBe(2);
   });
 });
