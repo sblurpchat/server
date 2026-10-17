@@ -354,6 +354,7 @@ kbd {
 }
 .stack {
   display: grid;
+  grid-template-columns: minmax(0, 1fr); /* never wider than its box, so long rows truncate instead of overflowing */
   gap: 16px;
 }
 .stack > .row-end {
@@ -2847,7 +2848,7 @@ li.sw-empty {
 }
 @media (max-width: 640px) {
   .cs-body {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 1fr;
     gap: 14px;
   }
@@ -2855,6 +2856,17 @@ li.sw-empty {
     display: flex;
     gap: 4px;
     overflow-x: auto;
+  }
+  /* Name on the first line, controls under it, lined up with the name. */
+  .admin-list li {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .admin-list li > .truncate {
+    flex-basis: calc(100% - 44px);
+  }
+  .admin-list li > .row {
+    margin-left: 44px;
   }
 }
 .admin-list {
@@ -2874,6 +2886,7 @@ li.sw-empty {
 }
 .admin-list li > .truncate {
   flex: 1;
+  min-width: 0;
   display: grid;
 }
 .admin-list .perm {

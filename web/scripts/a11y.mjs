@@ -1,5 +1,5 @@
 // axe-core scan of fake mode in light and dark, desktop and 390px: the main views, dialogs and panes.
-// Fails on serious or critical violations. Starts its own Vite server on 5197 and stops it when done.
+// Fails on serious or critical violations, and on dialog panels that overflow sideways. Starts its own Vite server on 5197 and stops it when done.
 import { createRequire } from "node:module";
 import { chromium } from "playwright";
 import { createServer } from "vite";
@@ -79,6 +79,13 @@ try {
         await p.locator(".channel .msg").first().waitFor();
         await act(p);
         await p.waitForTimeout(150);
+        // Scrolling panels in dialogs scroll down, never sideways (the admin list once overflowed at 390px).
+        const wide = await p.evaluate(() =>
+          [...document.querySelectorAll("dialog[open] *")]
+            .filter((e) => getComputedStyle(e).overflowY === "auto" && !e.matches("[role=tablist], textarea") && e.scrollWidth > e.clientWidth + 1)
+            .map((e) => `.${e.className} is ${e.scrollWidth}px wide in ${e.clientWidth}px`),
+        );
+        if (wide.length) found.push(`${scheme} ${w}px ${name}: sideways overflow: ${wide.join(", ")}`);
         await p.addScriptTag({ path: axePath });
         const v = await p.evaluate(async () => (await window.axe.run(document, { resultTypes: ["violations"] })).violations);
         for (const x of v.filter((x) => x.impact === "serious" || x.impact === "critical"))
@@ -88,7 +95,7 @@ try {
       await ctx.close();
     }
   }
-  if (found.length) throw new Error(`${found.length} serious or critical violations:\n${found.join("\n")}`);
+  if (found.length) throw new Error(`${found.length} problems (serious or critical axe violations, sideways overflow):\n${found.join("\n")}`);
   console.log(`a11y: ok (${Object.keys(views).length} views x light, dark x 1280px, 390px; no serious or critical axe violations)`);
 } catch (e) {
   failed = true;
