@@ -114,6 +114,29 @@ client. There is no separate apps system. The bot is ~150 lines in
   Then send the id in `SendMessage.attachment_ids` (max 10, only your own
   unused uploads). Errors are `{"error": "..."}` with status 400, 401, 403
   or 413.
+- **Custom emoji**: messages and reactions use `:name:`. Names are 1 to 64
+  of `a-z`, `0-9`, `-` and `_`, unique per server.
+  - `GET /emoji` (Bearer, any member): `ListEmojiResponse` as protojson,
+    sorted by name, gzipped when asked, with a weak `ETag` and
+    `Cache-Control: private, no-cache`. Send `If-None-Match` to get 304
+    when nothing changed (a browser `fetch` with `cache: "no-cache"` does
+    this by itself). The list is built once per change and kept in memory;
+    5,000 emoji are about 26 KB gzipped. After any change every member
+    gets `Event.emoji_changed`; refetch then.
+  - `GET /emoji/{id}` (the `url` in the list, no header): the image. Ids
+    are never reused, so it is `public, immutable`, cached for a year.
+    Anyone with the URL can load it.
+  - `POST /emoji` (moderator or higher): `multipart/form-data` with any
+    number of `file` parts, 64 MB in total. Each part is a PNG, GIF
+    (animated is fine) or WebP of at most 256 KB and 512x512, or a .zip of
+    them (folders inside are fine; `__MACOSX` and dotfiles are skipped). The
+    name comes from the file name: lowercased, other characters become `_`.
+    A taken name is skipped, never replaced. The reply is
+    `UploadEmojiResponse` with one result per image: added, exists or
+    rejected with a reason.
+  - `GET /emoji.zip` (Bearer, any member): every emoji as `name.ext`. It
+    uploads as is to another server.
+  - `DeleteEmoji` RPC (moderator or higher).
 - **Files**: `GET /files/{id}/{name}?exp=...&sig=...`, relative to the
   server base URL. Use `Attachment.url` exactly as the server returns it.
   The server signs it (HMAC-SHA256 over id and exp, with a key in
@@ -167,6 +190,11 @@ client. There is no separate apps system. The bot is ~150 lines in
   upload with the same rules as the banner. `GetServerInfo.icon_url` is then
   its signed URL instead of `-icon-url`; `""` falls back to the flag. A
   change emits `server_updated`.
+- **Per-community picture** (1042). `UpdateProfile{avatar_url}` also takes
+  the `url` of the caller's own upload (same rules as the banner), relative
+  or absolute, signed or not. The server stores `/files/{id}/{name}` and
+  sends `Member.avatar_url` as a signed absolute URL. An http(s) URL
+  elsewhere (the sblurp.chat picture) frees the upload for the prune.
 - **Channel modes and custom roles** (ticket 1011). `GetState` has
   `channel_mode`, `roles` (sorted by `position`) and, in `channels`, only
   the channels I am in: my sidebar. `UpdateServerSettings{channel_mode}`
@@ -346,6 +374,7 @@ with a JWKS, and real Connect clients, with a fake clock.
 | `internal/server/plugins.go`, `plugins/examples/` | The plugin runtime and an example plugin. |
 | `internal/server/roles.go` | Custom roles, channel modes, who sees which text channel. |
 | `internal/server/files.go` | Upload and file serving. |
+| `internal/server/emoji.go` | Custom emoji: list with ETag, images, bulk upload (zip too), export. |
 | `internal/server/seed.go`, `internal/seed/` | Demo data. |
 
 - **JWT check by hand.** About 80 lines of standard library (`crypto/ed25519`,
