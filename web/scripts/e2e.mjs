@@ -132,6 +132,10 @@ try {
   const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   const before = await bg();
   await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("radio", { name: "Dark", exact: true }).check();
+  if ((await bg()) !== "rgb(29, 31, 45)") throw new Error(`Dark gave ${await bg()}`);
+  await page.getByRole("radio", { name: "Light", exact: true }).check();
+  if ((await bg()) !== "rgb(255, 255, 255)") throw new Error(`Light gave ${await bg()}`);
   await page.getByRole("radio", { name: "Midnight" }).check();
   if ((await bg()) === before || (await bg()) !== "rgb(23, 34, 48)") throw new Error(`Midnight did not repaint the page: ${await bg()}`);
   await page.getByRole("radio", { name: "Compact" }).first().check();
@@ -251,6 +255,31 @@ try {
   const home = Number((await focusedAt()).split("/")[0]);
   if (atEnd !== n - 1 || up !== n - 2 || home !== 0) throw new Error(`message focus End/Up/Home went to ${atEnd}, ${up}, ${home} of ${n}`);
 
+  // Quick switcher: the query filters across communities, ArrowDown moves the choice, Enter opens it.
+  await page.keyboard.press("Control+k");
+  await page.getByPlaceholder("Jump to a channel or person").fill("general");
+  const options = page.getByRole("listbox", { name: "Channels" }).getByRole("option");
+  if ((await options.count()) < 2) throw new Error("switcher did not list #general from more than one community");
+  await page.keyboard.press("ArrowDown");
+  const picked = options.nth(1);
+  if ((await picked.getAttribute("aria-selected")) !== "true") throw new Error("ArrowDown did not move the switcher choice");
+  const pickedIn = (await picked.locator(".sw-community").innerText()).trim();
+  await page.keyboard.press("Enter");
+  await page.locator(".side-head", { hasText: pickedIn }).waitFor();
+  if (await page.getByPlaceholder("Jump to a channel or person").count()) throw new Error("switcher stayed open after Enter");
+
+  // Up arrow in an empty composer edits your last message; Enter saves it.
+  const typo = `glaze mesage ${Date.now()}`;
+  await composer.fill(typo);
+  await composer.press("Enter");
+  await page.locator(".channel .msg", { hasText: typo }).waitFor();
+  await composer.press("ArrowUp");
+  const editBox = page.locator(".channel").getByRole("textbox", { name: "Edit message" });
+  if ((await editBox.inputValue()) !== typo) throw new Error(`Up arrow edited "${await editBox.inputValue()}", not the last message`);
+  await editBox.fill(typo.replace("mesage", "message"));
+  await editBox.press("Enter");
+  await page.locator(".channel .msg", { hasText: typo.replace("mesage", "message") }).locator(".edited").waitFor();
+
   // An invite link fills in the server and the code; a bad code is refused.
   await page.getByRole("button", { name: "Add a community" }).click();
   await page.getByLabel("Community address or invite link").fill("https://letterpress.club/invite/WRONG");
@@ -269,8 +298,22 @@ try {
   await page.getByRole("button", { name: "Join Letterpress Club" }).click();
   await page.locator(".side-head", { hasText: "Letterpress Club" }).waitFor();
 
+  // Phone width: the drawer opens from the header, picking a channel closes it and shows that channel.
+  const phone = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  phone.on("pageerror", (e) => errors.push(e.message));
+  await phone.route("http://localhost:8090/**", (r) => r.abort());
+  await phone.goto("http://127.0.0.1:5198/?fake=1&quiet=1", { waitUntil: "domcontentloaded" });
+  await phone.locator(".channel .msg").first().waitFor();
+  if (await phone.locator(".sidebar").isVisible()) throw new Error("sidebar visible at 390px before opening the drawer");
+  await phone.getByRole("button", { name: "Open communities and channels" }).click();
+  await phone.locator(".sidebar .chan", { hasText: "design" }).click();
+  await phone.locator(".channel .composer-input[placeholder='Message #design']").waitFor();
+  await phone.waitForFunction(() => document.querySelector(".app")?.getAttribute("data-drawer") === "false");
+  if (await phone.locator(".sidebar").isVisible()) throw new Error("drawer stayed open after picking a channel");
+  await phone.close();
+
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions, shortcuts sheet, message keyboard focus)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, light, dark and midnight themes, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message, errors.join("; "));
