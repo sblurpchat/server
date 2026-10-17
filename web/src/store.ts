@@ -61,6 +61,7 @@ const params = new URLSearchParams(location.search);
 export const FAKE = params.has("fake") || import.meta.env.VITE_FAKE === "1";
 const DEFAULT_COMMUNITIES: string[] = (import.meta.env.VITE_COMMUNITIES ?? "http://localhost:8082,http://localhost:8083").split(",");
 export const ACCOUNT_URL = `${AUTH_URL}/account`;
+export const SELF_HOST_DOCS_URL = `${AUTH_URL}/docs/self-host`;
 
 // ---------------------------------------------------------------------------
 // Persistence (per-viewer conveniences only; every access may throw in private modes)

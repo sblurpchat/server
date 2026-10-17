@@ -36,6 +36,7 @@ import {
 import {
   absUrl,
   ACCOUNT_URL,
+  SELF_HOST_DOCS_URL,
   errorText,
   FAKE,
   get,
@@ -760,6 +761,13 @@ function AddCommunity({ input: given }: { input?: string }) {
             </p>
           )}
           {FAKE && !err && <p className="fine">Demo mode: try letterpress.club</p>}
+          <p className="fine">
+            Each community runs on its own server, so you join one by its address. Want to start your own?{" "}
+            <a href={SELF_HOST_DOCS_URL} target="_blank" rel="noopener noreferrer">
+              Read how to run a server
+            </a>
+            .
+          </p>
           <div className="row-end">
             <button type="button" className="btn ghost" onClick={() => set({ modal: null })}>
               Cancel
