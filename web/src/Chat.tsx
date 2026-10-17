@@ -24,6 +24,7 @@ import {
   communityBadge,
   messageHash,
   nameColor,
+  listStep,
 } from "./logic";
 import {
   absUrl,
@@ -849,9 +850,10 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
             onKeyDown={(e) => {
               if (e.nativeEvent.isComposing) return;
               if (options.length) {
-                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                const d = listStep(e);
+                if (d) {
                   e.preventDefault();
-                  setSel((s) => (s + (e.key === "ArrowDown" ? 1 : options.length - 1)) % options.length);
+                  setSel((s) => (s + d + options.length) % options.length);
                   return;
                 }
                 if (e.key === "Enter" || e.key === "Tab") {

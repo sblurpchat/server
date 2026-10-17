@@ -559,6 +559,14 @@ export function acQuery(text: string, caret: number): { kind: "@" | ":"; start: 
   return { kind: m[1] as "@" | ":", start: caret - m[2].length - 1, q: m[2].toLowerCase() };
 }
 
+/** List step for a picker's key: ArrowDown/Ctrl+N is 1, ArrowUp/Ctrl+P is -1, anything else 0. */
+export function listStep(e: { key: string; ctrlKey: boolean; metaKey: boolean; altKey: boolean }): number {
+  if (e.key === "ArrowDown") return 1;
+  if (e.key === "ArrowUp") return -1;
+  if (!e.ctrlKey || e.metaKey || e.altKey) return 0;
+  return e.key === "n" ? 1 : e.key === "p" ? -1 : 0;
+}
+
 /** Who reacted, you first: "You, Ana Ruiz and 3 others reacted with 👍". */
 export function reactorsLabel(ids: string[], members: Record<string, Member>, meId: string | undefined, emoji: string): string {
   const names = [...ids].sort((a, b) => Number(b === meId) - Number(a === meId)).map((id) => (id === meId ? "You" : members[id]?.displayName || members[id]?.username || "Someone"));

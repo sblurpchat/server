@@ -26,6 +26,7 @@ import {
   type Appearance as Look,
   type Theme,
   sentence,
+  listStep,
 } from "./logic";
 import {
   absUrl,
@@ -1080,8 +1081,8 @@ function Switcher() {
             setSel(0);
           }}
           onKeyDown={(e) => {
-            if (e.key === "ArrowDown") setSel((s) => Math.min(items.length - 1, s + 1));
-            else if (e.key === "ArrowUp") setSel((s) => Math.max(0, s - 1));
+            const d = listStep(e);
+            if (d) setSel((s) => Math.max(0, Math.min(items.length - 1, s + d)));
             else if (e.key === "Enter") pick(sel);
             else return;
             e.preventDefault();

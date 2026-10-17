@@ -28,6 +28,7 @@ import {
   parseAppearance,
   timeLabel,
   acQuery,
+  listStep,
   applyEvent,
   backoffMs,
   buildRows,
@@ -200,6 +201,10 @@ describe("mentions", () => {
     expect(decodeMentions("hey <@u-ana> <@gone>", { "u-ana": ana })).toBe("hey @ana <@gone>");
   });
   it("finds the autocomplete token at the caret", () => {
+    const k = (key: string, mods: Partial<{ ctrlKey: boolean; metaKey: boolean; altKey: boolean }> = {}) =>
+      listStep({ key, ctrlKey: false, metaKey: false, altKey: false, ...mods });
+    expect([k("ArrowDown"), k("ArrowUp"), k("n", { ctrlKey: true }), k("p", { ctrlKey: true })]).toEqual([1, -1, 1, -1]);
+    expect([k("n"), k("p"), k("n", { ctrlKey: true, metaKey: true }), k("x", { ctrlKey: true }), k("Enter")]).toEqual([0, 0, 0, 0, 0]);
     expect(acQuery("hello @an", 9)).toEqual({ kind: "@", start: 6, q: "an" });
     expect(acQuery("nice :ta", 8)).toEqual({ kind: ":", start: 5, q: "ta" });
     expect(acQuery("time 10:3", 9)).toBeNull();
