@@ -1,0 +1,58 @@
+/* Picture in Edit profile (1042). fade-in and reduced motion live in app.css. */
+.avatar-field {
+  border-radius: 10px;
+  outline: 2px dashed transparent;
+  outline-offset: 4px;
+  transition: outline-color 150ms ease-out;
+}
+.avatar-field[data-over] {
+  outline-color: var(--raspberry);
+}
+.avatar-field-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 6px;
+}
+.avatar-field-side {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.avatar-field-side .row {
+  flex-wrap: wrap;
+}
+.avatar-field-pic {
+  position: relative;
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 16px;
+  cursor: pointer;
+}
+.avatar-field-pic .avatar {
+  animation: fade-in 160ms ease-out;
+}
+.avatar-field-pic:focus-visible {
+  outline: 2px solid var(--raspberry);
+  outline-offset: 2px;
+}
+.avatar-field-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--text);
+  border: 1px solid var(--line);
+  transition: background-color 150ms ease-out;
+}
+.avatar-field-pic:hover .avatar-field-badge {
+  background: var(--hover);
+}

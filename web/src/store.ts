@@ -623,7 +623,7 @@ export async function openDM(url: string, memberIds: string | string[]) {
 
 const local = (url: string, kind: Event["kind"]) => dispatch(url, { seq: 0n, atMs: 0n, kind } as Event);
 
-export async function updateProfile(url: string, req: { displayName?: string; bio?: string; statusText?: string; statusEmoji?: string }) {
+export async function updateProfile(url: string, req: { displayName?: string; avatarUrl?: string; bio?: string; statusText?: string; statusEmoji?: string }) {
   const r = await api(url).server.updateProfile(req);
   if (r.member) local(url, { case: "memberUpdated", value: r.member });
 }

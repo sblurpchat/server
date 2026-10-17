@@ -68,6 +68,7 @@ import {
   leaveChannel,
   peekChannel,
 } from "./store";
+import { AvatarField } from "./AvatarField";
 import { Avatar, CommunityIcon, Dialog, EmojiPicker, emojiChar, Icon, Markdown, Pop, Resizer, useClamped } from "./ui";
 
 export function App() {
@@ -1467,6 +1468,8 @@ function EditProfile() {
   const c = useApp((s) => s.cs[s.url]);
   const me = c?.me;
   const [f, setF] = useState({ displayName: me?.displayName ?? "", statusEmoji: me?.statusEmoji ?? "", statusText: me?.statusText ?? "", bio: me?.bio ?? "" });
+  const [pic, setPic] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [pick, setPick] = useState<DOMRect | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -1477,7 +1480,7 @@ function EditProfile() {
     setBusy(true);
     setErr("");
     try {
-      await updateProfile(c.url, { displayName: f.displayName.trim(), statusEmoji: f.statusEmoji, statusText: f.statusText.trim(), bio: f.bio.trim() });
+      await updateProfile(c.url, { displayName: f.displayName.trim(), statusEmoji: f.statusEmoji, statusText: f.statusText.trim(), bio: f.bio.trim(), ...(pic !== null && { avatarUrl: pic }) });
       set({ modal: null });
     } catch (x) {
       setErr(errorText(x, name));
@@ -1493,6 +1496,7 @@ function EditProfile() {
             <Icon name="x" />
           </button>
         </header>
+        <AvatarField url={c.url} me={me} name={name} value={pic} onChange={setPic} onBusy={setUploading} />
         <label className="field">
           <b>Display name</b>
           <input className="input" value={f.displayName} onChange={(e) => setF({ ...f, displayName: e.target.value })} placeholder={me.username} maxLength={64} />
@@ -1537,7 +1541,7 @@ function EditProfile() {
           <button type="button" className="btn ghost" onClick={() => set({ modal: null })}>
             Cancel
           </button>
-          <button className="btn primary" disabled={busy}>
+          <button className="btn primary" disabled={busy || uploading}>
             Save changes
           </button>
         </div>

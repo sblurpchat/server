@@ -51,6 +51,12 @@ const views = {
     await p.locator(".browse-open").first().waitFor();
   },
   profile: (p) => p.locator(".channel .msg .avatar-btn").last().click().then(() => p.locator(".profile-body").waitFor()),
+  editprofile: async (p) => {
+    await drawer(p);
+    await p.locator(".me-btn").click();
+    await p.getByRole("button", { name: "Edit profile and status" }).click();
+    await p.locator(".avatar-field").waitFor();
+  },
   drawer: async (p) => {
     if ((p.viewportSize()?.width ?? 0) >= 768) return;
     await drawer(p);
