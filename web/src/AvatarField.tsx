@@ -8,16 +8,17 @@ import { shrinkImage } from "./avatar";
 import type { Member } from "./gen/sblurp/v1/sblurp_pb";
 import { bannerFileError } from "./logic";
 import { absUrl, errorText, upload, useApp } from "./store";
-import { Avatar, Icon } from "./ui";
+import { Avatar, AvatarEditOverlay, Icon } from "./ui";
 
 /** value: the avatar_url to save, or null for no change. */
-export function AvatarField({ url, me, name, value, onChange, onBusy }: {
+export function AvatarField({ url, me, name, value, onChange, onBusy, autoFocus }: {
   url: string;
   me: Member;
   name: string;
   value: string | null;
   onChange: (v: string) => void;
   onBusy: (busy: boolean) => void;
+  autoFocus?: boolean;
 }) {
   const account = useApp((s) => s.profile?.avatarUrl);
   const input = useRef<HTMLInputElement>(null);
@@ -58,8 +59,9 @@ export function AvatarField({ url, me, name, value, onChange, onBusy }: {
     >
       <b id="pic-label">Picture</b>
       <div className="avatar-field-row">
-        <button type="button" className="avatar-field-pic" aria-label="Change picture" disabled={busy} onClick={() => input.current?.click()}>
+        <button type="button" className="avatar-field-pic avatar-edit" aria-label="Change picture" disabled={busy} autoFocus={autoFocus} onClick={() => input.current?.click()}>
           <Avatar key={shown} m={{ ...me, avatarUrl: shown }} size={72} />
+          <AvatarEditOverlay />
           <span className="avatar-field-badge">
             <Icon name="image" size={16} />
           </span>

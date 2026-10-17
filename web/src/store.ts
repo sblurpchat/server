@@ -107,7 +107,7 @@ export type Modal =
   | { t: "newdm" }
   | { t: "browse" }
   | { t: "keys" }
-  | { t: "profile" }
+  | { t: "profile"; focusPic?: boolean }
   | { t: "remove"; url: string; memberId: string; ban: boolean }
   | { t: "lightbox"; src: string; name: string; video?: boolean };
 

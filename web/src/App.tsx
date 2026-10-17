@@ -70,7 +70,7 @@ import {
   peekChannel,
 } from "./store";
 import { AvatarField } from "./AvatarField";
-import { Avatar, CommunityIcon, Dialog, Editable, EmojiPicker, emojiChar, Icon, Markdown, Pop, Resizer, useClamped } from "./ui";
+import { Avatar, AvatarEditOverlay, CommunityIcon, Dialog, Editable, EmojiPicker, emojiChar, Icon, Markdown, Pop, Resizer, useClamped } from "./ui";
 
 export function App() {
   const auth = useApp((s) => s.auth);
@@ -814,7 +814,7 @@ function Modals() {
     case "keys":
       return <KeyboardShortcuts />;
     case "profile":
-      return <EditProfile />;
+      return <EditProfile focusPic={modal.focusPic} />;
     case "remove":
       return <RemoveMember {...modal} />;
     case "lightbox":
@@ -1514,7 +1514,7 @@ function NewMessage() {
   );
 }
 
-function EditProfile() {
+function EditProfile({ focusPic }: { focusPic?: boolean }) {
   const c = useApp((s) => s.cs[s.url]);
   const me = c?.me;
   const [f, setF] = useState({ displayName: me?.displayName ?? "", statusEmoji: me?.statusEmoji ?? "", statusText: me?.statusText ?? "", bio: me?.bio ?? "" });
@@ -1546,7 +1546,7 @@ function EditProfile() {
             <Icon name="x" />
           </button>
         </header>
-        <AvatarField url={c.url} me={me} name={name} value={pic} onChange={setPic} onBusy={setUploading} />
+        <AvatarField url={c.url} me={me} name={name} value={pic} onChange={setPic} onBusy={setUploading} autoFocus={focusPic} />
         <label className="field">
           <b>Display name</b>
           <input className="input" value={f.displayName} onChange={(e) => setF({ ...f, displayName: e.target.value })} placeholder={me.username} maxLength={64} />
@@ -1689,7 +1689,14 @@ function ProfilePopover() {
         <>
           <div className="profile-band" style={{ background: "color-mix(in srgb, var(--raspberry) 18%, var(--paper))" }} />
           <div className="profile-body">
-            <Avatar m={m} size={72} presence />
+            {m.id === me?.id ? (
+              <button className="avatar-edit" aria-label="Change avatar" title="Change avatar" onClick={() => set({ popover: null, modal: { t: "profile", focusPic: true } })}>
+                <Avatar m={m} size={72} presence />
+                <AvatarEditOverlay />
+              </button>
+            ) : (
+              <Avatar m={m} size={72} presence />
+            )}
             <h3>
               {m.displayName || m.username}
               {m.kind === MemberKind.BOT && <span className="tag">Bot</span>}

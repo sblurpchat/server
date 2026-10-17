@@ -2068,13 +2068,52 @@ li.sw-empty {
 .profile-body {
   padding: 0 18px 18px;
 }
-.profile-body > .avatar {
+.profile-body > .avatar,
+.profile-body > .avatar-edit {
   margin-top: -40px;
   --ring: var(--raised);
 }
-.profile-body > .avatar > img,
-.profile-body > .avatar > .avatar-initials {
+.profile-body .avatar > img,
+.profile-body .avatar > .avatar-initials {
   box-shadow: 0 0 0 4px var(--raised);
+}
+/* Your own picture is a button (1200, 1201): hover or focus dims it and shows a camera. */
+.avatar-edit {
+  position: relative;
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 16px;
+  cursor: pointer;
+}
+.avatar-edit:focus-visible {
+  outline: 2px solid var(--raspberry);
+  outline-offset: 2px;
+}
+.avatar-edit-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: rgb(0 0 0 / 0.5);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+.avatar-edit:hover .avatar-edit-overlay,
+.avatar-edit:focus-visible .avatar-edit-overlay {
+  opacity: 1;
+}
+.avatar-edit:disabled .avatar-edit-overlay {
+  opacity: 0;
+}
+.avatar-edit:is(:hover, :focus-visible):not(:disabled) .avatar-initials {
+  color: transparent;
+}
+.avatar-edit .presence {
+  z-index: 1;
 }
 .profile-body h3 {
   margin-top: 10px;

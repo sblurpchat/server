@@ -23,21 +23,12 @@
 .avatar-field-side .row {
   flex-wrap: wrap;
 }
+/* Button, overlay and focus ring come from .avatar-edit in app.css (1201). */
 .avatar-field-pic {
-  position: relative;
   flex: none;
-  padding: 0;
-  border: 0;
-  background: none;
-  border-radius: 16px;
-  cursor: pointer;
 }
 .avatar-field-pic .avatar {
   animation: fade-in 160ms ease-out;
-}
-.avatar-field-pic:focus-visible {
-  outline: 2px solid var(--raspberry);
-  outline-offset: 2px;
 }
 .avatar-field-badge {
   position: absolute;
