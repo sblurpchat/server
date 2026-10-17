@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"cmp"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -237,6 +238,19 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusRequestEntityTooLarge, "file is larger than 25 MB")
 		return
 	}
+	if ctype == "image/jpeg" || ctype == "image/png" {
+		// Photos carry GPS and camera details; every viewer would get them.
+		b, err := os.ReadFile(tmp.Name())
+		if out := stripMeta(b); err == nil && out != nil && len(out) < len(b) {
+			_, err = tmp.WriteAt(out, 0)
+			err = cmp.Or(err, tmp.Truncate(int64(len(out))))
+			rest = int64(len(out))
+		}
+		if err != nil {
+			httpError(w, http.StatusInternalServerError, "cannot store file")
+			return
+		}
+	}
 	a := &v1.Attachment{Id: newID(s.now()), Name: name, ContentType: ctype, Size: rest}
 	if strings.HasPrefix(ctype, "image/") {
 		if _, err := tmp.Seek(0, io.SeekStart); err == nil {
@@ -304,4 +318,129 @@ func (s *Server) serveFile(w http.ResponseWriter, r *http.Request) {
 	}
 	h.Set("Content-Disposition", mime.FormatMediaType(disp, map[string]string{"filename": name}))
 	http.ServeContent(w, r, "", time.UnixMilli(created), f)
+}
+
+// stripMeta removes metadata from a JPEG or PNG without re-encoding: EXIF
+// (GPS, camera), XMP, IPTC, comments and text chunks, and anything after the
+// end of the image. It keeps what affects how the image looks: JFIF, the ICC
+// color profile, Adobe's color transform and, for JPEG, the EXIF orientation
+// (rewritten as a minimal EXIF block). It returns nil for anything else or
+// anything it cannot parse.
+func stripMeta(b []byte) []byte {
+	switch {
+	case len(b) > 4 && b[0] == 0xff && b[1] == 0xd8:
+		return stripJPEG(b)
+	case len(b) > 8 && string(b[:8]) == "\x89PNG\r\n\x1a\n":
+		return stripPNG(b)
+	}
+	return nil
+}
+
+func stripJPEG(b []byte) []byte {
+	out := []byte{0xff, 0xd8}
+	orient := 0
+	for i := 2; ; {
+		if i+4 > len(b) || b[i] != 0xff {
+			return nil
+		}
+		marker := b[i+1]
+		if marker == 0xff { // fill byte
+			i++
+			continue
+		}
+		if marker == 0xd9 { // EOI: drop anything after it
+			out = append(out, 0xff, 0xd9)
+			if orient > 1 {
+				out = append(out[:2], append(exifOrientation(orient), out[2:]...)...)
+			}
+			return out
+		}
+		end := i + 2 + int(binary.BigEndian.Uint16(b[i+2:]))
+		if end > len(b) || end < i+4 {
+			return nil
+		}
+		seg := b[i+4 : end]
+		keep := true
+		switch {
+		case marker == 0xe1:
+			if o := readOrientation(seg); o > 0 && orient == 0 {
+				orient = o
+			}
+			keep = false
+		case marker == 0xe2:
+			keep = bytes.HasPrefix(seg, []byte("ICC_PROFILE\x00"))
+		case marker == 0xee:
+			keep = bytes.HasPrefix(seg, []byte("Adobe"))
+		case marker > 0xe0 && marker <= 0xef, marker == 0xfe: // other APPn, COM
+			keep = false
+		}
+		if keep {
+			out = append(out, b[i:end]...)
+		}
+		i = end
+		if marker != 0xda { // SOS: entropy-coded data follows
+			continue
+		}
+		for ; i+1 < len(b); i++ {
+			if b[i] == 0xff && b[i+1] != 0 && (b[i+1] < 0xd0 || b[i+1] > 0xd7) {
+				break
+			}
+		}
+		out = append(out, b[end:i]...)
+	}
+}
+
+// readOrientation returns the Orientation tag (1-8) from an EXIF APP1
+// payload, or 0.
+func readOrientation(seg []byte) int {
+	if !bytes.HasPrefix(seg, []byte("Exif\x00\x00")) || len(seg) < 14 {
+		return 0
+	}
+	t := seg[6:]
+	var o binary.ByteOrder = binary.BigEndian
+	if string(t[:2]) == "II" {
+		o = binary.LittleEndian
+	}
+	ifd := int(o.Uint32(t[4:]))
+	if ifd+2 > len(t) || ifd < 8 {
+		return 0
+	}
+	n := int(o.Uint16(t[ifd:]))
+	for e := ifd + 2; e+12 <= len(t) && n > 0; e, n = e+12, n-1 {
+		if o.Uint16(t[e:]) == 0x0112 {
+			if v := int(o.Uint16(t[e+8:])); v >= 1 && v <= 8 {
+				return v
+			}
+		}
+	}
+	return 0
+}
+
+// exifOrientation is an APP1 segment holding only the Orientation tag.
+func exifOrientation(v int) []byte {
+	return []byte{0xff, 0xe1, 0, 34, 'E', 'x', 'i', 'f', 0, 0,
+		'M', 'M', 0, 42, 0, 0, 0, 8, // TIFF header, IFD0 at 8
+		0, 1, 0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, byte(v), 0, 0, // one SHORT entry
+		0, 0, 0, 0} // no next IFD
+}
+
+func stripPNG(b []byte) []byte {
+	out := append([]byte(nil), b[:8]...)
+	for i := 8; i+12 <= len(b); {
+		n := int(binary.BigEndian.Uint32(b[i:]))
+		end := i + 12 + n
+		if n < 0 || end > len(b) || end < i {
+			return nil
+		}
+		switch string(b[i+4 : i+8]) {
+		case "eXIf", "tEXt", "zTXt", "iTXt", "tIME":
+		default:
+			out = append(out, b[i:end]...)
+		}
+		if string(b[i+4:i+8]) == "IEND" {
+			return out
+		}
+		i = end
+	}
+	return nil
 }
