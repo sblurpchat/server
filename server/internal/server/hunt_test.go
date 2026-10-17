@@ -1,7 +1,11 @@
 package server
 
 import (
+	"slices"
 	"testing"
+	"time"
+
+	"connectrpc.com/connect"
 
 	v1 "sblurp.chat/server/gen/sblurp/v1"
 )
@@ -26,5 +30,68 @@ func TestJoinedChannelHistoryIsRead(t *testing.T) {
 	ana.send(film.Id, "four")
 	if rs := readStateFor(bob.state(), film.Id); rs == nil || rs.UnreadCount != 1 {
 		t.Fatalf("after a new message: %v, want 1 unread", rs)
+	}
+}
+
+// A deleted bot leaves its channels, and its open stream ends: it must not
+// keep receiving private channel traffic. Rotating the token ends it too.
+func TestDeletedBotLosesAccess(t *testing.T) {
+	e := newEnv(t)
+	ana := e.join("ana")
+	created := must(ana.bots.CreateBot(ctx(), connect.NewRequest(&v1.CreateBotRequest{Username: "robo"})))
+	bot := e.client(created.Token)
+	secret := ana.channel("secret", v1.ChannelKind_CHANNEL_KIND_PRIVATE)
+	must(ana.chat.AddChannelMembers(ctx(), connect.NewRequest(&v1.AddChannelMembersRequest{ChannelId: secret.Id, MemberIds: []string{created.Bot.Id}})))
+
+	sub := bot.subscribe(0)
+	sub.next(func(ev *v1.Event) bool { return ev.GetHeartbeat() }, nil)
+	must(ana.bots.DeleteBot(ctx(), connect.NewRequest(&v1.DeleteBotRequest{BotId: created.Bot.Id})))
+	ana.send(secret.Id, "after delete")
+	timeout := time.After(5 * time.Second)
+	for done := false; !done; {
+		select {
+		case ev := <-sub.events:
+			if ev.GetMessageCreated() != nil {
+				t.Fatalf("deleted bot got %v", ev)
+			}
+		case <-sub.done:
+			done = true
+		case <-timeout:
+			t.Fatal("deleted bot's stream is still open")
+		}
+	}
+	for _, ch := range ana.state().Channels {
+		if ch.Id == secret.Id && slices.Contains(ch.MemberIds, created.Bot.Id) {
+			t.Fatalf("deleted bot is still in #secret: %v", ch.MemberIds)
+		}
+	}
+
+	other := must(ana.bots.CreateBot(ctx(), connect.NewRequest(&v1.CreateBotRequest{Username: "other"})))
+	sub = e.client(other.Token).subscribe(0)
+	sub.next(func(ev *v1.Event) bool { return ev.GetHeartbeat() }, nil)
+	must(ana.bots.RotateBotToken(ctx(), connect.NewRequest(&v1.RotateBotTokenRequest{BotId: other.Bot.Id})))
+	select {
+	case <-sub.done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("a rotated token's stream is still open")
+	}
+}
+
+// Search hides messages the retention setting expired before the prune runs,
+// like ListMessages.
+func TestSearchHidesExpired(t *testing.T) {
+	e := newEnv(t)
+	ana := e.join("ana")
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	ana.send(gen.Id, "ancient words")
+	e.clock.Advance(31 * 24 * time.Hour)
+	ana = e.client(e.token("ana"))
+	ana.send(gen.Id, "fresh words")
+	must(ana.srv.UpdateServerSettings(ctx(), connect.NewRequest(&v1.UpdateServerSettingsRequest{RetentionDays: new(int32(30))})))
+	for _, ch := range []string{"", gen.Id} {
+		ms, err := ana.search("words", ch)
+		if err != nil || len(ms) != 1 || ms[0].Text != "fresh words" {
+			t.Fatalf("search in %q = %v %v, want only the fresh message", ch, ms, err)
+		}
 	}
 }

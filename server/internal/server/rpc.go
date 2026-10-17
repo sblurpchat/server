@@ -1630,7 +1630,12 @@ func (s *Server) Search(ctx context.Context, req *connect.Request[v1.SearchReque
 		where = `n IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?) AND deleted = 0 AND channel_id = ?`
 		args = []any{ftsQuery(q), r.ChannelId}
 	}
-	ms, err := queryMessages(ctx, s.db.r, where+" ORDER BY created_seq DESC LIMIT ?", append(args, limit)...)
+	// Expired messages the prune has not reached yet are already gone.
+	cutoff, err := s.retentionCutoff(ctx, s.db.r)
+	if err != nil {
+		return nil, err
+	}
+	ms, err := queryMessages(ctx, s.db.r, where+" AND created_at_ms >= ? ORDER BY created_seq DESC LIMIT ?", append(args, cutoff, limit)...)
 	if err != nil {
 		if strings.Contains(err.Error(), "fts5") {
 			return nil, errf(connect.CodeInvalidArgument, "cannot search for that")
@@ -2332,6 +2337,7 @@ func (s *Server) RotateBotToken(ctx context.Context, req *connect.Request[v1.Rot
 	if err != nil {
 		return nil, err
 	}
+	s.hub.drop(req.Msg.BotId) // streams opened with the old token
 	return connect.NewResponse(&v1.RotateBotTokenResponse{Token: token}), nil
 }
 
@@ -2346,18 +2352,15 @@ func (s *Server) DeleteBot(ctx context.Context, req *connect.Request[v1.DeleteBo
 	if err != nil {
 		return nil, err
 	}
+	s.hub.drop(req.Msg.BotId)
 	return connect.NewResponse(&v1.DeleteBotResponse{}), nil
 }
 
 func deleteBot(t *wtx, id string) error {
 	// Keep the row so old messages still have an author, and free the
 	// username: "~" is not allowed in usernames, so this cannot collide.
-	if _, err := t.ExecContext(t.ctx, "UPDATE members SET deleted = 1, token_hash = NULL, username = username || '~' || id WHERE id = ?", id); err != nil {
+	if _, err := t.ExecContext(t.ctx, "UPDATE members SET token_hash = NULL, username = username || '~' || id WHERE id = ?", id); err != nil {
 		return err
 	}
-	seq, err := t.nextSeq()
-	if err != nil {
-		return err
-	}
-	return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberLeft{MemberLeft: id}}, "", "")
+	return t.s.removeMember(t, id)
 }
