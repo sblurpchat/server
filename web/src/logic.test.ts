@@ -79,6 +79,7 @@ import {
   PANELS,
   clampWidth,
   keyWidth,
+  onBackdrop,
   paneQuery,
   parsePane,
   bannerFileError,
@@ -858,6 +859,13 @@ describe("trimList", () => {
 
 describe("panel resize", () => {
   const { side, pane } = PANELS;
+  it("closes a dialog only for a press on the backdrop, not its own padding", () => {
+    const box = { left: 100, top: 50, right: 580, bottom: 450 };
+    expect(onBackdrop(box, 110, 60)).toBe(false); // inside the 24px padding
+    expect(onBackdrop(box, 340, 449)).toBe(false);
+    expect(onBackdrop(box, 99, 60)).toBe(true);
+    expect(onBackdrop(box, 340, 451)).toBe(true);
+  });
   it("clamps drags to the panel's range", () => {
     expect(clampWidth(side, 50)).toBe(200);
     expect(clampWidth(side, 9999)).toBe(420);

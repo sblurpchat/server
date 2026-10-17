@@ -1003,6 +1003,10 @@ export const PANELS = {
   pane: { def: 340, min: 280, max: 640, dir: -1 },
 } satisfies Record<string, Panel>;
 
+/** A press on a modal <dialog> itself is on its backdrop only outside its box: its padding is the dialog too. */
+export const onBackdrop = (r: { left: number; top: number; right: number; bottom: number }, x: number, y: number) =>
+  x < r.left || x > r.right || y < r.top || y > r.bottom;
+
 export const clampWidth = (p: Panel, w: number) => Math.round(Math.min(p.max, Math.max(p.min, w)));
 
 // New width for a key on the separator, or null when the key is not ours.

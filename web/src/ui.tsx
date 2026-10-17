@@ -1,7 +1,7 @@
 // Shared UI primitives: icons, avatars, dialogs, popovers, the emoji picker and the markdown renderer.
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MemberRole, Presence, type Member } from "./gen/sblurp/v1/sblurp_pb";
-import { PANELS, clampWidth, initials, keyWidth, onWhite, parseMarkdown, swatch, type Inline } from "./logic";
+import { PANELS, clampWidth, initials, keyWidth, onBackdrop, onWhite, parseMarkdown, swatch, type Inline } from "./logic";
 import { Img, Shortcodes, useEmojiSet, useMore } from "./CustomEmoji";
 import { bumpRecent, pickerSections, type PickItem } from "./emoji";
 import { absUrl, set, useApp } from "./store";
@@ -126,7 +126,7 @@ export function Dialog({
       aria-label={label}
       className={`dialog ${className}`}
       onClose={onClose}
-      onMouseDown={(e) => e.target === ref.current && ref.current.close()}
+      onMouseDown={(e) => e.target === ref.current && onBackdrop(ref.current.getBoundingClientRect(), e.clientX, e.clientY) && ref.current.close()}
     >
       {open && children}
     </dialog>
