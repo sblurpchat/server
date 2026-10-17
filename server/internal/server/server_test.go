@@ -1623,3 +1623,53 @@ func TestInviteLinkRedirectsToWebClient(t *testing.T) {
 		}
 	}
 }
+
+// A MarkRead at or behind the stored mark must not take the writer (1040).
+func TestMarkReadSkipsStaleWrites(t *testing.T) {
+	e := newEnv(t)
+	ana, bob := e.join("ana"), e.join("bob")
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	ana.send(gen.Id, "one")
+	ana.send(gen.Id, "two")
+	first := must(bob.chat.MarkRead(ctx(), connect.NewRequest(&v1.MarkReadRequest{ChannelId: gen.Id}))).ReadState
+	cur, _ := currentSeq(ctx(), e.s.db.r)
+	// Hold the writer: a skipped mark returns at once, a write would wait.
+	e.s.db.lock <- struct{}{}
+	defer func() { <-e.s.db.lock }()
+	e.s.writeWait = 50 * time.Millisecond
+	for _, seq := range []int64{first.LastReadSeq, first.LastReadSeq - 1} {
+		rs, err := bob.chat.MarkRead(ctx(), connect.NewRequest(&v1.MarkReadRequest{ChannelId: gen.Id, Seq: seq}))
+		if err != nil {
+			t.Fatalf("MarkRead(%d) took the writer: %v", seq, err)
+		}
+		if rs.Msg.ReadState.LastReadSeq != first.LastReadSeq || rs.Msg.ReadState.UnreadCount != 0 {
+			t.Fatalf("MarkRead(%d) = %v", seq, rs.Msg.ReadState)
+		}
+	}
+	if after, _ := currentSeq(ctx(), e.s.db.r); after != cur {
+		t.Fatalf("seq moved %d -> %d", cur, after)
+	}
+}
+
+// With the writer busy past writeWait, writes fail with Unavailable instead
+// of queueing forever (1040).
+func TestWriteTxFailsFastWhenBusy(t *testing.T) {
+	e := newEnv(t)
+	ana := e.join("ana")
+	e.s.db.lock <- struct{}{}
+	defer func() { <-e.s.db.lock }()
+	e.s.writeWait = 50 * time.Millisecond
+	done := make(chan error, 1)
+	go func() {
+		_, err := ana.chat.CreateChannel(ctx(), connect.NewRequest(&v1.CreateChannelRequest{Name: "x", Kind: v1.ChannelKind_CHANNEL_KIND_TEXT}))
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if connect.CodeOf(err) != connect.CodeUnavailable {
+			t.Fatalf("err = %v, want unavailable", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("write queued instead of failing fast")
+	}
+}

@@ -13,9 +13,9 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
+	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
 	_ "modernc.org/sqlite"
 
@@ -25,13 +25,17 @@ import (
 //go:embed migrations/*.sql
 var migrations embed.FS
 
-// db has one write connection behind a mutex (single writer) and a small
-// pool of readers. WAL lets readers run while a write is in progress.
+// db has one write connection behind a one-slot lock (single writer) and a
+// small pool of readers. WAL lets readers run while a write is in progress.
 type db struct {
-	w  *sql.DB
-	r  *sql.DB
-	mu sync.Mutex
+	w    *sql.DB
+	r    *sql.DB
+	lock chan struct{} // capacity 1; holding the slot is holding the writer
 }
+
+// writeWait caps how long writeTx waits for the writer. Past it the server is
+// overloaded, and failing fast keeps the queue (goroutines, memory) bounded.
+const writeWait = 5 * time.Second
 
 func openDB(path string) (*db, error) {
 	dsn := "file:" + path + "?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)"
@@ -46,7 +50,7 @@ func openDB(path string) (*db, error) {
 		return nil, err
 	}
 	r.SetMaxOpenConns(8)
-	d := &db{w: w, r: r}
+	d := &db{w: w, r: r, lock: make(chan struct{}, 1)}
 	if err := d.migrate(); err != nil {
 		d.close()
 		return nil, fmt.Errorf("migrate: %w", err)
@@ -115,9 +119,18 @@ type published struct {
 
 // writeTx runs fn in the single write transaction. Events are published
 // while the write lock is still held, so subscribers see them in seq order.
+// It gives up with Unavailable if the writer stays busy for s.writeWait.
 func (s *Server) writeTx(ctx context.Context, fn func(t *wtx) error) error {
-	s.db.mu.Lock()
-	defer s.db.mu.Unlock()
+	wait := time.NewTimer(s.writeWait)
+	defer wait.Stop()
+	select {
+	case s.db.lock <- struct{}{}:
+	case <-wait.C:
+		return errf(connect.CodeUnavailable, "server is busy, try again")
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	defer func() { <-s.db.lock }()
 	tx, err := s.db.w.BeginTx(ctx, nil)
 	if err != nil {
 		return err

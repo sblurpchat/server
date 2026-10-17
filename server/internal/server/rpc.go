@@ -1327,22 +1327,36 @@ func (s *Server) React(ctx context.Context, req *connect.Request[v1.ReactRequest
 func (s *Server) MarkRead(ctx context.Context, req *connect.Request[v1.MarkReadRequest]) (*connect.Response[v1.MarkReadResponse], error) {
 	m := me(ctx)
 	r := req.Msg
+	// Read first, outside the writer: a mark at or behind the stored one
+	// (a repeat, or a late reply racing a newer one) changes nothing.
+	c, err := channelFor(ctx, s.db.r, r.ChannelId, m.Id)
+	if err != nil {
+		return nil, err
+	}
+	cur, err := currentSeq(ctx, s.db.r)
+	if err != nil {
+		return nil, err
+	}
+	seq := r.Seq
+	if seq <= 0 || seq > cur {
+		seq = cur
+	}
+	var stored int64
+	if err := s.db.r.QueryRowContext(ctx, "SELECT COALESCE((SELECT last_read_seq FROM read_states WHERE member_id = ? AND channel_id = ?), 0)",
+		m.Id, c.Id).Scan(&stored); err != nil {
+		return nil, err
+	}
+	if stored >= seq {
+		rs, err := readState(ctx, s.db.r, m, c)
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&v1.MarkReadResponse{ReadState: rs}), nil
+	}
 	var rs *v1.ReadState
-	err := s.writeTx(ctx, func(t *wtx) error {
-		c, err := channelFor(ctx, t, r.ChannelId, m.Id)
-		if err != nil {
-			return err
-		}
-		cur, err := currentSeq(ctx, t)
-		if err != nil {
-			return err
-		}
-		seq := r.Seq
-		if seq <= 0 || seq > cur {
-			seq = cur
-		}
+	err = s.writeTx(ctx, func(t *wtx) error {
 		if _, err := t.ExecContext(ctx, `INSERT INTO read_states(member_id, channel_id, last_read_seq) VALUES (?,?,?)
-			ON CONFLICT(member_id, channel_id) DO UPDATE SET last_read_seq = excluded.last_read_seq`, m.Id, c.Id, seq); err != nil {
+			ON CONFLICT(member_id, channel_id) DO UPDATE SET last_read_seq = MAX(last_read_seq, excluded.last_read_seq)`, m.Id, c.Id, seq); err != nil {
 			return err
 		}
 		if rs, err = readState(ctx, t, m, c); err != nil {

@@ -67,6 +67,7 @@ type Server struct {
 	pluginJobs      chan func()
 	pluginMemory    int
 	pluginTimeout   time.Duration
+	writeWait       time.Duration
 	updateAvailable atomic.Pointer[string]
 	wg              sync.WaitGroup
 	stop            chan struct{}
@@ -126,6 +127,7 @@ func New(cfg Config) (*Server, error) {
 		fileKey:       fileKey,
 		pluginMemory:  cfg.PluginMemory,
 		pluginTimeout: cfg.PluginTimeout,
+		writeWait:     writeWait,
 		stop:          make(chan struct{}),
 	}
 	s.hub = newHub(s.nowMs)
