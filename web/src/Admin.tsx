@@ -1,7 +1,7 @@
 // Admin screens: create and edit channels, and community settings (members, invites, bots).
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Channel, type Invite, type Member, type Role } from "./gen/sblurp/v1/sblurp_pb";
-import { channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, reorderChannel, sidebarSections } from "./logic";
+import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Ban, type Channel, type Invite, type Member, type Role } from "./gen/sblurp/v1/sblurp_pb";
+import { banDetail, channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, reorderChannel, sidebarSections } from "./logic";
 import {
   browseChannels,
   createBot,
@@ -15,6 +15,7 @@ import {
   createInvite,
   deleteBot,
   errorText,
+  listBans,
   listBots,
   listInvites,
   revokeInvite,
@@ -22,6 +23,7 @@ import {
   set,
   setInviteOnly,
   setRole,
+  unbanMember,
   updateChannel,
   useApp,
 } from "./store";
@@ -180,6 +182,7 @@ const TABS = [
   ["roles", "Roles"],
   ["channels", "Channels"],
   ["invites", "Invites"],
+  ["bans", "Bans"],
   ["bots", "Bots"],
 ] as const;
 export type SettingsTab = (typeof TABS)[number][0];
@@ -222,6 +225,7 @@ export function CommunitySettings({ tab = "members" }: { tab?: SettingsTab }) {
           {tab === "roles" && <RolesTab url={c.url} />}
           {tab === "channels" && <ChannelsTab url={c.url} />}
           {tab === "invites" && <Invites url={c.url} inviteOnly={!!c.info?.inviteOnly} />}
+          {tab === "bans" && <BansTab url={c.url} />}
           {tab === "bots" && <BotsTab url={c.url} />}
         </div>
       </div>
@@ -298,6 +302,56 @@ function MemberAdminRow({ url, me, m, onError }: { url: string; me?: Member; m: 
         </span>
       )}
     </li>
+  );
+}
+
+// Fade, as the reduced-motion rule in app.css turns these off.
+const FADE = 150;
+
+function BansTab({ url }: { url: string }) {
+  const members = useApp((s) => s.cs[url].members);
+  const [bans, setBans] = useState<Ban[] | null>(null);
+  const [gone, setGone] = useState("");
+  const [err, setErr] = useState("");
+  const fail = (e: unknown) => setErr(errorText(e));
+  const load = () => listBans(url).then(setBans, fail);
+  useEffect(() => void load(), [url]); // eslint-disable-line react-hooks/exhaustive-deps
+  const unban = (id: string) => {
+    setErr("");
+    unbanMember(url, id).then(() => (setGone(id), setTimeout(() => load().then(() => setGone("")), FADE)), fail);
+  };
+  const now = Date.now();
+  return (
+    <div className="stack">
+      <p className="muted small">A banned account can't join again. Unban it and the person may join with the same profile, as a plain member.</p>
+      {err && (
+        <p className="error" role="alert">
+          {err}
+        </p>
+      )}
+      {!bans && !err && <p className="muted small">Loading bans…</p>}
+      {bans && !bans.length && <p className="muted small">Nobody is banned.</p>}
+      {!!bans?.length && (
+        <ul className="admin-list" aria-label="Banned members" style={{ animation: `fade-in ${FADE}ms ease-out` }}>
+          {bans.map(({ member: m, bannedBy, bannedAtMs }) =>
+            m ? (
+              <li key={m.id} style={{ opacity: gone === m.id ? 0 : 1, transition: `opacity ${FADE}ms ease-out` }}>
+                <Avatar m={m} size={32} />
+                <span className="truncate">
+                  <b>{m.displayName || m.username}</b>
+                  <small className="muted">
+                    @{m.username} · {banDetail(Number(bannedAtMs), members[bannedBy], now)}
+                  </small>
+                </span>
+                <button className="btn small" aria-label={`Unban ${m.displayName || m.username}`} disabled={gone === m.id} onClick={() => unban(m.id)}>
+                  Unban
+                </button>
+              </li>
+            ) : null,
+          )}
+        </ul>
+      )}
+    </div>
   );
 }
 

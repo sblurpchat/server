@@ -4,6 +4,7 @@ import { create } from "@bufbuild/protobuf";
 import { Code, ConnectError, createRouterTransport, type Transport } from "@connectrpc/connect";
 import {
   AttachmentSchema,
+  BanSchema,
   BotService,
   ChannelKind,
   ChannelMode,
@@ -22,6 +23,7 @@ import {
   RoleSchema,
   ServerService,
   type Attachment,
+  type Ban,
   type Channel,
   type Event,
   type GetServerInfoResponse,
@@ -57,6 +59,7 @@ interface Seed {
   chatter: [channel: string, user: string, text: string][];
   optIn?: { defaults: string[]; notIn: string[] }; // OPT_IN mode: default channels and the ones I have not joined
   roles?: [name: string, color: string, users: string[], gates: string[]][];
+  banned?: [username: string, name: string, daysAgo: number, by: string][];
   questions?: string[]; // join questions; a blank or very short answer is refused, like a plugin would
 }
 
@@ -107,6 +110,7 @@ const SEEDS: Seed[] = [
       ["Helpers", "#0f8b8d", ["jun", "sam"], []],
     ],
     dms: [["ana"], ["jun"], ["priya", "marcus"]],
+    banned: [["freecoins", "Free Coins Daily", 2, "ana"], ["rhea", "Rhea Stone", 40, "priya"]],
     unread: { general: 3, design: 2, help: 1 },
     messages: {
       "reading-room": [
@@ -344,6 +348,7 @@ interface Fake {
   mode: ChannelMode;
   roles: Role[];
   notIn: Set<string>; // OPT_IN: visible text channels I have not joined
+  bans: Ban[];
 }
 
 let nextId = 1;
@@ -379,6 +384,7 @@ function seed(s: Seed, now: number): Fake {
     mode: s.optIn ? ChannelMode.OPT_IN : ChannelMode.ROLES,
     roles: [],
     notIn: new Set(),
+    bans: [],
   };
   const byName = new Map<string, Member>();
   for (const [username, displayName, role, presence, bio, statusText = "", bot] of s.members) {
@@ -401,6 +407,10 @@ function seed(s: Seed, now: number): Fake {
     byName.set(username, m);
   }
   if (!f.meId) f.meId = id("m");
+  for (const [username, displayName, days, by] of s.banned ?? []) {
+    const member = create(MemberSchema, { id: id("m"), kind: MemberKind.HUMAN, role: MEMBER, username, displayName, presence: OFFLINE });
+    f.bans.push(create(BanSchema, { member, bannedBy: byName.get(by)!.id, bannedAtMs: BigInt(now - days * D * 60_000) }));
+  }
   const all = [...f.members.values()];
   const chanByKey = new Map<string, Channel>();
   s.channels.forEach(([category, name, topic, privateTo], i) => {
@@ -577,6 +587,21 @@ function service(f: Fake) {
     need();
     if (me().role < MemberRole.ADMIN) throw new ConnectError("admins only", Code.PermissionDenied);
   };
+  const mod = () => {
+    need();
+    if (me().role < MemberRole.MODERATOR) throw new ConnectError("moderators and up only", Code.PermissionDenied);
+  };
+  const remove = (memberId: string, ban: boolean) => {
+    mod();
+    const m = f.members.get(memberId);
+    if (!m || m.kind !== MemberKind.HUMAN) throw new ConnectError("member not found", Code.NotFound);
+    if (m.role >= me().role) throw new ConnectError("you can only remove members of a lower role", Code.PermissionDenied);
+    f.members.delete(memberId);
+    f.info.memberCount--;
+    if (ban) f.bans.unshift(create(BanSchema, { member: m, bannedBy: f.meId, bannedAtMs: BigInt(Date.now()) }));
+    emit(f, { case: "memberLeft", value: memberId });
+    return {};
+  };
   const mine = (m: Message) => {
     if (m.authorId !== f.meId) throw new ConnectError("not your message", Code.PermissionDenied);
   };
@@ -618,6 +643,22 @@ function service(f: Fake) {
         f.joined = false;
         f.members.delete(f.meId);
         f.info.memberCount--;
+        return {};
+      },
+      kickMember(req: { memberId: string }) {
+        return remove(req.memberId, false);
+      },
+      banMember(req: { memberId: string }) {
+        return remove(req.memberId, true);
+      },
+      listBans() {
+        mod();
+        return { bans: f.bans };
+      },
+      unbanMember(req: { memberId: string }) {
+        mod();
+        if (!f.bans.some((b) => b.member?.id === req.memberId)) throw new ConnectError("that member is not banned", Code.NotFound);
+        f.bans = f.bans.filter((b) => b.member?.id !== req.memberId);
         return {};
       },
       createInvite(req: { expiresInSeconds: bigint; maxUses: number }) {

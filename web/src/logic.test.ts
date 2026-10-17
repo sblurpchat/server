@@ -17,6 +17,7 @@ import {
 } from "./gen/sblurp/v1/sblurp_pb";
 import {
   THEMES,
+  banDetail,
   browseDetail,
   browseList,
   swatch,
@@ -682,6 +683,14 @@ describe("channel modes and roles", () => {
     expect(browseList(all, joined, "").map((x) => `${x.ch.name}:${x.joined}`)).toEqual(["art:false", "book-club:false", "general:true"]);
     expect(browseList(all, joined, "#BOOK").map((x) => x.ch.id)).toEqual(["b"]);
     expect(browseList(all, joined, "novel").map((x) => x.ch.id)).toEqual(["b"]);
+  });
+
+  it("says when and by whom someone was banned", () => {
+    const now = new Date(2026, 9, 16, 12).getTime();
+    const ana = create(MemberSchema, { displayName: "Ana Ruiz", username: "ana" });
+    expect(banDetail(now - 3_600_000, ana, now)).toBe("Banned today by Ana Ruiz");
+    expect(banDetail(new Date(2026, 9, 15, 9).getTime(), create(MemberSchema, { username: "priya" }), now)).toBe("Banned yesterday by priya");
+    expect(banDetail(new Date(2026, 8, 2, 9).getTime(), undefined, now)).toBe("Banned on Wednesday, September 2");
   });
 
   it("shows member count and topic under a Browse channels row", () => {

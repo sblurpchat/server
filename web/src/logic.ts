@@ -636,6 +636,13 @@ export function inviteState(inv: { expiresAtMs: bigint; maxUses: number; uses: n
   return { live: true, text: `${uses}, ${exp}` };
 }
 
+/** "Banned yesterday by Ana Ruiz". The banner may have left since; then only the day. */
+export function banDetail(atMs: number, by: Member | undefined, now: number): string {
+  const d = dayLabel(atMs, now);
+  const when = d === "Today" || d === "Yesterday" ? d.toLowerCase() : `on ${d}`;
+  return `Banned ${when}${by ? ` by ${by.displayName || by.username}` : ""}`;
+}
+
 export const hostOf = (url: string) => new URL(url).host;
 
 /** #/c/<host>[/<channel>[/<message>[/<thread root>]]][?<pane>] */

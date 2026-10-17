@@ -681,6 +681,9 @@ export const setRole = (url: string, memberId: string, role: MemberRole) => api(
 export const removeMember = (url: string, memberId: string, ban: boolean) =>
   ban ? api(url).server.banMember({ memberId }) : api(url).server.kickMember({ memberId });
 
+export const listBans = async (url: string) => (await api(url).server.listBans({})).bans;
+export const unbanMember = (url: string, memberId: string) => api(url).server.unbanMember({ memberId });
+
 export const createInvite = (url: string, expiresInSeconds: number, maxUses: number) =>
   api(url).server.createInvite({ expiresInSeconds: BigInt(expiresInSeconds), maxUses });
 export const listInvites = async (url: string) => (await api(url).server.listInvites({})).invites;
