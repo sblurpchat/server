@@ -501,6 +501,24 @@ a:not(.btn):has(> .icon:last-child) {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+/* A file input hidden inside its label shows its focus ring on the label. */
+label:has(> .visually-hidden:focus-visible) {
+  outline: 2px solid var(--raspberry);
+  outline-offset: 2px;
+}
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+}
+.skip-link:not(:focus) {
+  clip-path: inset(50%);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  padding: 0;
+}
 .icon {
   fill: none;
   stroke: currentColor;
@@ -1640,8 +1658,9 @@ kbd {
   text-align: center;
   cursor: pointer;
 }
+/* Not the accent color: it is only fitted to the paper and sidebar, not to dialogs (1188). */
 .theme-opt:has(:checked) .theme-name {
-  color: var(--raspberry);
+  font-weight: 800;
 }
 .theme-opt input {
   position: absolute;
@@ -2022,6 +2041,9 @@ li.sw-empty {
 .emoji-grid button:hover,
 .emoji-grid button:focus-visible {
   background: var(--hover);
+}
+.emoji-grid > [role="group"] {
+  display: contents;
 }
 .emoji-grid p {
   grid-column: 1 / -1;

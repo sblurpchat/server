@@ -29,6 +29,7 @@ const views = {
   admin: async (p) => {
     await drawer(p);
     await open(p, "Community settings");
+    await p.getByRole("tab", { name: "Members" }).click();
     await p.locator(".admin-list li").first().waitFor();
   },
   roles: async (p) => {
