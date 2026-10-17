@@ -1891,6 +1891,37 @@ li.sw-empty {
   animation: fade-in 150ms ease-out;
 }
 /* Header image: a veil of the page color keeps the title and topic readable in every theme. */
+/* Narrow message column (a side pane open): drop the topic so the title gets the room (1050). */
+.chan-head {
+  container: chan-head / inline-size;
+}
+.chan-topic {
+  transition: opacity 150ms ease-out;
+  @starting-style {
+    opacity: 0;
+  }
+}
+/* The title keeps its full width; the search box shrinks first, to 96px, before the title truncates. */
+@container chan-head (max-width: 560px) {
+  .chan-id {
+    flex: 0 1 auto;
+  }
+  .chan-title {
+    max-width: none;
+  }
+  /* Desktop only: on phones the search is already a 36px icon. */
+  @media (min-width: 768px) {
+    .chan-search {
+      flex: 1 1 0;
+      min-width: 96px;
+      max-width: 200px;
+    }
+  }
+  .chan-topic,
+  .topic-more {
+    display: none;
+  }
+}
 .chan-head[data-img] {
   --veil: color-mix(in srgb, var(--paper) 80%, transparent);
   background:
