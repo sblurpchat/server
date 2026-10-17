@@ -90,6 +90,7 @@ message Channel {
   // members with one of these roles (and admins and the owner) can.
   repeated string role_ids = 10;
   bool is_default = 11;       // TEXT only: OPT_IN mode joins new members to it
+  int32 member_count = 12;    // set by BrowseChannels only; 0 elsewhere
 }
 
 message Attachment {

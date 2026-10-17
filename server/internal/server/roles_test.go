@@ -37,6 +37,15 @@ func (c *client) browse() []string {
 	return ids
 }
 
+func (c *client) browseCount(id string) int32 {
+	for _, ch := range must(c.chat.BrowseChannels(ctx(), connect.NewRequest(&v1.BrowseChannelsRequest{}))).Channels {
+		if ch.Id == id {
+			return ch.MemberCount
+		}
+	}
+	return -1
+}
+
 func (c *client) joinChannel(id string) error {
 	_, err := c.chat.JoinChannel(ctx(), connect.NewRequest(&v1.JoinChannelRequest{ChannelId: id}))
 	return err
@@ -261,12 +270,16 @@ func TestChannelModesAndRoles(t *testing.T) {
 	if ms, err := joe.search("fresh", fresh.Id); err != nil || len(ms) != 1 {
 		t.Fatalf("search in a visible channel = %v %v", ms, err)
 	}
+	before := joe.browseCount(fresh.Id)
 	if err := joe.joinChannel(fresh.Id); err != nil {
 		t.Fatal(err)
 	}
 	joeSub.next(isChannelCreated(fresh.Id), nil)
 	if err := joe.joinChannel(fresh.Id); err != nil { // joining twice is fine
 		t.Fatal(err)
+	}
+	if n := joe.browseCount(fresh.Id); before < 0 || n != before+1 {
+		t.Fatalf("browse member_count %d -> %d after joining", before, n)
 	}
 	ana.send(fresh.Id, "hello joiner")
 	joeSub.next(isCreated("hello joiner"), nil)
@@ -277,6 +290,9 @@ func TestChannelModesAndRoles(t *testing.T) {
 		t.Fatal(err)
 	}
 	joeSub.next(isChannelDeleted(fresh.Id), nil)
+	if n := joe.browseCount(fresh.Id); n != before {
+		t.Fatalf("browse member_count = %d after leaving, want %d", n, before)
+	}
 	ana.send(fresh.Id, "after leaving")
 	noLeak(t, "joe", sync(joeSub), false, fresh.Id)
 	if joe.inState(fresh.Id) || readStateFor(joe.state(), fresh.Id) != nil {

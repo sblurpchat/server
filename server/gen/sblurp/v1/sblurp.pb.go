@@ -505,7 +505,8 @@ type Channel struct {
 	// TEXT only. Empty: every member can see the channel. Otherwise only
 	// members with one of these roles (and admins and the owner) can.
 	RoleIds       []string `protobuf:"bytes,10,rep,name=role_ids,json=roleIds,proto3" json:"role_ids,omitempty"`
-	IsDefault     bool     `protobuf:"varint,11,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"` // TEXT only: OPT_IN mode joins new members to it
+	IsDefault     bool     `protobuf:"varint,11,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"`       // TEXT only: OPT_IN mode joins new members to it
+	MemberCount   int32    `protobuf:"varint,12,opt,name=member_count,json=memberCount,proto3" json:"member_count,omitempty"` // set by BrowseChannels only; 0 elsewhere
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -615,6 +616,13 @@ func (x *Channel) GetIsDefault() bool {
 		return x.IsDefault
 	}
 	return false
+}
+
+func (x *Channel) GetMemberCount() int32 {
+	if x != nil {
+		return x.MemberCount
+	}
+	return 0
 }
 
 type Attachment struct {
@@ -5390,7 +5398,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05color\x18\x03 \x01(\tR\x05color\x12\x1a\n" +
-	"\bposition\x18\x04 \x01(\x05R\bposition\"\xce\x02\n" +
+	"\bposition\x18\x04 \x01(\x05R\bposition\"\xf1\x02\n" +
 	"\aChannel\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x16.sblurp.v1.ChannelKindR\x04kind\x12\x12\n" +
@@ -5405,7 +5413,8 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\brole_ids\x18\n" +
 	" \x03(\tR\aroleIds\x12\x1d\n" +
 	"\n" +
-	"is_default\x18\v \x01(\bR\tisDefault\"\xa7\x01\n" +
+	"is_default\x18\v \x01(\bR\tisDefault\x12!\n" +
+	"\fmember_count\x18\f \x01(\x05R\vmemberCount\"\xa7\x01\n" +
 	"\n" +
 	"Attachment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +

@@ -409,6 +409,11 @@ func (s *Server) BrowseChannels(ctx context.Context, _ *connect.Request[v1.Brows
 	if err != nil {
 		return nil, err
 	}
+	for _, c := range cs {
+		if err := s.db.r.QueryRowContext(ctx, "SELECT COUNT(*) FROM channel_members WHERE channel_id = ?", c.Id).Scan(&c.MemberCount); err != nil {
+			return nil, err
+		}
+	}
 	return connect.NewResponse(&v1.BrowseChannelsResponse{Channels: cs}), nil
 }
 
