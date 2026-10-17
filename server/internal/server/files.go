@@ -311,7 +311,9 @@ func (s *Server) serveFile(w http.ResponseWriter, r *http.Request) {
 	h.Set("Content-Type", ctype)
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Content-Security-Policy", "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; sandbox")
-	h.Set("Cache-Control", "private, max-age=31536000, immutable")
+	// The browser may keep the file only while the link is valid.
+	exp, _ := strconv.ParseInt(q.Get("exp"), 10, 64)
+	h.Set("Cache-Control", "private, max-age="+strconv.FormatInt(exp-s.now().Unix(), 10)+", immutable")
 	disp := "attachment"
 	if strings.HasPrefix(ctype, "image/") || strings.HasPrefix(ctype, "video/") || strings.HasPrefix(ctype, "audio/") {
 		disp = "inline"

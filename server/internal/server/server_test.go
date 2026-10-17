@@ -1015,6 +1015,11 @@ func TestUpload(t *testing.T) {
 	if !bytes.Equal(got, img) || res.Header.Get("Content-Type") != "image/png" || res.Header.Get("X-Content-Type-Options") != "nosniff" {
 		t.Fatalf("GET file: %d bytes, headers %v", len(got), res.Header)
 	}
+	// Cached no longer than the link is valid (one to two hours).
+	var maxAge int
+	if _, err := fmt.Sscanf(res.Header.Get("Cache-Control"), "private, max-age=%d, immutable", &maxAge); err != nil || maxAge <= 0 || maxAge > 7200 {
+		t.Fatalf("file Cache-Control = %q", res.Header.Get("Cache-Control"))
+	}
 
 	// HTML is sniffed, never served inline.
 	_, h := ana.upload("x.png", []byte("<html><script>alert(1)</script></html>"))
