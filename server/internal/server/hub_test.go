@@ -45,3 +45,23 @@ func TestPresenceKeepsLatestPerMember(t *testing.T) {
 		t.Fatal("takePresence did not clear")
 	}
 }
+
+func TestPresenceBatch(t *testing.T) {
+	if presenceBatch(nil, 5) != nil {
+		t.Fatal("empty pending should send nothing")
+	}
+	on := func(id string) *v1.Event {
+		return &v1.Event{AtMs: 1, Kind: &v1.Event_Presence{Presence: &v1.PresenceEvent{MemberId: id, Presence: v1.Presence_PRESENCE_ONLINE}}}
+	}
+	if ev := presenceBatch(map[string]*v1.Event{"a": on("a")}, 5); ev.GetPresence().GetMemberId() != "a" {
+		t.Fatalf("one change = %v, want a plain presence event", ev)
+	}
+	ev := presenceBatch(map[string]*v1.Event{"a": on("a"), "b": on("b")}, 5)
+	got := map[string]bool{}
+	for _, p := range ev.GetPresenceBatch().GetChanges() {
+		got[p.MemberId] = p.Presence == v1.Presence_PRESENCE_ONLINE
+	}
+	if !maps.Equal(got, map[string]bool{"a": true, "b": true}) || ev.AtMs != 5 {
+		t.Fatalf("batch = %v", ev)
+	}
+}

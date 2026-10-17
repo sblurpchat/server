@@ -235,6 +235,13 @@ message PresenceEvent {
   Presence presence = 2;
 }
 
+// Many presence changes at once, the latest per member. The server sends
+// this instead of single presence events when several are waiting (a
+// reconnect burst after a restart).
+message PresenceBatch {
+  repeated PresenceEvent changes = 1;
+}
+
 message Event {
   int64 seq = 1;              // 0 for ephemeral events (typing, presence, heartbeat)
   int64 at_ms = 2;
@@ -258,6 +265,7 @@ message Event {
     ChannelMode channel_mode_changed = 26;
     bool server_updated = 27;       // description, banner or icon changed; call GetServerInfo
     bool emoji_changed = 28;        // custom emoji added or deleted; refetch GET /emoji
+    PresenceBatch presence_batch = 29; // ephemeral; apply each change like presence
   }
 }
 

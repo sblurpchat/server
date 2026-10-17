@@ -433,6 +433,19 @@ describe("presence", () => {
     expect(next.members.me.presence).toBe(Presence.ONLINE);
     expect(next.members.ana.presence).toBe(Presence.UNSPECIFIED);
   });
+  it("applies every change in a batch", () => {
+    const c = community();
+    c.members = { me: c.me!, ana: create(MemberSchema, { id: "ana" }), bob: create(MemberSchema, { id: "bob" }) };
+    const changes = [
+      { memberId: "me", presence: Presence.ONLINE },
+      { memberId: "ana", presence: Presence.OFFLINE },
+    ];
+    const next = applyEvent(c, ev(0n, { case: "presenceBatch", value: { changes } as never }), T0, null);
+    expect(next.me?.presence).toBe(Presence.ONLINE);
+    expect(next.members.me.presence).toBe(Presence.ONLINE);
+    expect(next.members.ana.presence).toBe(Presence.OFFLINE);
+    expect(next.members.bob.presence).toBe(Presence.UNSPECIFIED);
+  });
 });
 
 describe("landingChannel", () => {

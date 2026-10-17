@@ -245,11 +245,15 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
       next.typing = { ...c.typing, [key]: { ...c.typing[key], [t.memberId]: now + TYPING_TTL } };
       return next;
     }
-    case "presence": {
-      const { memberId: id, presence } = k.value;
-      // c.me is its own copy of your member, so it needs the update too.
-      if (c.members[id]) next.members = { ...c.members, [id]: { ...c.members[id], presence } };
-      if (c.me?.id === id) next.me = { ...c.me, presence };
+    case "presence":
+    case "presenceBatch": {
+      const changes = k.case === "presence" ? [k.value] : k.value.changes;
+      next.members = { ...c.members };
+      for (const { memberId: id, presence } of changes) {
+        if (next.members[id]) next.members[id] = { ...next.members[id], presence };
+        // c.me is its own copy of your member, so it needs the update too.
+        if (next.me?.id === id) next.me = { ...next.me, presence };
+      }
       return next;
     }
     default:

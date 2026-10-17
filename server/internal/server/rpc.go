@@ -811,7 +811,7 @@ func (s *Server) Subscribe(ctx context.Context, req *connect.Request[v1.Subscrib
 				return err
 			}
 		}
-		for _, ev := range s.hub.takePresence(sb) {
+		if ev := presenceBatch(s.hub.takePresence(sb), s.nowMs()); ev != nil {
 			if err := stream.Send(ev); err != nil {
 				return err
 			}
@@ -845,6 +845,22 @@ func (s *Server) Subscribe(ctx context.Context, req *connect.Request[v1.Subscrib
 			}
 		}
 	}
+}
+
+// presenceBatch turns pending presence into one event: a plain presence
+// event for one change, a PresenceBatch for more (1061), nil for none.
+func presenceBatch(pending map[string]*v1.Event, at int64) *v1.Event {
+	if len(pending) <= 1 {
+		for _, ev := range pending {
+			return ev
+		}
+		return nil
+	}
+	b := &v1.PresenceBatch{}
+	for _, ev := range pending {
+		b.Changes = append(b.Changes, ev.GetPresence())
+	}
+	return &v1.Event{AtMs: at, Kind: &v1.Event_PresenceBatch{PresenceBatch: b}}
 }
 
 // ---------------------------------------------------------------------------
