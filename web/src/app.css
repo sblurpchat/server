@@ -2366,10 +2366,9 @@ li.sw-empty {
   }
 }
 /* A header image doubles the bar's height to show it off (1202); a scrim keeps the text readable. */
+/* Everything stays vertically centered however tall the bar gets (1228). */
 .chan-head[data-img] {
   min-height: 112px;
-  align-items: flex-end;
-  padding-bottom: 10px;
   background:
     linear-gradient(to bottom, color-mix(in srgb, var(--paper) 15%, transparent), color-mix(in srgb, var(--paper) 78%, transparent) 55%, color-mix(in srgb, var(--paper) 94%, transparent)),
     var(--head-img) center / cover no-repeat;
