@@ -265,6 +265,7 @@ message Event {
 // Channels and messages
 // ---------------------------------------------------------------------------
 
+// Admin or owner only. Names are normalized: "Book Club" becomes book-club.
 message CreateChannelRequest {
   string name = 1;
   ChannelKind kind = 2;       // TEXT or PRIVATE
@@ -273,6 +274,7 @@ message CreateChannelRequest {
 }
 message CreateChannelResponse { Channel channel = 1; }
 
+// Admin or owner only. DMs cannot be updated.
 message UpdateChannelRequest {
   string channel_id = 1;
   optional string name = 2;
@@ -303,6 +305,8 @@ message JoinChannelResponse { Channel channel = 1; }
 message LeaveChannelRequest { string channel_id = 1; }
 message LeaveChannelResponse {}
 
+// Any member, with 1 to 8 others. Returns the existing DM when one has
+// exactly these members.
 message OpenDMRequest {
   repeated string member_ids = 1; // the others; the caller is added
 }
@@ -323,6 +327,9 @@ message ListMessagesResponse {
   bool has_more_after = 3;       // newer messages exist after the last one (after_id and around_id only)
 }
 
+// Any member who can see the channel. Text up to 8,000 characters, at most
+// 10 attachments. People may send 5 messages per second (burst 10); bots
+// follow the server's -bot-rate and -bot-burst.
 message SendMessageRequest {
   string channel_id = 1;
   string text = 2;
@@ -332,15 +339,18 @@ message SendMessageRequest {
 }
 message SendMessageResponse { Message message = 1; }
 
+// Your own messages only.
 message EditMessageRequest {
   string message_id = 1;
   string text = 2;
 }
 message EditMessageResponse { Message message = 1; }
 
+// Your own messages, or anyone's for a moderator or higher.
 message DeleteMessageRequest { string message_id = 1; }
 message DeleteMessageResponse {}
 
+// At most 50 different emoji per message.
 message ReactRequest {
   string message_id = 1;
   string emoji = 2;
@@ -363,7 +373,7 @@ message SetTypingResponse {}
 message SearchRequest {
   string query = 1;
   string channel_id = 2;      // optional filter
-  int32 limit = 3;
+  int32 limit = 3;            // default 20, max 100
 }
 message SearchResponse { repeated Message messages = 1; }
 
@@ -552,6 +562,7 @@ message DeleteEmojiResponse {}
 // Bots
 // ---------------------------------------------------------------------------
 
+// Admin or owner only. username is 2 to 32 of a-z, 0-9, _, . and -.
 message CreateBotRequest {
   string username = 1;
   string display_name = 2;
@@ -563,12 +574,15 @@ message CreateBotResponse {
   string token = 2;           // shown once; the server stores only a hash
 }
 
+// Any member.
 message ListBotsRequest {}
 message ListBotsResponse { repeated Member bots = 1; }
 
+// Admin or owner only. The old token stops working at once.
 message RotateBotTokenRequest { string bot_id = 1; }
 message RotateBotTokenResponse { string token = 1; }
 
+// Admin or owner only. The bot's messages stay; its username is freed.
 message DeleteBotRequest { string bot_id = 1; }
 message DeleteBotResponse {}
 
