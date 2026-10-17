@@ -1723,3 +1723,56 @@ func TestWriteTxFailsFastWhenBusy(t *testing.T) {
 		t.Fatal("write queued instead of failing fast")
 	}
 }
+
+// Renames on the account server reach the community (1095).
+func TestUsernameFollowsAccount(t *testing.T) {
+	e := newEnv(t)
+	ana := e.join("ana")
+	bob := e.join("bob")
+	cara := e.join("cara")
+	as := func(sub, name string) *client {
+		c := e.claims(sub)
+		c["preferred_username"] = name
+		return e.client(signJWT(e.iss.key, map[string]any{"alg": "EdDSA", "typ": "JWT", "kid": e.iss.kid}, c))
+	}
+	sub := ana.subscribe(ana.state().Seq)
+	updated := func(id string) func(*v1.Event) bool {
+		return func(ev *v1.Event) bool { return ev.GetMemberUpdated().GetId() == id }
+	}
+	name := func(c *client) string { return c.state().Me.Username }
+
+	// A plain rename, announced.
+	bob = as("bob", "robert")
+	if got := name(bob); got != "robert" {
+		t.Fatalf("username %q, want robert", got)
+	}
+	if ev := sub.next(updated(bob.state().Me.Id), nil); ev.GetMemberUpdated().Username != "robert" {
+		t.Fatalf("event username %q", ev.GetMemberUpdated().Username)
+	}
+	// The same claim again writes nothing.
+	seq := bob.state().Seq
+	name(bob)
+	if got := bob.state().Seq; got != seq {
+		t.Fatalf("seq moved %d -> %d with an unchanged claim", seq, got)
+	}
+
+	// Cara renamed to cat but has not been back; bob takes "cara". The
+	// stale holder moves to cara2, then gets cat on her next request.
+	caraID := cara.me.Id
+	bob = as("bob", "cara")
+	if got := name(bob); got != "cara" {
+		t.Fatalf("username %q, want cara", got)
+	}
+	if ev := sub.next(updated(caraID), nil); ev.GetMemberUpdated().Username != "cara2" {
+		t.Fatalf("stale holder moved to %q, want cara2", ev.GetMemberUpdated().Username)
+	}
+	if got := name(as("cara", "cat")); got != "cat" {
+		t.Fatalf("cara's username %q, want cat", got)
+	}
+
+	// A bot keeps its name; the person gets a suffix.
+	must(ana.bots.CreateBot(ctx(), connect.NewRequest(&v1.CreateBotRequest{Username: "robo"})))
+	if got := name(as("bob", "robo")); got != "robo2" {
+		t.Fatalf("username %q, want robo2", got)
+	}
+}

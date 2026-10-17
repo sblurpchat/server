@@ -165,6 +165,12 @@ client. There is no separate apps system. The bot is ~150 lines in
   `Join`. `ListBans` and `UnbanMember` (moderator or higher) show and lift
   bans; an unbanned person may Join again with the same member id. Bots are
   removed with `DeleteBot`, not kicked.
+- **Usernames** come from the token's `preferred_username` (`ana`, then
+  `ana2`, ... when taken). When a later token carries a new one, the server
+  renames the member and sends `member_updated`. If another person from
+  the same issuer still holds the name, they renamed on the account server
+  since, so they move to `name2` and get their new name on their next
+  request. A bot or someone from another issuer keeps the name.
 - **Invites**: a community is open (anyone with a login from a trusted
   issuer may `Join`) until an admin calls
   `UpdateServerSettings{invite_only: true}`. `GetServerInfo.invite_only`

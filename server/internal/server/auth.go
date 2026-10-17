@@ -267,8 +267,16 @@ func (s *Server) authenticate(ctx context.Context, header string) (*identity, er
 	if err != nil {
 		return nil, err
 	}
-	return &identity{iss: c.Iss, sub: c.Sub, username: c.Username, member: m,
-		emailVerified: c.EmailVerified, ageOver13: c.AgeOver13, ageOver18: c.AgeOver18}, nil
+	id := &identity{iss: c.Iss, sub: c.Sub, username: c.Username, member: m,
+		emailVerified: c.EmailVerified, ageOver13: c.AgeOver13, ageOver18: c.AgeOver18}
+	if m != nil && m.claim != c.Username {
+		if fresh, err := s.syncUsername(ctx, id); err != nil {
+			s.log.Warn("username sync failed", "member", m.Id, "err", err)
+		} else if fresh != nil {
+			id.member = fresh
+		}
+	}
+	return id, nil
 }
 
 // authorize decides whether an identity may call a procedure.

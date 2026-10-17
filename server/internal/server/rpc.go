@@ -168,17 +168,18 @@ func outranks(actor, target v1.MemberRole) bool {
 type memberRow struct {
 	*v1.Member
 	joinedSeq int64
+	claim     string // username_claim
 }
 
 type scanner interface{ Scan(...any) error }
 
-const memberCols = "id, kind, role, username, display_name, avatar_url, bio, status_text, status_emoji, joined_at_ms, joined_seq, (SELECT group_concat(role_id) FROM member_roles WHERE member_id = members.id)"
+const memberCols = "id, kind, role, username, display_name, avatar_url, bio, status_text, status_emoji, joined_at_ms, joined_seq, username_claim, (SELECT group_concat(role_id) FROM member_roles WHERE member_id = members.id)"
 
 func (s *Server) scanMember(sc scanner) (*memberRow, error) {
 	m := &memberRow{Member: &v1.Member{}}
 	var roles sql.NullString
 	if err := sc.Scan(&m.Id, &m.Kind, &m.Role, &m.Username, &m.DisplayName, &m.AvatarUrl, &m.Bio,
-		&m.StatusText, &m.StatusEmoji, &m.JoinedAtMs, &m.joinedSeq, &roles); err != nil {
+		&m.StatusText, &m.StatusEmoji, &m.JoinedAtMs, &m.joinedSeq, &m.claim, &roles); err != nil {
 		return nil, err
 	}
 	m.RoleIds = splitIDs(roles)
@@ -557,17 +558,9 @@ func (s *Server) Join(ctx context.Context, req *connect.Request[v1.JoinRequest])
 			out = existing
 			return err
 		}
-		base := usernameBase(id.username)
-		username := base
-		for n := 2; ; n++ {
-			var taken bool
-			if err := t.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM members WHERE username = ?)", username).Scan(&taken); err != nil {
-				return err
-			}
-			if !taken {
-				break
-			}
-			username = fmt.Sprintf("%s%d", base, n)
+		username, err := freeUsername(t, usernameBase(id.username))
+		if err != nil {
+			return err
 		}
 		var humans int
 		if err := t.QueryRowContext(ctx, "SELECT COUNT(*) FROM members WHERE iss IS NOT NULL").Scan(&humans); err != nil {
@@ -583,9 +576,9 @@ func (s *Server) Join(ctx context.Context, req *connect.Request[v1.JoinRequest])
 		}
 		now := s.now()
 		mid := newID(now)
-		if _, err := t.ExecContext(ctx, `INSERT INTO members(id, kind, role, username, display_name, avatar_url, bio, joined_at_ms, joined_seq, iss, sub)
-			VALUES (?,?,?,?,?,?,?,?,?,?,?)`, mid, v1.MemberKind_MEMBER_KIND_HUMAN, role, username, display, r.AvatarUrl, r.Bio,
-			now.UnixMilli(), seq, id.iss, id.sub); err != nil {
+		if _, err := t.ExecContext(ctx, `INSERT INTO members(id, kind, role, username, display_name, avatar_url, bio, joined_at_ms, joined_seq, iss, sub, username_claim)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`, mid, v1.MemberKind_MEMBER_KIND_HUMAN, role, username, display, r.AvatarUrl, r.Bio,
+			now.UnixMilli(), seq, id.iss, id.sub, id.username); err != nil {
 			return err
 		}
 		if out, err = s.loadMember(ctx, t, "id = ?", mid); err != nil {
@@ -602,6 +595,100 @@ func (s *Server) Join(ctx context.Context, req *connect.Request[v1.JoinRequest])
 		return nil, err
 	}
 	return connect.NewResponse(&v1.JoinResponse{Member: out.Member, Created: created}), nil
+}
+
+// freeUsername returns base, or base2, base3, ... when it is taken.
+func freeUsername(t *wtx, base string) (string, error) {
+	name := base
+	for n := 2; ; n++ {
+		var taken bool
+		if err := t.QueryRowContext(t.ctx, "SELECT EXISTS(SELECT 1 FROM members WHERE username = ?)", name).Scan(&taken); err != nil {
+			return "", err
+		}
+		if !taken {
+			return name, nil
+		}
+		name = fmt.Sprintf("%s%d", base, n)
+	}
+}
+
+// syncUsername follows a rename on the account server (1095). It runs only
+// when the token's preferred_username differs from the one last seen.
+//
+// Collision: the account server keeps usernames unique per issuer, so
+// another human from the same issuer holding the name, with the same or an
+// unknown last-seen claim, has renamed since we saw them. They move to
+// base2, base3, ... and get their own new name on their next request. Any
+// other holder (a bot, another issuer, or a different claim that normalizes
+// to the same name) keeps it, and the caller gets the join rule's suffix.
+func (s *Server) syncUsername(ctx context.Context, id *identity) (*memberRow, error) {
+	var out *memberRow
+	err := s.writeTx(ctx, func(t *wtx) error {
+		m, err := s.loadMember(ctx, t, "id = ?", id.member.Id)
+		if err != nil || m == nil || m.claim == id.username {
+			out = m
+			return err
+		}
+		base := usernameBase(id.username)
+		name := m.Username
+		if name != base {
+			var other, iss, claim string
+			var deleted bool
+			err := t.QueryRowContext(ctx, "SELECT id, COALESCE(iss, ''), username_claim, deleted FROM members WHERE username = ?", base).
+				Scan(&other, &iss, &claim, &deleted)
+			switch {
+			case errors.Is(err, sql.ErrNoRows):
+				name = base
+			case err != nil:
+				return err
+			case iss == id.iss && (claim == id.username || claim == ""):
+				moved, err := freeUsername(t, base)
+				if err != nil {
+					return err
+				}
+				if err := s.setUsername(t, other, moved, !deleted); err != nil {
+					return err
+				}
+				name = base
+			default:
+				if name, err = freeUsername(t, base); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err := t.ExecContext(ctx, "UPDATE members SET username_claim = ? WHERE id = ?", id.username, m.Id); err != nil {
+			return err
+		}
+		if name == m.Username {
+			out = m
+			return nil
+		}
+		if err := s.setUsername(t, m.Id, name, true); err != nil {
+			return err
+		}
+		out, err = s.loadMember(ctx, t, "id = ?", m.Id)
+		return err
+	})
+	return out, err
+}
+
+// setUsername renames a member and, if announce, tells clients.
+func (s *Server) setUsername(t *wtx, id, name string, announce bool) error {
+	if _, err := t.ExecContext(t.ctx, "UPDATE members SET username = ? WHERE id = ?", name, id); err != nil {
+		return err
+	}
+	if !announce {
+		return nil
+	}
+	m, err := s.loadMember(t.ctx, t, "id = ?", id)
+	if err != nil {
+		return err
+	}
+	seq, err := t.nextSeq()
+	if err != nil {
+		return err
+	}
+	return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberUpdated{MemberUpdated: m.Member}}, "", "")
 }
 
 func (s *Server) GetMe(ctx context.Context, _ *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error) {
