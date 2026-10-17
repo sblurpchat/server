@@ -70,7 +70,7 @@ import {
   peekChannel,
 } from "./store";
 import { AvatarField } from "./AvatarField";
-import { Avatar, CommunityIcon, Dialog, EmojiPicker, emojiChar, Icon, Markdown, Pop, Resizer, useClamped } from "./ui";
+import { Avatar, CommunityIcon, Dialog, Editable, EmojiPicker, emojiChar, Icon, Markdown, Pop, Resizer, useClamped } from "./ui";
 
 export function App() {
   const auth = useApp((s) => s.auth);
@@ -334,15 +334,17 @@ function Rail() {
 // ---------------------------------------------------------------------------
 
 /** The community description under its name: three lines, then "Show more". */
-function SideAbout({ c, text }: { c: Community; text: string }) {
+function SideAbout({ c, text, admin }: { c: Community; text: string; admin: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const cut = useClamped(ref, text);
   return (
     <div className="side-about">
-      <div ref={ref} id="side-about-text" className="side-about-text msg-text" data-open={open}>
-        <Markdown text={text} members={c.members} meId={c.me?.id} onMention={(id, el) => openProfile(c.url, id, el)} />
-      </div>
+      <Editable label="Edit community description" onEdit={admin ? () => set({ modal: { t: "community", tab: "about", focusDesc: true } }) : undefined}>
+        <div ref={ref} id="side-about-text" className="side-about-text msg-text" data-open={open}>
+          <Markdown text={text} members={c.members} meId={c.me?.id} onMention={(id, el) => openProfile(c.url, id, el)} />
+        </div>
+      </Editable>
       {(cut || open) && (
         <button className="link-btn" aria-expanded={open} aria-controls="side-about-text" onClick={() => setOpen(!open)}>
           {open ? "Show less" : "Show more"}
@@ -373,7 +375,7 @@ function Sidebar({ c }: { c: Community }) {
         <span className="truncate">{name}</span>
         <Icon name="chevron" size={18} />
       </button>
-      {c.info?.description && <SideAbout c={c} text={c.info.description} />}
+      {c.info?.description && <SideAbout c={c} text={c.info.description} admin={admin} />}
       <Pop anchor={menu} onClose={() => setMenu(null)} className="menu" label={`${name} menu`}>
         <div role="menu" onClick={() => setMenu(null)}>
           <button role="menuitem" onClick={() => set({ modal: { t: "info" } })}>
@@ -802,9 +804,9 @@ function Modals() {
     case "delete":
       return <DeleteConfirm id={modal.id} />;
     case "channel":
-      return <ChannelDialog key={modal.id ?? "new"} id={modal.id} category={modal.category} name={modal.name} />;
+      return <ChannelDialog key={modal.id ?? "new"} id={modal.id} category={modal.category} name={modal.name} focusTopic={modal.focusTopic} />;
     case "community":
-      return <CommunitySettings tab={modal.tab} />;
+      return <CommunitySettings tab={modal.tab} focusDesc={modal.focusDesc} />;
     case "newdm":
       return <NewMessage />;
     case "browse":

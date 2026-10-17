@@ -63,23 +63,26 @@ import {
   unfurled,
   unfurlKey,
 } from "./store";
-import { Avatar, Dialog, EMOJI, EmojiPicker, emojiChar, Icon, Markdown, Pop, Resizer, useClamped } from "./ui";
+import { Avatar, Dialog, Editable, EMOJI, EmojiPicker, emojiChar, Icon, Markdown, Pop, Resizer, useClamped } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
 export const openProfile = (url: string, memberId: string, el: HTMLElement) =>
   set({ popover: { url, memberId, rect: el.getBoundingClientRect() } });
 
-/** A channel topic in Markdown, clamped to two lines; the button shows all of it. */
-function Topic({ c, topic, title }: { c: Community; topic: string; title: string }) {
+/** A channel topic in Markdown, clamped to three lines (1203). Editors click it to edit; others click to read the rest. */
+function Topic({ c, topic, title, onEdit }: { c: Community; topic: string; title: string; onEdit?: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const cut = useClamped(ref, topic);
   const [full, setFull] = useState<DOMRect | null>(null);
   const md = <Markdown text={topic} members={c.members} meId={c.me?.id} onMention={(id, el) => openProfile(c.url, id, el)} />;
+  const show = cut && !onEdit ? (e: React.MouseEvent<HTMLElement>) => !(e.target as Element).closest("a, button") && setFull(e.currentTarget.getBoundingClientRect()) : undefined;
   return (
     <>
-      <div ref={ref} className="chan-topic msg-text">
-        {md}
-      </div>
+      <Editable className="topic-wrap" label="Edit channel description" onEdit={onEdit}>
+        <div ref={ref} className="chan-topic msg-text" data-more={show ? true : undefined} onClick={show}>
+          {md}
+        </div>
+      </Editable>
       {cut && (
         <button className="icon-btn topic-more" aria-label="Show full topic" title="Show full topic" onClick={(e) => setFull(e.currentTarget.getBoundingClientRect())}>
           <Icon name="chevron" size={16} />
@@ -148,7 +151,7 @@ export function ChannelView() {
             {dm ? <Avatar m={other} size={24} presence={ch.memberIds.length === 2} /> : <Icon name={ch.kind === 2 ? "lock" : "hash"} size={20} />}
             <span className="truncate">{title}</span>
           </h1>
-          {ch.topic && <Topic c={c} topic={ch.topic} title={title} />}
+          {ch.topic && <Topic c={c} topic={ch.topic} title={title} onEdit={canEdit ? () => set({ modal: { t: "channel", id: ch.id, focusTopic: true } }) : undefined} />}
         </div>
         <form
           role="search"

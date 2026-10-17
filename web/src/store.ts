@@ -102,8 +102,8 @@ export type Modal =
   | { t: "invite" }
   | { t: "leave" }
   | { t: "delete"; id: string }
-  | { t: "channel"; id?: string; category?: string; name?: string }
-  | { t: "community"; tab?: SettingsTab }
+  | { t: "channel"; id?: string; category?: string; name?: string; focusTopic?: boolean }
+  | { t: "community"; tab?: SettingsTab; focusDesc?: boolean }
   | { t: "newdm" }
   | { t: "browse" }
   | { t: "keys" }

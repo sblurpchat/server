@@ -454,6 +454,20 @@ export function Markdown({
   );
 }
 
+/** Text that someone allowed to change it can click to edit (1192, 1195): a hover tint and a pencil.
+ * Links and mentions inside keep working; the pencil button is the keyboard way in. */
+export function Editable({ label, onEdit, className = "", children }: { label: string; onEdit?: () => void; className?: string; children: ReactNode }) {
+  if (!onEdit) return <div className={className}>{children}</div>;
+  return (
+    <div className={`${className} editable`} onClick={(e) => !(e.target as Element).closest("a, button") && onEdit()}>
+      {children}
+      <button className="edit-pencil" aria-label={label} title={label} onClick={onEdit}>
+        <Icon name="edit" size={14} />
+      </button>
+    </div>
+  );
+}
+
 /** Whether a line-clamped element cuts its content off; rechecks when it resizes or `dep` changes. */
 export function useClamped(ref: { current: HTMLElement | null }, dep: unknown) {
   const [cut, setCut] = useState(false);

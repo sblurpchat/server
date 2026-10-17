@@ -63,7 +63,7 @@ function Head({ title, children, close = () => set({ modal: null }) }: { title: 
 // Create or edit a channel
 // ---------------------------------------------------------------------------
 
-export function ChannelDialog({ id, category = "", name: initial = "" }: { id?: string; category?: string; name?: string }) {
+export function ChannelDialog({ id, category = "", name: initial = "", focusTopic }: { id?: string; category?: string; name?: string; focusTopic?: boolean }) {
   const c = useApp((s) => s.cs[s.url]);
   const ch = id ? c?.channels[id] : undefined;
   const [name, setName] = useState(ch?.name ?? initial);
@@ -111,7 +111,7 @@ export function ChannelDialog({ id, category = "", name: initial = "" }: { id?: 
             <Icon name={ch?.kind === ChannelKind.PRIVATE || priv ? "lock" : "hash"} size={16} />
             <input
               className="input"
-              autoFocus
+              autoFocus={!focusTopic}
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -127,7 +127,7 @@ export function ChannelDialog({ id, category = "", name: initial = "" }: { id?: 
         </label>
         <label className="field">
           <b>Topic</b>
-          <textarea className="input textarea" rows={3} maxLength={500} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="What this channel is for" />
+          <textarea className="input textarea" rows={3} maxLength={500} autoFocus={focusTopic} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="What this channel is for" />
           <small className="muted">Markdown works. The header shows two lines; people can open the rest.</small>
         </label>
         {ch && (
@@ -299,7 +299,7 @@ function ImageField({
 }
 
 /** Banner and Markdown description, shown at the top of everyone's sidebar (1026). */
-function AboutTab({ url }: { url: string }) {
+function AboutTab({ url, focusDesc }: { url: string; focusDesc?: boolean }) {
   const c = useApp((s) => s.cs[url]);
   const saved = c?.info?.description ?? "";
   const [desc, setDesc] = useState(saved);
@@ -338,7 +338,7 @@ function AboutTab({ url }: { url: string }) {
         <label htmlFor="about-desc">
           <b>Description</b>
         </label>
-        <textarea id="about-desc" className="input textarea" rows={5} maxLength={2000} value={desc} onChange={(e) => setDesc(e.target.value)} />
+        <textarea id="about-desc" className="input textarea" autoFocus={focusDesc} rows={5} maxLength={2000} value={desc} onChange={(e) => setDesc(e.target.value)} />
         <small className="muted">Markdown works: **bold**, _italic_, `code` and [links](https://example.com). Shown under the name in everyone's sidebar.</small>
         {err && (
           <p className="error" role="alert">
@@ -491,7 +491,7 @@ function replay(el: Element | null | undefined, attr: string) {
   el?.setAttribute(attr, "");
 }
 
-export function CommunitySettings({ tab = "about" }: { tab?: SettingsTab }) {
+export function CommunitySettings({ tab = "about", focusDesc }: { tab?: SettingsTab; focusDesc?: boolean }) {
   const c = useApp((s) => s.cs[s.url]);
   const [dirty, setDirty] = useState<string[]>([]);
   const [nag, setNag] = useState(false);
@@ -548,7 +548,7 @@ export function CommunitySettings({ tab = "about" }: { tab?: SettingsTab }) {
             {tab === "bans" && <BansTab url={c.url} />}
             {tab === "bots" && <BotsTab url={c.url} />}
             {tab === "emoji" && <EmojiTab url={c.url} />}
-            {tab === "about" && <AboutTab url={c.url} />}
+            {tab === "about" && <AboutTab url={c.url} focusDesc={focusDesc} />}
           </Dirty.Provider>
           {dirty.length > 0 && (
             <div className="unsaved-bar" role="status">

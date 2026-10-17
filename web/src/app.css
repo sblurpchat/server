@@ -1078,6 +1078,45 @@ kbd {
   max-height: 40vh;
   overflow-y: auto;
 }
+/* Click-to-edit text (1192, 1195): still reads as text, tints on hover, and a pencil says it can change. */
+.editable {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin: -4px -6px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 150ms ease-out;
+}
+.editable > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.editable:hover,
+.editable:has(.edit-pencil:focus-visible) {
+  background: var(--hover);
+}
+.edit-pencil {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  color: var(--graphite);
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+.editable:hover .edit-pencil,
+.edit-pencil:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .edit-pencil {
+    opacity: 0.7;
+  }
+}
 .side-about .link-btn {
   margin: 4px 0 0;
   font-size: 0.8125rem;
@@ -2177,7 +2216,7 @@ li.sw-empty {
 .chan-title > .icon {
   color: var(--graphite);
 }
-/* Title and topic are centered in the bar like the search box (1041); the topic clamps to two lines. */
+/* Title and topic are centered in the bar like the search box (1041). */
 .chan-id {
   display: flex;
   align-items: center;
@@ -2185,18 +2224,34 @@ li.sw-empty {
   flex: 1;
   min-width: 0;
 }
-.chan-topic {
+/* The header grows to fit three lines of topic (1203). */
+.chan-head {
+  height: auto;
+  min-height: 56px;
+  padding-block: 6px;
+}
+.topic-wrap {
   flex: 1;
   min-width: 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+.topic-wrap.editable {
+  margin: 0;
+  padding: 4px 6px 4px 12px;
+  border-radius: 0 6px 6px 0;
+}
+.chan-topic {
   font-size: 0.875rem;
   line-height: 1.35;
   color: var(--graphite);
-  padding-left: 12px;
-  border-left: 1px solid var(--line);
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   overflow: hidden;
+}
+.chan-topic[data-more] {
+  cursor: pointer;
 }
 .chan-topic p + p,
 .chan-topic blockquote,
@@ -2244,15 +2299,18 @@ li.sw-empty {
       max-width: 200px;
     }
   }
-  .chan-topic,
+  .topic-wrap,
   .topic-more {
     display: none;
   }
 }
+/* A header image doubles the bar's height to show it off (1202); a scrim keeps the text readable. */
 .chan-head[data-img] {
-  --veil: color-mix(in srgb, var(--paper) 80%, transparent);
+  min-height: 112px;
+  align-items: flex-end;
+  padding-bottom: 10px;
   background:
-    linear-gradient(var(--veil), var(--veil)),
+    linear-gradient(to bottom, color-mix(in srgb, var(--paper) 15%, transparent), color-mix(in srgb, var(--paper) 78%, transparent) 55%, color-mix(in srgb, var(--paper) 94%, transparent)),
     var(--head-img) center / cover no-repeat;
 }
 .chan-head[data-img] .chan-topic {
@@ -3360,7 +3418,7 @@ li.sw-empty {
     max-width: none;
     flex: 1;
   }
-  .chan-topic,
+  .topic-wrap,
   .topic-more {
     display: none;
   }
