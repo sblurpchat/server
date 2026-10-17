@@ -1433,6 +1433,102 @@ func TestPruneOrphanedUploads(t *testing.T) {
 	}
 }
 
+// Admins set a Markdown description, a banner and channel header images
+// from their own uploads; the images survive the orphan prune (1026, 1027).
+func TestBannerAndHeaderImage(t *testing.T) {
+	e := newEnv(t)
+	ana, bob := e.join("ana"), e.join("bob")
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	_, banner := ana.upload("banner.png", pngBytes(4, 1))
+	_, header := ana.upload("header.png", pngBytes(4, 1))
+	_, txt := ana.upload("notes.txt", []byte("hi"))
+	_, bobs := bob.upload("bob.png", pngBytes(1, 1))
+	settings := func(c *client, r *v1.UpdateServerSettingsRequest) (*v1.UpdateServerSettingsResponse, error) {
+		res, err := c.srv.UpdateServerSettings(ctx(), connect.NewRequest(r))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg, nil
+	}
+	info := func() *v1.GetServerInfoResponse {
+		return must(e.client("").srv.GetServerInfo(ctx(), connect.NewRequest(&v1.GetServerInfoRequest{})))
+	}
+	str := func(s string) *string { return &s }
+
+	_, err := settings(bob, &v1.UpdateServerSettingsRequest{BannerId: &banner.Id})
+	wantCode(t, err, connect.CodePermissionDenied)
+	_, err = settings(ana, &v1.UpdateServerSettingsRequest{BannerId: &bobs.Id})
+	wantCode(t, err, connect.CodeInvalidArgument) // someone else's upload
+	_, err = settings(ana, &v1.UpdateServerSettingsRequest{BannerId: &txt.Id})
+	wantCode(t, err, connect.CodeInvalidArgument) // not an image
+	_, err = settings(ana, &v1.UpdateServerSettingsRequest{Description: str(strings.Repeat("x", maxDescriptionChars+1))})
+	wantCode(t, err, connect.CodeInvalidArgument)
+
+	sub := bob.subscribe(bob.state().Seq)
+	out := must2(settings(ana, &v1.UpdateServerSettingsRequest{Description: str("Be **kind**.\n\nSee [rules](https://x.test)."), BannerId: &banner.Id}))
+	if out.Description != "Be **kind**.\n\nSee [rules](https://x.test)." || out.Banner.GetId() != banner.Id {
+		t.Fatalf("settings = %v", out)
+	}
+	sub.next(func(ev *v1.Event) bool { return ev.GetServerUpdated() }, nil)
+	i := info()
+	if i.Description != out.Description || i.Banner.GetId() != banner.Id || i.Banner.Width != 4 {
+		t.Fatalf("info = %v", i)
+	}
+	if code := getStatus(t, e.url+i.Banner.Url); code != http.StatusOK {
+		t.Fatalf("GET banner: %d", code)
+	}
+
+	upd := func(c *client, r *v1.UpdateChannelRequest) (*v1.Channel, error) {
+		res, err := c.chat.UpdateChannel(ctx(), connect.NewRequest(r))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.Channel, nil
+	}
+	_, err = upd(bob, &v1.UpdateChannelRequest{ChannelId: gen.Id, HeaderImageId: &bobs.Id})
+	wantCode(t, err, connect.CodePermissionDenied)
+	_, err = upd(ana, &v1.UpdateChannelRequest{ChannelId: gen.Id, HeaderImageId: &txt.Id})
+	wantCode(t, err, connect.CodeInvalidArgument)
+	c := must2(upd(ana, &v1.UpdateChannelRequest{ChannelId: gen.Id, HeaderImageId: &header.Id, Topic: str("Line one\nline _two_")}))
+	if c.HeaderImage.GetId() != header.Id || c.Topic != "Line one\nline _two_" {
+		t.Fatalf("channel = %v", c)
+	}
+	if ev := sub.next(func(ev *v1.Event) bool { return ev.GetChannelUpdated() != nil }, nil); !strings.Contains(ev.GetChannelUpdated().HeaderImage.GetUrl(), "sig=") {
+		t.Fatalf("channel_updated header = %v", ev.GetChannelUpdated().HeaderImage)
+	}
+
+	exists := func(id string) bool {
+		var n int
+		e.s.db.r.QueryRow("SELECT COUNT(*) FROM attachments WHERE id = ?", id).Scan(&n)
+		return n == 1
+	}
+	e.clock.Advance(25 * time.Hour)
+	ana = e.client(e.token("ana")) // the old token expired
+	if err := e.s.prune(ctx()); err != nil || !exists(banner.Id) || !exists(header.Id) || exists(txt.Id) {
+		t.Fatalf("prune: %v, banner %v, header %v, txt %v", err, exists(banner.Id), exists(header.Id), exists(txt.Id))
+	}
+
+	// Clearing falls back to the -description flag and frees the uploads.
+	out = must2(settings(ana, &v1.UpdateServerSettingsRequest{Description: str(""), BannerId: str("")}))
+	if out.Banner != nil || out.Description != e.s.cfg.Description || info().Banner != nil {
+		t.Fatalf("cleared settings = %v", out)
+	}
+	c = must2(upd(ana, &v1.UpdateChannelRequest{ChannelId: gen.Id, HeaderImageId: str("")}))
+	if c.HeaderImage != nil {
+		t.Fatalf("cleared header = %v", c.HeaderImage)
+	}
+	if err := e.s.prune(ctx()); err != nil || exists(banner.Id) || exists(header.Id) {
+		t.Fatalf("prune after clear: %v, banner %v, header %v", err, exists(banner.Id), exists(header.Id))
+	}
+}
+
+func must2[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+
 // Invite-only communities need a usable invite code to Join (0103).
 func TestInvites(t *testing.T) {
 	e := newEnv(t)

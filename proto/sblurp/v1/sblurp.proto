@@ -91,6 +91,7 @@ message Channel {
   repeated string role_ids = 10;
   bool is_default = 11;       // TEXT only: OPT_IN mode joins new members to it
   int32 member_count = 12;    // set by BrowseChannels only; 0 elsewhere
+  Attachment header_image = 13; // optional image behind the channel header
 }
 
 message Attachment {
@@ -140,7 +141,7 @@ message ReadState {
 message GetServerInfoRequest {}
 message GetServerInfoResponse {
   string name = 1;
-  string description = 2;
+  string description = 2;              // Markdown, shown in the sidebar
   string icon_url = 3;
   int32 protocol_version = 4;          // currently 1
   repeated string trusted_issuers = 5; // auth issuers this server accepts, e.g. "https://sblurp.chat"
@@ -151,6 +152,7 @@ message GetServerInfoResponse {
   // Questions a plugin asks people who join; show each with a text field
   // and send the answers in JoinRequest.answers, in the same order.
   repeated string join_questions = 10;
+  Attachment banner = 11;              // optional image above the name in the sidebar
 }
 
 // ---------------------------------------------------------------------------
@@ -254,6 +256,7 @@ message Event {
     Role role_updated = 24;         // created or changed
     string role_deleted = 25;       // role id; drop it from members and channels
     ChannelMode channel_mode_changed = 26;
+    bool server_updated = 27;       // description or banner changed; call GetServerInfo
   }
 }
 
@@ -275,6 +278,8 @@ message UpdateChannelRequest {
   optional string topic = 3;
   optional string category = 4;
   optional int32 position = 5;
+  // An uploaded image's id (POST /upload) for the header; "" removes it.
+  optional string header_image_id = 6;
 }
 message UpdateChannelResponse { Channel channel = 1; }
 
@@ -459,10 +464,14 @@ message RevokeInviteResponse {}
 message UpdateServerSettingsRequest {
   optional bool invite_only = 1;
   ChannelMode channel_mode = 2;       // UNSPECIFIED = leave as is
+  optional string description = 3;    // Markdown; "" falls back to the server's -description
+  optional string banner_id = 4;      // an uploaded image's id (POST /upload); "" removes it
 }
 message UpdateServerSettingsResponse {
   bool invite_only = 1;
   ChannelMode channel_mode = 2;
+  string description = 3;
+  Attachment banner = 4;
 }
 
 // Roles (admins only, except that everyone sees them in GetState).

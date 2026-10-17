@@ -25,19 +25,20 @@ import (
 )
 
 const (
-	protocolVersion = 1
-	maxMessageChars = 8000
-	maxNameChars    = 80
-	maxTopicChars   = 500
-	maxBioChars     = 500
-	maxStatusChars  = 100
-	maxURLChars     = 2048
-	maxIDChars      = 64
-	maxAttachments  = 10
-	maxDMOthers     = 8
-	maxEmojiPerMsg  = 50
-	humanRate       = 5
-	humanBurst      = 10
+	protocolVersion     = 1
+	maxMessageChars     = 8000
+	maxNameChars        = 80
+	maxTopicChars       = 500
+	maxDescriptionChars = 2000
+	maxBioChars         = 500
+	maxStatusChars      = 100
+	maxURLChars         = 2048
+	maxIDChars          = 64
+	maxAttachments      = 10
+	maxDMOthers         = 8
+	maxEmojiPerMsg      = 50
+	humanRate           = 5
+	humanBurst          = 10
 )
 
 var (
@@ -214,7 +215,7 @@ func (s *Server) listMembers(ctx context.Context, q queryer, where string, args 
 	return out, rows.Err()
 }
 
-const channelCols = "id, kind, name, topic, category, position, created_at_ms, last_message_seq, is_default, (SELECT group_concat(role_id) FROM channel_roles WHERE channel_id = channels.id)"
+const channelCols = "id, kind, name, topic, category, position, created_at_ms, last_message_seq, is_default, (SELECT group_concat(role_id) FROM channel_roles WHERE channel_id = channels.id), header_image_id"
 
 func queryChannels(ctx context.Context, q queryer, where string, args ...any) ([]*v1.Channel, error) {
 	rows, err := q.QueryContext(ctx, "SELECT "+channelCols+" FROM channels WHERE "+where+" ORDER BY category, position, name, id", args...)
@@ -225,11 +226,15 @@ func queryChannels(ctx context.Context, q queryer, where string, args ...any) ([
 	for rows.Next() {
 		c := &v1.Channel{}
 		var roles sql.NullString
-		if err := rows.Scan(&c.Id, &c.Kind, &c.Name, &c.Topic, &c.Category, &c.Position, &c.CreatedAtMs, &c.LastMessageSeq, &c.IsDefault, &roles); err != nil {
+		var header string
+		if err := rows.Scan(&c.Id, &c.Kind, &c.Name, &c.Topic, &c.Category, &c.Position, &c.CreatedAtMs, &c.LastMessageSeq, &c.IsDefault, &roles, &header); err != nil {
 			rows.Close()
 			return nil, err
 		}
 		c.RoleIds = splitIDs(roles)
+		if header != "" {
+			c.HeaderImage = &v1.Attachment{Id: header}
+		}
 		out = append(out, c)
 	}
 	rows.Close()
@@ -237,6 +242,11 @@ func queryChannels(ctx context.Context, q queryer, where string, args ...any) ([
 		return nil, err
 	}
 	for _, c := range out {
+		if c.HeaderImage != nil {
+			if c.HeaderImage, err = loadAttachment(ctx, q, c.HeaderImage.Id); err != nil {
+				return nil, err
+			}
+		}
 		if c.Kind != v1.ChannelKind_CHANNEL_KIND_TEXT {
 			if c.MemberIds, err = channelMemberIDs(ctx, q, c.Id); err != nil {
 				return nil, err
@@ -342,6 +352,47 @@ func loadAttachments(ctx context.Context, q queryer, in string, ids []any, byID 
 	return rows.Err()
 }
 
+// loadAttachment loads one upload by id, or nil if it is gone.
+func loadAttachment(ctx context.Context, q queryer, id string) (*v1.Attachment, error) {
+	a := &v1.Attachment{Id: id}
+	err := q.QueryRowContext(ctx, "SELECT name, content_type, size, width, height FROM attachments WHERE id = ?", id).
+		Scan(&a.Name, &a.ContentType, &a.Size, &a.Width, &a.Height)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	a.Url = fileURL(a.Id, a.Name)
+	return a, err
+}
+
+// maxBanner caps banner and header images: everyone loads them.
+const maxBanner = 8 << 20
+
+// checkBannerUpload checks that id is the caller's own unattached image
+// upload, small enough to show to everyone. "" (remove) passes.
+func checkBannerUpload(ctx context.Context, q queryer, id, member string) error {
+	if id == "" {
+		return nil
+	}
+	var ctype string
+	var size int64
+	err := q.QueryRowContext(ctx, "SELECT content_type, size FROM attachments WHERE id = ? AND uploader_id = ? AND message_id IS NULL", id, member).Scan(&ctype, &size)
+	if errors.Is(err, sql.ErrNoRows) {
+		return errf(connect.CodeInvalidArgument, "upload the image first")
+	}
+	if err != nil {
+		return err
+	}
+	switch ctype {
+	case "image/png", "image/jpeg", "image/gif", "image/webp", "image/avif":
+	default:
+		return errf(connect.CodeInvalidArgument, "the image must be PNG, JPEG, GIF, WebP or AVIF")
+	}
+	if size > maxBanner {
+		return errf(connect.CodeInvalidArgument, "the image is larger than 8 MB")
+	}
+	return nil
+}
+
 func fileURL(id, name string) string { return "/files/" + id + "/" + url.PathEscape(name) }
 
 // loadMessage returns NOT_FOUND unless the message exists in a channel the
@@ -399,9 +450,14 @@ func (s *Server) GetServerInfo(ctx context.Context, _ *connect.Request[v1.GetSer
 	if err != nil {
 		return nil, err
 	}
+	desc, banner, err := s.profile(ctx, s.db.r)
+	if err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&v1.GetServerInfoResponse{
 		Name:            s.cfg.Name,
-		Description:     s.cfg.Description,
+		Description:     desc,
+		Banner:          banner,
 		IconUrl:         s.cfg.IconURL,
 		ProtocolVersion: protocolVersion,
 		TrustedIssuers:  s.cfg.TrustedIssuers,
@@ -757,7 +813,7 @@ func (s *Server) CreateChannel(ctx context.Context, req *connect.Request[v1.Crea
 	default:
 		return nil, errf(connect.CodeInvalidArgument, "kind must be TEXT or PRIVATE; use OpenDM for direct messages")
 	}
-	if err := checkText("topic", r.Topic, maxTopicChars, true); err != nil {
+	if err := checkText("topic", r.Topic, maxTopicChars, false); err != nil {
 		return nil, err
 	}
 	if err := checkText("category", r.Category, maxNameChars, true); err != nil {
@@ -833,7 +889,7 @@ func (s *Server) UpdateChannel(ctx context.Context, req *connect.Request[v1.Upda
 		name = &n
 	}
 	if r.Topic != nil {
-		if err := checkText("topic", *r.Topic, maxTopicChars, true); err != nil {
+		if err := checkText("topic", *r.Topic, maxTopicChars, false); err != nil {
 			return nil, err
 		}
 	}
@@ -847,6 +903,11 @@ func (s *Server) UpdateChannel(ctx context.Context, req *connect.Request[v1.Upda
 		old, err := channelFor(ctx, t, r.ChannelId, m.Id)
 		if err != nil {
 			return err
+		}
+		if r.HeaderImageId != nil {
+			if err := checkBannerUpload(ctx, t, *r.HeaderImageId, m.Id); err != nil {
+				return err
+			}
 		}
 		if old.Kind == v1.ChannelKind_CHANNEL_KIND_DM {
 			return errf(connect.CodeInvalidArgument, "direct messages cannot be updated")
@@ -862,6 +923,9 @@ func (s *Server) UpdateChannel(ctx context.Context, req *connect.Request[v1.Upda
 		}
 		if r.Position != nil && err == nil {
 			_, err = t.ExecContext(ctx, "UPDATE channels SET position = ? WHERE id = ?", *r.Position, old.Id)
+		}
+		if r.HeaderImageId != nil && err == nil {
+			_, err = t.ExecContext(ctx, "UPDATE channels SET header_image_id = ? WHERE id = ?", *r.HeaderImageId, old.Id)
 		}
 		if err != nil {
 			return err
@@ -1724,6 +1788,19 @@ const (
 	maxInviteUses = 1_000_000
 )
 
+// profile returns the community's description (set at runtime, else the
+// -description flag) and banner.
+func (s *Server) profile(ctx context.Context, q queryer) (string, *v1.Attachment, error) {
+	var desc, banner string
+	err := q.QueryRowContext(ctx, `SELECT COALESCE((SELECT value FROM settings WHERE key = 'description'), ''),
+		COALESCE((SELECT value FROM settings WHERE key = 'banner'), '')`).Scan(&desc, &banner)
+	if err != nil || banner == "" {
+		return cmp.Or(desc, s.cfg.Description), nil, err
+	}
+	a, err := loadAttachment(ctx, q, banner)
+	return cmp.Or(desc, s.cfg.Description), a, err
+}
+
 func isInviteOnly(ctx context.Context, q queryer) (bool, error) {
 	var on bool
 	err := q.QueryRowContext(ctx, "SELECT COALESCE((SELECT value = '1' FROM settings WHERE key = 'invite_only'), 0)").Scan(&on)
@@ -1845,8 +1922,43 @@ func (s *Server) UpdateServerSettings(ctx context.Context, req *connect.Request[
 	if err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
+	r := req.Msg
+	if r.Description != nil {
+		if err := checkText("description", *r.Description, maxDescriptionChars, false); err != nil {
+			return nil, err
+		}
+	}
 	out := &v1.UpdateServerSettingsResponse{}
 	err := s.writeTx(ctx, func(t *wtx) error {
+		profile := map[string]*string{"description": r.Description, "banner": r.BannerId}
+		if r.BannerId != nil {
+			if err := checkBannerUpload(ctx, t, *r.BannerId, me(ctx).Id); err != nil {
+				return err
+			}
+		}
+		changed := false
+		for key, v := range profile {
+			if v == nil {
+				continue
+			}
+			if _, err := t.ExecContext(ctx, "INSERT INTO settings(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", key, strings.TrimSpace(*v)); err != nil {
+				return err
+			}
+			changed = true
+		}
+		if changed {
+			seq, err := t.nextSeq()
+			if err != nil {
+				return err
+			}
+			if err := t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_ServerUpdated{ServerUpdated: true}}, "", ""); err != nil {
+				return err
+			}
+		}
+		var err error
+		if out.Description, out.Banner, err = s.profile(ctx, t); err != nil {
+			return err
+		}
 		if v := req.Msg.InviteOnly; v != nil {
 			val := "0"
 			if *v {
@@ -1859,7 +1971,6 @@ func (s *Server) UpdateServerSettings(ctx context.Context, req *connect.Request[
 		if err := s.setChannelMode(t, req.Msg.ChannelMode); err != nil {
 			return err
 		}
-		var err error
 		if out.ChannelMode, err = channelMode(ctx, t); err != nil {
 			return err
 		}

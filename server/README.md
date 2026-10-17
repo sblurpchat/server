@@ -153,6 +153,16 @@ client. There is no separate apps system. The bot is ~150 lines in
   first, with `uses`) and `RevokeInvite`. A bad, expired, used-up or
   missing code is `permission_denied`. On an open community the code is
   ignored and not counted. Seeded communities are open.
+- **Banner, description, header images** (1026, 1027). Admins upload an
+  image (`POST /upload`), then pass its id as
+  `UpdateServerSettings{banner_id}` or `UpdateChannel{header_image_id}`;
+  `""` removes it. The upload must be the caller's own, unattached,
+  PNG/JPEG/GIF/WebP/AVIF and at most 8 MB. `UpdateServerSettings{description}`
+  stores Markdown (up to 2,000 characters; `""` falls back to
+  `-description`). They show as `GetServerInfo.banner`/`description` and
+  `Channel.header_image`, with signed URLs; a change emits `server_updated`
+  (clients call `GetServerInfo` again) or `channel_updated`. Images in use
+  are kept out of the orphan prune. Topics may span lines.
 - **Channel modes and custom roles** (ticket 1011). `GetState` has
   `channel_mode`, `roles` (sorted by `position`) and, in `channels`, only
   the channels I am in: my sidebar. `UpdateServerSettings{channel_mode}`

@@ -209,7 +209,8 @@ func (s *Server) prune(ctx context.Context) error {
 		if _, err := t.ExecContext(ctx, "DELETE FROM events WHERE seq <= (SELECT MAX(seq) FROM events) - ? AND at_ms < ?", s.keepEvents, cutoff); err != nil {
 			return err
 		}
-		rows, err := t.QueryContext(ctx, "DELETE FROM attachments WHERE message_id IS NULL AND created_at_ms < ? RETURNING id", now.Add(-orphanAfter).UnixMilli())
+		rows, err := t.QueryContext(ctx, `DELETE FROM attachments WHERE message_id IS NULL AND created_at_ms < ?
+			AND id NOT IN (SELECT value FROM settings WHERE key = 'banner') AND id NOT IN (SELECT header_image_id FROM channels) RETURNING id`, now.Add(-orphanAfter).UnixMilli())
 		if err != nil {
 			return err
 		}

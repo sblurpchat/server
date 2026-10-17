@@ -504,9 +504,10 @@ type Channel struct {
 	LastMessageSeq int64                  `protobuf:"varint,9,opt,name=last_message_seq,json=lastMessageSeq,proto3" json:"last_message_seq,omitempty"` // seq of the newest message, 0 if none
 	// TEXT only. Empty: every member can see the channel. Otherwise only
 	// members with one of these roles (and admins and the owner) can.
-	RoleIds       []string `protobuf:"bytes,10,rep,name=role_ids,json=roleIds,proto3" json:"role_ids,omitempty"`
-	IsDefault     bool     `protobuf:"varint,11,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"`       // TEXT only: OPT_IN mode joins new members to it
-	MemberCount   int32    `protobuf:"varint,12,opt,name=member_count,json=memberCount,proto3" json:"member_count,omitempty"` // set by BrowseChannels only; 0 elsewhere
+	RoleIds       []string    `protobuf:"bytes,10,rep,name=role_ids,json=roleIds,proto3" json:"role_ids,omitempty"`
+	IsDefault     bool        `protobuf:"varint,11,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"`       // TEXT only: OPT_IN mode joins new members to it
+	MemberCount   int32       `protobuf:"varint,12,opt,name=member_count,json=memberCount,proto3" json:"member_count,omitempty"` // set by BrowseChannels only; 0 elsewhere
+	HeaderImage   *Attachment `protobuf:"bytes,13,opt,name=header_image,json=headerImage,proto3" json:"header_image,omitempty"`  // optional image behind the channel header
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -623,6 +624,13 @@ func (x *Channel) GetMemberCount() int32 {
 		return x.MemberCount
 	}
 	return 0
+}
+
+func (x *Channel) GetHeaderImage() *Attachment {
+	if x != nil {
+		return x.HeaderImage
+	}
+	return nil
 }
 
 type Attachment struct {
@@ -1032,7 +1040,7 @@ func (*GetServerInfoRequest) Descriptor() ([]byte, []int) {
 type GetServerInfoResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Description     string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	Description     string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"` // Markdown, shown in the sidebar
 	IconUrl         string                 `protobuf:"bytes,3,opt,name=icon_url,json=iconUrl,proto3" json:"icon_url,omitempty"`
 	ProtocolVersion int32                  `protobuf:"varint,4,opt,name=protocol_version,json=protocolVersion,proto3" json:"protocol_version,omitempty"` // currently 1
 	TrustedIssuers  []string               `protobuf:"bytes,5,rep,name=trusted_issuers,json=trustedIssuers,proto3" json:"trusted_issuers,omitempty"`     // auth issuers this server accepts, e.g. "https://sblurp.chat"
@@ -1042,7 +1050,8 @@ type GetServerInfoResponse struct {
 	InviteOnly      bool                   `protobuf:"varint,9,opt,name=invite_only,json=inviteOnly,proto3" json:"invite_only,omitempty"`   // Join needs a valid invite_code
 	// Questions a plugin asks people who join; show each with a text field
 	// and send the answers in JoinRequest.answers, in the same order.
-	JoinQuestions []string `protobuf:"bytes,10,rep,name=join_questions,json=joinQuestions,proto3" json:"join_questions,omitempty"`
+	JoinQuestions []string    `protobuf:"bytes,10,rep,name=join_questions,json=joinQuestions,proto3" json:"join_questions,omitempty"`
+	Banner        *Attachment `protobuf:"bytes,11,opt,name=banner,proto3" json:"banner,omitempty"` // optional image above the name in the sidebar
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1143,6 +1152,13 @@ func (x *GetServerInfoResponse) GetInviteOnly() bool {
 func (x *GetServerInfoResponse) GetJoinQuestions() []string {
 	if x != nil {
 		return x.JoinQuestions
+	}
+	return nil
+}
+
+func (x *GetServerInfoResponse) GetBanner() *Attachment {
+	if x != nil {
+		return x.Banner
 	}
 	return nil
 }
@@ -1813,6 +1829,7 @@ type Event struct {
 	//	*Event_RoleUpdated
 	//	*Event_RoleDeleted
 	//	*Event_ChannelModeChanged
+	//	*Event_ServerUpdated
 	Kind          isEvent_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2022,6 +2039,15 @@ func (x *Event) GetChannelModeChanged() ChannelMode {
 	return ChannelMode_CHANNEL_MODE_UNSPECIFIED
 }
 
+func (x *Event) GetServerUpdated() bool {
+	if x != nil {
+		if x, ok := x.Kind.(*Event_ServerUpdated); ok {
+			return x.ServerUpdated
+		}
+	}
+	return false
+}
+
 type isEvent_Kind interface {
 	isEvent_Kind()
 }
@@ -2094,6 +2120,10 @@ type Event_ChannelModeChanged struct {
 	ChannelModeChanged ChannelMode `protobuf:"varint,26,opt,name=channel_mode_changed,json=channelModeChanged,proto3,enum=sblurp.v1.ChannelMode,oneof"`
 }
 
+type Event_ServerUpdated struct {
+	ServerUpdated bool `protobuf:"varint,27,opt,name=server_updated,json=serverUpdated,proto3,oneof"` // description or banner changed; call GetServerInfo
+}
+
 func (*Event_MessageCreated) isEvent_Kind() {}
 
 func (*Event_MessageUpdated) isEvent_Kind() {}
@@ -2127,6 +2157,8 @@ func (*Event_RoleUpdated) isEvent_Kind() {}
 func (*Event_RoleDeleted) isEvent_Kind() {}
 
 func (*Event_ChannelModeChanged) isEvent_Kind() {}
+
+func (*Event_ServerUpdated) isEvent_Kind() {}
 
 type CreateChannelRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -2241,12 +2273,14 @@ func (x *CreateChannelResponse) GetChannel() *Channel {
 }
 
 type UpdateChannelRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ChannelId     string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
-	Name          *string                `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Topic         *string                `protobuf:"bytes,3,opt,name=topic,proto3,oneof" json:"topic,omitempty"`
-	Category      *string                `protobuf:"bytes,4,opt,name=category,proto3,oneof" json:"category,omitempty"`
-	Position      *int32                 `protobuf:"varint,5,opt,name=position,proto3,oneof" json:"position,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	ChannelId string                 `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	Name      *string                `protobuf:"bytes,2,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Topic     *string                `protobuf:"bytes,3,opt,name=topic,proto3,oneof" json:"topic,omitempty"`
+	Category  *string                `protobuf:"bytes,4,opt,name=category,proto3,oneof" json:"category,omitempty"`
+	Position  *int32                 `protobuf:"varint,5,opt,name=position,proto3,oneof" json:"position,omitempty"`
+	// An uploaded image's id (POST /upload) for the header; "" removes it.
+	HeaderImageId *string `protobuf:"bytes,6,opt,name=header_image_id,json=headerImageId,proto3,oneof" json:"header_image_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2314,6 +2348,13 @@ func (x *UpdateChannelRequest) GetPosition() int32 {
 		return *x.Position
 	}
 	return 0
+}
+
+func (x *UpdateChannelRequest) GetHeaderImageId() string {
+	if x != nil && x.HeaderImageId != nil {
+		return *x.HeaderImageId
+	}
+	return ""
 }
 
 type UpdateChannelResponse struct {
@@ -4741,6 +4782,8 @@ type UpdateServerSettingsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	InviteOnly    *bool                  `protobuf:"varint,1,opt,name=invite_only,json=inviteOnly,proto3,oneof" json:"invite_only,omitempty"`
 	ChannelMode   ChannelMode            `protobuf:"varint,2,opt,name=channel_mode,json=channelMode,proto3,enum=sblurp.v1.ChannelMode" json:"channel_mode,omitempty"` // UNSPECIFIED = leave as is
+	Description   *string                `protobuf:"bytes,3,opt,name=description,proto3,oneof" json:"description,omitempty"`                                          // Markdown; "" falls back to the server's -description
+	BannerId      *string                `protobuf:"bytes,4,opt,name=banner_id,json=bannerId,proto3,oneof" json:"banner_id,omitempty"`                                // an uploaded image's id (POST /upload); "" removes it
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4789,10 +4832,26 @@ func (x *UpdateServerSettingsRequest) GetChannelMode() ChannelMode {
 	return ChannelMode_CHANNEL_MODE_UNSPECIFIED
 }
 
+func (x *UpdateServerSettingsRequest) GetDescription() string {
+	if x != nil && x.Description != nil {
+		return *x.Description
+	}
+	return ""
+}
+
+func (x *UpdateServerSettingsRequest) GetBannerId() string {
+	if x != nil && x.BannerId != nil {
+		return *x.BannerId
+	}
+	return ""
+}
+
 type UpdateServerSettingsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	InviteOnly    bool                   `protobuf:"varint,1,opt,name=invite_only,json=inviteOnly,proto3" json:"invite_only,omitempty"`
 	ChannelMode   ChannelMode            `protobuf:"varint,2,opt,name=channel_mode,json=channelMode,proto3,enum=sblurp.v1.ChannelMode" json:"channel_mode,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Banner        *Attachment            `protobuf:"bytes,4,opt,name=banner,proto3" json:"banner,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4839,6 +4898,20 @@ func (x *UpdateServerSettingsResponse) GetChannelMode() ChannelMode {
 		return x.ChannelMode
 	}
 	return ChannelMode_CHANNEL_MODE_UNSPECIFIED
+}
+
+func (x *UpdateServerSettingsResponse) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *UpdateServerSettingsResponse) GetBanner() *Attachment {
+	if x != nil {
+		return x.Banner
+	}
+	return nil
 }
 
 type CreateRoleRequest struct {
@@ -5622,7 +5695,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05color\x18\x03 \x01(\tR\x05color\x12\x1a\n" +
-	"\bposition\x18\x04 \x01(\x05R\bposition\"\xf1\x02\n" +
+	"\bposition\x18\x04 \x01(\x05R\bposition\"\xab\x03\n" +
 	"\aChannel\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x16.sblurp.v1.ChannelKindR\x04kind\x12\x12\n" +
@@ -5638,7 +5711,8 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	" \x03(\tR\aroleIds\x12\x1d\n" +
 	"\n" +
 	"is_default\x18\v \x01(\bR\tisDefault\x12!\n" +
-	"\fmember_count\x18\f \x01(\x05R\vmemberCount\"\xa7\x01\n" +
+	"\fmember_count\x18\f \x01(\x05R\vmemberCount\x128\n" +
+	"\fheader_image\x18\r \x01(\v2\x15.sblurp.v1.AttachmentR\vheaderImage\"\xa7\x01\n" +
 	"\n" +
 	"Attachment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -5679,7 +5753,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\rlast_read_seq\x18\x02 \x01(\x03R\vlastReadSeq\x12!\n" +
 	"\funread_count\x18\x03 \x01(\x05R\vunreadCount\x12#\n" +
 	"\rmention_count\x18\x04 \x01(\x05R\fmentionCount\"\x16\n" +
-	"\x14GetServerInfoRequest\"\xe5\x02\n" +
+	"\x14GetServerInfoRequest\"\x94\x03\n" +
 	"\x15GetServerInfoResponse\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x19\n" +
@@ -5692,7 +5766,8 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\vinvite_only\x18\t \x01(\bR\n" +
 	"inviteOnly\x12%\n" +
 	"\x0ejoin_questions\x18\n" +
-	" \x03(\tR\rjoinQuestions\"\x9c\x01\n" +
+	" \x03(\tR\rjoinQuestions\x12-\n" +
+	"\x06banner\x18\v \x01(\v2\x15.sblurp.v1.AttachmentR\x06banner\"\x9c\x01\n" +
 	"\vJoinRequest\x12!\n" +
 	"\fdisplay_name\x18\x01 \x01(\tR\vdisplayName\x12\x1d\n" +
 	"\n" +
@@ -5744,7 +5819,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x0ethread_root_id\x18\x03 \x01(\tR\fthreadRootId\"]\n" +
 	"\rPresenceEvent\x12\x1b\n" +
 	"\tmember_id\x18\x01 \x01(\tR\bmemberId\x12/\n" +
-	"\bpresence\x18\x02 \x01(\x0e2\x13.sblurp.v1.PresenceR\bpresence\"\xb7\a\n" +
+	"\bpresence\x18\x02 \x01(\x0e2\x13.sblurp.v1.PresenceR\bpresence\"\xe0\a\n" +
 	"\x05Event\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\x03R\x03seq\x12\x13\n" +
 	"\x05at_ms\x18\x02 \x01(\x03R\x04atMs\x12=\n" +
@@ -5767,7 +5842,8 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x06resync\x18\x17 \x01(\bH\x00R\x06resync\x124\n" +
 	"\frole_updated\x18\x18 \x01(\v2\x0f.sblurp.v1.RoleH\x00R\vroleUpdated\x12#\n" +
 	"\frole_deleted\x18\x19 \x01(\tH\x00R\vroleDeleted\x12J\n" +
-	"\x14channel_mode_changed\x18\x1a \x01(\x0e2\x16.sblurp.v1.ChannelModeH\x00R\x12channelModeChangedB\x06\n" +
+	"\x14channel_mode_changed\x18\x1a \x01(\x0e2\x16.sblurp.v1.ChannelModeH\x00R\x12channelModeChanged\x12'\n" +
+	"\x0eserver_updated\x18\x1b \x01(\bH\x00R\rserverUpdatedB\x06\n" +
 	"\x04kind\"\x88\x01\n" +
 	"\x14CreateChannelRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12*\n" +
@@ -5775,18 +5851,20 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x05topic\x18\x03 \x01(\tR\x05topic\x12\x1a\n" +
 	"\bcategory\x18\x04 \x01(\tR\bcategory\"E\n" +
 	"\x15CreateChannelResponse\x12,\n" +
-	"\achannel\x18\x01 \x01(\v2\x12.sblurp.v1.ChannelR\achannel\"\xd8\x01\n" +
+	"\achannel\x18\x01 \x01(\v2\x12.sblurp.v1.ChannelR\achannel\"\x99\x02\n" +
 	"\x14UpdateChannelRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x17\n" +
 	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x19\n" +
 	"\x05topic\x18\x03 \x01(\tH\x01R\x05topic\x88\x01\x01\x12\x1f\n" +
 	"\bcategory\x18\x04 \x01(\tH\x02R\bcategory\x88\x01\x01\x12\x1f\n" +
-	"\bposition\x18\x05 \x01(\x05H\x03R\bposition\x88\x01\x01B\a\n" +
+	"\bposition\x18\x05 \x01(\x05H\x03R\bposition\x88\x01\x01\x12+\n" +
+	"\x0fheader_image_id\x18\x06 \x01(\tH\x04R\rheaderImageId\x88\x01\x01B\a\n" +
 	"\x05_nameB\b\n" +
 	"\x06_topicB\v\n" +
 	"\t_categoryB\v\n" +
-	"\t_position\"E\n" +
+	"\t_positionB\x12\n" +
+	"\x10_header_image_id\"E\n" +
 	"\x15UpdateChannelResponse\x12,\n" +
 	"\achannel\x18\x01 \x01(\v2\x12.sblurp.v1.ChannelR\achannel\"r\n" +
 	"\x17SetChannelAccessRequest\x12\x1d\n" +
@@ -5926,16 +6004,23 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\ainvites\x18\x01 \x03(\v2\x11.sblurp.v1.InviteR\ainvites\")\n" +
 	"\x13RevokeInviteRequest\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\"\x16\n" +
-	"\x14RevokeInviteResponse\"\x8e\x01\n" +
+	"\x14RevokeInviteResponse\"\xf5\x01\n" +
 	"\x1bUpdateServerSettingsRequest\x12$\n" +
 	"\vinvite_only\x18\x01 \x01(\bH\x00R\n" +
 	"inviteOnly\x88\x01\x01\x129\n" +
-	"\fchannel_mode\x18\x02 \x01(\x0e2\x16.sblurp.v1.ChannelModeR\vchannelModeB\x0e\n" +
-	"\f_invite_only\"z\n" +
+	"\fchannel_mode\x18\x02 \x01(\x0e2\x16.sblurp.v1.ChannelModeR\vchannelMode\x12%\n" +
+	"\vdescription\x18\x03 \x01(\tH\x01R\vdescription\x88\x01\x01\x12 \n" +
+	"\tbanner_id\x18\x04 \x01(\tH\x02R\bbannerId\x88\x01\x01B\x0e\n" +
+	"\f_invite_onlyB\x0e\n" +
+	"\f_descriptionB\f\n" +
+	"\n" +
+	"_banner_id\"\xcb\x01\n" +
 	"\x1cUpdateServerSettingsResponse\x12\x1f\n" +
 	"\vinvite_only\x18\x01 \x01(\bR\n" +
 	"inviteOnly\x129\n" +
-	"\fchannel_mode\x18\x02 \x01(\x0e2\x16.sblurp.v1.ChannelModeR\vchannelMode\"=\n" +
+	"\fchannel_mode\x18\x02 \x01(\x0e2\x16.sblurp.v1.ChannelModeR\vchannelMode\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12-\n" +
+	"\x06banner\x18\x04 \x01(\v2\x15.sblurp.v1.AttachmentR\x06banner\"=\n" +
 	"\x11CreateRoleRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05color\x18\x02 \x01(\tR\x05color\"9\n" +
@@ -6170,149 +6255,152 @@ var file_sblurp_v1_sblurp_proto_goTypes = []any{
 	(*DeleteBotResponse)(nil),            // 97: sblurp.v1.DeleteBotResponse
 }
 var file_sblurp_v1_sblurp_proto_depIdxs = []int32{
-	0,  // 0: sblurp.v1.Member.kind:type_name -> sblurp.v1.MemberKind
-	1,  // 1: sblurp.v1.Member.role:type_name -> sblurp.v1.MemberRole
-	2,  // 2: sblurp.v1.Member.presence:type_name -> sblurp.v1.Presence
-	4,  // 3: sblurp.v1.Channel.kind:type_name -> sblurp.v1.ChannelKind
-	9,  // 4: sblurp.v1.Message.reactions:type_name -> sblurp.v1.Reaction
-	8,  // 5: sblurp.v1.Message.attachments:type_name -> sblurp.v1.Attachment
-	5,  // 6: sblurp.v1.JoinResponse.member:type_name -> sblurp.v1.Member
-	5,  // 7: sblurp.v1.GetMeResponse.member:type_name -> sblurp.v1.Member
-	5,  // 8: sblurp.v1.UpdateProfileResponse.member:type_name -> sblurp.v1.Member
-	5,  // 9: sblurp.v1.GetStateResponse.me:type_name -> sblurp.v1.Member
-	7,  // 10: sblurp.v1.GetStateResponse.channels:type_name -> sblurp.v1.Channel
-	5,  // 11: sblurp.v1.GetStateResponse.members:type_name -> sblurp.v1.Member
-	11, // 12: sblurp.v1.GetStateResponse.read_states:type_name -> sblurp.v1.ReadState
-	6,  // 13: sblurp.v1.GetStateResponse.roles:type_name -> sblurp.v1.Role
-	3,  // 14: sblurp.v1.GetStateResponse.channel_mode:type_name -> sblurp.v1.ChannelMode
-	2,  // 15: sblurp.v1.PresenceEvent.presence:type_name -> sblurp.v1.Presence
-	10, // 16: sblurp.v1.Event.message_created:type_name -> sblurp.v1.Message
-	10, // 17: sblurp.v1.Event.message_updated:type_name -> sblurp.v1.Message
-	10, // 18: sblurp.v1.Event.message_deleted:type_name -> sblurp.v1.Message
-	7,  // 19: sblurp.v1.Event.channel_created:type_name -> sblurp.v1.Channel
-	7,  // 20: sblurp.v1.Event.channel_updated:type_name -> sblurp.v1.Channel
-	5,  // 21: sblurp.v1.Event.member_joined:type_name -> sblurp.v1.Member
-	5,  // 22: sblurp.v1.Event.member_updated:type_name -> sblurp.v1.Member
-	11, // 23: sblurp.v1.Event.read_state:type_name -> sblurp.v1.ReadState
-	23, // 24: sblurp.v1.Event.typing:type_name -> sblurp.v1.TypingEvent
-	24, // 25: sblurp.v1.Event.presence:type_name -> sblurp.v1.PresenceEvent
-	6,  // 26: sblurp.v1.Event.role_updated:type_name -> sblurp.v1.Role
-	3,  // 27: sblurp.v1.Event.channel_mode_changed:type_name -> sblurp.v1.ChannelMode
-	4,  // 28: sblurp.v1.CreateChannelRequest.kind:type_name -> sblurp.v1.ChannelKind
-	7,  // 29: sblurp.v1.CreateChannelResponse.channel:type_name -> sblurp.v1.Channel
-	7,  // 30: sblurp.v1.UpdateChannelResponse.channel:type_name -> sblurp.v1.Channel
-	7,  // 31: sblurp.v1.SetChannelAccessResponse.channel:type_name -> sblurp.v1.Channel
-	7,  // 32: sblurp.v1.BrowseChannelsResponse.channels:type_name -> sblurp.v1.Channel
-	7,  // 33: sblurp.v1.JoinChannelResponse.channel:type_name -> sblurp.v1.Channel
-	7,  // 34: sblurp.v1.OpenDMResponse.channel:type_name -> sblurp.v1.Channel
-	10, // 35: sblurp.v1.ListMessagesResponse.messages:type_name -> sblurp.v1.Message
-	10, // 36: sblurp.v1.SendMessageResponse.message:type_name -> sblurp.v1.Message
-	10, // 37: sblurp.v1.EditMessageResponse.message:type_name -> sblurp.v1.Message
-	10, // 38: sblurp.v1.ReactResponse.message:type_name -> sblurp.v1.Message
-	11, // 39: sblurp.v1.MarkReadResponse.read_state:type_name -> sblurp.v1.ReadState
-	10, // 40: sblurp.v1.SearchResponse.messages:type_name -> sblurp.v1.Message
-	7,  // 41: sblurp.v1.AddChannelMembersResponse.channel:type_name -> sblurp.v1.Channel
-	7,  // 42: sblurp.v1.RemoveChannelMemberResponse.channel:type_name -> sblurp.v1.Channel
-	1,  // 43: sblurp.v1.SetMemberRoleRequest.role:type_name -> sblurp.v1.MemberRole
-	5,  // 44: sblurp.v1.SetMemberRoleResponse.member:type_name -> sblurp.v1.Member
-	5,  // 45: sblurp.v1.Ban.member:type_name -> sblurp.v1.Member
-	68, // 46: sblurp.v1.ListBansResponse.bans:type_name -> sblurp.v1.Ban
-	73, // 47: sblurp.v1.CreateInviteResponse.invite:type_name -> sblurp.v1.Invite
-	73, // 48: sblurp.v1.ListInvitesResponse.invites:type_name -> sblurp.v1.Invite
-	3,  // 49: sblurp.v1.UpdateServerSettingsRequest.channel_mode:type_name -> sblurp.v1.ChannelMode
-	3,  // 50: sblurp.v1.UpdateServerSettingsResponse.channel_mode:type_name -> sblurp.v1.ChannelMode
-	6,  // 51: sblurp.v1.CreateRoleResponse.role:type_name -> sblurp.v1.Role
-	6,  // 52: sblurp.v1.UpdateRoleResponse.role:type_name -> sblurp.v1.Role
-	5,  // 53: sblurp.v1.SetMemberRolesResponse.member:type_name -> sblurp.v1.Member
-	5,  // 54: sblurp.v1.CreateBotResponse.bot:type_name -> sblurp.v1.Member
-	5,  // 55: sblurp.v1.ListBotsResponse.bots:type_name -> sblurp.v1.Member
-	12, // 56: sblurp.v1.ServerService.GetServerInfo:input_type -> sblurp.v1.GetServerInfoRequest
-	14, // 57: sblurp.v1.ServerService.Join:input_type -> sblurp.v1.JoinRequest
-	16, // 58: sblurp.v1.ServerService.GetMe:input_type -> sblurp.v1.GetMeRequest
-	18, // 59: sblurp.v1.ServerService.UpdateProfile:input_type -> sblurp.v1.UpdateProfileRequest
-	20, // 60: sblurp.v1.ServerService.GetState:input_type -> sblurp.v1.GetStateRequest
-	22, // 61: sblurp.v1.ServerService.Subscribe:input_type -> sblurp.v1.SubscribeRequest
-	60, // 62: sblurp.v1.ServerService.SetMemberRole:input_type -> sblurp.v1.SetMemberRoleRequest
-	62, // 63: sblurp.v1.ServerService.LeaveCommunity:input_type -> sblurp.v1.LeaveCommunityRequest
-	64, // 64: sblurp.v1.ServerService.KickMember:input_type -> sblurp.v1.KickMemberRequest
-	66, // 65: sblurp.v1.ServerService.BanMember:input_type -> sblurp.v1.BanMemberRequest
-	69, // 66: sblurp.v1.ServerService.ListBans:input_type -> sblurp.v1.ListBansRequest
-	71, // 67: sblurp.v1.ServerService.UnbanMember:input_type -> sblurp.v1.UnbanMemberRequest
-	74, // 68: sblurp.v1.ServerService.CreateInvite:input_type -> sblurp.v1.CreateInviteRequest
-	76, // 69: sblurp.v1.ServerService.ListInvites:input_type -> sblurp.v1.ListInvitesRequest
-	78, // 70: sblurp.v1.ServerService.RevokeInvite:input_type -> sblurp.v1.RevokeInviteRequest
-	80, // 71: sblurp.v1.ServerService.UpdateServerSettings:input_type -> sblurp.v1.UpdateServerSettingsRequest
-	82, // 72: sblurp.v1.ServerService.CreateRole:input_type -> sblurp.v1.CreateRoleRequest
-	84, // 73: sblurp.v1.ServerService.UpdateRole:input_type -> sblurp.v1.UpdateRoleRequest
-	86, // 74: sblurp.v1.ServerService.DeleteRole:input_type -> sblurp.v1.DeleteRoleRequest
-	88, // 75: sblurp.v1.ServerService.SetMemberRoles:input_type -> sblurp.v1.SetMemberRolesRequest
-	26, // 76: sblurp.v1.ChatService.CreateChannel:input_type -> sblurp.v1.CreateChannelRequest
-	28, // 77: sblurp.v1.ChatService.UpdateChannel:input_type -> sblurp.v1.UpdateChannelRequest
-	38, // 78: sblurp.v1.ChatService.OpenDM:input_type -> sblurp.v1.OpenDMRequest
-	40, // 79: sblurp.v1.ChatService.ListMessages:input_type -> sblurp.v1.ListMessagesRequest
-	42, // 80: sblurp.v1.ChatService.SendMessage:input_type -> sblurp.v1.SendMessageRequest
-	44, // 81: sblurp.v1.ChatService.EditMessage:input_type -> sblurp.v1.EditMessageRequest
-	46, // 82: sblurp.v1.ChatService.DeleteMessage:input_type -> sblurp.v1.DeleteMessageRequest
-	48, // 83: sblurp.v1.ChatService.React:input_type -> sblurp.v1.ReactRequest
-	50, // 84: sblurp.v1.ChatService.MarkRead:input_type -> sblurp.v1.MarkReadRequest
-	52, // 85: sblurp.v1.ChatService.SetTyping:input_type -> sblurp.v1.SetTypingRequest
-	54, // 86: sblurp.v1.ChatService.Search:input_type -> sblurp.v1.SearchRequest
-	56, // 87: sblurp.v1.ChatService.AddChannelMembers:input_type -> sblurp.v1.AddChannelMembersRequest
-	58, // 88: sblurp.v1.ChatService.RemoveChannelMember:input_type -> sblurp.v1.RemoveChannelMemberRequest
-	30, // 89: sblurp.v1.ChatService.SetChannelAccess:input_type -> sblurp.v1.SetChannelAccessRequest
-	32, // 90: sblurp.v1.ChatService.BrowseChannels:input_type -> sblurp.v1.BrowseChannelsRequest
-	34, // 91: sblurp.v1.ChatService.JoinChannel:input_type -> sblurp.v1.JoinChannelRequest
-	36, // 92: sblurp.v1.ChatService.LeaveChannel:input_type -> sblurp.v1.LeaveChannelRequest
-	90, // 93: sblurp.v1.BotService.CreateBot:input_type -> sblurp.v1.CreateBotRequest
-	92, // 94: sblurp.v1.BotService.ListBots:input_type -> sblurp.v1.ListBotsRequest
-	94, // 95: sblurp.v1.BotService.RotateBotToken:input_type -> sblurp.v1.RotateBotTokenRequest
-	96, // 96: sblurp.v1.BotService.DeleteBot:input_type -> sblurp.v1.DeleteBotRequest
-	13, // 97: sblurp.v1.ServerService.GetServerInfo:output_type -> sblurp.v1.GetServerInfoResponse
-	15, // 98: sblurp.v1.ServerService.Join:output_type -> sblurp.v1.JoinResponse
-	17, // 99: sblurp.v1.ServerService.GetMe:output_type -> sblurp.v1.GetMeResponse
-	19, // 100: sblurp.v1.ServerService.UpdateProfile:output_type -> sblurp.v1.UpdateProfileResponse
-	21, // 101: sblurp.v1.ServerService.GetState:output_type -> sblurp.v1.GetStateResponse
-	25, // 102: sblurp.v1.ServerService.Subscribe:output_type -> sblurp.v1.Event
-	61, // 103: sblurp.v1.ServerService.SetMemberRole:output_type -> sblurp.v1.SetMemberRoleResponse
-	63, // 104: sblurp.v1.ServerService.LeaveCommunity:output_type -> sblurp.v1.LeaveCommunityResponse
-	65, // 105: sblurp.v1.ServerService.KickMember:output_type -> sblurp.v1.KickMemberResponse
-	67, // 106: sblurp.v1.ServerService.BanMember:output_type -> sblurp.v1.BanMemberResponse
-	70, // 107: sblurp.v1.ServerService.ListBans:output_type -> sblurp.v1.ListBansResponse
-	72, // 108: sblurp.v1.ServerService.UnbanMember:output_type -> sblurp.v1.UnbanMemberResponse
-	75, // 109: sblurp.v1.ServerService.CreateInvite:output_type -> sblurp.v1.CreateInviteResponse
-	77, // 110: sblurp.v1.ServerService.ListInvites:output_type -> sblurp.v1.ListInvitesResponse
-	79, // 111: sblurp.v1.ServerService.RevokeInvite:output_type -> sblurp.v1.RevokeInviteResponse
-	81, // 112: sblurp.v1.ServerService.UpdateServerSettings:output_type -> sblurp.v1.UpdateServerSettingsResponse
-	83, // 113: sblurp.v1.ServerService.CreateRole:output_type -> sblurp.v1.CreateRoleResponse
-	85, // 114: sblurp.v1.ServerService.UpdateRole:output_type -> sblurp.v1.UpdateRoleResponse
-	87, // 115: sblurp.v1.ServerService.DeleteRole:output_type -> sblurp.v1.DeleteRoleResponse
-	89, // 116: sblurp.v1.ServerService.SetMemberRoles:output_type -> sblurp.v1.SetMemberRolesResponse
-	27, // 117: sblurp.v1.ChatService.CreateChannel:output_type -> sblurp.v1.CreateChannelResponse
-	29, // 118: sblurp.v1.ChatService.UpdateChannel:output_type -> sblurp.v1.UpdateChannelResponse
-	39, // 119: sblurp.v1.ChatService.OpenDM:output_type -> sblurp.v1.OpenDMResponse
-	41, // 120: sblurp.v1.ChatService.ListMessages:output_type -> sblurp.v1.ListMessagesResponse
-	43, // 121: sblurp.v1.ChatService.SendMessage:output_type -> sblurp.v1.SendMessageResponse
-	45, // 122: sblurp.v1.ChatService.EditMessage:output_type -> sblurp.v1.EditMessageResponse
-	47, // 123: sblurp.v1.ChatService.DeleteMessage:output_type -> sblurp.v1.DeleteMessageResponse
-	49, // 124: sblurp.v1.ChatService.React:output_type -> sblurp.v1.ReactResponse
-	51, // 125: sblurp.v1.ChatService.MarkRead:output_type -> sblurp.v1.MarkReadResponse
-	53, // 126: sblurp.v1.ChatService.SetTyping:output_type -> sblurp.v1.SetTypingResponse
-	55, // 127: sblurp.v1.ChatService.Search:output_type -> sblurp.v1.SearchResponse
-	57, // 128: sblurp.v1.ChatService.AddChannelMembers:output_type -> sblurp.v1.AddChannelMembersResponse
-	59, // 129: sblurp.v1.ChatService.RemoveChannelMember:output_type -> sblurp.v1.RemoveChannelMemberResponse
-	31, // 130: sblurp.v1.ChatService.SetChannelAccess:output_type -> sblurp.v1.SetChannelAccessResponse
-	33, // 131: sblurp.v1.ChatService.BrowseChannels:output_type -> sblurp.v1.BrowseChannelsResponse
-	35, // 132: sblurp.v1.ChatService.JoinChannel:output_type -> sblurp.v1.JoinChannelResponse
-	37, // 133: sblurp.v1.ChatService.LeaveChannel:output_type -> sblurp.v1.LeaveChannelResponse
-	91, // 134: sblurp.v1.BotService.CreateBot:output_type -> sblurp.v1.CreateBotResponse
-	93, // 135: sblurp.v1.BotService.ListBots:output_type -> sblurp.v1.ListBotsResponse
-	95, // 136: sblurp.v1.BotService.RotateBotToken:output_type -> sblurp.v1.RotateBotTokenResponse
-	97, // 137: sblurp.v1.BotService.DeleteBot:output_type -> sblurp.v1.DeleteBotResponse
-	97, // [97:138] is the sub-list for method output_type
-	56, // [56:97] is the sub-list for method input_type
-	56, // [56:56] is the sub-list for extension type_name
-	56, // [56:56] is the sub-list for extension extendee
-	0,  // [0:56] is the sub-list for field type_name
+	0,   // 0: sblurp.v1.Member.kind:type_name -> sblurp.v1.MemberKind
+	1,   // 1: sblurp.v1.Member.role:type_name -> sblurp.v1.MemberRole
+	2,   // 2: sblurp.v1.Member.presence:type_name -> sblurp.v1.Presence
+	4,   // 3: sblurp.v1.Channel.kind:type_name -> sblurp.v1.ChannelKind
+	8,   // 4: sblurp.v1.Channel.header_image:type_name -> sblurp.v1.Attachment
+	9,   // 5: sblurp.v1.Message.reactions:type_name -> sblurp.v1.Reaction
+	8,   // 6: sblurp.v1.Message.attachments:type_name -> sblurp.v1.Attachment
+	8,   // 7: sblurp.v1.GetServerInfoResponse.banner:type_name -> sblurp.v1.Attachment
+	5,   // 8: sblurp.v1.JoinResponse.member:type_name -> sblurp.v1.Member
+	5,   // 9: sblurp.v1.GetMeResponse.member:type_name -> sblurp.v1.Member
+	5,   // 10: sblurp.v1.UpdateProfileResponse.member:type_name -> sblurp.v1.Member
+	5,   // 11: sblurp.v1.GetStateResponse.me:type_name -> sblurp.v1.Member
+	7,   // 12: sblurp.v1.GetStateResponse.channels:type_name -> sblurp.v1.Channel
+	5,   // 13: sblurp.v1.GetStateResponse.members:type_name -> sblurp.v1.Member
+	11,  // 14: sblurp.v1.GetStateResponse.read_states:type_name -> sblurp.v1.ReadState
+	6,   // 15: sblurp.v1.GetStateResponse.roles:type_name -> sblurp.v1.Role
+	3,   // 16: sblurp.v1.GetStateResponse.channel_mode:type_name -> sblurp.v1.ChannelMode
+	2,   // 17: sblurp.v1.PresenceEvent.presence:type_name -> sblurp.v1.Presence
+	10,  // 18: sblurp.v1.Event.message_created:type_name -> sblurp.v1.Message
+	10,  // 19: sblurp.v1.Event.message_updated:type_name -> sblurp.v1.Message
+	10,  // 20: sblurp.v1.Event.message_deleted:type_name -> sblurp.v1.Message
+	7,   // 21: sblurp.v1.Event.channel_created:type_name -> sblurp.v1.Channel
+	7,   // 22: sblurp.v1.Event.channel_updated:type_name -> sblurp.v1.Channel
+	5,   // 23: sblurp.v1.Event.member_joined:type_name -> sblurp.v1.Member
+	5,   // 24: sblurp.v1.Event.member_updated:type_name -> sblurp.v1.Member
+	11,  // 25: sblurp.v1.Event.read_state:type_name -> sblurp.v1.ReadState
+	23,  // 26: sblurp.v1.Event.typing:type_name -> sblurp.v1.TypingEvent
+	24,  // 27: sblurp.v1.Event.presence:type_name -> sblurp.v1.PresenceEvent
+	6,   // 28: sblurp.v1.Event.role_updated:type_name -> sblurp.v1.Role
+	3,   // 29: sblurp.v1.Event.channel_mode_changed:type_name -> sblurp.v1.ChannelMode
+	4,   // 30: sblurp.v1.CreateChannelRequest.kind:type_name -> sblurp.v1.ChannelKind
+	7,   // 31: sblurp.v1.CreateChannelResponse.channel:type_name -> sblurp.v1.Channel
+	7,   // 32: sblurp.v1.UpdateChannelResponse.channel:type_name -> sblurp.v1.Channel
+	7,   // 33: sblurp.v1.SetChannelAccessResponse.channel:type_name -> sblurp.v1.Channel
+	7,   // 34: sblurp.v1.BrowseChannelsResponse.channels:type_name -> sblurp.v1.Channel
+	7,   // 35: sblurp.v1.JoinChannelResponse.channel:type_name -> sblurp.v1.Channel
+	7,   // 36: sblurp.v1.OpenDMResponse.channel:type_name -> sblurp.v1.Channel
+	10,  // 37: sblurp.v1.ListMessagesResponse.messages:type_name -> sblurp.v1.Message
+	10,  // 38: sblurp.v1.SendMessageResponse.message:type_name -> sblurp.v1.Message
+	10,  // 39: sblurp.v1.EditMessageResponse.message:type_name -> sblurp.v1.Message
+	10,  // 40: sblurp.v1.ReactResponse.message:type_name -> sblurp.v1.Message
+	11,  // 41: sblurp.v1.MarkReadResponse.read_state:type_name -> sblurp.v1.ReadState
+	10,  // 42: sblurp.v1.SearchResponse.messages:type_name -> sblurp.v1.Message
+	7,   // 43: sblurp.v1.AddChannelMembersResponse.channel:type_name -> sblurp.v1.Channel
+	7,   // 44: sblurp.v1.RemoveChannelMemberResponse.channel:type_name -> sblurp.v1.Channel
+	1,   // 45: sblurp.v1.SetMemberRoleRequest.role:type_name -> sblurp.v1.MemberRole
+	5,   // 46: sblurp.v1.SetMemberRoleResponse.member:type_name -> sblurp.v1.Member
+	5,   // 47: sblurp.v1.Ban.member:type_name -> sblurp.v1.Member
+	68,  // 48: sblurp.v1.ListBansResponse.bans:type_name -> sblurp.v1.Ban
+	73,  // 49: sblurp.v1.CreateInviteResponse.invite:type_name -> sblurp.v1.Invite
+	73,  // 50: sblurp.v1.ListInvitesResponse.invites:type_name -> sblurp.v1.Invite
+	3,   // 51: sblurp.v1.UpdateServerSettingsRequest.channel_mode:type_name -> sblurp.v1.ChannelMode
+	3,   // 52: sblurp.v1.UpdateServerSettingsResponse.channel_mode:type_name -> sblurp.v1.ChannelMode
+	8,   // 53: sblurp.v1.UpdateServerSettingsResponse.banner:type_name -> sblurp.v1.Attachment
+	6,   // 54: sblurp.v1.CreateRoleResponse.role:type_name -> sblurp.v1.Role
+	6,   // 55: sblurp.v1.UpdateRoleResponse.role:type_name -> sblurp.v1.Role
+	5,   // 56: sblurp.v1.SetMemberRolesResponse.member:type_name -> sblurp.v1.Member
+	5,   // 57: sblurp.v1.CreateBotResponse.bot:type_name -> sblurp.v1.Member
+	5,   // 58: sblurp.v1.ListBotsResponse.bots:type_name -> sblurp.v1.Member
+	12,  // 59: sblurp.v1.ServerService.GetServerInfo:input_type -> sblurp.v1.GetServerInfoRequest
+	14,  // 60: sblurp.v1.ServerService.Join:input_type -> sblurp.v1.JoinRequest
+	16,  // 61: sblurp.v1.ServerService.GetMe:input_type -> sblurp.v1.GetMeRequest
+	18,  // 62: sblurp.v1.ServerService.UpdateProfile:input_type -> sblurp.v1.UpdateProfileRequest
+	20,  // 63: sblurp.v1.ServerService.GetState:input_type -> sblurp.v1.GetStateRequest
+	22,  // 64: sblurp.v1.ServerService.Subscribe:input_type -> sblurp.v1.SubscribeRequest
+	60,  // 65: sblurp.v1.ServerService.SetMemberRole:input_type -> sblurp.v1.SetMemberRoleRequest
+	62,  // 66: sblurp.v1.ServerService.LeaveCommunity:input_type -> sblurp.v1.LeaveCommunityRequest
+	64,  // 67: sblurp.v1.ServerService.KickMember:input_type -> sblurp.v1.KickMemberRequest
+	66,  // 68: sblurp.v1.ServerService.BanMember:input_type -> sblurp.v1.BanMemberRequest
+	69,  // 69: sblurp.v1.ServerService.ListBans:input_type -> sblurp.v1.ListBansRequest
+	71,  // 70: sblurp.v1.ServerService.UnbanMember:input_type -> sblurp.v1.UnbanMemberRequest
+	74,  // 71: sblurp.v1.ServerService.CreateInvite:input_type -> sblurp.v1.CreateInviteRequest
+	76,  // 72: sblurp.v1.ServerService.ListInvites:input_type -> sblurp.v1.ListInvitesRequest
+	78,  // 73: sblurp.v1.ServerService.RevokeInvite:input_type -> sblurp.v1.RevokeInviteRequest
+	80,  // 74: sblurp.v1.ServerService.UpdateServerSettings:input_type -> sblurp.v1.UpdateServerSettingsRequest
+	82,  // 75: sblurp.v1.ServerService.CreateRole:input_type -> sblurp.v1.CreateRoleRequest
+	84,  // 76: sblurp.v1.ServerService.UpdateRole:input_type -> sblurp.v1.UpdateRoleRequest
+	86,  // 77: sblurp.v1.ServerService.DeleteRole:input_type -> sblurp.v1.DeleteRoleRequest
+	88,  // 78: sblurp.v1.ServerService.SetMemberRoles:input_type -> sblurp.v1.SetMemberRolesRequest
+	26,  // 79: sblurp.v1.ChatService.CreateChannel:input_type -> sblurp.v1.CreateChannelRequest
+	28,  // 80: sblurp.v1.ChatService.UpdateChannel:input_type -> sblurp.v1.UpdateChannelRequest
+	38,  // 81: sblurp.v1.ChatService.OpenDM:input_type -> sblurp.v1.OpenDMRequest
+	40,  // 82: sblurp.v1.ChatService.ListMessages:input_type -> sblurp.v1.ListMessagesRequest
+	42,  // 83: sblurp.v1.ChatService.SendMessage:input_type -> sblurp.v1.SendMessageRequest
+	44,  // 84: sblurp.v1.ChatService.EditMessage:input_type -> sblurp.v1.EditMessageRequest
+	46,  // 85: sblurp.v1.ChatService.DeleteMessage:input_type -> sblurp.v1.DeleteMessageRequest
+	48,  // 86: sblurp.v1.ChatService.React:input_type -> sblurp.v1.ReactRequest
+	50,  // 87: sblurp.v1.ChatService.MarkRead:input_type -> sblurp.v1.MarkReadRequest
+	52,  // 88: sblurp.v1.ChatService.SetTyping:input_type -> sblurp.v1.SetTypingRequest
+	54,  // 89: sblurp.v1.ChatService.Search:input_type -> sblurp.v1.SearchRequest
+	56,  // 90: sblurp.v1.ChatService.AddChannelMembers:input_type -> sblurp.v1.AddChannelMembersRequest
+	58,  // 91: sblurp.v1.ChatService.RemoveChannelMember:input_type -> sblurp.v1.RemoveChannelMemberRequest
+	30,  // 92: sblurp.v1.ChatService.SetChannelAccess:input_type -> sblurp.v1.SetChannelAccessRequest
+	32,  // 93: sblurp.v1.ChatService.BrowseChannels:input_type -> sblurp.v1.BrowseChannelsRequest
+	34,  // 94: sblurp.v1.ChatService.JoinChannel:input_type -> sblurp.v1.JoinChannelRequest
+	36,  // 95: sblurp.v1.ChatService.LeaveChannel:input_type -> sblurp.v1.LeaveChannelRequest
+	90,  // 96: sblurp.v1.BotService.CreateBot:input_type -> sblurp.v1.CreateBotRequest
+	92,  // 97: sblurp.v1.BotService.ListBots:input_type -> sblurp.v1.ListBotsRequest
+	94,  // 98: sblurp.v1.BotService.RotateBotToken:input_type -> sblurp.v1.RotateBotTokenRequest
+	96,  // 99: sblurp.v1.BotService.DeleteBot:input_type -> sblurp.v1.DeleteBotRequest
+	13,  // 100: sblurp.v1.ServerService.GetServerInfo:output_type -> sblurp.v1.GetServerInfoResponse
+	15,  // 101: sblurp.v1.ServerService.Join:output_type -> sblurp.v1.JoinResponse
+	17,  // 102: sblurp.v1.ServerService.GetMe:output_type -> sblurp.v1.GetMeResponse
+	19,  // 103: sblurp.v1.ServerService.UpdateProfile:output_type -> sblurp.v1.UpdateProfileResponse
+	21,  // 104: sblurp.v1.ServerService.GetState:output_type -> sblurp.v1.GetStateResponse
+	25,  // 105: sblurp.v1.ServerService.Subscribe:output_type -> sblurp.v1.Event
+	61,  // 106: sblurp.v1.ServerService.SetMemberRole:output_type -> sblurp.v1.SetMemberRoleResponse
+	63,  // 107: sblurp.v1.ServerService.LeaveCommunity:output_type -> sblurp.v1.LeaveCommunityResponse
+	65,  // 108: sblurp.v1.ServerService.KickMember:output_type -> sblurp.v1.KickMemberResponse
+	67,  // 109: sblurp.v1.ServerService.BanMember:output_type -> sblurp.v1.BanMemberResponse
+	70,  // 110: sblurp.v1.ServerService.ListBans:output_type -> sblurp.v1.ListBansResponse
+	72,  // 111: sblurp.v1.ServerService.UnbanMember:output_type -> sblurp.v1.UnbanMemberResponse
+	75,  // 112: sblurp.v1.ServerService.CreateInvite:output_type -> sblurp.v1.CreateInviteResponse
+	77,  // 113: sblurp.v1.ServerService.ListInvites:output_type -> sblurp.v1.ListInvitesResponse
+	79,  // 114: sblurp.v1.ServerService.RevokeInvite:output_type -> sblurp.v1.RevokeInviteResponse
+	81,  // 115: sblurp.v1.ServerService.UpdateServerSettings:output_type -> sblurp.v1.UpdateServerSettingsResponse
+	83,  // 116: sblurp.v1.ServerService.CreateRole:output_type -> sblurp.v1.CreateRoleResponse
+	85,  // 117: sblurp.v1.ServerService.UpdateRole:output_type -> sblurp.v1.UpdateRoleResponse
+	87,  // 118: sblurp.v1.ServerService.DeleteRole:output_type -> sblurp.v1.DeleteRoleResponse
+	89,  // 119: sblurp.v1.ServerService.SetMemberRoles:output_type -> sblurp.v1.SetMemberRolesResponse
+	27,  // 120: sblurp.v1.ChatService.CreateChannel:output_type -> sblurp.v1.CreateChannelResponse
+	29,  // 121: sblurp.v1.ChatService.UpdateChannel:output_type -> sblurp.v1.UpdateChannelResponse
+	39,  // 122: sblurp.v1.ChatService.OpenDM:output_type -> sblurp.v1.OpenDMResponse
+	41,  // 123: sblurp.v1.ChatService.ListMessages:output_type -> sblurp.v1.ListMessagesResponse
+	43,  // 124: sblurp.v1.ChatService.SendMessage:output_type -> sblurp.v1.SendMessageResponse
+	45,  // 125: sblurp.v1.ChatService.EditMessage:output_type -> sblurp.v1.EditMessageResponse
+	47,  // 126: sblurp.v1.ChatService.DeleteMessage:output_type -> sblurp.v1.DeleteMessageResponse
+	49,  // 127: sblurp.v1.ChatService.React:output_type -> sblurp.v1.ReactResponse
+	51,  // 128: sblurp.v1.ChatService.MarkRead:output_type -> sblurp.v1.MarkReadResponse
+	53,  // 129: sblurp.v1.ChatService.SetTyping:output_type -> sblurp.v1.SetTypingResponse
+	55,  // 130: sblurp.v1.ChatService.Search:output_type -> sblurp.v1.SearchResponse
+	57,  // 131: sblurp.v1.ChatService.AddChannelMembers:output_type -> sblurp.v1.AddChannelMembersResponse
+	59,  // 132: sblurp.v1.ChatService.RemoveChannelMember:output_type -> sblurp.v1.RemoveChannelMemberResponse
+	31,  // 133: sblurp.v1.ChatService.SetChannelAccess:output_type -> sblurp.v1.SetChannelAccessResponse
+	33,  // 134: sblurp.v1.ChatService.BrowseChannels:output_type -> sblurp.v1.BrowseChannelsResponse
+	35,  // 135: sblurp.v1.ChatService.JoinChannel:output_type -> sblurp.v1.JoinChannelResponse
+	37,  // 136: sblurp.v1.ChatService.LeaveChannel:output_type -> sblurp.v1.LeaveChannelResponse
+	91,  // 137: sblurp.v1.BotService.CreateBot:output_type -> sblurp.v1.CreateBotResponse
+	93,  // 138: sblurp.v1.BotService.ListBots:output_type -> sblurp.v1.ListBotsResponse
+	95,  // 139: sblurp.v1.BotService.RotateBotToken:output_type -> sblurp.v1.RotateBotTokenResponse
+	97,  // 140: sblurp.v1.BotService.DeleteBot:output_type -> sblurp.v1.DeleteBotResponse
+	100, // [100:141] is the sub-list for method output_type
+	59,  // [59:100] is the sub-list for method input_type
+	59,  // [59:59] is the sub-list for extension type_name
+	59,  // [59:59] is the sub-list for extension extendee
+	0,   // [0:59] is the sub-list for field type_name
 }
 
 func init() { file_sblurp_v1_sblurp_proto_init() }
@@ -6339,6 +6427,7 @@ func file_sblurp_v1_sblurp_proto_init() {
 		(*Event_RoleUpdated)(nil),
 		(*Event_RoleDeleted)(nil),
 		(*Event_ChannelModeChanged)(nil),
+		(*Event_ServerUpdated)(nil),
 	}
 	file_sblurp_v1_sblurp_proto_msgTypes[23].OneofWrappers = []any{}
 	file_sblurp_v1_sblurp_proto_msgTypes[75].OneofWrappers = []any{}
