@@ -1,4 +1,4 @@
-// Real-mode run against make dev (auth 8081, servers 8082/8083, web 5173): sign up, PKCE sign-in,
+// Real-mode run against make dev (portless names; WEB_URL/AUTH_URL override, e.g. PORTLESS=0 ports): sign up, PKCE sign-in,
 // join both communities, browse/preview/join/leave (OPT_IN) and a role-gated channel (ROLES), send, thread reply, react, upload, edit, delete, reload, reconnect after a
 // server restart (tmux window sblurp7:owls), token refresh in two tabs at once, and screenshots
 // (light, dark, 390px) into artifacts/integ/. Run: node scripts/real-e2e.cjs
@@ -8,7 +8,9 @@ const { chromium } = require('playwright');
 const { execSync } = require('child_process');
 const out = require('path').join(__dirname, '../../artifacts/integ/');
 require('fs').rmSync(out, { recursive: true, force: true }); require('fs').mkdirSync(out, { recursive: true });
-const WEB = 'http://localhost:5173/';
+const WEB = process.env.WEB_URL ?? 'http://app.sblurp.localhost:1355/';
+const AUTH = process.env.AUTH_URL ?? 'http://auth.sblurp.localhost:1355';
+const at = (base) => (url) => url.href.startsWith(base);
 const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok', what); };
 
 (async () => {
@@ -28,24 +30,24 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
 
   // Sign up, then PKCE sign-in.
   await p.goto(WEB); await shot('signed-out');
-  await signIn(p); await p.waitForURL(/8081/); await shot('auth-login');
+  await signIn(p); await p.waitForURL(at(AUTH)); await shot('auth-login');
   // Auth allows 20 sign-ups an hour per address, so repeated runs fall back to other loopback
-  // addresses. Those leave no session cookie for localhost, so sign-in may show the login form.
+  // addresses, straight to the port. Those leave no session cookie, so sign-in may show the login form.
   const u = 'ian' + Date.now().toString().slice(-5);
   let signedUp = false;
-  for (const host of ['localhost', '127.0.0.1', '[::1]']) {
-    await p.goto(`http://${host}:8081/signup`);
+  for (const base of [AUTH, 'http://127.0.0.1:8081', 'http://[::1]:8081']) {
+    await p.goto(`${base}/signup`);
     await p.fill('#email', u + '@example.com'); await p.fill('#username', u); await p.fill('#password', 'slushie-straw-77'); await p.fill('#dob', '1980-01-01');
     await p.check('input[name=terms]'); await p.getByRole('button', { name: /create|sign up/i }).click(); await p.waitForLoadState();
     if (!(await p.getByText(/too many sign-ups/i).count())) { signedUp = true; break; }
   }
   await shot('after-signup'); ok(signedUp, 'signed up ' + u);
   await p.goto(WEB); await signIn(p);
-  await p.waitForURL(/5173|8081/, { timeout: 15000 });
-  if (p.url().includes('8081')) {
+  await p.waitForURL(u => at(WEB)(u) || at(AUTH)(u), { timeout: 15000 });
+  if (p.url().startsWith(AUTH)) {
     await p.fill('#login', u); await p.fill('#password', 'slushie-straw-77'); await p.getByRole('button', { name: 'Sign in' }).click();
   }
-  await p.waitForURL(/5173/, { timeout: 15000 });
+  await p.waitForURL(at(WEB), { timeout: 15000 });
   await p.getByRole('button', { name: /^Join Sblurp Community/ }).waitFor({ timeout: 10000 }); await shot('join-card');
   errs.length = 0;
 
@@ -165,7 +167,7 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
   // Token refresh with two tabs open. Tokens issued from now on claim 61s of life, so with the
   // 60s refresh margin every call refreshes, and both tabs rotate the one refresh token at once.
   let refreshes = 0;
-  await ctx.route('http://localhost:8081/oauth/token', async r => {
+  await ctx.route(AUTH + '/oauth/token', async r => {
     const res = await r.fetch(); const j = await res.json();
     if (j.access_token) { j.expires_in = 61; refreshes++; }
     await r.fulfill({ response: res, json: j });
@@ -182,7 +184,7 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
   ok(true, 'both tabs send after a concurrent refresh');
   ok(refreshes >= 4, `tokens refreshed (${refreshes} times)`);
   ok(await p.locator('.signin').count() === 0 && await p2.locator('.signin').count() === 0, 'neither tab signed out');
-  await p2.close(); await ctx.unroute('http://localhost:8081/oauth/token');
+  await p2.close(); await ctx.unroute(AUTH + '/oauth/token');
   errs.splice(0, errs.length, ...errs.filter(e => !/ERR_NETWORK_CHANGED|Failed to load resource.*(net::|8090)/.test(e)));
 
   // Screenshots: light, dark, 390px.
