@@ -22,6 +22,7 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
   const watch = (pg, tag) => {
     pg.on('pageerror', e => errs.push(`${tag} ${e.message}`));
     pg.on('console', m => m.type() === 'error' && errs.push(`${tag} console: ${m.text()}`));
+    pg.on('requestfailed', r => console.log(tag, 'request failed', r.url(), r.failure()?.errorText));
   };
   watch(p, 'tab1');
   let step = 0;
@@ -42,6 +43,10 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
     if (!(await p.getByText(/too many sign-ups/i).count())) { signedUp = true; break; }
   }
   await shot('after-signup'); ok(signedUp, 'signed up ' + u);
+  // The account stays locked until the email is confirmed; dev mail lists newest first.
+  const mail = await (await p.request.get(AUTH + '/dev/mail')).text();
+  const link = mail.slice(mail.indexOf(u + '@example.com')).match(/\/verify\?token=[\w-]+/);
+  ok(link, 'verify mail for ' + u); await p.goto(AUTH + link[0]);
   await p.goto(WEB); await signIn(p);
   await p.waitForURL(u => at(WEB)(u) || at(AUTH)(u), { timeout: 15000 });
   if (p.url().startsWith(AUTH)) {
