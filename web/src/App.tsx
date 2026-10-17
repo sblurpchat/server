@@ -387,7 +387,7 @@ function Sidebar({ c }: { c: Community }) {
                 <Icon name="plus" size={18} /> Create channel
               </button>
               <button role="menuitem" onClick={() => set({ modal: { t: "community" } })}>
-                <Icon name="sliders" size={18} /> Community settings
+                <Icon name="gear" size={18} /> Community settings
               </button>
             </>
           )}
@@ -510,7 +510,7 @@ function MeBar({ c }: { c: Community }) {
         </span>
       </button>
       <button className="icon-btn" aria-label="Settings" title="Settings" onClick={() => set({ modal: { t: "settings" } })}>
-        <Icon name="sliders" />
+        <Icon name="gear" />
       </button>
     </div>
   );
