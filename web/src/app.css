@@ -1673,28 +1673,85 @@ li.sw-empty {
 }
 
 .emoji-picker {
-  width: 300px;
+  width: min(352px, calc(100vw - 32px));
   display: grid;
-  gap: 8px;
+  gap: 6px;
+}
+.emoji-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+}
+.emoji-tabs button {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  height: 34px;
+  color: var(--graphite);
+  border-radius: 6px 6px 0 0;
+  box-shadow: inset 0 -2px 0 transparent;
+  transition: color 150ms ease-out, background-color 120ms ease-out, box-shadow 150ms ease-out;
+}
+.emoji-tabs button:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.emoji-tabs button[aria-current="true"] {
+  color: var(--raspberry);
+  box-shadow: inset 0 -2px 0 var(--raspberry);
+}
+.emoji-tabs .cicon {
+  border-radius: 5px;
 }
 .emoji-grid {
+  position: relative;
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  max-height: 220px;
+  grid-template-columns: repeat(9, 1fr);
+  align-content: start;
+  height: 272px;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .emoji-grid button {
   font-size: 1.375rem;
-  height: 34px;
+  height: 36px;
   border-radius: 6px;
   text-align: center;
+  transition: background-color 120ms ease-out;
 }
-.emoji-grid button:hover {
+.emoji-grid button:hover,
+.emoji-grid button:focus-visible {
   background: var(--hover);
 }
 .emoji-grid p {
   grid-column: 1 / -1;
   padding: 12px 4px;
+}
+.emoji-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 6px 2px 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--graphite);
+}
+.emoji-peek {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  font-size: 1.75rem;
+  line-height: 1;
+}
+.emoji-peek .cemoji {
+  width: 28px;
+  height: 28px;
+  margin: 0;
+}
+.emoji-foot .btn {
+  margin-left: auto;
+  flex: none;
 }
 
 .profile {
@@ -3670,6 +3727,10 @@ li.sw-empty {
   margin: 0;
 }
 .emoji-grid .emoji-section {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--raised);
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--graphite);

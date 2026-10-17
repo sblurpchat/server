@@ -1,8 +1,8 @@
 // Custom emoji in the client: the per-community list (one cached fetch, revalidated with the
-// server's ETag and refetched on emoji_changed), inline rendering, the picker section, and the
+// server's ETag and refetched on emoji_changed), inline rendering, and the
 // Emoji tab of community settings with bulk upload (files, folders, zips) and export.
 import { fromJson } from "@bufbuild/protobuf";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type DragEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type DragEvent } from "react";
 import { getToken } from "./auth";
 import { emojiName, planUpload, searchEmoji, splitShortcodes, tally, type UploadResult } from "./emoji";
 import { fakeEmoji } from "./fakeEmoji";
@@ -55,7 +55,7 @@ export async function loadEmoji(url: string) {
 
 const isBuiltin = (name: string) => emojiChar(`:${name}:`) !== `:${name}:`;
 
-function Img({ e }: { e: Emoji }) {
+export function Img({ e }: { e: Emoji }) {
   return <img className="cemoji" src={e.src} alt={`:${e.name}:`} title={`:${e.name}:`} loading="lazy" decoding="async" draggable={false} />;
 }
 
@@ -80,7 +80,7 @@ export function Shortcodes({ text }: { text: string }) {
 }
 
 /** Render `step` more items each time the sentinel scrolls into view, so 5,000 emoji cost a page. */
-function useMore(step = 160) {
+export function useMore(step = 160) {
   const [limit, setLimit] = useState(step);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -91,25 +91,6 @@ function useMore(step = 160) {
     return () => io.disconnect();
   }, [limit, step]);
   return [limit, ref] as const;
-}
-
-/** The current community's emoji in the picker grid. Remount (key) on a new query. */
-export function CustomPicks({ q, onPick, none }: { q: string; onPick: (e: string) => void; none?: ReactNode }) {
-  const { list } = useEmojiSet(useApp((s) => s.url));
-  const hits = useMemo(() => searchEmoji(list, q), [list, q]);
-  const [limit, more] = useMore(96);
-  if (!hits.length) return none;
-  return (
-    <>
-      <p className="emoji-section">Custom</p>
-      {hits.slice(0, limit).map((e) => (
-        <button key={e.name} role="option" aria-selected="false" title={`:${e.name}:`} aria-label={e.name.replace(/[_-]/g, " ")} onClick={() => onPick(`:${e.name}:`)}>
-          <Img e={e} />
-        </button>
-      ))}
-      {limit < hits.length && <div ref={more} className="emoji-more" />}
-    </>
-  );
 }
 
 /** Custom emoji matching an autocomplete query, for the composer's ":" list. */

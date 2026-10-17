@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emojiName, planUpload, searchEmoji, splitShortcodes, tally } from "./emoji";
+import { bumpRecent, emojiName, pickerSections, planUpload, searchEmoji, splitShortcodes, tally } from "./emoji";
 
 describe("splitShortcodes", () => {
   const known = (n: string) => ["parrot", "blob-cat", "+1"].includes(n);
@@ -60,5 +60,40 @@ describe("searchEmoji", () => {
     const list = [{ name: "blobcat" }, { name: "catjam" }, { name: "dog" }, { name: "cat" }];
     expect(searchEmoji(list, ":cat").map((e) => e.name)).toEqual(["catjam", "cat", "blobcat"]);
     expect(searchEmoji(list, " ")).toBe(list);
+  });
+});
+
+describe("pickerSections", () => {
+  const groups = [
+    { id: "people", label: "People", items: [{ name: "smile", ch: "😄" }, { name: "thumbsup", ch: "👍" }] },
+    { id: "symbols", label: "Symbols", items: [{ name: "heart", ch: "❤️" }] },
+  ];
+  const custom = [{ name: "party_parrot", src: "p.gif" }, { name: "smile", src: "fake-smile.png" }, { name: "thumbsup_all", src: "t.png" }];
+  const ids = (s: { items: { name: string; ch?: string; src?: string }[] }) => s.items.map((e) => e.ch ?? e.src);
+
+  it("searches standard and custom together, prefix matches first", () => {
+    const s = pickerSections(groups, custom, [], ":thumbs");
+    expect(s.map((x) => x.id)).toEqual(["results"]);
+    expect(ids(s[0])).toEqual(["👍", "t.png"]);
+    expect(ids(pickerSections(groups, custom, [], "parrot")[0])).toEqual(["p.gif"]);
+    expect(pickerSections(groups, custom, [], "zzz")[0].items).toEqual([]);
+  });
+  it("lets a standard emoji win a name clash, in search and in the custom section", () => {
+    expect(ids(pickerSections(groups, custom, [], "smile")[0])).toEqual(["😄"]);
+    const s = pickerSections(groups, custom, [], "");
+    expect(ids(s.find((x) => x.id === "custom")!)).toEqual(["p.gif", "t.png"]);
+  });
+  it("puts frequently used first and custom last, skipping unknown recents", () => {
+    const s = pickerSections(groups, custom, ["party_parrot", "gone", "heart"], " ");
+    expect(s.map((x) => x.id)).toEqual(["recent", "people", "symbols", "custom"]);
+    expect(ids(s[0])).toEqual(["p.gif", "❤️"]);
+    expect(pickerSections(groups, [], [], "").map((x) => x.id)).toEqual(["people", "symbols"]);
+  });
+});
+
+describe("bumpRecent", () => {
+  it("moves the pick to the front without duplicates and caps the list", () => {
+    expect(bumpRecent(["a", "b", "c"], "c")).toEqual(["c", "a", "b"]);
+    expect(bumpRecent(["a", "b"], "z", 2)).toEqual(["z", "a"]);
   });
 });

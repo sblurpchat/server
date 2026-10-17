@@ -112,3 +112,32 @@ export function searchEmoji<T extends { name: string }>(list: T[], q: string): T
   }
   return starts.concat(has);
 }
+
+/** One cell in the picker: a standard emoji has `ch`, a community one has `src`. */
+export interface PickItem {
+  name: string;
+  ch?: string;
+  src?: string;
+}
+export interface PickSection {
+  id: string;
+  label: string;
+  items: PickItem[];
+}
+
+/**
+ * The picker's sections, standard and custom in one grid. A query gives one ranked list across
+ * both (a custom emoji named like a standard one shows the standard one, as messages do).
+ * Without a query: frequently used first, then the standard groups, then the community's own.
+ */
+export function pickerSections(groups: PickSection[], custom: PickItem[], recent: string[], q: string): PickSection[] {
+  const by = new Map<string, PickItem>();
+  for (const e of groups.flatMap((g) => g.items).concat(custom)) if (!by.has(e.name)) by.set(e.name, e);
+  if (q.trim()) return [{ id: "results", label: "Results", items: searchEmoji([...by.values()], q) }];
+  const freq = recent.flatMap((n) => by.get(n) ?? []);
+  const own = custom.filter((e) => by.get(e.name) === e);
+  return [...(freq.length ? [{ id: "recent", label: "Frequently used", items: freq }] : []), ...groups, ...(own.length ? [{ id: "custom", label: "Custom", items: own }] : [])];
+}
+
+/** Move a just-picked name to the front of the frequently used list. */
+export const bumpRecent = (recent: string[], name: string, max = 27) => [name, ...recent.filter((n) => n !== name)].slice(0, max);

@@ -1,9 +1,10 @@
 // Shared UI primitives: icons, avatars, dialogs, popovers, the emoji picker and the markdown renderer.
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { Presence, type Member } from "./gen/sblurp/v1/sblurp_pb";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { MemberRole, Presence, type Member } from "./gen/sblurp/v1/sblurp_pb";
 import { PANELS, clampWidth, initials, keyWidth, onWhite, parseMarkdown, swatch, type Inline } from "./logic";
-import { CustomPicks, Shortcodes } from "./CustomEmoji";
-import { set } from "./store";
+import { Img, Shortcodes, useEmojiSet, useMore } from "./CustomEmoji";
+import { bumpRecent, pickerSections, type PickItem } from "./emoji";
+import { absUrl, set, useApp } from "./store";
 
 // ---------------------------------------------------------------------------
 // Icons: Lucide on a 24px grid, drawn at a 1.75 stroke
@@ -45,6 +46,12 @@ const ICONS = {
   puzzle:
     "M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z",
   retry: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5",
+  clock: "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M12 6v6l4 2",
+  leaf: "M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10ZM2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12",
+  coffee: "M10 2v2M14 2v2M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1M6 2v2",
+  lightbulb: "M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4",
+  heart: "M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5",
+  smilePlus: "M22 11v1a10 10 0 1 1-9-10M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01M16 5h6M19 2v6", // Lucide smile-plus
 };
 export type IconName = keyof typeof ICONS;
 
@@ -187,47 +194,163 @@ export function Pop({
 // Emoji
 // ---------------------------------------------------------------------------
 
-export const EMOJI: [string, string][] = [
-  ["thumbsup", "👍"], ["heart", "❤️"], ["joy", "😂"], ["tada", "🎉"], ["eyes", "👀"], ["pray", "🙏"],
-  ["fire", "🔥"], ["100", "💯"], ["sparkles", "✨"], ["cup_with_straw", "🥤"], ["smile", "😄"], ["grin", "😁"],
-  ["sweat_smile", "😅"], ["wink", "😉"], ["blush", "😊"], ["heart_eyes", "😍"], ["star_struck", "🤩"],
-  ["thinking", "🤔"], ["open_mouth", "😮"], ["cry", "😢"], ["sob", "😭"], ["rage", "😡"], ["sleeping", "😴"],
-  ["upside_down", "🙃"], ["shrug", "🤷"], ["facepalm", "🤦"], ["wave", "👋"], ["clap", "👏"], ["raised_hands", "🙌"],
-  ["ok_hand", "👌"], ["muscle", "💪"], ["thumbsdown", "👎"], ["point_up", "☝️"], ["handshake", "🤝"],
-  ["rocket", "🚀"], ["bulb", "💡"], ["check", "✅"], ["x", "❌"], ["warning", "⚠️"], ["question", "❓"],
-  ["exclamation", "❗"], ["star", "⭐"], ["sun", "☀️"], ["moon", "🌙"], ["waxing_gibbous", "🌔"],
-  ["shooting_star", "🌠"], ["owl", "🦉"], ["coffee", "☕"], ["tea", "🍵"], ["pizza", "🍕"], ["cake", "🍰"],
-  ["croissant", "🥐"], ["amphora", "🏺"], ["wood", "🪵"], ["art", "🎨"], ["books", "📚"], ["memo", "📝"],
-  ["pushpin", "📌"], ["link", "🔗"], ["lock", "🔒"], ["bug", "🐛"], ["wrench", "🔧"], ["gear", "⚙️"],
-  ["computer", "💻"], ["phone", "📱"], ["camera", "📷"], ["musical_note", "🎵"], ["headphones", "🎧"],
-  ["party", "🥳"], ["cool", "😎"], ["nerd", "🤓"], ["skull", "💀"], ["ghost", "👻"], ["robot", "🤖"],
-  ["cat", "🐱"], ["dog", "🐶"], ["plant", "🌱"], ["rainbow", "🌈"], ["zap", "⚡"], ["snowflake", "❄️"],
-  ["salute", "🫡"], ["melting", "🫠"], ["hug", "🤗"], ["mind_blown", "🤯"], ["see_no_evil", "🙈"],
+type Group = { id: string; label: string; icon: IconName; items: [string, string][] };
+const GROUPS: Group[] = [
+  { id: "people", label: "Smileys & people", icon: "smile", items: [
+    ["thumbsup", "👍"], ["joy", "😂"], ["smile", "😄"], ["grin", "😁"], ["sweat_smile", "😅"], ["wink", "😉"], ["blush", "😊"],
+    ["heart_eyes", "😍"], ["star_struck", "🤩"], ["party", "🥳"], ["cool", "😎"], ["nerd", "🤓"], ["hug", "🤗"], ["thinking", "🤔"],
+    ["salute", "🫡"], ["upside_down", "🙃"], ["melting", "🫠"], ["open_mouth", "😮"], ["mind_blown", "🤯"], ["cry", "😢"], ["sob", "😭"],
+    ["rage", "😡"], ["sleeping", "😴"], ["skull", "💀"], ["ghost", "👻"], ["robot", "🤖"], ["see_no_evil", "🙈"], ["eyes", "👀"],
+    ["shrug", "🤷"], ["facepalm", "🤦"], ["wave", "👋"], ["clap", "👏"], ["raised_hands", "🙌"], ["pray", "🙏"], ["ok_hand", "👌"],
+    ["muscle", "💪"], ["thumbsdown", "👎"], ["point_up", "☝️"], ["handshake", "🤝"],
+  ] },
+  { id: "nature", label: "Nature", icon: "leaf", items: [
+    ["cat", "🐱"], ["dog", "🐶"], ["owl", "🦉"], ["bug", "🐛"], ["plant", "🌱"], ["wood", "🪵"], ["sun", "☀️"], ["moon", "🌙"],
+    ["waxing_gibbous", "🌔"], ["star", "⭐"], ["shooting_star", "🌠"], ["rainbow", "🌈"], ["zap", "⚡"], ["snowflake", "❄️"], ["fire", "🔥"],
+  ] },
+  { id: "food", label: "Food & drink", icon: "coffee", items: [
+    ["coffee", "☕"], ["tea", "🍵"], ["cup_with_straw", "🥤"], ["pizza", "🍕"], ["croissant", "🥐"], ["cake", "🍰"],
+  ] },
+  { id: "objects", label: "Objects", icon: "lightbulb", items: [
+    ["tada", "🎉"], ["rocket", "🚀"], ["bulb", "💡"], ["art", "🎨"], ["books", "📚"], ["memo", "📝"], ["pushpin", "📌"], ["link", "🔗"],
+    ["lock", "🔒"], ["wrench", "🔧"], ["gear", "⚙️"], ["computer", "💻"], ["phone", "📱"], ["camera", "📷"], ["musical_note", "🎵"],
+    ["headphones", "🎧"], ["amphora", "🏺"],
+  ] },
+  { id: "symbols", label: "Symbols", icon: "heart", items: [
+    ["heart", "❤️"], ["100", "💯"], ["sparkles", "✨"], ["check", "✅"], ["x", "❌"], ["warning", "⚠️"], ["question", "❓"], ["exclamation", "❗"],
+  ] },
 ];
+export const EMOJI: [string, string][] = GROUPS.flatMap((g) => g.items);
 const BY_NAME = new Map(EMOJI);
 /** Reactions may use ":shortcode:"; show the character when we know it. */
 export const emojiChar = (e: string) => (/^:[\w+-]+:$/.test(e) ? BY_NAME.get(e.slice(1, -1)) ?? e : e);
 
+const SECTIONS = GROUPS.map((g) => ({ ...g, items: g.items.map(([name, ch]) => ({ name, ch })) }));
+const ICON_OF: Record<string, IconName> = { recent: "clock", ...Object.fromEntries(GROUPS.map((g) => [g.id, g.icon])) };
+
+// Frequently used lives in this browser only (a per-viewer convenience); new people start with these.
+const RECENT_KEY = "sblurp.emoji.recent";
+const STARTER = ["thumbsup", "heart", "joy", "tada", "eyes", "pray", "fire", "100", "sparkles"];
+function readRecent(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "null");
+    return Array.isArray(v) ? v : STARTER;
+  } catch {
+    return STARTER;
+  }
+}
+
+const Face = ({ e }: { e: PickItem }) => (e.src ? <Img e={{ name: e.name, src: e.src }} /> : <span className="emoji">{e.ch}</span>);
+
+/** Standard and community emoji in one grid, like Slack: one search, category tabs, Add emoji. */
 export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
+  const c = useApp((s) => s.cs[s.url]);
+  const { list } = useEmojiSet(useApp((s) => s.url));
+  const canAdd = (c?.me?.role ?? MemberRole.MEMBER) >= MemberRole.MODERATOR;
   const [q, setQ] = useState("");
-  const list = EMOJI.filter(([n]) => n.includes(q.toLowerCase().replace(/^:/, "")));
+  const [recent] = useState(readRecent);
+  const [hover, setHover] = useState<PickItem | null>(null);
+  const [at, setAt] = useState("");
+  const [limit, more] = useMore(180);
+  const grid = useRef<HTMLDivElement>(null);
+  const jump = useRef("");
+  const base = useMemo(() => pickerSections(SECTIONS, list, recent, ""), [list, recent]);
+  const shown = useMemo(() => (q.trim() ? pickerSections(SECTIONS, list, recent, q) : base), [base, list, recent, q]);
+  const first = shown[0]?.items[0];
+
+  const go = (id: string) => {
+    const g = grid.current!;
+    g.scrollTop = g.querySelector<HTMLElement>(`[data-sec="${id}"]`)?.offsetTop ?? 0;
+    setAt(id);
+  };
+  useLayoutEffect(() => {
+    if (jump.current) go(jump.current);
+    else grid.current!.scrollTop = 0;
+    jump.current = "";
+  }, [q]);
+  const spy = () => {
+    const g = grid.current!;
+    let id = "";
+    for (const h of g.querySelectorAll<HTMLElement>("[data-sec]")) if (h.offsetTop <= g.scrollTop + 4) id = h.dataset.sec!;
+    setAt(id);
+  };
+  const pick = (e: PickItem) => {
+    try {
+      localStorage.setItem(RECENT_KEY, JSON.stringify(bumpRecent(recent, e.name)));
+    } catch {
+      // private mode: frequently used just won't update
+    }
+    onPick(e.ch ?? `:${e.name}:`);
+  };
+
+  let n = 0;
+  const peek = hover ?? first;
   return (
     <div className="emoji-picker">
       <input
         className="input"
-        placeholder="Search emoji"
+        type="search"
+        placeholder="Search all emoji"
         aria-label="Search emoji"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && list[0] && onPick(list[0][1])}
+        onKeyDown={(e) => e.key === "Enter" && first && pick(first)}
       />
-      <div className="emoji-grid" role="listbox" aria-label="Emoji">
-        {list.map(([n, ch]) => (
-          <button key={n} role="option" aria-selected="false" title={`:${n}:`} aria-label={n.replace(/_/g, " ")} onClick={() => onPick(ch)}>
-            {ch}
+      <nav className="emoji-tabs" aria-label="Emoji categories">
+        {base.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            title={s.label}
+            aria-label={s.label}
+            aria-current={!q.trim() && (at || base[0].id) === s.id}
+            onClick={() => (q ? ((jump.current = s.id), setQ("")) : go(s.id))}
+          >
+            {s.id === "custom" ? <CommunityIcon name={c?.info?.name || "?"} icon={c?.info?.iconUrl ? absUrl(c.url, c.info.iconUrl) : ""} accent={c?.info?.accentColor} size={18} /> : <Icon name={ICON_OF[s.id]} size={18} />}
           </button>
         ))}
-        <CustomPicks key={q} q={q} onPick={onPick} none={!list.length && <p className="muted small">No emoji match “{q}”.</p>} />
+      </nav>
+      <div className="emoji-grid" role="listbox" aria-label="Emoji" ref={grid} onScroll={spy} onMouseLeave={() => setHover(null)}>
+        {shown.map((s) => {
+          const room = Math.max(0, limit - n);
+          n += s.items.length;
+          return (
+            <Fragment key={s.id}>
+              <p className="emoji-section" data-sec={s.id}>
+                {s.label}
+              </p>
+              {s.items.slice(0, room).map((e) => (
+                <button key={e.name} role="option" aria-selected="false" title={`:${e.name}:`} aria-label={e.name.replace(/[_-]/g, " ")} onMouseEnter={() => setHover(e)} onFocus={() => setHover(e)} onClick={() => pick(e)}>
+                  <Face e={e} />
+                </button>
+              ))}
+            </Fragment>
+          );
+        })}
+        {limit < n && <div ref={more} className="emoji-more" />}
+        {!first && <p className="muted small">No emoji match “{q.trim()}”.</p>}
+      </div>
+      <div className="emoji-foot">
+        {peek && (
+          <>
+            <span className="emoji-peek" aria-hidden="true">
+              <Face e={peek} />
+            </span>
+            <span className="truncate">:{peek.name}:</span>
+          </>
+        )}
+        {canAdd && (
+          <button
+            type="button"
+            className="btn ghost small"
+            onClick={(e) => {
+              e.currentTarget.closest<HTMLElement>("[popover]")?.hidePopover();
+              set({ modal: { t: "community", tab: "emoji" } });
+            }}
+          >
+            <Icon name="smilePlus" size={16} /> Add emoji
+          </button>
+        )}
       </div>
     </div>
   );
