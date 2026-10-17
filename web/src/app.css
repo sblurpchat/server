@@ -12,7 +12,7 @@
   --raspberry: light-dark(#3550f0, #6f82ff);
   --accent-fill: light-dark(#3550f0, #4a5ef2); /* buttons with --on-accent text */
   --cherry: light-dark(#e8344e, #ff5a70);
-  --cherry-text: light-dark(#d42a44, #ff5a70); /* cherry as small text: 5:1 on paper */
+  --cherry-text: light-dark(#d02842, #ff5a70); /* cherry as small text: 5:1 on paper */
   --badge: #d42a44; /* --on-accent text on it: 5:1 */
   --graphite: light-dark(#5d6274, #9499ad);
   --line: light-dark(#e1e5ee, #2a2d3e);
