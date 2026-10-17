@@ -669,14 +669,19 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
   );
 }
 
-function AddCommunity() {
+function AddCommunity({ input: given }: { input?: string }) {
   const order = useApp((s) => s.order);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(given ?? "");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [found, setFound] = useState<{ url: string; invite: string; info: GetServerInfoResponse } | null>(null);
-  const submit = async (e: FormEvent) => {
+  // Opened from an invite link: look it up right away and land on the consent step.
+  useEffect(() => void (given && lookUp(given)), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const submit = (e: FormEvent) => {
     e.preventDefault();
+    lookUp(input);
+  };
+  const lookUp = async (input: string) => {
     const n = normalizeCommunityUrl(input);
     if (!n) return setErr("Enter a community address, like nightowls.chat, or paste an invite link.");
     setBusy(true);
@@ -745,7 +750,7 @@ function Modals() {
     case "settings":
       return <Settings />;
     case "add":
-      return <AddCommunity />;
+      return <AddCommunity input={modal.input} />;
     case "switcher":
       return <Switcher />;
     case "info":

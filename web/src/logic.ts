@@ -618,6 +618,16 @@ export function normalizeCommunityUrl(input: string): { url: string; invite: str
   return { url: u.origin + path, invite };
 }
 
+/** Add a community's text for "#/join?url=…&invite=…", where a server's /invite/CODE sends a browser. */
+export function joinHashInput(hash: string): string | null {
+  if (!hash.startsWith("#/join?")) return null;
+  const q = new URLSearchParams(hash.slice("#/join?".length));
+  const n = normalizeCommunityUrl(q.get("url") ?? "");
+  if (!n) return null;
+  const invite = q.get("invite") || n.invite;
+  return invite ? inviteLink(n.url, invite) : n.url;
+}
+
 /** A link "Add a community" understands (normalizeCommunityUrl reads the code back out). */
 export const inviteLink = (url: string, code: string) => `${url}/invite/${code}`;
 

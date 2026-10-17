@@ -43,6 +43,7 @@ import {
   inviteLink,
   inviteState,
   normalizeCommunityUrl,
+  joinHashInput,
   channelSlug,
   reorderChannel,
   parseHash,
@@ -333,6 +334,12 @@ describe("community URLs", () => {
   });
   it("reads back the invite links the client makes", () => {
     expect(normalizeCommunityUrl(inviteLink("http://localhost:8082", "ABCDE23456"))).toEqual({ url: "http://localhost:8082", invite: "ABCDE23456" });
+  });
+  it("reads the join route a server's invite link redirects to", () => {
+    expect(joinHashInput("#/join?invite=ABCD234567&url=https%3A%2F%2Fowls.test")).toBe("https://owls.test/invite/ABCD234567");
+    expect(joinHashInput("#/join?url=http%3A%2F%2Fcommunity.sblurp.localhost%3A1355%2F")).toBe("http://community.sblurp.localhost:1355");
+    expect(joinHashInput("#/join?url=javascript%3Aalert(1)&invite=X")).toBeNull();
+    expect(joinHashInput("#/c/owls.test/general")).toBeNull();
   });
   it("rejects junk and other schemes", () => {
     expect(normalizeCommunityUrl("")).toBeNull();
@@ -628,6 +635,11 @@ describe("appearance", () => {
       ["mention-ink", "mention-bg"],
       ["text", "selected"],
       ["on-tip", "tip"],
+      // Syntax colors in code blocks
+      ["text", "code-bg"],
+      ["raspberry", "code-bg"],
+      ["cherry-text", "code-bg"],
+      ["graphite", "code-bg"],
     ];
     const fails: string[] = [];
     for (const [name, tk] of Object.entries(themes)) {

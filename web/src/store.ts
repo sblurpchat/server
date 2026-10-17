@@ -50,6 +50,7 @@ import {
   parseAppearance,
   type Appearance,
   sentence,
+  joinHashInput,
 } from "./logic";
 
 const params = new URLSearchParams(location.search);
@@ -85,7 +86,7 @@ function save(key: string, v: unknown) {
 export type Modal =
   | null
   | { t: "settings" }
-  | { t: "add" }
+  | { t: "add"; input?: string }
   | { t: "switcher" }
   | { t: "info" }
   | { t: "invite" }
@@ -854,12 +855,33 @@ function start() {
   const url = order.find((u) => hostOf(u) === fromHash?.host) ?? order[0] ?? "";
   set({ url, channelId: fromHash?.channelId ?? "", pane: fromHash?.channelId ? parsePane(location.hash) : null });
   if (fromHash?.messageId) jumpTo(url, { id: fromHash.messageId, channelId: fromHash.channelId, threadRootId: fromHash.rootId });
+  let join = null;
+  try {
+    join = sessionStorage.getItem(JOIN_KEY);
+    sessionStorage.removeItem(JOIN_KEY);
+  } catch {
+    // storage blocked: the invite link is lost, Add a community still works by hand
+  }
+  if (join) set({ modal: { t: "add", input: join } });
 }
+
+// An invite link opened in a browser lands on #/join (see joinHashInput). It waits in
+// sessionStorage, so it survives the sign-in round trip in this tab.
+const JOIN_KEY = "sblurp.join";
 
 export async function boot() {
   applyLook();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyLook);
   addEventListener("popstate", applyHash);
+  const join = joinHashInput(location.hash);
+  if (join) {
+    try {
+      sessionStorage.setItem(JOIN_KEY, join);
+    } catch {
+      // see start()
+    }
+    history.replaceState(null, "", location.pathname + location.search);
+  }
   if (FAKE) {
     if (params.has("signedout")) set({ auth: "out" });
     else start();
