@@ -256,6 +256,25 @@ function renderInline(nodes: Inline[], members: Record<string, Member>, meId: st
   });
 }
 
+/** A fenced block. With a language, the highlighter loads on first use and colors it in place. */
+function CodeBlock({ lang, code }: { lang: string; code: string }) {
+  const key = `${lang}\n${code}`;
+  const [hl, setHl] = useState({ key: "", html: null as string | null });
+  useEffect(() => {
+    if (!lang) return;
+    let live = true;
+    import("./highlight").then(
+      (m) => live && setHl({ key, html: m.highlight(code, lang) }),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const html = hl.key === key ? hl.html : null;
+  return <pre data-lang={lang || undefined}>{html === null ? <code>{code}</code> : <code dangerouslySetInnerHTML={{ __html: html }} />}</pre>;
+}
+
 export function Markdown({
   text,
   members,
@@ -271,9 +290,7 @@ export function Markdown({
     <>
       {parseMarkdown(text).map((b, i) =>
         b.t === "pre" ? (
-          <pre key={i} data-lang={b.lang || undefined}>
-            <code>{b.v}</code>
-          </pre>
+          <CodeBlock key={i} lang={b.lang} code={b.v} />
         ) : b.t === "ul" || b.t === "ol" ? (
           (() => {
             const L = b.t;

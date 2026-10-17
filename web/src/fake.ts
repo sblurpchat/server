@@ -183,6 +183,7 @@ const SEEDS: Seed[] = [
       "self-hosting": [
         [4 * D, "sam", "My setup: Hetzner CX22, Caddy, one systemd unit, backups with `sqlite3 .backup` to object storage every hour."],
         [4 * D - 3, "priya", "That's the recommended shape. Add `-data /var/lib/sblurp` so upgrades don't touch it."],
+        [4 * D - 9, "sam", "And the hourly backup, if anyone wants it:\n```ts\n// Copy the live database without stopping the server.\nconst every = 60 * 60 * 1000;\nsetInterval(async () => {\n  await run(\"sqlite3\", [\"/var/lib/sblurp/chat.db\", `.backup /backups/${Date.now()}.db`]);\n}, every);\n```"],
       ],
       "ideas-box": [],
       "dm:ana": [

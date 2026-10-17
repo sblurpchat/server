@@ -1905,6 +1905,36 @@ li.sw-empty {
   border: 0;
   background: none;
 }
+/* Syntax colors (highlight.js classes) from theme tokens only, so every theme gets them and the contrast test covers them. */
+.hljs-keyword,
+.hljs-built_in,
+.hljs-type,
+.hljs-literal,
+.hljs-number,
+.hljs-selector-tag,
+.hljs-addition {
+  color: var(--raspberry);
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-symbol,
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-deletion {
+  color: var(--cherry-text);
+}
+.hljs-comment,
+.hljs-quote,
+.hljs-meta {
+  color: var(--graphite);
+  font-style: italic;
+}
+.hljs-title,
+.hljs-section,
+.hljs-name {
+  font-weight: 700;
+}
 .msg-text blockquote {
   margin: 2px 0;
   padding-left: 12px;

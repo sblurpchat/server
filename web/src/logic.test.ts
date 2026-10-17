@@ -635,6 +635,11 @@ describe("appearance", () => {
       ["mention-ink", "mention-bg"],
       ["text", "selected"],
       ["on-tip", "tip"],
+      // Syntax colors in code blocks
+      ["text", "code-bg"],
+      ["raspberry", "code-bg"],
+      ["cherry-text", "code-bg"],
+      ["graphite", "code-bg"],
     ];
     const fails: string[] = [];
     for (const [name, tk] of Object.entries(themes)) {
