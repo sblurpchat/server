@@ -613,7 +613,13 @@ func (s *Server) GetMe(ctx context.Context, _ *connect.Request[v1.GetMeRequest])
 
 func (s *Server) UpdateProfile(ctx context.Context, req *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
 	r := req.Msg
-	if err := checkProfile(r.DisplayName, r.AvatarUrl, r.Bio); err != nil {
+	avatar, upload := r.AvatarUrl, ""
+	if avatar != nil {
+		if id, ok := s.localAvatar(*avatar); ok {
+			avatar, upload = nil, id
+		}
+	}
+	if err := checkProfile(r.DisplayName, avatar, r.Bio); err != nil {
 		return nil, err
 	}
 	if r.StatusText != nil {
@@ -631,6 +637,13 @@ func (s *Server) UpdateProfile(ctx context.Context, req *connect.Request[v1.Upda
 	m := me(ctx)
 	var out *memberRow
 	err := s.writeTx(ctx, func(t *wtx) error {
+		if avatar == nil && r.AvatarUrl != nil {
+			p, err := avatarPath(ctx, t, upload, m.Id)
+			if err != nil {
+				return err
+			}
+			r.AvatarUrl = &p
+		}
 		sets := []struct {
 			col string
 			v   *string

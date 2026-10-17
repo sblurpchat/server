@@ -82,6 +82,9 @@ func (s *Server) signURLs(m proto.Message) {
 			if a, ok := v.Interface().(*v1.Attachment); ok && a.Id != "" {
 				a.Url = signedFileURL(s.fileKey, a.Id, a.Name, now)
 			}
+			if m, ok := v.Interface().(*v1.Member); ok {
+				s.signAvatar(m, now)
+			}
 		}
 		return nil
 	})

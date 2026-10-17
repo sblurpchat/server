@@ -223,7 +223,8 @@ func (s *Server) prune(ctx context.Context) error {
 			return err
 		}
 		rows, err := t.QueryContext(ctx, `DELETE FROM attachments WHERE message_id IS NULL AND created_at_ms < ?
-			AND id NOT IN (SELECT value FROM settings WHERE key IN ('banner', 'icon')) AND id NOT IN (SELECT header_image_id FROM channels) RETURNING id`, now.Add(-orphanAfter).UnixMilli())
+			AND id NOT IN (SELECT value FROM settings WHERE key IN ('banner', 'icon')) AND id NOT IN (SELECT header_image_id FROM channels)
+			AND id NOT IN (SELECT substr(avatar_url, 8, instr(substr(avatar_url, 8), '/') - 1) FROM members WHERE avatar_url LIKE '/files/%') RETURNING id`, now.Add(-orphanAfter).UnixMilli())
 		if err != nil {
 			return err
 		}
