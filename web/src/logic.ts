@@ -30,6 +30,8 @@ export interface Info {
   memberCount: number;
   inviteOnly?: boolean;
   bannerUrl?: string;
+  /** Delete messages after this many days; 0 or unset keeps them forever (1072). */
+  retentionDays?: number;
 }
 
 export interface MsgList {
@@ -115,6 +117,14 @@ export function upsertMessage(items: Message[], m: Message): Message[] {
   while (at > 0 && items[at - 1].createdAtMs > m.createdAtMs) at--;
   return [...items.slice(0, at), m, ...items.slice(at)];
 }
+
+const DAY_MS = 86_400_000;
+
+/** True if the community's retention has deleted (or is about to delete) m. Unsent messages never expire. */
+export const isExpired = (m: Message, days = 0, now = Date.now()) => days > 0 && m.seq > 0n && Number(m.createdAtMs) < now - days * DAY_MS;
+
+/** The messages to show: the server prunes expired ones without an event per message, so the client drops them itself. */
+export const retained = (items: Message[], days = 0, now = Date.now()) => (days > 0 ? items.filter((m) => !isExpired(m, days, now)) : items);
 
 /** A list being left keeps only its newest messages, so coming back mounts fast. A window from a search jump is dropped
  *  (undefined) because it is not the newest; a list mid-load is kept whole so the page in flight still lines up. */

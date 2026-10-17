@@ -57,6 +57,7 @@ import {
   sentence,
   joinHashInput,
   readDelay,
+  isExpired,
 } from "./logic";
 
 const params = new URLSearchParams(location.search);
@@ -244,6 +245,7 @@ const toInfo = (i: GetServerInfoResponse): Info => ({
   memberCount: i.memberCount,
   inviteOnly: i.inviteOnly,
   bannerUrl: i.banner?.url,
+  retentionDays: i.retentionDays,
 });
 
 /** Resolve an attachment or icon URL relative to its server. */
@@ -440,6 +442,11 @@ export async function loadList(url: string, channelId: string, rootId = "", page
   if (page !== "around" && (l?.loading || (page === "older" && !l?.hasMore) || (page === "newer" && !l?.hasMoreAfter))) return;
   patchList(url, key, (x) => ({ ...x, loading: true, error: undefined }));
   const confirmed = l?.items.filter((m) => m.seq > 0n) ?? [];
+  // The list is contiguous: past an expired message everything is gone too (1072).
+  if (page === "older" && confirmed[0] && isExpired(confirmed[0], state.cs[url]?.info?.retentionDays)) {
+    patchList(url, key, (x) => ({ ...x, hasMore: false, loading: false }));
+    return;
+  }
   try {
     const r = await api(url).chat.listMessages({
       channelId,
@@ -727,6 +734,12 @@ export const createInvite = (url: string, expiresInSeconds: number, maxUses: num
   api(url).server.createInvite({ expiresInSeconds: BigInt(expiresInSeconds), maxUses });
 export const listInvites = async (url: string) => (await api(url).server.listInvites({})).invites;
 export const revokeInvite = (url: string, code: string) => api(url).server.revokeInvite({ code });
+/** Delete messages after this many days; 0 keeps them forever (1072). */
+export async function setRetention(url: string, retentionDays: number) {
+  const r = await api(url).server.updateServerSettings({ retentionDays });
+  patchC(url, (c) => ({ ...c, info: c.info && { ...c.info, retentionDays: r.retentionDays } }));
+}
+
 export async function setInviteOnly(url: string, inviteOnly: boolean) {
   const r = await api(url).server.updateServerSettings({ inviteOnly });
   patchC(url, (c) => ({ ...c, info: c.info && { ...c.info, inviteOnly: r.inviteOnly } }));

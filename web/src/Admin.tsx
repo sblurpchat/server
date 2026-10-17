@@ -26,6 +26,7 @@ import {
   rotateBotToken,
   set,
   setInviteOnly,
+  setRetention,
   setRole,
   unbanMember,
   updateChannel,
@@ -344,8 +345,75 @@ function AboutTab({ url }: { url: string }) {
           </button>
         </div>
       </form>
+      <Retention url={url} />
       <ServerVersion url={url} />
     </div>
+  );
+}
+
+const KEEP = [7, 30, 90, 365];
+
+/** Message retention (1072). Nothing changes until Save, because a shorter time deletes messages for everyone. */
+function Retention({ url }: { url: string }) {
+  const saved = useApp((s) => s.cs[url]?.info?.retentionDays ?? 0);
+  const [pick, setPick] = useState<number | "custom">(saved && !KEEP.includes(saved) ? "custom" : saved);
+  const [custom, setCustom] = useState(saved || 180);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const days = pick === "custom" ? custom : pick;
+  const valid = Number.isInteger(days) && days >= 0 && days <= 3650;
+  const shorter = days > 0 && (saved === 0 || days < saved);
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr("");
+    try {
+      await setRetention(url, days);
+    } catch (x) {
+      setErr(errorText(x));
+    }
+    setBusy(false);
+  };
+  return (
+    <form className="field" onSubmit={save}>
+      <label htmlFor="retention">
+        <b>Message history</b>
+      </label>
+      <select id="retention" className="input" value={pick} onChange={(e) => setPick(e.target.value === "custom" ? "custom" : +e.target.value)}>
+        <option value={0}>Keep forever</option>
+        {KEEP.map((d) => (
+          <option key={d} value={d}>
+            Delete after {d === 365 ? "1 year" : `${d} days`}
+          </option>
+        ))}
+        <option value="custom">Delete after a number of days</option>
+      </select>
+      {pick === "custom" && (
+        <label className="row" style={{ animation: "fade-in 150ms ease-out" }}>
+          <input type="number" className="input" min={1} max={3650} required value={custom} onChange={(e) => setCustom(e.target.valueAsNumber)} />
+          days
+        </label>
+      )}
+      <small className="muted">
+        {saved ? `Messages, thread replies and files older than ${saved} days are deleted for everyone.` : "Messages stay until someone deletes them."}
+      </small>
+      {shorter && days !== saved && (
+        <p className="update-note" style={{ animation: "fade-in 150ms ease-out" }}>
+          <Icon name="info" size={16} />
+          <span>Older messages will be deleted for everyone within the hour. This cannot be undone.</span>
+        </p>
+      )}
+      {err && (
+        <p className="error" role="alert">
+          {err}
+        </p>
+      )}
+      <div className="row-end">
+        <button className="btn primary" disabled={busy || !valid || days === saved}>
+          Save history setting
+        </button>
+      </div>
+    </form>
   );
 }
 

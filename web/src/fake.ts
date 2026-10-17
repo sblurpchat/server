@@ -701,7 +701,8 @@ function service(f: Fake) {
         f.invites = f.invites.filter((i) => i.code !== req.code);
         return {};
       },
-      updateServerSettings(req: { inviteOnly?: boolean; channelMode: ChannelMode; description?: string; bannerId?: string; iconId?: string }) {
+      updateServerSettings(req: { inviteOnly?: boolean; channelMode: ChannelMode; description?: string; bannerId?: string; iconId?: string; retentionDays?: number }) {
+        if (req.retentionDays !== undefined) f.info.retentionDays = req.retentionDays;
         admin();
         if (req.inviteOnly !== undefined) f.info.inviteOnly = req.inviteOnly;
         if (req.description !== undefined) f.info.description = req.description.trim();
@@ -717,7 +718,7 @@ function service(f: Fake) {
           }
           emit(f, { case: "channelModeChanged", value: f.mode });
         }
-        return { inviteOnly: f.info.inviteOnly, channelMode: f.mode, description: f.info.description, banner: f.info.banner, iconUrl: f.info.iconUrl };
+        return { inviteOnly: f.info.inviteOnly, channelMode: f.mode, description: f.info.description, banner: f.info.banner, iconUrl: f.info.iconUrl, retentionDays: f.info.retentionDays };
       },
       createRole(req: { name: string; color: string }) {
         admin();

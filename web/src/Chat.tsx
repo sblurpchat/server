@@ -17,6 +17,7 @@ import {
   matchScore,
   memberGroups,
   mentionsMe,
+  retained,
   timeLabel,
   typingLabel,
   reactorsLabel,
@@ -237,7 +238,9 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
   const mountedAt = useRef(Date.now());
   const ch = c.channels[channelId];
   const root = rootId ? Object.values(c.lists).flatMap((l) => l.items).find((m) => m.id === rootId) : undefined;
-  const rows = useMemo(() => buildRows(list?.items ?? [], marker, c.me?.id), [list?.items, marker, c.me?.id]);
+  const days = c.info?.retentionDays;
+  const items = useMemo(() => retained(list?.items ?? [], days), [list?.items, days]);
+  const rows = useMemo(() => buildRows(items, marker, c.me?.id), [items, marker, c.me?.id]);
 
   useEffect(() => {
     if (!list) void loadList(url, channelId, rootId);
@@ -280,7 +283,7 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
   }, [viewing, ch?.lastMessageSeq, list, url, channelId]);
   useEffect(() => flushReads, [url, channelId]);
 
-  const empty = list && !list.loading && !list.hasMore && !list.items.length;
+  const empty = list && !list.loading && !list.hasMore && !items.length;
   return (
     <div className="msg-wrap">
       {newAbove && (
