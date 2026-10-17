@@ -819,7 +819,9 @@ func (s *Server) Subscribe(ctx context.Context, req *connect.Request[v1.Subscrib
 		return errf(connect.CodePermissionDenied, "you are no longer a member")
 	}
 
-	last := req.Msg.AfterSeq
+	// Nothing from before they joined: ListMessages shows that, the log
+	// also holds deleted and pre-edit text.
+	last := max(req.Msg.AfterSeq, m.joinedSeq)
 	var oldest int64
 	if err := s.db.r.QueryRowContext(ctx, "SELECT COALESCE(MIN(seq), 0) FROM events").Scan(&oldest); err != nil {
 		return err
@@ -1425,6 +1427,9 @@ func (s *Server) DeleteMessage(ctx context.Context, req *connect.Request[v1.Dele
 		if _, err := t.ExecContext(ctx, "DELETE FROM attachments WHERE message_id = ?", msg.Id); err != nil {
 			return err
 		}
+		if err := purgeMessageEvents(t, msg.ChannelId, msg.Id, msg.CreatedSeq); err != nil {
+			return err
+		}
 		now := s.nowMs()
 		scope := c.Id
 		gone := &v1.Message{Id: msg.Id, ChannelId: msg.ChannelId, AuthorId: msg.AuthorId, CreatedAtMs: msg.CreatedAtMs,
@@ -1447,6 +1452,40 @@ func (s *Server) DeleteMessage(ctx context.Context, req *connect.Request[v1.Dele
 		os.Remove(filepath.Join(s.filesDir, id))
 	}
 	return connect.NewResponse(&v1.DeleteMessageResponse{}), nil
+}
+
+// purgeMessageEvents drops a message's earlier events, which still carry
+// its text, so a Subscribe replay cannot bring a deleted message back.
+// ponytail: decodes the channel's kept events since the message; add an
+// events.message_id column if deletes in busy channels get slow.
+func purgeMessageEvents(t *wtx, channel, id string, from int64) error {
+	rows, err := t.QueryContext(t.ctx, "SELECT seq, payload FROM events WHERE scope_channel = ? AND seq >= ?", channel, from)
+	if err != nil {
+		return err
+	}
+	var gone []int64
+	for rows.Next() {
+		var seq int64
+		var payload []byte
+		if err := rows.Scan(&seq, &payload); err != nil {
+			rows.Close()
+			return err
+		}
+		ev := &v1.Event{}
+		if proto.Unmarshal(payload, ev) == nil && cmp.Or(ev.GetMessageCreated(), ev.GetMessageUpdated()).GetId() == id {
+			gone = append(gone, seq)
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, seq := range gone {
+		if _, err := t.ExecContext(t.ctx, "DELETE FROM events WHERE seq = ?", seq); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Server) React(ctx context.Context, req *connect.Request[v1.ReactRequest]) (*connect.Response[v1.ReactResponse], error) {
