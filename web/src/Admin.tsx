@@ -818,6 +818,10 @@ function Plugins({ url, plugins, reload }: { url: string; plugins: Plugin[]; rel
         <a href="https://sblurp.chat/docs/plugins" target="_blank" rel="noreferrer">
           How to write one <Icon name="external" size={14} />
         </a>
+        {" "}
+        <a href="https://sblurp.chat/docs/plugins#make-one-with-ai" target="_blank" rel="noreferrer">
+          How to make one with AI <Icon name="external" size={14} />
+        </a>
       </p>
       {!plugins.length && <p className="muted small">No plugins yet.</p>}
       {!!plugins.length && (

@@ -104,9 +104,13 @@ export function Dialog({
   onClose?: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
+  // Children mount only once the dialog is open: a closed dialog cannot take focus, so
+  // autoFocus would fail and showModal would focus the first button instead. No paint between.
+  const [open, setOpen] = useState(false);
+  useLayoutEffect(() => {
     const d = ref.current!;
     d.showModal();
+    setOpen(true);
     return () => d.close();
   }, []);
   return (
@@ -117,7 +121,7 @@ export function Dialog({
       onClose={onClose}
       onMouseDown={(e) => e.target === ref.current && ref.current.close()}
     >
-      {children}
+      {open && children}
     </dialog>
   );
 }
