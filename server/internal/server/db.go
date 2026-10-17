@@ -270,6 +270,12 @@ func (s *Server) retentionCutoff(ctx context.Context, q queryer) (int64, error) 
 
 const pruneBatch = 500
 
+// expiredIDs is a JSON array of up to pruneBatch expired roots and their
+// replies. The thread_root_id != check lets the replies use the partial
+// messages_thread index; without it each batch scanned every message (1155).
+const expiredIDs = `WITH r AS (SELECT id FROM messages WHERE thread_root_id = '' AND created_at_ms < ? ORDER BY created_at_ms LIMIT ?)
+	SELECT json_group_array(id) FROM (SELECT id FROM r UNION ALL SELECT id FROM messages WHERE thread_root_id != '' AND thread_root_id IN (SELECT id FROM r))`
+
 var prunePause = 50 * time.Millisecond
 
 // pruneMessages deletes what the retention setting expires: top-level
@@ -289,9 +295,7 @@ func (s *Server) pruneMessages(ctx context.Context) error {
 		var msgs, evs int64
 		err = s.writeTx(ctx, func(t *wtx) error {
 			var ids string // JSON array of the roots and their replies
-			err := t.QueryRowContext(ctx, `WITH r AS (SELECT id FROM messages WHERE thread_root_id = '' AND created_at_ms < ? ORDER BY created_at_ms LIMIT ?)
-				SELECT json_group_array(id) FROM (SELECT id FROM r UNION ALL SELECT id FROM messages WHERE thread_root_id IN (SELECT id FROM r))`,
-				cutoff, pruneBatch).Scan(&ids)
+			err := t.QueryRowContext(ctx, expiredIDs, cutoff, pruneBatch).Scan(&ids)
 			if err != nil {
 				return err
 			}

@@ -419,6 +419,13 @@ func currentSeq(ctx context.Context, q queryer) (int64, error) {
 	return seq, err
 }
 
+// unreadCounts uses messages_unread: replies count as mentions, so the
+// range is on (channel_id, created_seq), not messages_channel (1155).
+const unreadCounts = `SELECT
+	COUNT(*) FILTER (WHERE thread_root_id = ''),
+	COUNT(*) FILTER (WHERE ? OR instr(text, ?) > 0)
+	FROM messages WHERE channel_id = ? AND created_seq > ? AND author_id != ? AND deleted = 0`
+
 // readState counts unread top-level messages and mentions after the
 // member's last read seq (or their join, whichever is later). A mention is
 // <@member_id> in the text, or any message in a DM. Own messages never count.
@@ -430,11 +437,7 @@ func readState(ctx context.Context, q queryer, m *memberRow, c *v1.Channel) (*v1
 	}
 	rs.LastReadSeq = max(rs.LastReadSeq, m.joinedSeq)
 	dm := c.Kind == v1.ChannelKind_CHANNEL_KIND_DM
-	err = q.QueryRowContext(ctx, `SELECT
-		COUNT(*) FILTER (WHERE thread_root_id = ''),
-		COUNT(*) FILTER (WHERE ? OR instr(text, ?) > 0)
-		FROM messages WHERE channel_id = ? AND created_seq > ? AND author_id != ? AND deleted = 0`,
-		dm, "<@"+m.Id+">", c.Id, rs.LastReadSeq, m.Id).Scan(&rs.UnreadCount, &rs.MentionCount)
+	err = q.QueryRowContext(ctx, unreadCounts, dm, "<@"+m.Id+">", c.Id, rs.LastReadSeq, m.Id).Scan(&rs.UnreadCount, &rs.MentionCount)
 	return rs, err
 }
 
@@ -1604,6 +1607,15 @@ func (s *Server) SetTyping(ctx context.Context, req *connect.Request[v1.SetTypin
 	return connect.NewResponse(&v1.SetTypingResponse{}), nil
 }
 
+// searchWhere walks the search index newest first and stops at the limit,
+// instead of sorting every match (1155). rowid order is created_seq order:
+// both grow with each insert. %s is searchMine or "?" (one channel).
+const searchWhere = `n IN (SELECT f.rowid FROM messages_fts f JOIN messages m ON m.n = f.rowid
+	WHERE messages_fts MATCH ? AND m.deleted = 0 AND m.created_at_ms >= ? AND m.channel_id IN (%s)
+	ORDER BY f.rowid DESC LIMIT ?) ORDER BY created_seq DESC`
+
+const searchMine = "SELECT channel_id FROM channel_members WHERE member_id = ?"
+
 func (s *Server) Search(ctx context.Context, req *connect.Request[v1.SearchRequest]) (*connect.Response[v1.SearchResponse], error) {
 	m := me(ctx)
 	r := req.Msg
@@ -1620,22 +1632,19 @@ func (s *Server) Search(ctx context.Context, req *connect.Request[v1.SearchReque
 	}
 	limit = min(limit, 100)
 	// Everywhere means the channels I am in; one channel may be any I can see.
-	where := `n IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?) AND deleted = 0
-		AND channel_id IN (SELECT channel_id FROM channel_members WHERE member_id = ?)`
-	args := []any{ftsQuery(q), m.Id}
+	in, scope := searchMine, m.Id
 	if r.ChannelId != "" {
 		if _, err := channelFor(ctx, s.db.r, r.ChannelId, m.Id); err != nil {
 			return nil, err
 		}
-		where = `n IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?) AND deleted = 0 AND channel_id = ?`
-		args = []any{ftsQuery(q), r.ChannelId}
+		in, scope = "?", r.ChannelId
 	}
 	// Expired messages the prune has not reached yet are already gone.
 	cutoff, err := s.retentionCutoff(ctx, s.db.r)
 	if err != nil {
 		return nil, err
 	}
-	ms, err := queryMessages(ctx, s.db.r, where+" AND created_at_ms >= ? ORDER BY created_seq DESC LIMIT ?", append(args, cutoff, limit)...)
+	ms, err := queryMessages(ctx, s.db.r, fmt.Sprintf(searchWhere, in), ftsQuery(q), cutoff, scope, limit)
 	if err != nil {
 		if strings.Contains(err.Error(), "fts5") {
 			return nil, errf(connect.CodeInvalidArgument, "cannot search for that")
