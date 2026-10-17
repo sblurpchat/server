@@ -945,7 +945,13 @@ export function signOut() {
   for (const { ctl } of conns.values()) ctl.abort();
   conns.clear();
   if (!FAKE) authSignOut();
-  set({ auth: "out", cs: {}, modal: null, profile: undefined });
+  // The next person on this device must not see this one's drafts or cached private previews.
+  clearTimeout(draftTimer);
+  save("drafts", {});
+  unfurled.clear();
+  unfurling.clear();
+  sentRead.clear();
+  set({ auth: "out", cs: {}, modal: null, profile: undefined, drafts: {} });
 }
 
 /** Label for a channel: "#name" or the other people in a DM. */
