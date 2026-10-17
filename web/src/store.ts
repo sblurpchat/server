@@ -471,9 +471,11 @@ export async function loadList(url: string, channelId: string, rootId = "", page
 }
 
 // Opens the channel (and thread) of a search hit and loads the messages around it.
-export function jumpTo(url: string, m: Pick<Message, "id" | "channelId" | "threadRootId">) {
+// push: a new history entry even within the same channel, so Back returns to where the jump came from (1080).
+export function jumpTo(url: string, m: Pick<Message, "id" | "channelId" | "threadRootId">, push = false) {
   void loadList(url, m.channelId, m.threadRootId, "around", m.id);
-  selectChannel(url, m.channelId);
+  if (push) history.pushState(null, "", location.hash);
+  selectChannel(url, m.channelId, !push);
   if (m.threadRootId) set({ pane: { t: "thread", rootId: m.threadRootId } });
 }
 

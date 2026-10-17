@@ -1235,7 +1235,7 @@ function SearchResults({ c, q }: { c: Community; q: string }) {
             <button
               className="result"
               onClick={() => {
-                jumpTo(c.url, m);
+                jumpTo(c.url, m, true);
               }}
             >
               <span className="result-meta">
