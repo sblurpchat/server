@@ -780,7 +780,9 @@ function service(f: Fake) {
       },
       browseChannels() {
         need();
-        return { channels: [...f.channels.values()].filter((c) => c.kind === ChannelKind.TEXT && canSee(f, c)) };
+        // ponytail: fake count is everyone, minus me when I have not joined.
+        const n = (c: Channel) => f.members.size - (f.notIn.has(c.id) ? 1 : 0);
+        return { channels: [...f.channels.values()].filter((c) => c.kind === ChannelKind.TEXT && canSee(f, c)).map((c) => ({ ...c, memberCount: n(c) })) };
       },
       joinChannel(req: { channelId: string }) {
         need();

@@ -18,6 +18,7 @@ import {
   tabTitle,
   type Community,
   count,
+  browseDetail,
   browseList,
   THEMES,
   timeLabel,
@@ -422,7 +423,7 @@ function Sidebar({ c }: { c: Community }) {
                           }}
                         >
                           {sec.dm ? (
-                            <Avatar m={other} size={20} presence={ch.memberIds.length === 2} />
+                            <Avatar m={other} size={24} presence={ch.memberIds.length === 2} />
                           ) : (
                             <span className="chan-icon">
                               <Icon name={ch.kind === 2 ? "lock" : "hash"} size={16} />
@@ -1242,16 +1243,17 @@ function BrowseChannels() {
   const [q, setQ] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState("");
+  const load = () => browseChannels(url).then(setAll, (x) => setErr(errorText(x)));
   useEffect(() => {
-    if (url) browseChannels(url).then(setAll, (x) => setErr(errorText(x)));
-  }, [url]);
+    if (url) load();
+  }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!c) return null;
   const rows = browseList(all ?? [], c.channels, q);
   const act = (id: string, f: () => Promise<unknown>) => {
     setBusy(id);
     setErr("");
     f().then(
-      () => setBusy(""),
+      () => (setBusy(""), load()),
       (x) => (setBusy(""), setErr(errorText(x))),
     );
   };
@@ -1287,7 +1289,7 @@ function BrowseChannels() {
                 {ch.name}
                 {joined && <span className="tag">Joined</span>}
               </b>
-              {ch.topic && <small className="truncate">{ch.topic}</small>}
+              {browseDetail(ch) && <small className="truncate">{browseDetail(ch)}</small>}
             </button>
             {joined ? (
               <button className="btn small" disabled={busy === ch.id} aria-label={`Leave #${ch.name}`} onClick={() => act(ch.id, () => leaveChannel(url, ch.id))}>

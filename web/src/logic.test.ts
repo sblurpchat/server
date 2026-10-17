@@ -17,6 +17,7 @@ import {
 } from "./gen/sblurp/v1/sblurp_pb";
 import {
   THEMES,
+  browseDetail,
   browseList,
   swatch,
   sentence,
@@ -681,6 +682,12 @@ describe("channel modes and roles", () => {
     expect(browseList(all, joined, "").map((x) => `${x.ch.name}:${x.joined}`)).toEqual(["art:false", "book-club:false", "general:true"]);
     expect(browseList(all, joined, "#BOOK").map((x) => x.ch.id)).toEqual(["b"]);
     expect(browseList(all, joined, "novel").map((x) => x.ch.id)).toEqual(["b"]);
+  });
+
+  it("shows member count and topic under a Browse channels row", () => {
+    expect(browseDetail(create(ChannelSchema, { memberCount: 12, topic: "Anything" }))).toBe("12 members · Anything");
+    expect(browseDetail(create(ChannelSchema, { memberCount: 1 }))).toBe("1 member");
+    expect(browseDetail(create(ChannelSchema, { topic: "Old server" }))).toBe("Old server");
   });
 
   it("lists a member's roles in role order", () => {
