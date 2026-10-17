@@ -373,10 +373,10 @@ kbd {
 .menu-btn[data-unread="true"]::after {
   content: "";
   position: absolute;
-  top: 7px;
-  right: 6px;
-  width: 9px;
-  height: 9px;
+  top: 1px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--badge);
   box-shadow: 0 0 0 2px var(--paper);
@@ -481,6 +481,12 @@ kbd {
 .sidebar .avatar,
 .mebar .avatar {
   --ring: var(--frost);
+}
+/* Small enough to leave two-letter initials readable on a 24px avatar. */
+.chan .presence {
+  width: 7px;
+  height: 7px;
+  border-width: 2px;
 }
 .cicon {
   display: grid;
@@ -1696,6 +1702,8 @@ li.sw-empty {
   overflow-y: auto;
   overscroll-behavior: contain;
   outline: none;
+  /* Lines scrolling up fade out under the header instead of being cut. */
+  mask-image: linear-gradient(to bottom, transparent, #000 20px);
 }
 .msgs {
   padding: 16px 0 10px;
@@ -1723,6 +1731,29 @@ li.sw-empty {
 }
 .chan-start p {
   margin-top: 4px;
+}
+/* An empty channel: the start block sits in the middle and invites the first message. */
+.msgs:has(> .chan-start[data-empty="true"]) {
+  margin-block: auto;
+}
+.chan-start[data-empty="true"] {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  padding: 32px 24px;
+}
+.chan-start-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+  border-radius: 18px;
+  background: var(--selected);
+  color: var(--raspberry);
+}
+.chan-start[data-empty="true"] p {
+  max-width: 28em;
 }
 .day,
 .new-divider {
@@ -2628,27 +2659,18 @@ li.sw-empty {
   .toolbar {
     right: 8px;
   }
+  /* On a phone the rail of sample icons read as real, unlabeled communities. */
   .signin {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
   }
   .tip {
     display: none;
   }
   .signin-rail {
-    flex-direction: row;
-    padding: 12px;
-  }
-  .signin-rail .cicon {
-    width: 36px;
-    height: 36px;
-  }
-  .signin-rail .cicon[data-on="true"] {
-    border-radius: 12px;
+    display: none;
   }
   .signin-body {
-    padding: 40px 24px;
-    align-self: start;
+    padding: 40px 24px calc(40px + env(safe-area-inset-bottom));
   }
   .signin-actions .btn {
     width: 100%;
@@ -2812,10 +2834,11 @@ li.sw-empty {
     grid-template-rows: auto 1fr;
     gap: 14px;
   }
+  /* Wrap, so every tab shows; a sideways scroll hid the last ones. */
   .cs-tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
-    overflow-x: auto;
   }
   /* Name on the first line, controls under it, lined up with the name. */
   .admin-list li {

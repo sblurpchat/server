@@ -96,7 +96,10 @@ const shots = {
     await p.getByRole("menuitem", { name: "Create channel" }).click();
     await p.getByLabel("Name").fill("Book Club");
   },
-  editchannel: (p) => p.getByRole("button", { name: "Edit #general" }).click(),
+  editchannel: async (p) => {
+    await p.getByRole("button", { name: "#general options" }).click();
+    await p.getByRole("menuitem", { name: "Edit channel" }).click();
+  },
   admin: async (p) => {
     if ((p.viewportSize()?.width ?? 0) < 768) await p.getByRole("button", { name: "Open communities and channels" }).click();
     await p.locator(".side-head").click();

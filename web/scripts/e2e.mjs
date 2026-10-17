@@ -166,7 +166,8 @@ try {
   await page.locator(".chan-title", { hasText: "book-club" }).waitFor();
   const talk = page.locator(".side-sec", { hasText: "Talk" });
   if ((await talk.locator(".chan").last().textContent()) !== "book-club") throw new Error("new channel not last in Talk");
-  await page.getByRole("button", { name: "Edit #book-club" }).click();
+  await page.getByRole("button", { name: "#book-club options" }).click();
+  await page.getByRole("menuitem", { name: "Edit channel" }).click();
   await page.getByLabel("Topic").fill("Reading together");
   await page.getByRole("button", { name: "Move up" }).click();
   await page.getByRole("button", { name: "Save changes" }).click();
@@ -200,7 +201,8 @@ try {
   await page.getByRole("button", { name: "Join channel" }).click();
   await page.locator(".channel .composer").waitFor();
   await side.locator(".chan", { hasText: "reading-room" }).waitFor();
-  await page.getByRole("button", { name: "Leave #reading-room" }).click();
+  await page.getByRole("button", { name: "#reading-room options" }).click();
+  await page.getByRole("menuitem", { name: "Leave channel" }).click();
   await side.locator(".chan", { hasText: "reading-room" }).waitFor({ state: "detached" });
   await page.getByRole("button", { name: "Browse channels" }).click();
   await page.getByRole("button", { name: "Join #off-topic" }).click();

@@ -673,14 +673,16 @@ describe("channel modes and roles", () => {
     expect(c.channels.c9).toBeUndefined();
   });
 
-  it("filters Browse channels by name or topic and marks what I joined", () => {
+  it("filters Browse channels by name or topic, marks what I joined and lists it last", () => {
     const all = [
       create(ChannelSchema, { id: "a", name: "general", topic: "Anything" }),
       create(ChannelSchema, { id: "b", name: "book-club", topic: "One novel a month" }),
       create(ChannelSchema, { id: "c", name: "art", topic: "" }),
+      create(ChannelSchema, { id: "d", name: "about", topic: "" }),
     ];
-    const joined = { a: all[0] };
-    expect(browseList(all, joined, "").map((x) => `${x.ch.name}:${x.joined}`)).toEqual(["art:false", "book-club:false", "general:true"]);
+    const joined = { a: all[0], d: all[3] };
+    // Channels you can join come first, so they are not below the fold.
+    expect(browseList(all, joined, "").map((x) => `${x.ch.name}:${x.joined}`)).toEqual(["art:false", "book-club:false", "about:true", "general:true"]);
     expect(browseList(all, joined, "#BOOK").map((x) => x.ch.id)).toEqual(["b"]);
     expect(browseList(all, joined, "novel").map((x) => x.ch.id)).toEqual(["b"]);
   });

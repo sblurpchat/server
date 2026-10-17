@@ -75,7 +75,8 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
   await p.getByRole('button', { name: 'Join channel' }).click();
   await p.locator('.channel .composer').waitFor({ timeout: 10000 });
   await sideChan('random').waitFor({ timeout: 10000 }); ok(true, 'join puts #random in the sidebar');
-  await p.getByRole('button', { name: 'Leave #random' }).click();
+  await p.getByRole('button', { name: '#random options' }).click();
+  await p.getByRole('menuitem', { name: 'Leave channel' }).click();
   await sideChan('random').waitFor({ state: 'detached', timeout: 10000 }); ok(true, 'leave takes #random out');
   await sideChan('general').click(); await p.locator('.channel .msg').first().waitFor();
 

@@ -69,6 +69,7 @@ export function ChannelView() {
   const ch = c.channels[channelId] ?? (c.peek?.id === channelId ? c.peek : undefined);
   const [q, setQ] = useState(pane?.t === "search" ? pane.q : "");
   const [joinErr, setJoinErr] = useState("");
+  const [menu, setMenu] = useState<DOMRect | null>(null);
   // Mobile hides the rail and sidebar, so the menu button carries a dot for unread anywhere.
   const elsewhere = useApp((s) =>
     Object.values(s.cs).some((x) => {
@@ -89,6 +90,8 @@ export function ChannelView() {
   const dm = isDM(ch);
   const title = channelLabel(ch, c.members, c.me?.id);
   const other = dm ? c.members[ch.memberIds.find((id) => id !== c.me?.id) ?? ""] : undefined;
+  const canEdit = !dm && (c.me?.role ?? 0) >= MemberRole.ADMIN;
+  const canLeave = joined && !dm && !ch.isDefault && ch.kind === ChannelKind.TEXT && c.mode === ChannelMode.OPT_IN;
   return (
     <section className="channel" aria-label={dm ? title : `#${title}`}>
       <header className="chan-head">
@@ -116,16 +119,26 @@ export function ChannelView() {
           <Icon name="search" size={16} />
           <input type="search" aria-label={`Search ${c.info?.name ?? ""}`} placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
-        {!dm && (c.me?.role ?? 0) >= MemberRole.ADMIN && (
-          <button className="icon-btn" aria-label={`Edit #${title}`} title="Edit channel" onClick={() => set({ modal: { t: "channel", id: ch.id } })}>
-            <Icon name="edit" />
+        {(canEdit || canLeave) && (
+          <button className="icon-btn" aria-label={`#${title} options`} title="Channel options" aria-haspopup="menu" onClick={(e) => setMenu(e.currentTarget.getBoundingClientRect())}>
+            <Icon name="more" />
           </button>
         )}
-        {joined && !dm && ch.kind === ChannelKind.TEXT && c.mode === ChannelMode.OPT_IN && (
-          <button className="icon-btn" aria-label={`Leave #${title}`} title="Leave channel" onClick={() => leaveChannel(c.url, ch.id).catch(() => {})}>
-            <Icon name="leave" />
-          </button>
-        )}
+        <Pop anchor={menu} onClose={() => setMenu(null)} className="menu" label={`#${title} options`}>
+          <div role="menu" onClick={() => setMenu(null)}>
+            {canEdit && (
+              <button role="menuitem" onClick={() => set({ modal: { t: "channel", id: ch.id } })}>
+                <Icon name="edit" size={18} /> Edit channel
+              </button>
+            )}
+            {canEdit && canLeave && <hr />}
+            {canLeave && (
+              <button role="menuitem" className="danger" onClick={() => leaveChannel(c.url, ch.id).catch(() => {})}>
+                <Icon name="leave" size={18} /> Leave channel
+              </button>
+            )}
+          </div>
+        </Pop>
         <button
           className="icon-btn"
           aria-label="Members"
@@ -254,7 +267,12 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
               Loading earlier messages…
             </div>
           ) : !rootId && ch ? (
-            <div className="chan-start">
+            <div className="chan-start" data-empty={!!empty}>
+              {empty && (
+                <span className="chan-start-icon" aria-hidden="true">
+                  <Icon name={isDM(ch) ? "thread" : ch.kind === ChannelKind.PRIVATE ? "lock" : "hash"} size={32} />
+                </span>
+              )}
               <h2>{isDM(ch) ? channelLabel(ch, c.members, c.me?.id) : `#${ch.name}`}</h2>
               <p className="muted">
                 {empty

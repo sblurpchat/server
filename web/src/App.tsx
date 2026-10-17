@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ChannelDialog, CommunitySettings, Invites, PERMISSION, RoleChips } from "./Admin";
 import { ChannelView, PeoplePicker, RightPane } from "./Chat";
 import { create } from "@bufbuild/protobuf";
-import { ChannelKind, ChannelMode, MemberKind, MemberRole, MemberSchema, type Channel, type GetServerInfoResponse } from "./gen/sblurp/v1/sblurp_pb";
+import { ChannelKind, ChannelMode, MemberKind, MemberRole, MemberSchema, type Channel, type GetServerInfoResponse, type Member } from "./gen/sblurp/v1/sblurp_pb";
 import {
   channelLabel,
   communityBadge,
@@ -13,6 +13,7 @@ import {
   matchScore,
   modActions,
   moveItem,
+  nameColor,
   normalizeCommunityUrl,
   sidebarSections,
   tabTitle,
@@ -821,9 +822,9 @@ function Choice<K extends keyof Look>({ k, label, options }: { k: K; label: stri
 }
 
 const SAMPLE = [
-  { who: create(MemberSchema, { id: "mei", displayName: "Mei Chen" }), at: 9 * 60 + 41, text: "Kiln's loaded. Firing starts at six.", head: true },
+  { who: create(MemberSchema, { id: "mei", username: "mei", displayName: "Mei Chen" }), at: 9 * 60 + 41, text: "Kiln's loaded. Firing starts at six.", head: true },
   { who: null, at: 9 * 60 + 42, text: "Bring a jumper, the shed gets cold.", head: false },
-  { who: create(MemberSchema, { id: "ana", displayName: "Ana Ruiz" }), at: 13 * 60 + 5, text: "Saving you both a seat by the window.", head: true },
+  { who: create(MemberSchema, { id: "ana", username: "ana", displayName: "Ana Ruiz" }), at: 13 * 60 + 5, text: "Saving you both a seat by the window.", head: true },
 ];
 
 function Appearance() {
@@ -831,6 +832,10 @@ function Appearance() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const custom = !!look.accent && !ACCENTS.some(([a]) => a === look.accent);
+  // Same avatar and name color as the person in the open community, when they are in it.
+  const c = useApp((s) => s.cs[s.url]);
+  const surfaces = useApp((s) => s.surfaces);
+  const who = (m: Member) => Object.values(c?.members ?? {}).find((x) => x.username === m.username) ?? m;
   return (
     <section className="appearance">
       <h3>Appearance</h3>
@@ -840,7 +845,7 @@ function Appearance() {
             <div className="msg-gutter">
               {m.who && (
                 <span className="avatar-btn">
-                  <Avatar m={m.who} />
+                  <Avatar m={who(m.who)} />
                 </span>
               )}
               <span className="hover-time">
@@ -850,7 +855,9 @@ function Appearance() {
             <div className="msg-body">
               {m.who && (
                 <header className="msg-head">
-                  <span className="name">{m.who.displayName}</span>
+                  <span className="name" style={{ color: nameColor(who(m.who), c?.roles ?? [], surfaces) || undefined }}>
+                    {m.who.displayName}
+                  </span>
                   <time>{timeLabel(today.getTime() + m.at * 60_000, look.clock === "24")}</time>
                 </header>
               )}
@@ -1292,7 +1299,7 @@ function BrowseChannels() {
               {browseDetail(ch) && <small className="truncate">{browseDetail(ch)}</small>}
             </button>
             {joined ? (
-              <button className="btn small" disabled={busy === ch.id} aria-label={`Leave #${ch.name}`} onClick={() => act(ch.id, () => leaveChannel(url, ch.id))}>
+              !ch.isDefault && <button className="btn small" disabled={busy === ch.id} aria-label={`Leave #${ch.name}`} onClick={() => act(ch.id, () => leaveChannel(url, ch.id))}>
                 Leave
               </button>
             ) : (

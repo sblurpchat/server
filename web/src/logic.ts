@@ -352,13 +352,13 @@ export function sentence(s: string): string {
   return t ? `${t[0].toUpperCase()}${t.slice(1)}${/[.!?]$/.test(t) ? "" : "."}` : t;
 }
 
-/** Browse channels: matching channels by name or topic, joined state attached, sorted by name. */
+/** Browse channels: matching channels by name or topic, joined state attached; ones you can join first, then by name. */
 export function browseList(all: Channel[], joined: Record<string, Channel>, q: string) {
   const s = q.trim().toLowerCase().replace(/^#/, "");
   return all
     .filter((ch) => !s || ch.name.includes(s) || ch.topic.toLowerCase().includes(s))
     .map((ch) => ({ ch, joined: !!joined[ch.id] }))
-    .sort((a, b) => a.ch.name.localeCompare(b.ch.name));
+    .sort((a, b) => Number(a.joined) - Number(b.joined) || a.ch.name.localeCompare(b.ch.name));
 }
 
 /** The line under a Browse channels row: member count, then topic. Old servers send no count (0). */
