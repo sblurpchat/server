@@ -1059,3 +1059,21 @@ export function tokenBots<B extends { username: string }>(bots: B[], plugins: { 
   const names = new Set(plugins.map((p) => p.name));
   return bots.filter((b) => !names.has(b.username));
 }
+
+/** Whether a message may have link previews worth asking its server for (1110). */
+export const mayPreview = (text: string) => /https?:\/\//i.test(text);
+
+/** The link previews to show: none for links into this app at `app` (1109 previews those), at most five. */
+export function shownPreviews<T extends { url: string }>(ps: T[], app: string): T[] {
+  const a = new URL(app);
+  return ps
+    .filter((p) => {
+      try {
+        const u = new URL(p.url);
+        return u.origin !== a.origin || u.pathname !== a.pathname;
+      } catch {
+        return false;
+      }
+    })
+    .slice(0, 5);
+}

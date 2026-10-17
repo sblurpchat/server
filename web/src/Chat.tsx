@@ -1,6 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type FormEvent, type KeyboardEvent } from "react";
 import { useCountdown } from "./App";
 import { Glyph, useCustomMatches } from "./CustomEmoji";
+import { LinkPreviews } from "./LinkPreview";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
 import {
   acQuery,
@@ -507,6 +508,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
         {links.map((l) => (
           <Unfurl key={`${l.host}/${l.messageId}`} link={l} />
         ))}
+        <LinkPreviews url={url} m={m} />
         {m.attachments.length > 0 && (
           <div className="atts">
             {m.attachments.map((a) => (

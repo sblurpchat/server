@@ -926,6 +926,12 @@ function service(f: Fake) {
         f.reads.set(req.channelId, create(ReadStateSchema, { channelId: req.channelId, lastReadSeq: m.seq }));
         return { message: m };
       },
+      getLinkPreviews(req: { messageId: string }) {
+        need();
+        const m = msg(req.messageId);
+        const urls = m.text.match(/https?:\/\/[^\s<]*[^\s<.,:;"')\]!?]/g) ?? [];
+        return { previews: urls.filter((u) => FAKE_PREVIEWS[u]).map((u) => ({ url: u, ...FAKE_PREVIEWS[u] })) };
+      },
       editMessage(req: { messageId: string; text: string }) {
         need();
         const m = msg(req.messageId);
@@ -1072,8 +1078,33 @@ function init() {
   });
   m.seq = m.createdSeq = ++sb.seq;
   sb.messages.push(m);
+  // Link previews (1110): fake.getLinkPreviews answers for the links in FAKE_PREVIEWS.
+  const lp = create(MessageSchema, {
+    id: id("x"),
+    channelId: general.id,
+    authorId: [...sb.members.values()].find((x) => x.username !== "jun" && x.id !== sb.meId)!.id,
+    text: "Found a launcher that does everything: https://macotron.statico.io/ (the docs are good too https://example.com/docs)",
+    createdAtMs: BigInt(now - 30_000),
+  });
+  lp.seq = lp.createdSeq = ++sb.seq;
+  sb.messages.push(lp);
   general.lastMessageSeq = sb.logStart = sb.seq;
 }
+
+const FAKE_PREVIEWS: Record<string, { title: string; description: string; siteName: string; imageUrl: string }> = {
+  "https://macotron.statico.io/": {
+    title: "Macotron does everything.",
+    description:
+      "Customization and automation with a quick launch bar, global hotkeys, menu bar items, and APIs for everything you can think of. Open-source and free.",
+    siteName: "Macotron",
+    imageUrl:
+      "data:image/svg+xml," +
+      encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160"><defs><linearGradient id="g" x2="1" y2="1"><stop offset="0" stop-color="#3550f0"/><stop offset="1" stop-color="#e8344e"/></linearGradient></defs><rect width="160" height="160" fill="url(#g)"/><text x="80" y="104" font-family="sans-serif" font-size="72" font-weight="700" fill="#fff" text-anchor="middle">M</text></svg>`,
+      ),
+  },
+  "https://example.com/docs": { title: "Example Domain", description: "This domain is for use in illustrative examples in documents.", siteName: "example.com", imageUrl: "" },
+};
 
 /** Transport for a fake community, or null when no fake server lives at that URL. */
 export function fakeTransport(url: string): Transport | null {
