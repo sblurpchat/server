@@ -23,6 +23,7 @@ import {
   timeLabel,
   type Appearance as Look,
   type Theme,
+  sentence,
 } from "./logic";
 import {
   absUrl,
@@ -547,6 +548,7 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [code, setCode] = useState(invite);
+  const [answers, setAnswers] = useState(() => info.joinQuestions.map(() => ""));
   const fields = [
     { k: "displayName" as const, label: "Display name", value: profile?.displayName ?? "" },
     { k: "avatarUrl" as const, label: "Avatar", value: profile?.avatarUrl ?? "" },
@@ -558,10 +560,13 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
     setErr("");
     try {
       const pick = (k: (typeof fields)[number]["k"]) => (share[k] ? fields.find((f) => f.k === k)!.value : "");
-      await join(url, { displayName: pick("displayName"), avatarUrl: pick("avatarUrl"), bio: pick("bio") }, code.trim(), info);
+      await join(url, { displayName: pick("displayName"), avatarUrl: pick("avatarUrl"), bio: pick("bio") }, code.trim(), info, answers);
     } catch (x) {
-      const bad = info.inviteOnly && ConnectError.from(x).code === Code.PermissionDenied;
-      setErr(bad ? "That invite code doesn't work. It may have expired or been used up." : errorText(x, info.name));
+      // A refusal is permission_denied: a bad invite code, or a reason from the community's join check.
+      const ce = ConnectError.from(x);
+      if (ce.code !== Code.PermissionDenied) setErr(errorText(x, info.name));
+      else if (info.inviteOnly && /invite/i.test(ce.rawMessage)) setErr("That invite code doesn't work. It may have expired or been used up.");
+      else setErr(sentence(ce.rawMessage));
       setBusy(false);
     }
   };
@@ -592,6 +597,24 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
           />
           <small className="muted">{info.name} is invite only.</small>
         </label>
+      )}
+      {info.joinQuestions.length > 0 && (
+        <fieldset className="join-questions">
+          <legend>{info.name} asks before you join</legend>
+          {info.joinQuestions.map((q, i) => (
+            <label className="field" key={i}>
+              <b>{q}</b>
+              <textarea
+                className="input textarea"
+                rows={2}
+                required
+                maxLength={1000}
+                value={answers[i]}
+                onChange={(e) => setAnswers(answers.map((a, j) => (j === i ? e.target.value : a)))}
+              />
+            </label>
+          ))}
+        </fieldset>
       )}
       <h3>Share your profile with {info.name}?</h3>
       <ul className="consent-fields">

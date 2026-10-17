@@ -238,14 +238,20 @@ try {
   await page.getByRole("button", { name: "Continue" }).click();
   const codeInput = page.getByLabel("Invite code");
   if ((await codeInput.inputValue()) !== "WRONG") throw new Error("invite code not filled from the link");
+  const answer = page.getByLabel("What press do you print on?");
+  await answer.fill("no");
   await page.getByRole("button", { name: "Join Letterpress Club" }).click();
   await page.getByRole("alert").filter({ hasText: "invite code doesn't work" }).waitFor();
   await codeInput.fill("inkstained");
+  // Join questions: a short answer is refused with the community's own reason, shown inline.
+  await page.getByRole("button", { name: "Join Letterpress Club" }).click();
+  await page.getByRole("alert").filter({ hasText: "Tell us a little about your press so we know you print." }).waitFor();
+  await answer.fill("An Adana 8x5 in the shed");
   await page.getByRole("button", { name: "Join Letterpress Club" }).click();
   await page.locator(".side-head", { hasText: "Letterpress Club" }).waitFor();
 
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, appearance, browse, preview, join, leave, roles, channel access, channel mode)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message, errors.join("; "));

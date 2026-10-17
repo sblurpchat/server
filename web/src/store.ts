@@ -45,6 +45,7 @@ import {
   fitContrast,
   parseAppearance,
   type Appearance,
+  sentence,
 } from "./logic";
 
 const params = new URLSearchParams(location.search);
@@ -206,7 +207,7 @@ export function errorText(e: unknown, name = "this community"): string {
     case Code.DeadlineExceeded:
       return `${name} took too long to answer. Try again.`;
     default:
-      return ce.rawMessage ? `${ce.rawMessage[0].toUpperCase()}${ce.rawMessage.slice(1)}.` : "Something went wrong. Try again.";
+      return ce.rawMessage ? sentence(ce.rawMessage) : "Something went wrong. Try again.";
   }
 }
 
@@ -620,9 +621,10 @@ export async function join(
   fields: { displayName: string; avatarUrl: string; bio: string },
   invite: string,
   info: GetServerInfoResponse,
+  answers: string[] = [],
 ) {
   const base = info.baseUrl ? info.baseUrl.replace(/\/+$/, "") : url;
-  await api(base).server.join({ ...fields, inviteCode: invite });
+  await api(base).server.join({ ...fields, inviteCode: invite, answers: answers.map((a) => a.trim()) });
   set((s) => ({
     order: s.order.includes(base) ? s.order : [...s.order, base],
     cs: { ...s.cs, [base]: { ...(s.cs[base] ?? emptyCommunity(base)), info: toInfo(info), status: "connecting" } },

@@ -57,6 +57,7 @@ interface Seed {
   chatter: [channel: string, user: string, text: string][];
   optIn?: { defaults: string[]; notIn: string[] }; // OPT_IN mode: default channels and the ones I have not joined
   roles?: [name: string, color: string, users: string[], gates: string[]][];
+  questions?: string[]; // join questions; a blank or very short answer is refused, like a plugin would
 }
 
 const { OWNER, ADMIN, MODERATOR, MEMBER } = MemberRole;
@@ -315,6 +316,7 @@ const SEEDS: Seed[] = [
     icon: "",
     joined: false,
     invite: "INKSTAINED",
+    questions: ["What press do you print on?"],
     members: [["gus", "Gus Fairweather", OWNER, ONLINE, "Prints posters on a 1921 Vandercook."]],
     channels: [["", "pressroom", "Show your prints"]],
     dms: [],
@@ -359,6 +361,7 @@ function seed(s: Seed, now: number): Fake {
       memberCount: s.members.length,
       accentColor: s.accent,
       inviteOnly: !!s.invite,
+      joinQuestions: s.questions ?? [],
     }),
     invites: s.invite ? [create(InviteSchema, { code: s.invite, createdAtMs: BigInt(now - D * 60_000) })] : [],
     joined: s.joined,
@@ -572,7 +575,7 @@ function service(f: Fake) {
   return {
     server: {
       getServerInfo: () => f.info,
-      join(req: { displayName: string; avatarUrl: string; bio: string; inviteCode: string }) {
+      join(req: { displayName: string; avatarUrl: string; bio: string; inviteCode: string; answers: string[] }) {
         const created = !f.joined;
         const inv = f.invites.find((i) => i.code === req.inviteCode.trim().toUpperCase());
         if (created && f.info.inviteOnly) {
@@ -580,6 +583,8 @@ function service(f: Fake) {
             throw new ConnectError("this community needs a valid invite code", Code.PermissionDenied);
           inv.uses++;
         }
+        if (created && f.info.joinQuestions.some((_, i) => (req.answers[i] ?? "").trim().length < 3))
+          throw new ConnectError("tell us a little about your press so we know you print", Code.PermissionDenied);
         if (created) {
           f.joined = true;
           const m = create(MemberSchema, {

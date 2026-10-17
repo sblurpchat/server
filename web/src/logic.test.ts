@@ -18,6 +18,7 @@ import {
 import {
   THEMES,
   browseList,
+  sentence,
   memberRoles,
   contrast,
   fitContrast,
@@ -663,5 +664,13 @@ describe("channel modes and roles", () => {
     const roles = [role("r1", "Core", 1), role("r2", "Design", 2), role("r3", "Film", 3)];
     expect(memberRoles(create(MemberSchema, { roleIds: ["r3", "r1"] }), roles).map((r) => r.name)).toEqual(["Core", "Film"]);
     expect(memberRoles(undefined, roles)).toEqual([]);
+  });
+});
+
+describe("sentence", () => {
+  it("capitalizes and ends a server reason once", () => {
+    expect(sentence("tell us about your press")).toBe("Tell us about your press.");
+    expect(sentence(" Answer the question first! ")).toBe("Answer the question first!");
+    expect(sentence("")).toBe("");
   });
 });

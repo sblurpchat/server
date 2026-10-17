@@ -340,6 +340,12 @@ export function nameColor(m: Member | undefined, roles: Role[], paper: string) {
 }
 
 /** Browse channels: matching channels by name or topic, joined state attached, sorted by name. */
+/** A server message as a sentence: capitalized, ending in a full stop unless it has its own. */
+export function sentence(s: string): string {
+  const t = s.trim();
+  return t ? `${t[0].toUpperCase()}${t.slice(1)}${/[.!?]$/.test(t) ? "" : "."}` : t;
+}
+
 export function browseList(all: Channel[], joined: Record<string, Channel>, q: string) {
   const s = q.trim().toLowerCase().replace(/^#/, "");
   return all
