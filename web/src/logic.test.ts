@@ -31,6 +31,7 @@ import {
   parseThemeString,
   themeString,
   parseAppearance,
+  appearanceSync,
   timeLabel,
   acQuery,
   listStep,
@@ -900,5 +901,16 @@ describe("pasteTarget", () => {
     expect(pasteTarget(false, true, "pane", false)).toBe("channel");
     expect(pasteTarget(false, true, "channel", true)).toBe("channel");
     expect(pasteTarget(false, true, null, true)).toBe("channel");
+  });
+});
+
+describe("appearanceSync", () => {
+  it("takes the newer copy", () => {
+    expect(appearanceSync(0, 5)).toBe("pull"); // fresh device
+    expect(appearanceSync(10, 5)).toBe("push"); // edited here since
+    expect(appearanceSync(5, 10)).toBe("pull"); // edited elsewhere since
+    expect(appearanceSync(7, 7)).toBe("keep");
+    expect(appearanceSync(7, null)).toBe("push"); // nothing on the server yet
+    expect(appearanceSync(0, null)).toBe("keep"); // nothing anywhere
   });
 });

@@ -421,6 +421,12 @@ export function parseAppearance(v: unknown): Appearance {
   };
 }
 
+/** Which copy of the appearance wins at startup, by edit time in ms (0 = never edited here). */
+export function appearanceSync(localAt: number, serverAt: number | null): "pull" | "push" | "keep" {
+  if (serverAt === null) return localAt ? "push" : "keep";
+  return serverAt > localAt ? "pull" : serverAt < localAt ? "push" : "keep";
+}
+
 /** "#rrggbb" or "rgb(r, g, b)" (what getComputedStyle returns) to [r, g, b]. */
 export function parseColor(c: string): [number, number, number] {
   const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(c.trim());

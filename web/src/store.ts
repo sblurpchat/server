@@ -4,7 +4,7 @@ import { Code, ConnectError, createClient, type Client, type Interceptor } from 
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { useSyncExternalStore } from "react";
 import type { SettingsTab } from "./Admin";
-import { AUTH_URL, fetchProfile, finishLogin, getToken, hasSession, SignedOutError, signOut as authSignOut, startLogin, type Profile } from "./auth";
+import { AUTH_URL, fetchAppearance, fetchProfile, finishLogin, saveAppearance, getToken, hasSession, SignedOutError, signOut as authSignOut, startLogin, type Profile } from "./auth";
 import { loadEmoji } from "./CustomEmoji";
 import { fakeTransport, fakeUpload, FAKE_URLS, startSimulation } from "./fake";
 import {
@@ -53,6 +53,7 @@ import {
   themeString,
   toHex,
   parseAppearance,
+  appearanceSync,
   type Appearance,
   sentence,
   joinHashInput,
@@ -832,6 +833,25 @@ export function reorder(order: string[]) {
 export function setLook(patch: Partial<Appearance>) {
   set({ look: parseAppearance({ ...state.look, ...patch }) });
   save("appearance", state.look);
+  save("appearanceAt", Date.now());
+  applyLook();
+  clearTimeout(lookTimer);
+  lookTimer = setTimeout(pushLook, 1000);
+}
+let lookTimer: ReturnType<typeof setTimeout> | undefined;
+// Appearance follows the account across devices. Offline or failing, localStorage carries on alone.
+function pushLook() {
+  if (!FAKE) saveAppearance(state.look, load("appearanceAt", 0)).catch(() => {});
+}
+async function syncLook() {
+  const remote = await fetchAppearance().catch(() => undefined);
+  if (remote === undefined) return;
+  const how = appearanceSync(load("appearanceAt", 0), remote && remote.updatedAt);
+  if (how === "push") pushLook();
+  if (how !== "pull" || !remote) return;
+  set({ look: parseAppearance(remote.data) });
+  save("appearance", state.look);
+  save("appearanceAt", remote.updatedAt);
   applyLook();
 }
 /** Switches to the custom theme, starting from the colors on screen the first time. */
@@ -922,6 +942,7 @@ function start() {
       : state.profile,
   });
   if (!FAKE) fetchProfile().then((profile) => set({ profile })).catch((e) => e instanceof SignedOutError && set({ auth: "out" }));
+  if (!FAKE) void syncLook();
   order.forEach((u) => void connect(u));
   const fromHash = parseHash(location.hash);
   const url = order.find((u) => hostOf(u) === fromHash?.host) ?? order[0] ?? "";
