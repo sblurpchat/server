@@ -45,12 +45,17 @@ func channelMode(ctx context.Context, q queryer) (v1.ChannelMode, error) {
 // syncAccess brings text channel member lists in line with who can see what:
 // it removes members who can no longer see a channel and, in ROLES mode,
 // adds those who now can. joining (a member id, or "") also gets OPT_IN's
-// default channels. Each member hears about each change with a
-// member-scoped channel_deleted or channel_created.
-// ponytail: recomputes every channel x member on each change; scope it to the
-// changed rows if communities grow past tens of thousands of members.
+// default channels, and then only that member is checked: nothing else
+// changed. Each member hears about each change with a member-scoped
+// channel_deleted or channel_created.
+// ponytail: role and channel changes still recompute every channel x member;
+// scope those to the changed rows if communities grow past tens of thousands.
 func (s *Server) syncAccess(t *wtx, joining string) error {
 	ctx := t.ctx
+	only, args := "", []any{}
+	if joining != "" {
+		only, args = " AND m.id = ?", []any{joining}
+	}
 	mode, err := channelMode(ctx, t)
 	if err != nil {
 		return err
@@ -72,7 +77,7 @@ func (s *Server) syncAccess(t *wtx, joining string) error {
 		return out, rows.Err()
 	}
 	gone, err := pairs(`SELECT c.id, m.id FROM channel_members cm JOIN channels c ON c.id = cm.channel_id JOIN members m ON m.id = cm.member_id
-		WHERE c.kind = ? AND NOT `+visibleSQL+` ORDER BY c.id, m.id`, v1.ChannelKind_CHANNEL_KIND_TEXT)
+		WHERE c.kind = ? AND NOT `+visibleSQL+only+` ORDER BY c.id, m.id`, append([]any{v1.ChannelKind_CHANNEL_KIND_TEXT}, args...)...)
 	if err != nil {
 		return err
 	}
@@ -83,8 +88,8 @@ func (s *Server) syncAccess(t *wtx, joining string) error {
 	}
 	added, err := pairs(`SELECT c.id, m.id FROM channels c JOIN members m
 		WHERE c.kind = ? AND m.deleted = 0 AND (? OR (c.is_default AND m.id = ?)) AND `+visibleSQL+`
-		AND NOT EXISTS (SELECT 1 FROM channel_members cm WHERE cm.channel_id = c.id AND cm.member_id = m.id)
-		ORDER BY c.id, m.id`, v1.ChannelKind_CHANNEL_KIND_TEXT, mode == v1.ChannelMode_CHANNEL_MODE_ROLES, joining)
+		AND NOT EXISTS (SELECT 1 FROM channel_members cm WHERE cm.channel_id = c.id AND cm.member_id = m.id)`+only+`
+		ORDER BY c.id, m.id`, append([]any{v1.ChannelKind_CHANNEL_KIND_TEXT, mode == v1.ChannelMode_CHANNEL_MODE_ROLES, joining}, args...)...)
 	if err != nil {
 		return err
 	}

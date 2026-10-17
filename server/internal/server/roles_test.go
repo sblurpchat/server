@@ -404,3 +404,26 @@ func TestChannelModesAndRoles(t *testing.T) {
 		t.Fatalf("rejoined fan kept roles %v or #film", back.me.RoleIds)
 	}
 }
+
+// A join checks only the joining member, not every membership (1039). A
+// row dropped behind syncAccess's back shows whether others were rescanned.
+func TestJoinSyncsOnlyTheJoiner(t *testing.T) {
+	e := newEnv(t)
+	ana, bob := e.join("ana"), e.join("bob")
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	if _, err := e.s.db.w.Exec("DELETE FROM channel_members WHERE channel_id = ? AND member_id = ?", gen.Id, bob.me.Id); err != nil {
+		t.Fatal(err)
+	}
+	cy := e.join("cy")
+	in := func(id string) bool {
+		var ok bool
+		e.s.db.r.QueryRow("SELECT EXISTS(SELECT 1 FROM channel_members WHERE channel_id = ? AND member_id = ?)", gen.Id, id).Scan(&ok)
+		return ok
+	}
+	if !in(cy.me.Id) {
+		t.Fatal("cy was not added to general")
+	}
+	if in(bob.me.Id) {
+		t.Fatal("cy's join rescanned bob")
+	}
+}
