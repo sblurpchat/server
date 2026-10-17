@@ -271,6 +271,7 @@ message Event {
     bool server_updated = 27;       // description, banner or icon changed; call GetServerInfo
     bool emoji_changed = 28;        // custom emoji added or deleted; refetch GET /emoji
     PresenceBatch presence_batch = 29; // ephemeral; apply each change like presence
+    bool plugins_changed = 30;      // a plugin was installed, enabled, disabled or deleted; admins call ListPlugins
   }
 }
 
@@ -601,6 +602,39 @@ message RotateBotTokenResponse { string token = 1; }
 message DeleteBotRequest { string bot_id = 1; }
 message DeleteBotResponse {}
 
+// A JavaScript plugin in the plugins folder of the data directory. name is
+// also its bot's username.
+message Plugin {
+  string name = 1;
+  bool enabled = 2;
+  bool running = 3;           // loaded and taking hooks
+  string error = 4;           // why it did not load, or its last hook failure
+  string bot_id = 5;          // "" until it has loaded once
+}
+
+// Admin or owner only, like everything below.
+message ListPluginsRequest {}
+message ListPluginsResponse { repeated Plugin plugins = 1; }
+
+// Installs or replaces <name>.js and starts it. The source must compile and
+// run its top level within the time limit, or nothing changes. 256 KB max.
+message InstallPluginRequest {
+  string name = 1;            // a valid username; a trailing ".js" is dropped
+  string source = 2;
+}
+message InstallPluginResponse { Plugin plugin = 1; }
+
+// Disabling stops the plugin and keeps its file as <name>.js.disabled.
+message SetPluginEnabledRequest {
+  string name = 1;
+  bool enabled = 2;
+}
+message SetPluginEnabledResponse { Plugin plugin = 1; }
+
+// Deletes the file and the plugin's bot. The bot's messages stay.
+message DeletePluginRequest { string name = 1; }
+message DeletePluginResponse {}
+
 // ---------------------------------------------------------------------------
 // Services
 // ---------------------------------------------------------------------------
@@ -656,4 +690,8 @@ service BotService {
   rpc ListBots(ListBotsRequest) returns (ListBotsResponse) {}
   rpc RotateBotToken(RotateBotTokenRequest) returns (RotateBotTokenResponse) {}
   rpc DeleteBot(DeleteBotRequest) returns (DeleteBotResponse) {}
+  rpc ListPlugins(ListPluginsRequest) returns (ListPluginsResponse) {}
+  rpc InstallPlugin(InstallPluginRequest) returns (InstallPluginResponse) {}
+  rpc SetPluginEnabled(SetPluginEnabledRequest) returns (SetPluginEnabledResponse) {}
+  rpc DeletePlugin(DeletePluginRequest) returns (DeletePluginResponse) {}
 }

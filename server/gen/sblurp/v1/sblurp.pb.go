@@ -1943,6 +1943,7 @@ type Event struct {
 	//	*Event_ServerUpdated
 	//	*Event_EmojiChanged
 	//	*Event_PresenceBatch
+	//	*Event_PluginsChanged
 	Kind          isEvent_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2179,6 +2180,15 @@ func (x *Event) GetPresenceBatch() *PresenceBatch {
 	return nil
 }
 
+func (x *Event) GetPluginsChanged() bool {
+	if x != nil {
+		if x, ok := x.Kind.(*Event_PluginsChanged); ok {
+			return x.PluginsChanged
+		}
+	}
+	return false
+}
+
 type isEvent_Kind interface {
 	isEvent_Kind()
 }
@@ -2263,6 +2273,10 @@ type Event_PresenceBatch struct {
 	PresenceBatch *PresenceBatch `protobuf:"bytes,29,opt,name=presence_batch,json=presenceBatch,proto3,oneof"` // ephemeral; apply each change like presence
 }
 
+type Event_PluginsChanged struct {
+	PluginsChanged bool `protobuf:"varint,30,opt,name=plugins_changed,json=pluginsChanged,proto3,oneof"` // a plugin was installed, enabled, disabled or deleted; admins call ListPlugins
+}
+
 func (*Event_MessageCreated) isEvent_Kind() {}
 
 func (*Event_MessageUpdated) isEvent_Kind() {}
@@ -2302,6 +2316,8 @@ func (*Event_ServerUpdated) isEvent_Kind() {}
 func (*Event_EmojiChanged) isEvent_Kind() {}
 
 func (*Event_PresenceBatch) isEvent_Kind() {}
+
+func (*Event_PluginsChanged) isEvent_Kind() {}
 
 // Admin or owner only. Names are normalized: "Book Club" becomes book-club.
 type CreateChannelRequest struct {
@@ -6147,6 +6163,441 @@ func (*DeleteBotResponse) Descriptor() ([]byte, []int) {
 	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{99}
 }
 
+// A JavaScript plugin in the plugins folder of the data directory. name is
+// also its bot's username.
+type Plugin struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Enabled       bool                   `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	Running       bool                   `protobuf:"varint,3,opt,name=running,proto3" json:"running,omitempty"`         // loaded and taking hooks
+	Error         string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`              // why it did not load, or its last hook failure
+	BotId         string                 `protobuf:"bytes,5,opt,name=bot_id,json=botId,proto3" json:"bot_id,omitempty"` // "" until it has loaded once
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Plugin) Reset() {
+	*x = Plugin{}
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[100]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Plugin) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Plugin) ProtoMessage() {}
+
+func (x *Plugin) ProtoReflect() protoreflect.Message {
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[100]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Plugin.ProtoReflect.Descriptor instead.
+func (*Plugin) Descriptor() ([]byte, []int) {
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{100}
+}
+
+func (x *Plugin) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Plugin) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *Plugin) GetRunning() bool {
+	if x != nil {
+		return x.Running
+	}
+	return false
+}
+
+func (x *Plugin) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *Plugin) GetBotId() string {
+	if x != nil {
+		return x.BotId
+	}
+	return ""
+}
+
+// Admin or owner only, like everything below.
+type ListPluginsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPluginsRequest) Reset() {
+	*x = ListPluginsRequest{}
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[101]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPluginsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPluginsRequest) ProtoMessage() {}
+
+func (x *ListPluginsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[101]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPluginsRequest.ProtoReflect.Descriptor instead.
+func (*ListPluginsRequest) Descriptor() ([]byte, []int) {
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{101}
+}
+
+type ListPluginsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Plugins       []*Plugin              `protobuf:"bytes,1,rep,name=plugins,proto3" json:"plugins,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPluginsResponse) Reset() {
+	*x = ListPluginsResponse{}
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[102]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPluginsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPluginsResponse) ProtoMessage() {}
+
+func (x *ListPluginsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[102]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPluginsResponse.ProtoReflect.Descriptor instead.
+func (*ListPluginsResponse) Descriptor() ([]byte, []int) {
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{102}
+}
+
+func (x *ListPluginsResponse) GetPlugins() []*Plugin {
+	if x != nil {
+		return x.Plugins
+	}
+	return nil
+}
+
+// Installs or replaces <name>.js and starts it. The source must compile and
+// run its top level within the time limit, or nothing changes. 256 KB max.
+type InstallPluginRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"` // a valid username; a trailing ".js" is dropped
+	Source        string                 `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InstallPluginRequest) Reset() {
+	*x = InstallPluginRequest{}
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[103]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstallPluginRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstallPluginRequest) ProtoMessage() {}
+
+func (x *InstallPluginRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[103]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstallPluginRequest.ProtoReflect.Descriptor instead.
+func (*InstallPluginRequest) Descriptor() ([]byte, []int) {
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{103}
+}
+
+func (x *InstallPluginRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *InstallPluginRequest) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+type InstallPluginResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Plugin        *Plugin                `protobuf:"bytes,1,opt,name=plugin,proto3" json:"plugin,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InstallPluginResponse) Reset() {
+	*x = InstallPluginResponse{}
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[104]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstallPluginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstallPluginResponse) ProtoMessage() {}
+
+func (x *InstallPluginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[104]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstallPluginResponse.ProtoReflect.Descriptor instead.
+func (*InstallPluginResponse) Descriptor() ([]byte, []int) {
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{104}
+}
+
+func (x *InstallPluginResponse) GetPlugin() *Plugin {
+	if x != nil {
+		return x.Plugin
+	}
+	return nil
+}
+
+// Disabling stops the plugin and keeps its file as <name>.js.disabled.
+type SetPluginEnabledRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Enabled       bool                   `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetPluginEnabledRequest) Reset() {
+	*x = SetPluginEnabledRequest{}
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[105]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetPluginEnabledRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetPluginEnabledRequest) ProtoMessage() {}
+
+func (x *SetPluginEnabledRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[105]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetPluginEnabledRequest.ProtoReflect.Descriptor instead.
+func (*SetPluginEnabledRequest) Descriptor() ([]byte, []int) {
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{105}
+}
+
+func (x *SetPluginEnabledRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *SetPluginEnabledRequest) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+type SetPluginEnabledResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Plugin        *Plugin                `protobuf:"bytes,1,opt,name=plugin,proto3" json:"plugin,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetPluginEnabledResponse) Reset() {
+	*x = SetPluginEnabledResponse{}
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[106]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetPluginEnabledResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetPluginEnabledResponse) ProtoMessage() {}
+
+func (x *SetPluginEnabledResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[106]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetPluginEnabledResponse.ProtoReflect.Descriptor instead.
+func (*SetPluginEnabledResponse) Descriptor() ([]byte, []int) {
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{106}
+}
+
+func (x *SetPluginEnabledResponse) GetPlugin() *Plugin {
+	if x != nil {
+		return x.Plugin
+	}
+	return nil
+}
+
+// Deletes the file and the plugin's bot. The bot's messages stay.
+type DeletePluginRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeletePluginRequest) Reset() {
+	*x = DeletePluginRequest{}
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[107]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeletePluginRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeletePluginRequest) ProtoMessage() {}
+
+func (x *DeletePluginRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[107]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeletePluginRequest.ProtoReflect.Descriptor instead.
+func (*DeletePluginRequest) Descriptor() ([]byte, []int) {
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{107}
+}
+
+func (x *DeletePluginRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type DeletePluginResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeletePluginResponse) Reset() {
+	*x = DeletePluginResponse{}
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[108]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeletePluginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeletePluginResponse) ProtoMessage() {}
+
+func (x *DeletePluginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[108]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeletePluginResponse.ProtoReflect.Descriptor instead.
+func (*DeletePluginResponse) Descriptor() ([]byte, []int) {
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{108}
+}
+
 var File_sblurp_v1_sblurp_proto protoreflect.FileDescriptor
 
 const file_sblurp_v1_sblurp_proto_rawDesc = "" +
@@ -6300,7 +6751,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\tmember_id\x18\x01 \x01(\tR\bmemberId\x12/\n" +
 	"\bpresence\x18\x02 \x01(\x0e2\x13.sblurp.v1.PresenceR\bpresence\"C\n" +
 	"\rPresenceBatch\x122\n" +
-	"\achanges\x18\x01 \x03(\v2\x18.sblurp.v1.PresenceEventR\achanges\"\xca\b\n" +
+	"\achanges\x18\x01 \x03(\v2\x18.sblurp.v1.PresenceEventR\achanges\"\xf5\b\n" +
 	"\x05Event\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\x03R\x03seq\x12\x13\n" +
 	"\x05at_ms\x18\x02 \x01(\x03R\x04atMs\x12=\n" +
@@ -6326,7 +6777,8 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x14channel_mode_changed\x18\x1a \x01(\x0e2\x16.sblurp.v1.ChannelModeH\x00R\x12channelModeChanged\x12'\n" +
 	"\x0eserver_updated\x18\x1b \x01(\bH\x00R\rserverUpdated\x12%\n" +
 	"\remoji_changed\x18\x1c \x01(\bH\x00R\femojiChanged\x12A\n" +
-	"\x0epresence_batch\x18\x1d \x01(\v2\x18.sblurp.v1.PresenceBatchH\x00R\rpresenceBatchB\x06\n" +
+	"\x0epresence_batch\x18\x1d \x01(\v2\x18.sblurp.v1.PresenceBatchH\x00R\rpresenceBatch\x12)\n" +
+	"\x0fplugins_changed\x18\x1e \x01(\bH\x00R\x0epluginsChangedB\x06\n" +
 	"\x04kind\"\x88\x01\n" +
 	"\x14CreateChannelRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12*\n" +
@@ -6567,7 +7019,29 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x05token\x18\x01 \x01(\tR\x05token\")\n" +
 	"\x10DeleteBotRequest\x12\x15\n" +
 	"\x06bot_id\x18\x01 \x01(\tR\x05botId\"\x13\n" +
-	"\x11DeleteBotResponse*U\n" +
+	"\x11DeleteBotResponse\"}\n" +
+	"\x06Plugin\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
+	"\aenabled\x18\x02 \x01(\bR\aenabled\x12\x18\n" +
+	"\arunning\x18\x03 \x01(\bR\arunning\x12\x14\n" +
+	"\x05error\x18\x04 \x01(\tR\x05error\x12\x15\n" +
+	"\x06bot_id\x18\x05 \x01(\tR\x05botId\"\x14\n" +
+	"\x12ListPluginsRequest\"B\n" +
+	"\x13ListPluginsResponse\x12+\n" +
+	"\aplugins\x18\x01 \x03(\v2\x11.sblurp.v1.PluginR\aplugins\"B\n" +
+	"\x14InstallPluginRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
+	"\x06source\x18\x02 \x01(\tR\x06source\"B\n" +
+	"\x15InstallPluginResponse\x12)\n" +
+	"\x06plugin\x18\x01 \x01(\v2\x11.sblurp.v1.PluginR\x06plugin\"G\n" +
+	"\x17SetPluginEnabledRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
+	"\aenabled\x18\x02 \x01(\bR\aenabled\"E\n" +
+	"\x18SetPluginEnabledResponse\x12)\n" +
+	"\x06plugin\x18\x01 \x01(\v2\x11.sblurp.v1.PluginR\x06plugin\")\n" +
+	"\x13DeletePluginRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\"\x16\n" +
+	"\x14DeletePluginResponse*U\n" +
 	"\n" +
 	"MemberKind\x12\x1b\n" +
 	"\x17MEMBER_KIND_UNSPECIFIED\x10\x00\x12\x15\n" +
@@ -6643,13 +7117,17 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x10SetChannelAccess\x12\".sblurp.v1.SetChannelAccessRequest\x1a#.sblurp.v1.SetChannelAccessResponse\"\x00\x12W\n" +
 	"\x0eBrowseChannels\x12 .sblurp.v1.BrowseChannelsRequest\x1a!.sblurp.v1.BrowseChannelsResponse\"\x00\x12N\n" +
 	"\vJoinChannel\x12\x1d.sblurp.v1.JoinChannelRequest\x1a\x1e.sblurp.v1.JoinChannelResponse\"\x00\x12Q\n" +
-	"\fLeaveChannel\x12\x1e.sblurp.v1.LeaveChannelRequest\x1a\x1f.sblurp.v1.LeaveChannelResponse\"\x002\xc0\x02\n" +
+	"\fLeaveChannel\x12\x1e.sblurp.v1.LeaveChannelRequest\x1a\x1f.sblurp.v1.LeaveChannelResponse\"\x002\x98\x05\n" +
 	"\n" +
 	"BotService\x12H\n" +
 	"\tCreateBot\x12\x1b.sblurp.v1.CreateBotRequest\x1a\x1c.sblurp.v1.CreateBotResponse\"\x00\x12E\n" +
 	"\bListBots\x12\x1a.sblurp.v1.ListBotsRequest\x1a\x1b.sblurp.v1.ListBotsResponse\"\x00\x12W\n" +
 	"\x0eRotateBotToken\x12 .sblurp.v1.RotateBotTokenRequest\x1a!.sblurp.v1.RotateBotTokenResponse\"\x00\x12H\n" +
-	"\tDeleteBot\x12\x1b.sblurp.v1.DeleteBotRequest\x1a\x1c.sblurp.v1.DeleteBotResponse\"\x00B+Z)sblurp.chat/server/gen/sblurp/v1;sblurpv1b\x06proto3"
+	"\tDeleteBot\x12\x1b.sblurp.v1.DeleteBotRequest\x1a\x1c.sblurp.v1.DeleteBotResponse\"\x00\x12N\n" +
+	"\vListPlugins\x12\x1d.sblurp.v1.ListPluginsRequest\x1a\x1e.sblurp.v1.ListPluginsResponse\"\x00\x12T\n" +
+	"\rInstallPlugin\x12\x1f.sblurp.v1.InstallPluginRequest\x1a .sblurp.v1.InstallPluginResponse\"\x00\x12]\n" +
+	"\x10SetPluginEnabled\x12\".sblurp.v1.SetPluginEnabledRequest\x1a#.sblurp.v1.SetPluginEnabledResponse\"\x00\x12Q\n" +
+	"\fDeletePlugin\x12\x1e.sblurp.v1.DeletePluginRequest\x1a\x1f.sblurp.v1.DeletePluginResponse\"\x00B+Z)sblurp.chat/server/gen/sblurp/v1;sblurpv1b\x06proto3"
 
 var (
 	file_sblurp_v1_sblurp_proto_rawDescOnce sync.Once
@@ -6664,7 +7142,7 @@ func file_sblurp_v1_sblurp_proto_rawDescGZIP() []byte {
 }
 
 var file_sblurp_v1_sblurp_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_sblurp_v1_sblurp_proto_msgTypes = make([]protoimpl.MessageInfo, 100)
+var file_sblurp_v1_sblurp_proto_msgTypes = make([]protoimpl.MessageInfo, 109)
 var file_sblurp_v1_sblurp_proto_goTypes = []any{
 	(MemberKind)(0),                      // 0: sblurp.v1.MemberKind
 	(MemberRole)(0),                      // 1: sblurp.v1.MemberRole
@@ -6772,6 +7250,15 @@ var file_sblurp_v1_sblurp_proto_goTypes = []any{
 	(*RotateBotTokenResponse)(nil),       // 103: sblurp.v1.RotateBotTokenResponse
 	(*DeleteBotRequest)(nil),             // 104: sblurp.v1.DeleteBotRequest
 	(*DeleteBotResponse)(nil),            // 105: sblurp.v1.DeleteBotResponse
+	(*Plugin)(nil),                       // 106: sblurp.v1.Plugin
+	(*ListPluginsRequest)(nil),           // 107: sblurp.v1.ListPluginsRequest
+	(*ListPluginsResponse)(nil),          // 108: sblurp.v1.ListPluginsResponse
+	(*InstallPluginRequest)(nil),         // 109: sblurp.v1.InstallPluginRequest
+	(*InstallPluginResponse)(nil),        // 110: sblurp.v1.InstallPluginResponse
+	(*SetPluginEnabledRequest)(nil),      // 111: sblurp.v1.SetPluginEnabledRequest
+	(*SetPluginEnabledResponse)(nil),     // 112: sblurp.v1.SetPluginEnabledResponse
+	(*DeletePluginRequest)(nil),          // 113: sblurp.v1.DeletePluginRequest
+	(*DeletePluginResponse)(nil),         // 114: sblurp.v1.DeletePluginResponse
 }
 var file_sblurp_v1_sblurp_proto_depIdxs = []int32{
 	0,   // 0: sblurp.v1.Member.kind:type_name -> sblurp.v1.MemberKind
@@ -6838,95 +7325,106 @@ var file_sblurp_v1_sblurp_proto_depIdxs = []int32{
 	94,  // 61: sblurp.v1.UploadEmojiResponse.results:type_name -> sblurp.v1.EmojiUploadResult
 	6,   // 62: sblurp.v1.CreateBotResponse.bot:type_name -> sblurp.v1.Member
 	6,   // 63: sblurp.v1.ListBotsResponse.bots:type_name -> sblurp.v1.Member
-	13,  // 64: sblurp.v1.ServerService.GetServerInfo:input_type -> sblurp.v1.GetServerInfoRequest
-	15,  // 65: sblurp.v1.ServerService.Join:input_type -> sblurp.v1.JoinRequest
-	17,  // 66: sblurp.v1.ServerService.GetMe:input_type -> sblurp.v1.GetMeRequest
-	19,  // 67: sblurp.v1.ServerService.UpdateProfile:input_type -> sblurp.v1.UpdateProfileRequest
-	21,  // 68: sblurp.v1.ServerService.GetState:input_type -> sblurp.v1.GetStateRequest
-	23,  // 69: sblurp.v1.ServerService.Subscribe:input_type -> sblurp.v1.SubscribeRequest
-	62,  // 70: sblurp.v1.ServerService.SetMemberRole:input_type -> sblurp.v1.SetMemberRoleRequest
-	64,  // 71: sblurp.v1.ServerService.LeaveCommunity:input_type -> sblurp.v1.LeaveCommunityRequest
-	66,  // 72: sblurp.v1.ServerService.KickMember:input_type -> sblurp.v1.KickMemberRequest
-	68,  // 73: sblurp.v1.ServerService.BanMember:input_type -> sblurp.v1.BanMemberRequest
-	71,  // 74: sblurp.v1.ServerService.ListBans:input_type -> sblurp.v1.ListBansRequest
-	73,  // 75: sblurp.v1.ServerService.UnbanMember:input_type -> sblurp.v1.UnbanMemberRequest
-	76,  // 76: sblurp.v1.ServerService.CreateInvite:input_type -> sblurp.v1.CreateInviteRequest
-	78,  // 77: sblurp.v1.ServerService.ListInvites:input_type -> sblurp.v1.ListInvitesRequest
-	80,  // 78: sblurp.v1.ServerService.RevokeInvite:input_type -> sblurp.v1.RevokeInviteRequest
-	82,  // 79: sblurp.v1.ServerService.UpdateServerSettings:input_type -> sblurp.v1.UpdateServerSettingsRequest
-	84,  // 80: sblurp.v1.ServerService.CreateRole:input_type -> sblurp.v1.CreateRoleRequest
-	86,  // 81: sblurp.v1.ServerService.UpdateRole:input_type -> sblurp.v1.UpdateRoleRequest
-	88,  // 82: sblurp.v1.ServerService.DeleteRole:input_type -> sblurp.v1.DeleteRoleRequest
-	90,  // 83: sblurp.v1.ServerService.SetMemberRoles:input_type -> sblurp.v1.SetMemberRolesRequest
-	96,  // 84: sblurp.v1.ServerService.DeleteEmoji:input_type -> sblurp.v1.DeleteEmojiRequest
-	28,  // 85: sblurp.v1.ChatService.CreateChannel:input_type -> sblurp.v1.CreateChannelRequest
-	30,  // 86: sblurp.v1.ChatService.UpdateChannel:input_type -> sblurp.v1.UpdateChannelRequest
-	40,  // 87: sblurp.v1.ChatService.OpenDM:input_type -> sblurp.v1.OpenDMRequest
-	42,  // 88: sblurp.v1.ChatService.ListMessages:input_type -> sblurp.v1.ListMessagesRequest
-	44,  // 89: sblurp.v1.ChatService.SendMessage:input_type -> sblurp.v1.SendMessageRequest
-	46,  // 90: sblurp.v1.ChatService.EditMessage:input_type -> sblurp.v1.EditMessageRequest
-	48,  // 91: sblurp.v1.ChatService.DeleteMessage:input_type -> sblurp.v1.DeleteMessageRequest
-	50,  // 92: sblurp.v1.ChatService.React:input_type -> sblurp.v1.ReactRequest
-	52,  // 93: sblurp.v1.ChatService.MarkRead:input_type -> sblurp.v1.MarkReadRequest
-	54,  // 94: sblurp.v1.ChatService.SetTyping:input_type -> sblurp.v1.SetTypingRequest
-	56,  // 95: sblurp.v1.ChatService.Search:input_type -> sblurp.v1.SearchRequest
-	58,  // 96: sblurp.v1.ChatService.AddChannelMembers:input_type -> sblurp.v1.AddChannelMembersRequest
-	60,  // 97: sblurp.v1.ChatService.RemoveChannelMember:input_type -> sblurp.v1.RemoveChannelMemberRequest
-	32,  // 98: sblurp.v1.ChatService.SetChannelAccess:input_type -> sblurp.v1.SetChannelAccessRequest
-	34,  // 99: sblurp.v1.ChatService.BrowseChannels:input_type -> sblurp.v1.BrowseChannelsRequest
-	36,  // 100: sblurp.v1.ChatService.JoinChannel:input_type -> sblurp.v1.JoinChannelRequest
-	38,  // 101: sblurp.v1.ChatService.LeaveChannel:input_type -> sblurp.v1.LeaveChannelRequest
-	98,  // 102: sblurp.v1.BotService.CreateBot:input_type -> sblurp.v1.CreateBotRequest
-	100, // 103: sblurp.v1.BotService.ListBots:input_type -> sblurp.v1.ListBotsRequest
-	102, // 104: sblurp.v1.BotService.RotateBotToken:input_type -> sblurp.v1.RotateBotTokenRequest
-	104, // 105: sblurp.v1.BotService.DeleteBot:input_type -> sblurp.v1.DeleteBotRequest
-	14,  // 106: sblurp.v1.ServerService.GetServerInfo:output_type -> sblurp.v1.GetServerInfoResponse
-	16,  // 107: sblurp.v1.ServerService.Join:output_type -> sblurp.v1.JoinResponse
-	18,  // 108: sblurp.v1.ServerService.GetMe:output_type -> sblurp.v1.GetMeResponse
-	20,  // 109: sblurp.v1.ServerService.UpdateProfile:output_type -> sblurp.v1.UpdateProfileResponse
-	22,  // 110: sblurp.v1.ServerService.GetState:output_type -> sblurp.v1.GetStateResponse
-	27,  // 111: sblurp.v1.ServerService.Subscribe:output_type -> sblurp.v1.Event
-	63,  // 112: sblurp.v1.ServerService.SetMemberRole:output_type -> sblurp.v1.SetMemberRoleResponse
-	65,  // 113: sblurp.v1.ServerService.LeaveCommunity:output_type -> sblurp.v1.LeaveCommunityResponse
-	67,  // 114: sblurp.v1.ServerService.KickMember:output_type -> sblurp.v1.KickMemberResponse
-	69,  // 115: sblurp.v1.ServerService.BanMember:output_type -> sblurp.v1.BanMemberResponse
-	72,  // 116: sblurp.v1.ServerService.ListBans:output_type -> sblurp.v1.ListBansResponse
-	74,  // 117: sblurp.v1.ServerService.UnbanMember:output_type -> sblurp.v1.UnbanMemberResponse
-	77,  // 118: sblurp.v1.ServerService.CreateInvite:output_type -> sblurp.v1.CreateInviteResponse
-	79,  // 119: sblurp.v1.ServerService.ListInvites:output_type -> sblurp.v1.ListInvitesResponse
-	81,  // 120: sblurp.v1.ServerService.RevokeInvite:output_type -> sblurp.v1.RevokeInviteResponse
-	83,  // 121: sblurp.v1.ServerService.UpdateServerSettings:output_type -> sblurp.v1.UpdateServerSettingsResponse
-	85,  // 122: sblurp.v1.ServerService.CreateRole:output_type -> sblurp.v1.CreateRoleResponse
-	87,  // 123: sblurp.v1.ServerService.UpdateRole:output_type -> sblurp.v1.UpdateRoleResponse
-	89,  // 124: sblurp.v1.ServerService.DeleteRole:output_type -> sblurp.v1.DeleteRoleResponse
-	91,  // 125: sblurp.v1.ServerService.SetMemberRoles:output_type -> sblurp.v1.SetMemberRolesResponse
-	97,  // 126: sblurp.v1.ServerService.DeleteEmoji:output_type -> sblurp.v1.DeleteEmojiResponse
-	29,  // 127: sblurp.v1.ChatService.CreateChannel:output_type -> sblurp.v1.CreateChannelResponse
-	31,  // 128: sblurp.v1.ChatService.UpdateChannel:output_type -> sblurp.v1.UpdateChannelResponse
-	41,  // 129: sblurp.v1.ChatService.OpenDM:output_type -> sblurp.v1.OpenDMResponse
-	43,  // 130: sblurp.v1.ChatService.ListMessages:output_type -> sblurp.v1.ListMessagesResponse
-	45,  // 131: sblurp.v1.ChatService.SendMessage:output_type -> sblurp.v1.SendMessageResponse
-	47,  // 132: sblurp.v1.ChatService.EditMessage:output_type -> sblurp.v1.EditMessageResponse
-	49,  // 133: sblurp.v1.ChatService.DeleteMessage:output_type -> sblurp.v1.DeleteMessageResponse
-	51,  // 134: sblurp.v1.ChatService.React:output_type -> sblurp.v1.ReactResponse
-	53,  // 135: sblurp.v1.ChatService.MarkRead:output_type -> sblurp.v1.MarkReadResponse
-	55,  // 136: sblurp.v1.ChatService.SetTyping:output_type -> sblurp.v1.SetTypingResponse
-	57,  // 137: sblurp.v1.ChatService.Search:output_type -> sblurp.v1.SearchResponse
-	59,  // 138: sblurp.v1.ChatService.AddChannelMembers:output_type -> sblurp.v1.AddChannelMembersResponse
-	61,  // 139: sblurp.v1.ChatService.RemoveChannelMember:output_type -> sblurp.v1.RemoveChannelMemberResponse
-	33,  // 140: sblurp.v1.ChatService.SetChannelAccess:output_type -> sblurp.v1.SetChannelAccessResponse
-	35,  // 141: sblurp.v1.ChatService.BrowseChannels:output_type -> sblurp.v1.BrowseChannelsResponse
-	37,  // 142: sblurp.v1.ChatService.JoinChannel:output_type -> sblurp.v1.JoinChannelResponse
-	39,  // 143: sblurp.v1.ChatService.LeaveChannel:output_type -> sblurp.v1.LeaveChannelResponse
-	99,  // 144: sblurp.v1.BotService.CreateBot:output_type -> sblurp.v1.CreateBotResponse
-	101, // 145: sblurp.v1.BotService.ListBots:output_type -> sblurp.v1.ListBotsResponse
-	103, // 146: sblurp.v1.BotService.RotateBotToken:output_type -> sblurp.v1.RotateBotTokenResponse
-	105, // 147: sblurp.v1.BotService.DeleteBot:output_type -> sblurp.v1.DeleteBotResponse
-	106, // [106:148] is the sub-list for method output_type
-	64,  // [64:106] is the sub-list for method input_type
-	64,  // [64:64] is the sub-list for extension type_name
-	64,  // [64:64] is the sub-list for extension extendee
-	0,   // [0:64] is the sub-list for field type_name
+	106, // 64: sblurp.v1.ListPluginsResponse.plugins:type_name -> sblurp.v1.Plugin
+	106, // 65: sblurp.v1.InstallPluginResponse.plugin:type_name -> sblurp.v1.Plugin
+	106, // 66: sblurp.v1.SetPluginEnabledResponse.plugin:type_name -> sblurp.v1.Plugin
+	13,  // 67: sblurp.v1.ServerService.GetServerInfo:input_type -> sblurp.v1.GetServerInfoRequest
+	15,  // 68: sblurp.v1.ServerService.Join:input_type -> sblurp.v1.JoinRequest
+	17,  // 69: sblurp.v1.ServerService.GetMe:input_type -> sblurp.v1.GetMeRequest
+	19,  // 70: sblurp.v1.ServerService.UpdateProfile:input_type -> sblurp.v1.UpdateProfileRequest
+	21,  // 71: sblurp.v1.ServerService.GetState:input_type -> sblurp.v1.GetStateRequest
+	23,  // 72: sblurp.v1.ServerService.Subscribe:input_type -> sblurp.v1.SubscribeRequest
+	62,  // 73: sblurp.v1.ServerService.SetMemberRole:input_type -> sblurp.v1.SetMemberRoleRequest
+	64,  // 74: sblurp.v1.ServerService.LeaveCommunity:input_type -> sblurp.v1.LeaveCommunityRequest
+	66,  // 75: sblurp.v1.ServerService.KickMember:input_type -> sblurp.v1.KickMemberRequest
+	68,  // 76: sblurp.v1.ServerService.BanMember:input_type -> sblurp.v1.BanMemberRequest
+	71,  // 77: sblurp.v1.ServerService.ListBans:input_type -> sblurp.v1.ListBansRequest
+	73,  // 78: sblurp.v1.ServerService.UnbanMember:input_type -> sblurp.v1.UnbanMemberRequest
+	76,  // 79: sblurp.v1.ServerService.CreateInvite:input_type -> sblurp.v1.CreateInviteRequest
+	78,  // 80: sblurp.v1.ServerService.ListInvites:input_type -> sblurp.v1.ListInvitesRequest
+	80,  // 81: sblurp.v1.ServerService.RevokeInvite:input_type -> sblurp.v1.RevokeInviteRequest
+	82,  // 82: sblurp.v1.ServerService.UpdateServerSettings:input_type -> sblurp.v1.UpdateServerSettingsRequest
+	84,  // 83: sblurp.v1.ServerService.CreateRole:input_type -> sblurp.v1.CreateRoleRequest
+	86,  // 84: sblurp.v1.ServerService.UpdateRole:input_type -> sblurp.v1.UpdateRoleRequest
+	88,  // 85: sblurp.v1.ServerService.DeleteRole:input_type -> sblurp.v1.DeleteRoleRequest
+	90,  // 86: sblurp.v1.ServerService.SetMemberRoles:input_type -> sblurp.v1.SetMemberRolesRequest
+	96,  // 87: sblurp.v1.ServerService.DeleteEmoji:input_type -> sblurp.v1.DeleteEmojiRequest
+	28,  // 88: sblurp.v1.ChatService.CreateChannel:input_type -> sblurp.v1.CreateChannelRequest
+	30,  // 89: sblurp.v1.ChatService.UpdateChannel:input_type -> sblurp.v1.UpdateChannelRequest
+	40,  // 90: sblurp.v1.ChatService.OpenDM:input_type -> sblurp.v1.OpenDMRequest
+	42,  // 91: sblurp.v1.ChatService.ListMessages:input_type -> sblurp.v1.ListMessagesRequest
+	44,  // 92: sblurp.v1.ChatService.SendMessage:input_type -> sblurp.v1.SendMessageRequest
+	46,  // 93: sblurp.v1.ChatService.EditMessage:input_type -> sblurp.v1.EditMessageRequest
+	48,  // 94: sblurp.v1.ChatService.DeleteMessage:input_type -> sblurp.v1.DeleteMessageRequest
+	50,  // 95: sblurp.v1.ChatService.React:input_type -> sblurp.v1.ReactRequest
+	52,  // 96: sblurp.v1.ChatService.MarkRead:input_type -> sblurp.v1.MarkReadRequest
+	54,  // 97: sblurp.v1.ChatService.SetTyping:input_type -> sblurp.v1.SetTypingRequest
+	56,  // 98: sblurp.v1.ChatService.Search:input_type -> sblurp.v1.SearchRequest
+	58,  // 99: sblurp.v1.ChatService.AddChannelMembers:input_type -> sblurp.v1.AddChannelMembersRequest
+	60,  // 100: sblurp.v1.ChatService.RemoveChannelMember:input_type -> sblurp.v1.RemoveChannelMemberRequest
+	32,  // 101: sblurp.v1.ChatService.SetChannelAccess:input_type -> sblurp.v1.SetChannelAccessRequest
+	34,  // 102: sblurp.v1.ChatService.BrowseChannels:input_type -> sblurp.v1.BrowseChannelsRequest
+	36,  // 103: sblurp.v1.ChatService.JoinChannel:input_type -> sblurp.v1.JoinChannelRequest
+	38,  // 104: sblurp.v1.ChatService.LeaveChannel:input_type -> sblurp.v1.LeaveChannelRequest
+	98,  // 105: sblurp.v1.BotService.CreateBot:input_type -> sblurp.v1.CreateBotRequest
+	100, // 106: sblurp.v1.BotService.ListBots:input_type -> sblurp.v1.ListBotsRequest
+	102, // 107: sblurp.v1.BotService.RotateBotToken:input_type -> sblurp.v1.RotateBotTokenRequest
+	104, // 108: sblurp.v1.BotService.DeleteBot:input_type -> sblurp.v1.DeleteBotRequest
+	107, // 109: sblurp.v1.BotService.ListPlugins:input_type -> sblurp.v1.ListPluginsRequest
+	109, // 110: sblurp.v1.BotService.InstallPlugin:input_type -> sblurp.v1.InstallPluginRequest
+	111, // 111: sblurp.v1.BotService.SetPluginEnabled:input_type -> sblurp.v1.SetPluginEnabledRequest
+	113, // 112: sblurp.v1.BotService.DeletePlugin:input_type -> sblurp.v1.DeletePluginRequest
+	14,  // 113: sblurp.v1.ServerService.GetServerInfo:output_type -> sblurp.v1.GetServerInfoResponse
+	16,  // 114: sblurp.v1.ServerService.Join:output_type -> sblurp.v1.JoinResponse
+	18,  // 115: sblurp.v1.ServerService.GetMe:output_type -> sblurp.v1.GetMeResponse
+	20,  // 116: sblurp.v1.ServerService.UpdateProfile:output_type -> sblurp.v1.UpdateProfileResponse
+	22,  // 117: sblurp.v1.ServerService.GetState:output_type -> sblurp.v1.GetStateResponse
+	27,  // 118: sblurp.v1.ServerService.Subscribe:output_type -> sblurp.v1.Event
+	63,  // 119: sblurp.v1.ServerService.SetMemberRole:output_type -> sblurp.v1.SetMemberRoleResponse
+	65,  // 120: sblurp.v1.ServerService.LeaveCommunity:output_type -> sblurp.v1.LeaveCommunityResponse
+	67,  // 121: sblurp.v1.ServerService.KickMember:output_type -> sblurp.v1.KickMemberResponse
+	69,  // 122: sblurp.v1.ServerService.BanMember:output_type -> sblurp.v1.BanMemberResponse
+	72,  // 123: sblurp.v1.ServerService.ListBans:output_type -> sblurp.v1.ListBansResponse
+	74,  // 124: sblurp.v1.ServerService.UnbanMember:output_type -> sblurp.v1.UnbanMemberResponse
+	77,  // 125: sblurp.v1.ServerService.CreateInvite:output_type -> sblurp.v1.CreateInviteResponse
+	79,  // 126: sblurp.v1.ServerService.ListInvites:output_type -> sblurp.v1.ListInvitesResponse
+	81,  // 127: sblurp.v1.ServerService.RevokeInvite:output_type -> sblurp.v1.RevokeInviteResponse
+	83,  // 128: sblurp.v1.ServerService.UpdateServerSettings:output_type -> sblurp.v1.UpdateServerSettingsResponse
+	85,  // 129: sblurp.v1.ServerService.CreateRole:output_type -> sblurp.v1.CreateRoleResponse
+	87,  // 130: sblurp.v1.ServerService.UpdateRole:output_type -> sblurp.v1.UpdateRoleResponse
+	89,  // 131: sblurp.v1.ServerService.DeleteRole:output_type -> sblurp.v1.DeleteRoleResponse
+	91,  // 132: sblurp.v1.ServerService.SetMemberRoles:output_type -> sblurp.v1.SetMemberRolesResponse
+	97,  // 133: sblurp.v1.ServerService.DeleteEmoji:output_type -> sblurp.v1.DeleteEmojiResponse
+	29,  // 134: sblurp.v1.ChatService.CreateChannel:output_type -> sblurp.v1.CreateChannelResponse
+	31,  // 135: sblurp.v1.ChatService.UpdateChannel:output_type -> sblurp.v1.UpdateChannelResponse
+	41,  // 136: sblurp.v1.ChatService.OpenDM:output_type -> sblurp.v1.OpenDMResponse
+	43,  // 137: sblurp.v1.ChatService.ListMessages:output_type -> sblurp.v1.ListMessagesResponse
+	45,  // 138: sblurp.v1.ChatService.SendMessage:output_type -> sblurp.v1.SendMessageResponse
+	47,  // 139: sblurp.v1.ChatService.EditMessage:output_type -> sblurp.v1.EditMessageResponse
+	49,  // 140: sblurp.v1.ChatService.DeleteMessage:output_type -> sblurp.v1.DeleteMessageResponse
+	51,  // 141: sblurp.v1.ChatService.React:output_type -> sblurp.v1.ReactResponse
+	53,  // 142: sblurp.v1.ChatService.MarkRead:output_type -> sblurp.v1.MarkReadResponse
+	55,  // 143: sblurp.v1.ChatService.SetTyping:output_type -> sblurp.v1.SetTypingResponse
+	57,  // 144: sblurp.v1.ChatService.Search:output_type -> sblurp.v1.SearchResponse
+	59,  // 145: sblurp.v1.ChatService.AddChannelMembers:output_type -> sblurp.v1.AddChannelMembersResponse
+	61,  // 146: sblurp.v1.ChatService.RemoveChannelMember:output_type -> sblurp.v1.RemoveChannelMemberResponse
+	33,  // 147: sblurp.v1.ChatService.SetChannelAccess:output_type -> sblurp.v1.SetChannelAccessResponse
+	35,  // 148: sblurp.v1.ChatService.BrowseChannels:output_type -> sblurp.v1.BrowseChannelsResponse
+	37,  // 149: sblurp.v1.ChatService.JoinChannel:output_type -> sblurp.v1.JoinChannelResponse
+	39,  // 150: sblurp.v1.ChatService.LeaveChannel:output_type -> sblurp.v1.LeaveChannelResponse
+	99,  // 151: sblurp.v1.BotService.CreateBot:output_type -> sblurp.v1.CreateBotResponse
+	101, // 152: sblurp.v1.BotService.ListBots:output_type -> sblurp.v1.ListBotsResponse
+	103, // 153: sblurp.v1.BotService.RotateBotToken:output_type -> sblurp.v1.RotateBotTokenResponse
+	105, // 154: sblurp.v1.BotService.DeleteBot:output_type -> sblurp.v1.DeleteBotResponse
+	108, // 155: sblurp.v1.BotService.ListPlugins:output_type -> sblurp.v1.ListPluginsResponse
+	110, // 156: sblurp.v1.BotService.InstallPlugin:output_type -> sblurp.v1.InstallPluginResponse
+	112, // 157: sblurp.v1.BotService.SetPluginEnabled:output_type -> sblurp.v1.SetPluginEnabledResponse
+	114, // 158: sblurp.v1.BotService.DeletePlugin:output_type -> sblurp.v1.DeletePluginResponse
+	113, // [113:159] is the sub-list for method output_type
+	67,  // [67:113] is the sub-list for method input_type
+	67,  // [67:67] is the sub-list for extension type_name
+	67,  // [67:67] is the sub-list for extension extendee
+	0,   // [0:67] is the sub-list for field type_name
 }
 
 func init() { file_sblurp_v1_sblurp_proto_init() }
@@ -6956,6 +7454,7 @@ func file_sblurp_v1_sblurp_proto_init() {
 		(*Event_ServerUpdated)(nil),
 		(*Event_EmojiChanged)(nil),
 		(*Event_PresenceBatch)(nil),
+		(*Event_PluginsChanged)(nil),
 	}
 	file_sblurp_v1_sblurp_proto_msgTypes[24].OneofWrappers = []any{}
 	file_sblurp_v1_sblurp_proto_msgTypes[76].OneofWrappers = []any{}
@@ -6966,7 +7465,7 @@ func file_sblurp_v1_sblurp_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sblurp_v1_sblurp_proto_rawDesc), len(file_sblurp_v1_sblurp_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   100,
+			NumMessages:   109,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

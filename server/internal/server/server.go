@@ -63,7 +63,10 @@ type Server struct {
 	keepFor         time.Duration
 	filesDir        string
 	fileKey         []byte
+	pluginsMu       sync.Mutex // guards plugins and pluginErrs
 	plugins         []*plugin
+	pluginErrs      map[string]string // plugin name -> why it did not load
+	pluginOps       sync.Mutex        // one admin plugin change at a time
 	pluginJobs      chan func()
 	pluginMemory    int
 	pluginTimeout   time.Duration

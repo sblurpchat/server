@@ -272,3 +272,149 @@ function onJoin(m) { if (m.answer !== "I agree") return { allow: false, reason: 
 		t.Fatalf("right answers refused: %v", err)
 	}
 }
+
+func TestPluginAdmin(t *testing.T) {
+	e := newEnv(t, func(c *Config) {
+		c.PluginTimeout = 300 * time.Millisecond
+		dir := filepath.Join(c.DataDir, "plugins")
+		os.MkdirAll(dir, 0o700)
+		os.WriteFile(filepath.Join(dir, "broken.js"), []byte("function ("), 0o600)
+	})
+	ana, bob := e.join("ana"), e.join("bob")
+	dir := filepath.Join(e.dir, "plugins")
+	install := func(c *client, name, src string) (*v1.Plugin, error) {
+		r, err := c.bots.InstallPlugin(ctx(), connect.NewRequest(&v1.InstallPluginRequest{Name: name, Source: src}))
+		if err != nil {
+			return nil, err
+		}
+		return r.Msg.Plugin, nil
+	}
+	setEnabled := func(name string, on bool) *v1.Plugin {
+		t.Helper()
+		return must(ana.bots.SetPluginEnabled(ctx(), connect.NewRequest(&v1.SetPluginEnabledRequest{Name: name, Enabled: on}))).Plugin
+	}
+	list := func() map[string]*v1.Plugin {
+		t.Helper()
+		out := map[string]*v1.Plugin{}
+		for _, p := range must(ana.bots.ListPlugins(ctx(), connect.NewRequest(&v1.ListPluginsRequest{}))).Plugins {
+			out[p.Name] = p
+		}
+		return out
+	}
+
+	// A file that failed to load at startup is listed with its error.
+	if p := list()["broken"]; p == nil || p.Running || !p.Enabled || p.Error == "" {
+		t.Fatalf("broken = %v", p)
+	}
+
+	// Members cannot see or change plugins.
+	_, err := bob.bots.ListPlugins(ctx(), connect.NewRequest(&v1.ListPluginsRequest{}))
+	wantCode(t, err, connect.CodePermissionDenied)
+	_, err = install(bob, "hi", `function onCommand() { return "x"; }`)
+	wantCode(t, err, connect.CodePermissionDenied)
+	_, err = bob.bots.SetPluginEnabled(ctx(), connect.NewRequest(&v1.SetPluginEnabledRequest{Name: "broken"}))
+	wantCode(t, err, connect.CodePermissionDenied)
+	_, err = bob.bots.DeletePlugin(ctx(), connect.NewRequest(&v1.DeletePluginRequest{Name: "broken"}))
+	wantCode(t, err, connect.CodePermissionDenied)
+
+	// Names must be safe file names; source has a size cap.
+	for _, name := range []string{"../evil", "a/b", "x", "Has Space", ""} {
+		_, err = install(ana, name, `1`)
+		wantCode(t, err, connect.CodeInvalidArgument)
+	}
+	_, err = install(ana, "big", "//"+strings.Repeat("x", 256<<10))
+	wantCode(t, err, connect.CodeInvalidArgument)
+
+	general := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	sub := ana.subscribe(ana.state().Seq)
+	isBot := func(ev *v1.Event) bool {
+		m := ev.GetMessageCreated()
+		return m != nil && m.AuthorId != ana.me.Id
+	}
+	reply := func(cmds ...string) string {
+		t.Helper()
+		for _, c := range cmds {
+			ana.send(general.Id, c)
+		}
+		return sub.next(isBot, nil).GetMessageCreated().Text
+	}
+
+	// Install hot-loads it as a bot, with no restart; admins get an event.
+	p, err := install(ana, "Hi.js", `function onCommand(n) { if (n === "hi") return "v1"; }`)
+	if err != nil || p.Name != "hi" || !p.Running || !p.Enabled || p.BotId == "" {
+		t.Fatalf("install = %v, %v", p, err)
+	}
+	sub.next(func(ev *v1.Event) bool { return ev.GetPluginsChanged() }, nil)
+	if _, err := install(ana, "ping", `function onCommand(n) { if (n === "ping") return "pong"; if (n === "boom") throw new Error("kaboom"); }`); err != nil {
+		t.Fatal(err)
+	}
+	if got := reply("/hi"); got != "v1" {
+		t.Fatalf("hi = %q", got)
+	}
+
+	// A script that does not compile, or hangs at the top level, is refused
+	// and the old one keeps running from the same file.
+	for _, src := range []string{"function (", "while (true) {}", `throw new Error("no")`} {
+		_, err = install(ana, "hi", src)
+		wantCode(t, err, connect.CodeInvalidArgument)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "hi.js")); !strings.Contains(string(b), "v1") {
+		t.Fatalf("hi.js = %s", b)
+	}
+	if got := reply("/hi"); got != "v1" {
+		t.Fatalf("hi after bad install = %q", got)
+	}
+
+	// Replace swaps the code in place and keeps the bot.
+	p2, err := install(ana, "hi", `function onCommand(n) { if (n === "hi") return "v2"; }`)
+	if err != nil || p2.BotId != p.BotId {
+		t.Fatalf("replace = %v, %v (bot was %s)", p2, err, p.BotId)
+	}
+	if got := reply("/hi"); got != "v2" {
+		t.Fatalf("hi after replace = %q", got)
+	}
+
+	// Disable stops it (the next reply is ping's) and keeps the file aside.
+	if p := setEnabled("hi", false); p.Enabled || p.Running || p.BotId != p2.BotId {
+		t.Fatalf("disabled = %v", p)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "hi.js.disabled")); err != nil {
+		t.Fatal(err)
+	}
+	if got := reply("/hi", "/ping"); got != "pong" {
+		t.Fatalf("disabled plugin replied %q", got)
+	}
+	if p := setEnabled("hi", true); !p.Enabled || !p.Running {
+		t.Fatalf("enabled = %v", p)
+	}
+	if got := reply("/hi"); got != "v2" {
+		t.Fatalf("hi after enable = %q", got)
+	}
+
+	// A hook failure shows as the plugin's error.
+	if got := reply("/boom", "/ping"); got != "pong" {
+		t.Fatalf("got %q", got)
+	}
+	if p := list()["ping"]; !p.Running || !strings.Contains(p.Error, "kaboom") {
+		t.Fatalf("ping = %v", p)
+	}
+
+	// Delete removes the file and the bot.
+	must(ana.bots.DeletePlugin(ctx(), connect.NewRequest(&v1.DeletePluginRequest{Name: "hi"})))
+	if _, err := os.Stat(filepath.Join(dir, "hi.js")); !os.IsNotExist(err) {
+		t.Fatalf("hi.js still there: %v", err)
+	}
+	if _, ok := list()["hi"]; ok {
+		t.Fatal("hi still listed")
+	}
+	for _, b := range must(ana.bots.ListBots(ctx(), connect.NewRequest(&v1.ListBotsRequest{}))).Bots {
+		if b.Id == p.BotId {
+			t.Fatal("hi's bot not deleted")
+		}
+	}
+	if got := reply("/hi", "/ping"); got != "pong" {
+		t.Fatalf("deleted plugin replied %q", got)
+	}
+	_, err = ana.bots.DeletePlugin(ctx(), connect.NewRequest(&v1.DeletePluginRequest{Name: "hi"}))
+	wantCode(t, err, connect.CodeNotFound)
+}

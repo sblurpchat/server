@@ -2212,19 +2212,23 @@ func (s *Server) DeleteBot(ctx context.Context, req *connect.Request[v1.DeleteBo
 		if err != nil {
 			return err
 		}
-		// Keep the row so old messages still have an author, and free the
-		// username: "~" is not allowed in usernames, so this cannot collide.
-		if _, err := t.ExecContext(ctx, "UPDATE members SET deleted = 1, token_hash = NULL, username = username || '~' || id WHERE id = ?", bot.Id); err != nil {
-			return err
-		}
-		seq, err := t.nextSeq()
-		if err != nil {
-			return err
-		}
-		return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberLeft{MemberLeft: bot.Id}}, "", "")
+		return deleteBot(t, bot.Id)
 	})
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&v1.DeleteBotResponse{}), nil
+}
+
+func deleteBot(t *wtx, id string) error {
+	// Keep the row so old messages still have an author, and free the
+	// username: "~" is not allowed in usernames, so this cannot collide.
+	if _, err := t.ExecContext(t.ctx, "UPDATE members SET deleted = 1, token_hash = NULL, username = username || '~' || id WHERE id = ?", id); err != nil {
+		return err
+	}
+	seq, err := t.nextSeq()
+	if err != nil {
+		return err
+	}
+	return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberLeft{MemberLeft: id}}, "", "")
 }

@@ -154,6 +154,16 @@ const (
 	BotServiceRotateBotTokenProcedure = "/sblurp.v1.BotService/RotateBotToken"
 	// BotServiceDeleteBotProcedure is the fully-qualified name of the BotService's DeleteBot RPC.
 	BotServiceDeleteBotProcedure = "/sblurp.v1.BotService/DeleteBot"
+	// BotServiceListPluginsProcedure is the fully-qualified name of the BotService's ListPlugins RPC.
+	BotServiceListPluginsProcedure = "/sblurp.v1.BotService/ListPlugins"
+	// BotServiceInstallPluginProcedure is the fully-qualified name of the BotService's InstallPlugin
+	// RPC.
+	BotServiceInstallPluginProcedure = "/sblurp.v1.BotService/InstallPlugin"
+	// BotServiceSetPluginEnabledProcedure is the fully-qualified name of the BotService's
+	// SetPluginEnabled RPC.
+	BotServiceSetPluginEnabledProcedure = "/sblurp.v1.BotService/SetPluginEnabled"
+	// BotServiceDeletePluginProcedure is the fully-qualified name of the BotService's DeletePlugin RPC.
+	BotServiceDeletePluginProcedure = "/sblurp.v1.BotService/DeletePlugin"
 )
 
 // ServerServiceClient is a client for the sblurp.v1.ServerService service.
@@ -1242,6 +1252,10 @@ type BotServiceClient interface {
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	RotateBotToken(context.Context, *connect.Request[v1.RotateBotTokenRequest]) (*connect.Response[v1.RotateBotTokenResponse], error)
 	DeleteBot(context.Context, *connect.Request[v1.DeleteBotRequest]) (*connect.Response[v1.DeleteBotResponse], error)
+	ListPlugins(context.Context, *connect.Request[v1.ListPluginsRequest]) (*connect.Response[v1.ListPluginsResponse], error)
+	InstallPlugin(context.Context, *connect.Request[v1.InstallPluginRequest]) (*connect.Response[v1.InstallPluginResponse], error)
+	SetPluginEnabled(context.Context, *connect.Request[v1.SetPluginEnabledRequest]) (*connect.Response[v1.SetPluginEnabledResponse], error)
+	DeletePlugin(context.Context, *connect.Request[v1.DeletePluginRequest]) (*connect.Response[v1.DeletePluginResponse], error)
 }
 
 // NewBotServiceClient constructs a client for the sblurp.v1.BotService service. By default, it uses
@@ -1279,15 +1293,43 @@ func NewBotServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(botServiceMethods.ByName("DeleteBot")),
 			connect.WithClientOptions(opts...),
 		),
+		listPlugins: connect.NewClient[v1.ListPluginsRequest, v1.ListPluginsResponse](
+			httpClient,
+			baseURL+BotServiceListPluginsProcedure,
+			connect.WithSchema(botServiceMethods.ByName("ListPlugins")),
+			connect.WithClientOptions(opts...),
+		),
+		installPlugin: connect.NewClient[v1.InstallPluginRequest, v1.InstallPluginResponse](
+			httpClient,
+			baseURL+BotServiceInstallPluginProcedure,
+			connect.WithSchema(botServiceMethods.ByName("InstallPlugin")),
+			connect.WithClientOptions(opts...),
+		),
+		setPluginEnabled: connect.NewClient[v1.SetPluginEnabledRequest, v1.SetPluginEnabledResponse](
+			httpClient,
+			baseURL+BotServiceSetPluginEnabledProcedure,
+			connect.WithSchema(botServiceMethods.ByName("SetPluginEnabled")),
+			connect.WithClientOptions(opts...),
+		),
+		deletePlugin: connect.NewClient[v1.DeletePluginRequest, v1.DeletePluginResponse](
+			httpClient,
+			baseURL+BotServiceDeletePluginProcedure,
+			connect.WithSchema(botServiceMethods.ByName("DeletePlugin")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // botServiceClient implements BotServiceClient.
 type botServiceClient struct {
-	createBot      *connect.Client[v1.CreateBotRequest, v1.CreateBotResponse]
-	listBots       *connect.Client[v1.ListBotsRequest, v1.ListBotsResponse]
-	rotateBotToken *connect.Client[v1.RotateBotTokenRequest, v1.RotateBotTokenResponse]
-	deleteBot      *connect.Client[v1.DeleteBotRequest, v1.DeleteBotResponse]
+	createBot        *connect.Client[v1.CreateBotRequest, v1.CreateBotResponse]
+	listBots         *connect.Client[v1.ListBotsRequest, v1.ListBotsResponse]
+	rotateBotToken   *connect.Client[v1.RotateBotTokenRequest, v1.RotateBotTokenResponse]
+	deleteBot        *connect.Client[v1.DeleteBotRequest, v1.DeleteBotResponse]
+	listPlugins      *connect.Client[v1.ListPluginsRequest, v1.ListPluginsResponse]
+	installPlugin    *connect.Client[v1.InstallPluginRequest, v1.InstallPluginResponse]
+	setPluginEnabled *connect.Client[v1.SetPluginEnabledRequest, v1.SetPluginEnabledResponse]
+	deletePlugin     *connect.Client[v1.DeletePluginRequest, v1.DeletePluginResponse]
 }
 
 // CreateBot calls sblurp.v1.BotService.CreateBot.
@@ -1310,12 +1352,36 @@ func (c *botServiceClient) DeleteBot(ctx context.Context, req *connect.Request[v
 	return c.deleteBot.CallUnary(ctx, req)
 }
 
+// ListPlugins calls sblurp.v1.BotService.ListPlugins.
+func (c *botServiceClient) ListPlugins(ctx context.Context, req *connect.Request[v1.ListPluginsRequest]) (*connect.Response[v1.ListPluginsResponse], error) {
+	return c.listPlugins.CallUnary(ctx, req)
+}
+
+// InstallPlugin calls sblurp.v1.BotService.InstallPlugin.
+func (c *botServiceClient) InstallPlugin(ctx context.Context, req *connect.Request[v1.InstallPluginRequest]) (*connect.Response[v1.InstallPluginResponse], error) {
+	return c.installPlugin.CallUnary(ctx, req)
+}
+
+// SetPluginEnabled calls sblurp.v1.BotService.SetPluginEnabled.
+func (c *botServiceClient) SetPluginEnabled(ctx context.Context, req *connect.Request[v1.SetPluginEnabledRequest]) (*connect.Response[v1.SetPluginEnabledResponse], error) {
+	return c.setPluginEnabled.CallUnary(ctx, req)
+}
+
+// DeletePlugin calls sblurp.v1.BotService.DeletePlugin.
+func (c *botServiceClient) DeletePlugin(ctx context.Context, req *connect.Request[v1.DeletePluginRequest]) (*connect.Response[v1.DeletePluginResponse], error) {
+	return c.deletePlugin.CallUnary(ctx, req)
+}
+
 // BotServiceHandler is an implementation of the sblurp.v1.BotService service.
 type BotServiceHandler interface {
 	CreateBot(context.Context, *connect.Request[v1.CreateBotRequest]) (*connect.Response[v1.CreateBotResponse], error)
 	ListBots(context.Context, *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error)
 	RotateBotToken(context.Context, *connect.Request[v1.RotateBotTokenRequest]) (*connect.Response[v1.RotateBotTokenResponse], error)
 	DeleteBot(context.Context, *connect.Request[v1.DeleteBotRequest]) (*connect.Response[v1.DeleteBotResponse], error)
+	ListPlugins(context.Context, *connect.Request[v1.ListPluginsRequest]) (*connect.Response[v1.ListPluginsResponse], error)
+	InstallPlugin(context.Context, *connect.Request[v1.InstallPluginRequest]) (*connect.Response[v1.InstallPluginResponse], error)
+	SetPluginEnabled(context.Context, *connect.Request[v1.SetPluginEnabledRequest]) (*connect.Response[v1.SetPluginEnabledResponse], error)
+	DeletePlugin(context.Context, *connect.Request[v1.DeletePluginRequest]) (*connect.Response[v1.DeletePluginResponse], error)
 }
 
 // NewBotServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -1349,6 +1415,30 @@ func NewBotServiceHandler(svc BotServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(botServiceMethods.ByName("DeleteBot")),
 		connect.WithHandlerOptions(opts...),
 	)
+	botServiceListPluginsHandler := connect.NewUnaryHandler(
+		BotServiceListPluginsProcedure,
+		svc.ListPlugins,
+		connect.WithSchema(botServiceMethods.ByName("ListPlugins")),
+		connect.WithHandlerOptions(opts...),
+	)
+	botServiceInstallPluginHandler := connect.NewUnaryHandler(
+		BotServiceInstallPluginProcedure,
+		svc.InstallPlugin,
+		connect.WithSchema(botServiceMethods.ByName("InstallPlugin")),
+		connect.WithHandlerOptions(opts...),
+	)
+	botServiceSetPluginEnabledHandler := connect.NewUnaryHandler(
+		BotServiceSetPluginEnabledProcedure,
+		svc.SetPluginEnabled,
+		connect.WithSchema(botServiceMethods.ByName("SetPluginEnabled")),
+		connect.WithHandlerOptions(opts...),
+	)
+	botServiceDeletePluginHandler := connect.NewUnaryHandler(
+		BotServiceDeletePluginProcedure,
+		svc.DeletePlugin,
+		connect.WithSchema(botServiceMethods.ByName("DeletePlugin")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/sblurp.v1.BotService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case BotServiceCreateBotProcedure:
@@ -1359,6 +1449,14 @@ func NewBotServiceHandler(svc BotServiceHandler, opts ...connect.HandlerOption) 
 			botServiceRotateBotTokenHandler.ServeHTTP(w, r)
 		case BotServiceDeleteBotProcedure:
 			botServiceDeleteBotHandler.ServeHTTP(w, r)
+		case BotServiceListPluginsProcedure:
+			botServiceListPluginsHandler.ServeHTTP(w, r)
+		case BotServiceInstallPluginProcedure:
+			botServiceInstallPluginHandler.ServeHTTP(w, r)
+		case BotServiceSetPluginEnabledProcedure:
+			botServiceSetPluginEnabledHandler.ServeHTTP(w, r)
+		case BotServiceDeletePluginProcedure:
+			botServiceDeletePluginHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1382,4 +1480,20 @@ func (UnimplementedBotServiceHandler) RotateBotToken(context.Context, *connect.R
 
 func (UnimplementedBotServiceHandler) DeleteBot(context.Context, *connect.Request[v1.DeleteBotRequest]) (*connect.Response[v1.DeleteBotResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.BotService.DeleteBot is not implemented"))
+}
+
+func (UnimplementedBotServiceHandler) ListPlugins(context.Context, *connect.Request[v1.ListPluginsRequest]) (*connect.Response[v1.ListPluginsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.BotService.ListPlugins is not implemented"))
+}
+
+func (UnimplementedBotServiceHandler) InstallPlugin(context.Context, *connect.Request[v1.InstallPluginRequest]) (*connect.Response[v1.InstallPluginResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.BotService.InstallPlugin is not implemented"))
+}
+
+func (UnimplementedBotServiceHandler) SetPluginEnabled(context.Context, *connect.Request[v1.SetPluginEnabledRequest]) (*connect.Response[v1.SetPluginEnabledResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.BotService.SetPluginEnabled is not implemented"))
+}
+
+func (UnimplementedBotServiceHandler) DeletePlugin(context.Context, *connect.Request[v1.DeletePluginRequest]) (*connect.Response[v1.DeletePluginResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.BotService.DeletePlugin is not implemented"))
 }
