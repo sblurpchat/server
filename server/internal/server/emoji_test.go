@@ -4,10 +4,13 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"encoding/binary"
 	"fmt"
+	"hash/crc32"
 	"image"
 	"image/color"
 	"image/gif"
+	"image/png"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -42,7 +45,7 @@ func TestEmojiName(t *testing.T) {
 // webp is a minimal VP8X header: enough for the type sniff and the size.
 func webp(w, h int) []byte {
 	b := make([]byte, 30)
-	copy(b, "RIFF\x16\x00\x00\x00WEBPVP8X")
+	copy(b, "RIFF\x16\x00\x00\x00WEBPVP8X\x0a")
 	b[24], b[25], b[26] = byte(w-1), byte((w-1)>>8), 0
 	b[27], b[28], b[29] = byte(h-1), byte((h-1)>>8), 0
 	return b
@@ -73,6 +76,69 @@ func TestCheckEmojiImage(t *testing.T) {
 		if _, err := checkEmojiImage(b); err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("want error with %q, got %v", want, err)
 		}
+	}
+}
+
+// pngChunk is one PNG chunk with its CRC.
+func pngChunk(typ string, data []byte) []byte {
+	b := binary.BigEndian.AppendUint32(nil, uint32(len(data)))
+	b = append(append(b, typ...), data...)
+	return binary.BigEndian.AppendUint32(b, crc32.ChecksumIEEE(b[4:]))
+}
+
+// TestSDREmoji feeds HDR-tagged images and checks what would be stored.
+func TestSDREmoji(t *testing.T) {
+	// A 16-bit PNG tagged BT.2100 PQ (cICP 9/16/0/1) with an ICC profile.
+	var buf bytes.Buffer
+	png.Encode(&buf, image.NewNRGBA64(image.Rect(0, 0, 8, 8)))
+	b := buf.Bytes()
+	if b[24] != 16 {
+		t.Fatalf("test PNG is %d-bit", b[24])
+	}
+	hdr := append(append(append(append([]byte(nil), b[:33]...),
+		pngChunk("cICP", []byte{9, 16, 0, 1})...), pngChunk("iCCP", []byte("pq\x00\x00x"))...), b[33:]...)
+	f := checkEmojiFile("pq.png", hdr)
+	if f.res.Error != "" {
+		t.Fatal(f.res.Error)
+	}
+	if f.data[24] != 8 || bytes.Contains(f.data, []byte("cICP")) || bytes.Contains(f.data, []byte("iCCP")) {
+		t.Fatalf("stored PNG is %d-bit, cICP %v, iCCP %v", f.data[24], bytes.Contains(f.data, []byte("cICP")), bytes.Contains(f.data, []byte("iCCP")))
+	}
+	if _, err := png.Decode(bytes.NewReader(f.data)); err != nil {
+		t.Fatal(err)
+	}
+
+	// An animated PNG keeps its frames but loses the color chunks.
+	still := pngBytes(4, 4)
+	apng := append(append(append(append([]byte(nil), still[:33]...), pngChunk("acTL", make([]byte, 8))...), pngChunk("cICP", []byte{9, 16, 0, 1})...), still[33:]...)
+	f = checkEmojiFile("anim.png", apng)
+	if f.res.Error != "" || !bytes.Contains(f.data, []byte("acTL")) || bytes.Contains(f.data, []byte("cICP")) {
+		t.Fatalf("APNG: %q, stored %q", f.res.Error, f.data)
+	}
+	if f = checkEmojiFile("anim16.png", append(append(append([]byte(nil), b[:33]...), pngChunk("acTL", make([]byte, 8))...), b[33:]...)); !strings.Contains(f.res.Error, "16-bit") {
+		t.Fatalf("16-bit APNG: %q", f.res.Error)
+	}
+
+	// A WebP loses its ICC profile and the flag that announces it.
+	w := webp(16, 16)
+	w[20] = 0x20
+	w = append(w, "ICCP\x03\x00\x00\x00pq\x00\x00"...)
+	binary.LittleEndian.PutUint32(w[4:], uint32(len(w)-8))
+	f = checkEmojiFile("w.webp", w)
+	if f.res.Error != "" || bytes.Contains(f.data, []byte("ICCP")) || f.data[20] != 0 || binary.LittleEndian.Uint32(f.data[4:]) != uint32(len(f.data)-8) {
+		t.Fatalf("WebP: %q, stored %q", f.res.Error, f.data)
+	}
+
+	// A GIF stays animated.
+	f = checkEmojiFile("g.gif", gifBytes(8, 8))
+	if g, err := gif.DecodeAll(bytes.NewReader(f.data)); err != nil || len(g.Image) != 2 {
+		t.Fatalf("GIF: %v", err)
+	}
+
+	// Formats it cannot decode are rejected, not stored as they are.
+	avif := []byte("\x00\x00\x00\x1cftypavif\x00\x00\x00\x00avifmif1miaf")
+	if f = checkEmojiFile("hdr.avif", avif); f.res.Status != v1.EmojiUploadStatus_EMOJI_UPLOAD_STATUS_REJECTED || !strings.Contains(f.res.Error, "not a PNG") {
+		t.Fatalf("AVIF: %v %q", f.res.Status, f.res.Error)
 	}
 }
 

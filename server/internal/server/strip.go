@@ -17,9 +17,9 @@ func stripMeta(b []byte) []byte {
 	case len(b) > 4 && b[0] == 0xff && b[1] == 0xd8:
 		return stripJPEG(b)
 	case len(b) > 8 && string(b[:8]) == "\x89PNG\r\n\x1a\n":
-		return stripPNG(b)
+		return stripPNG(b, false)
 	case len(b) > 12 && string(b[:4]) == "RIFF" && string(b[8:12]) == "WEBP":
-		return stripWebP(b)
+		return stripWebP(b, false)
 	case len(b) > 13 && (string(b[:6]) == "GIF87a" || string(b[:6]) == "GIF89a"):
 		return stripGIF(b)
 	case len(b) > 12 && string(b[4:8]) == "ftyp":
@@ -116,7 +116,9 @@ func exifOrientation(v int) []byte {
 		0, 0, 0, 0} // no next IFD
 }
 
-func stripPNG(b []byte) []byte {
+// stripPNG drops text and EXIF chunks and, with color, every chunk that
+// changes how colors render (ICC, cICP, HDR mastering, gamma).
+func stripPNG(b []byte, color bool) []byte {
 	out := append([]byte(nil), b[:8]...)
 	for i := 8; i+12 <= len(b); {
 		n := int(binary.BigEndian.Uint32(b[i:]))
@@ -126,6 +128,10 @@ func stripPNG(b []byte) []byte {
 		}
 		switch string(b[i+4 : i+8]) {
 		case "eXIf", "tEXt", "zTXt", "iTXt", "tIME":
+		case "iCCP", "cICP", "mDCV", "cLLI", "gAMA", "cHRM", "sRGB":
+			if !color {
+				out = append(out, b[i:end]...)
+			}
 		default:
 			out = append(out, b[i:end]...)
 		}
@@ -138,8 +144,8 @@ func stripPNG(b []byte) []byte {
 }
 
 // stripWebP drops the EXIF and XMP chunks, clears their VP8X flags and fixes
-// the RIFF size. The ICCP color profile stays.
-func stripWebP(b []byte) []byte {
+// the RIFF size. The ICCP color profile stays unless color is set.
+func stripWebP(b []byte, color bool) []byte {
 	le := binary.LittleEndian
 	n := int(le.Uint32(b[4:])) + 8
 	if n > len(b) || n < 12 {
@@ -158,6 +164,10 @@ func stripWebP(b []byte) []byte {
 		end := min(i+8+sz+sz&1, n) // chunks are padded to even length
 		switch string(b[i : i+4]) {
 		case "EXIF", "XMP ":
+		case "ICCP":
+			if !color {
+				out = append(out, b[i:end]...)
+			}
 		case "VP8X":
 			vp8x = len(out)
 			fallthrough
@@ -168,6 +178,9 @@ func stripWebP(b []byte) []byte {
 	}
 	if vp8x >= 0 && vp8x+9 <= len(out) {
 		out[vp8x+8] &^= 0x0c // EXIF and XMP present flags
+		if color {
+			out[vp8x+8] &^= 0x20 // ICC present flag
+		}
 	}
 	le.PutUint32(out[4:], uint32(len(out)-8))
 	return out

@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"image/draw"
+	"image/png"
 	"io"
 	"mime"
 	"net/http"
@@ -81,6 +83,49 @@ func checkEmojiImage(b []byte) (string, error) {
 		return "", fmt.Errorf("%dx%d is larger than %dx%d", w, h, maxEmojiSide, maxEmojiSide)
 	}
 	return ct, nil
+}
+
+// sdrEmoji returns the image as plain 8-bit SDR sRGB. HDR emoji (PQ or HLG
+// through cICP or an ICC profile, or 16-bit depth) glare far brighter than
+// the text around them on HDR screens. A still PNG and a GIF are decoded and
+// encoded again, which drops every color chunk; an animated PNG, a GIF (ICC
+// rides in an application extension) and a WebP (8-bit only) lose their
+// color chunks without a re-encode, so animations stay.
+func sdrEmoji(ct string, b []byte) ([]byte, error) {
+	var out bytes.Buffer
+	switch ct {
+	case "image/png":
+		if bytes.Contains(b, []byte("acTL")) { // animated: Go cannot encode APNG
+			if b[24] == 16 {
+				return nil, errors.New("16-bit animated PNG; save it as 8-bit")
+			}
+			return orErr(stripPNG(b, true), "cannot read the PNG")
+		}
+		img, err := png.Decode(bytes.NewReader(b))
+		if err != nil {
+			return nil, errors.New("cannot decode the PNG")
+		}
+		switch img.(type) {
+		case *image.Gray16, *image.RGBA64, *image.NRGBA64:
+			n := image.NewNRGBA(img.Bounds())
+			draw.Draw(n, n.Bounds(), img, img.Bounds().Min, draw.Src)
+			img = n
+		}
+		err = (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(&out, img)
+		return out.Bytes(), err
+	case "image/gif":
+		return orErr(stripGIF(b), "cannot read the GIF")
+	case "image/webp":
+		return orErr(stripWebP(b, true), "cannot read the WebP")
+	}
+	return nil, errors.New("not a PNG, GIF or WebP image")
+}
+
+func orErr(b []byte, msg string) ([]byte, error) {
+	if b == nil {
+		return nil, errors.New(msg)
+	}
+	return b, nil
 }
 
 // emojiList is GET /emoji's body for one emoji_version, built once.
@@ -283,6 +328,9 @@ func checkEmojiFile(file string, data []byte) emojiFile {
 		err = errors.New("no usable name; use a-z, 0-9, - and _")
 	} else {
 		f.ct, err = checkEmojiImage(data)
+	}
+	if err == nil {
+		f.data, err = sdrEmoji(f.ct, data)
 	}
 	if err != nil {
 		f.res.Status, f.res.Error = v1.EmojiUploadStatus_EMOJI_UPLOAD_STATUS_REJECTED, err.Error()
