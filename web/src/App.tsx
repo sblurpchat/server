@@ -58,7 +58,7 @@ import {
   leaveChannel,
   peekChannel,
 } from "./store";
-import { Avatar, CommunityIcon, Dialog, EmojiPicker, emojiChar, Icon, Pop } from "./ui";
+import { Avatar, CommunityIcon, Dialog, EmojiPicker, emojiChar, Icon, Pop, Resizer } from "./ui";
 
 export function App() {
   const auth = useApp((s) => s.auth);
@@ -330,6 +330,7 @@ function Sidebar({ c }: { c: Community }) {
   const admin = (c.me?.role ?? 0) >= MemberRole.ADMIN;
   return (
     <aside className="sidebar" aria-label={name}>
+      <Resizer panel="side" label="Resize sidebar" />
       <button className="side-head" aria-haspopup="menu" onClick={(e) => setMenu(e.currentTarget.getBoundingClientRect())}>
         <span className="truncate">{name}</span>
         <Icon name="chevron" size={18} />

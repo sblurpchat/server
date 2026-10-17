@@ -788,3 +788,31 @@ export function memberGroups(members: Member[]): { title: string; members: Membe
 
 /** "1 reply", "3 replies", "1,204 members". */
 export const count = (n: number, one: string, many: string) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
+
+// ---------------------------------------------------------------------------
+// Resizable panels: the sidebar grows to the right, the side pane to the left
+// ---------------------------------------------------------------------------
+
+export interface Panel {
+  def: number;
+  min: number;
+  max: number;
+  dir: 1 | -1; // +1 when moving the handle right makes the panel wider
+}
+export const PANELS = {
+  side: { def: 260, min: 200, max: 420, dir: 1 },
+  pane: { def: 340, min: 280, max: 640, dir: -1 },
+} satisfies Record<string, Panel>;
+
+export const clampWidth = (p: Panel, w: number) => Math.round(Math.min(p.max, Math.max(p.min, w)));
+
+// New width for a key on the separator, or null when the key is not ours.
+export function keyWidth(p: Panel, w: number, key: string, big = false): number | null {
+  const step = big ? 64 : 16;
+  if (key === "ArrowRight") return clampWidth(p, w + step * p.dir);
+  if (key === "ArrowLeft") return clampWidth(p, w - step * p.dir);
+  if (key === "Home") return p.min;
+  if (key === "End") return p.max;
+  if (key === "Enter") return p.def;
+  return null;
+}

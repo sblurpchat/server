@@ -59,6 +59,9 @@ import {
   type Community,
   count,
   trimList,
+  PANELS,
+  clampWidth,
+  keyWidth,
 } from "./logic";
 
 const T0 = new Date(2026, 9, 16, 10, 0).getTime();
@@ -698,5 +701,25 @@ describe("trimList", () => {
     expect(trimList(loading)).toBe(loading);
     const short = { items: items.slice(0, 100), hasMore: false };
     expect(trimList(short)).toBe(short);
+  });
+});
+
+describe("panel resize", () => {
+  const { side, pane } = PANELS;
+  it("clamps drags to the panel's range", () => {
+    expect(clampWidth(side, 50)).toBe(200);
+    expect(clampWidth(side, 9999)).toBe(420);
+    expect(clampWidth(side, 300.6)).toBe(301);
+  });
+  it("arrow keys move the edge the way the arrow points", () => {
+    expect(keyWidth(side, 260, "ArrowRight")).toBe(276);
+    expect(keyWidth(side, 260, "ArrowLeft")).toBe(244);
+    expect(keyWidth(pane, 340, "ArrowLeft")).toBe(356); // pane edge is on its left
+    expect(keyWidth(pane, 340, "ArrowRight", true)).toBe(280);
+    expect(keyWidth(side, 410, "ArrowRight")).toBe(420);
+    expect(keyWidth(side, 300, "Home")).toBe(200);
+    expect(keyWidth(pane, 300, "End")).toBe(640);
+    expect(keyWidth(side, 300, "Enter")).toBe(260);
+    expect(keyWidth(side, 300, "a")).toBeNull();
   });
 });

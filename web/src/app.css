@@ -582,12 +582,12 @@ kbd {
 }
 .app {
   display: grid;
-  grid-template-columns: 72px 260px minmax(0, 1fr);
+  grid-template-columns: 72px var(--side-w, 260px) minmax(0, 1fr);
   height: 100dvh;
   overflow: hidden;
 }
 .app[data-pane="true"] {
-  grid-template-columns: 72px 260px minmax(0, 1fr) clamp(320px, 26vw, 380px);
+  grid-template-columns: 72px var(--side-w, 260px) minmax(0, 1fr) var(--pane-w, 340px);
 }
 .drawer {
   display: contents;
@@ -713,10 +713,42 @@ kbd {
   visibility: visible;
 }
 
+/* Drag handles on the sidebar and side pane edges (desktop only). */
+.resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  z-index: 5;
+  cursor: col-resize;
+  touch-action: none;
+}
+.resizer-side {
+  right: -5px;
+}
+.resizer-pane {
+  left: -5px;
+}
+.resizer::after {
+  content: "";
+  position: absolute;
+  inset: 0 3px;
+  border-radius: 2px;
+}
+.resizer:hover::after,
+.resizer:active::after,
+.resizer:focus-visible::after {
+  background: var(--raspberry);
+}
+.resizer:focus-visible {
+  outline: none;
+}
+
 /* --------------------------------------------------------------- sidebar */
 
 .sidebar {
   display: flex;
+  position: relative;
   flex-direction: column;
   min-height: 0;
   background: var(--frost);
@@ -2588,6 +2620,9 @@ li.sw-empty {
   .app,
   .app[data-pane="true"] {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .resizer {
+    display: none;
   }
   .drawer {
     display: none;

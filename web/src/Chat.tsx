@@ -51,7 +51,7 @@ import {
   joinChannel,
   leaveChannel,
 } from "./store";
-import { Avatar, Dialog, EMOJI, EmojiPicker, emojiChar, Icon, Markdown, Pop } from "./ui";
+import { Avatar, Dialog, EMOJI, EmojiPicker, emojiChar, Icon, Markdown, Pop, Resizer } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
 const openProfile = (url: string, memberId: string, el: HTMLElement) =>
@@ -885,6 +885,7 @@ export function RightPane() {
   const title = pane.t === "thread" ? "Thread" : pane.t === "members" ? "Members" : "Search";
   return (
     <aside className="pane" aria-label={title}>
+      <Resizer panel="pane" label="Resize side pane" />
       <header className="pane-head">
         <div>
           <h2>{title}</h2>

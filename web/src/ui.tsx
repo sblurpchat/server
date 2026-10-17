@@ -1,7 +1,7 @@
 // Shared UI primitives: icons, avatars, dialogs, popovers, the emoji picker and the markdown renderer.
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Presence, type Member } from "./gen/sblurp/v1/sblurp_pb";
-import { initials, onWhite, parseMarkdown, swatch, type Inline } from "./logic";
+import { PANELS, clampWidth, initials, keyWidth, onWhite, parseMarkdown, swatch, type Inline } from "./logic";
 import { set } from "./store";
 
 // ---------------------------------------------------------------------------
@@ -292,5 +292,65 @@ export function Markdown({
         ),
       )}
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Drag handle that sets --side-w or --pane-w on .app and remembers the width
+// ---------------------------------------------------------------------------
+
+const load = (k: string) => {
+  try {
+    return Number(localStorage.getItem(k)) || null;
+  } catch {
+    return null;
+  }
+};
+
+export function Resizer({ panel, label }: { panel: keyof typeof PANELS; label: string }) {
+  const p = PANELS[panel];
+  const key = `sblurp.width.${panel}`;
+  const ref = useRef<HTMLDivElement>(null);
+  const [w, setW] = useState(() => clampWidth(p, load(key) ?? p.def));
+  useLayoutEffect(() => {
+    ref.current?.closest<HTMLElement>(".app")?.style.setProperty(`--${panel}-w`, `${w}px`);
+    try {
+      if (w === p.def) localStorage.removeItem(key);
+      else localStorage.setItem(key, String(w));
+    } catch {
+      /* private mode: the width just isn't remembered */
+    }
+  }, [w, panel, key, p.def]);
+  return (
+    <div
+      ref={ref}
+      className={`resizer resizer-${panel}`}
+      role="separator"
+      aria-orientation="vertical"
+      aria-label={label}
+      aria-valuenow={w}
+      aria-valuemin={p.min}
+      aria-valuemax={p.max}
+      tabIndex={0}
+      onDoubleClick={() => setW(p.def)}
+      onKeyDown={(e) => {
+        const n = keyWidth(p, w, e.key, e.shiftKey);
+        if (n === null) return;
+        e.preventDefault();
+        setW(n);
+      }}
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        e.preventDefault(); // no text selection while dragging
+        const el = e.currentTarget;
+        const x0 = e.clientX;
+        const w0 = w;
+        el.setPointerCapture(e.pointerId);
+        el.onpointermove = (m) => setW(clampWidth(p, w0 + (m.clientX - x0) * p.dir));
+        el.onpointerup = el.onlostpointercapture = () => {
+          el.onpointermove = el.onpointerup = el.onlostpointercapture = null;
+        };
+      }}
+    />
   );
 }
