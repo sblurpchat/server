@@ -113,6 +113,9 @@ function useShortcuts() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         set({ modal: s.modal?.t === "switcher" ? null : { t: "switcher" } });
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "/") {
+        e.preventDefault();
+        set({ modal: s.modal?.t === "keys" ? null : { t: "keys" } });
       } else if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown") && !s.modal) {
         e.preventDefault();
         moveChannel(e.key === "ArrowUp" ? -1 : 1, e.shiftKey);
@@ -756,6 +759,8 @@ function Modals() {
       return <NewMessage />;
     case "browse":
       return <BrowseChannels />;
+    case "keys":
+      return <KeyboardShortcuts />;
     case "profile":
       return <EditProfile />;
     case "remove":
@@ -988,6 +993,12 @@ function Settings() {
         {denied && <p className="error small">Notifications are blocked for this site. Allow them in your browser's site settings, then turn this on.</p>}
       </section>
       <section>
+        <h3>Keyboard</h3>
+        <button className="btn small" aria-keyshortcuts={`${MOD === "⌘" ? "Meta" : "Control"}+/`} onClick={() => set({ modal: { t: "keys" } })}>
+          Keyboard shortcuts <kbd>{MOD}</kbd> <kbd>/</kbd>
+        </button>
+      </section>
+      <section>
         <h3>Account</h3>
         <div className="account-row">
           <span>
@@ -1175,6 +1186,53 @@ function CommunityDialog({ kind }: { kind: "info" | "invite" | "leave" }) {
           </button>
         </div>
       )}
+    </Dialog>
+  );
+}
+
+const MOD = /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl";
+const KEYS: [keys: string[][], what: string][] = [
+  [[[MOD, "K"]], "Jump to a channel or person"],
+  [[[MOD, "/"]], "Show keyboard shortcuts"],
+  [[["Alt", "↑"], ["Alt", "↓"]], "Previous or next channel"],
+  [[["Alt", "Shift", "↑"], ["Alt", "Shift", "↓"]], "Previous or next unread channel"],
+  [[["Shift", "Esc"]], "Mark everything in this community as read"],
+  [[["Esc"]], "Cancel an edit, close the side panel or menu"],
+  [[["Enter"]], "Send a message"],
+  [[["Shift", "Enter"]], "New line in a message"],
+  [[["↑"]], "Edit your last message, from an empty message box"],
+  [[["Tab"]], "Move to the message list; Tab again reaches a message's actions"],
+  [[["↑"], ["↓"]], "Move between messages in the list"],
+  [[["Home"], ["End"]], "First or last loaded message"],
+  [[["Alt", "Shift", "↑"], ["Alt", "Shift", "↓"]], "Move the focused community up or down the rail"],
+];
+
+function KeyboardShortcuts() {
+  return (
+    <Dialog label="Keyboard shortcuts" className="keys">
+      <header className="dialog-head">
+        <h2>Keyboard shortcuts</h2>
+        <button className="icon-btn" aria-label="Close" onClick={() => set({ modal: null })}>
+          <Icon name="x" />
+        </button>
+      </header>
+      <dl className="keys-list">
+        {KEYS.map(([combos, what]) => (
+          <div key={what}>
+            <dt>
+              {combos.map((c, i) => (
+                <span key={i}>
+                  {i > 0 && <span className="muted"> or </span>}
+                  {c.map((k) => (
+                    <kbd key={k}>{k}</kbd>
+                  ))}
+                </span>
+              ))}
+            </dt>
+            <dd>{what}</dd>
+          </div>
+        ))}
+      </dl>
     </Dialog>
   );
 }

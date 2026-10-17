@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from "react";
 import { useCountdown } from "./App";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
 import {
@@ -238,7 +238,7 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
           New messages above <Icon name="chevron" size={14} />
         </button>
       )}
-      <div className="scroller" ref={scroller} onScroll={check} tabIndex={-1}>
+      <div className="scroller" ref={scroller} onScroll={check} onKeyDown={moveFocus} tabIndex={0} aria-label="Message list. Arrow keys move between messages.">
         <div className="msgs" role="log" aria-live="polite" aria-relevant="additions" aria-label="Messages">
           {list?.error ? (
             <div className="list-note">
@@ -334,6 +334,19 @@ function TypingLine({ c, k }: { c: Community; k: string }) {
 // One message
 // ---------------------------------------------------------------------------
 
+/** Up, Down, Home and End move focus between messages, so Tab can then reach a message's actions. */
+function moveFocus(e: KeyboardEvent<HTMLElement>) {
+  const t = e.target as HTMLElement;
+  if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(e.key) || (t !== e.currentTarget && !t.matches(".msg"))) return;
+  const all = [...e.currentTarget.querySelectorAll<HTMLElement>(".msg")];
+  const i = all.indexOf(t);
+  const next =
+    e.key === "Home" ? all[0] : e.key === "End" || i < 0 ? all.at(-1) : all[i + (e.key === "ArrowUp" ? -1 : 1)];
+  if (!next) return;
+  e.preventDefault();
+  next.focus();
+}
+
 function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: Message; head: boolean; inThread: boolean; fresh: boolean; focus?: boolean }) {
   const c = useC();
   const editing = useApp((s) => s.editing === m.id);
@@ -356,8 +369,8 @@ function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: 
   const failed = pending && c.failed[m.clientId];
   const name = author?.displayName || author?.username || "Unknown member";
   const h24 = useApp((s) => s.look.clock === "24");
-  const paper = useApp((s) => s.paper);
-  const color = nameColor(author, c.roles, paper);
+  const surfaces = useApp((s) => s.surfaces);
+  const color = nameColor(author, c.roles, surfaces);
   const time = new Date(Number(m.createdAtMs));
   const timeEl = (
     <time dateTime={time.toISOString()} title={time.toLocaleString()}>
@@ -366,7 +379,7 @@ function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: 
   );
   if (m.deleted) {
     return (
-      <article className="msg deleted" data-head={head}>
+      <article className="msg deleted" data-head={head} tabIndex={-1}>
         <div className="msg-gutter">{head && <span className="avatar-ghost" />}</div>
         <div className="msg-body">
           <p className="muted">This message was deleted.</p>
@@ -386,6 +399,7 @@ function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: 
       data-fresh={fresh}
       data-focus={focus}
       data-editing={editing}
+      tabIndex={-1}
       aria-label={`${name}, ${timeLabel(Number(m.createdAtMs), h24)}`}
     >
       <div className="msg-gutter">
@@ -443,7 +457,7 @@ function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: 
                   key={r.emoji}
                   className="reaction"
                   aria-pressed={me}
-                  aria-label={label}
+                  aria-label={`${emojiChar(r.emoji)} ${r.memberIds.length}, ${label}`}
                   data-tip={label}
                   data-emoji={r.emoji}
                   // Who reacted: hover tooltip on desktop, right-click or press-and-hold for the full list.

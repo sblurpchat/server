@@ -18,6 +18,7 @@ import {
 import {
   THEMES,
   browseList,
+  swatch,
   sentence,
   memberRoles,
   contrast,
@@ -593,6 +594,7 @@ describe("appearance", () => {
       ["text", "paper"],
       ["ink", "frost"],
       ["ink", "selected"],
+      ["graphite", "selected"],
       ["text", "msg-hover"],
       ["text", "mention-bg"],
       ["graphite", "paper"],
@@ -672,5 +674,11 @@ describe("sentence", () => {
     expect(sentence("tell us about your press")).toBe("Tell us about your press.");
     expect(sentence(" Answer the question first! ")).toBe("Answer the question first!");
     expect(sentence("")).toBe("");
+  });
+});
+
+describe("swatch", () => {
+  it("gives every avatar fill 4.5:1 against white initials", () => {
+    for (let i = 0; i < 200; i++) expect(contrast(swatch(`m${i}`), "#ffffff")).toBeGreaterThanOrEqual(4.5);
   });
 });

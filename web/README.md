@@ -7,7 +7,7 @@ pnpm dev          # http://localhost:5173  (?fake=1 for the built-in fake backen
 pnpm typecheck
 pnpm test         # vitest: logic.ts and auth.ts
 pnpm build
-pnpm e2e          # fake-mode smoke test on 127.0.0.1:5198
+pnpm e2e          # fake-mode smoke test on 127.0.0.1:5198, then an axe-core scan (light, dark, 1280px, 390px) on :5197
 pnpm screens      # light/dark x desktop/mobile PNGs into ../artifacts/web/
 ```
 
@@ -32,11 +32,15 @@ add `&quiet=1` to turn that off (the scripts do). `&signedout=1` shows sign-in.
 ## Dependencies beyond the allowed list
 
 - `@types/react`, `@types/react-dom`: React ships no type declarations; `tsc` needs them. Types only, nothing in the bundle.
+- `axe-core` (dev): the accessibility scan in `scripts/a11y.mjs`. It fails on serious or critical violations. Not in the bundle.
 
 ## Decisions
 
 Things DESIGN.md and ARCHITECTURE.md left open, and what I picked.
 
+- **Keyboard**: Cmd/Ctrl+/ opens the shortcuts sheet (also in Settings). The message list is one tab stop; arrow keys, Home and End move between messages.
+- **Avatar and community initials** are drawn with CSS `content: attr(data-i)`. They repeat the button's name, so screen readers and the label-in-name check skip them.
+- **Role name colors** are fitted to 4.5:1 against the paper, hover and mention backgrounds, not just the paper.
 - **Routing** is `#/c/<host>/<channel-id>` with `pushState`, so back/forward walk channel history. A community with no channel in the hash opens its last channel.
 - **Message list** uses `flex-direction: column-reverse`. The browser keeps it pinned to the bottom and holds position when older pages prepend, with no scroll math. Thread panes top-align instead.
 - **Read state**: a channel is marked read only when the list is scrolled to the bottom, the tab is visible and focused. Each seq is sent to the server once.

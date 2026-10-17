@@ -1,7 +1,7 @@
 // Shared UI primitives: icons, avatars, dialogs, popovers, the emoji picker and the markdown renderer.
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Presence, type Member } from "./gen/sblurp/v1/sblurp_pb";
-import { initials, parseMarkdown, swatch, type Inline } from "./logic";
+import { initials, onWhite, parseMarkdown, swatch, type Inline } from "./logic";
 import { set } from "./store";
 
 // ---------------------------------------------------------------------------
@@ -56,13 +56,11 @@ export function Avatar({ m, size = 36, presence = false }: { m?: Member; size?: 
   const name = m?.displayName || m?.username || "?";
   const p = m?.presence;
   return (
-    <span className="avatar" style={{ width: size, height: size, ["--r" as string]: `${Math.round(size * 0.22)}px` }}>
+    <span className="avatar" aria-hidden="true" style={{ width: size, height: size, ["--r" as string]: `${Math.round(size * 0.22)}px` }}>
       {m?.avatarUrl ? (
         <img src={m.avatarUrl} alt="" width={size} height={size} />
       ) : (
-        <span className="avatar-initials" style={{ background: swatch(m?.id ?? name), fontSize: Math.round(size * 0.4) }}>
-          {initials(name)}
-        </span>
+        <span className="avatar-initials" data-i={initials(name)} style={{ background: swatch(m?.id ?? name), fontSize: Math.round(size * 0.4) }} />
       )}
       {presence && (
         <span
@@ -76,8 +74,8 @@ export function Avatar({ m, size = 36, presence = false }: { m?: Member; size?: 
 
 export function CommunityIcon({ name, icon, accent, size = 48 }: { name: string; icon?: string; accent?: string; size?: number }) {
   return (
-    <span className="cicon" style={{ width: size, height: size, background: accent || "var(--raspberry)", fontSize: Math.round(size * 0.34) }}>
-      {icon ? <img src={icon} alt="" /> : initials(name)}
+    <span className="cicon" aria-hidden="true" data-i={icon ? undefined : initials(name)} style={{ width: size, height: size, background: accent ? onWhite(accent) : "var(--accent-fill)", fontSize: Math.round(size * 0.34) }}>
+      {icon && <img src={icon} alt="" />}
     </span>
   );
 }

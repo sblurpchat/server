@@ -17,7 +17,7 @@
   --graphite: light-dark(#5d6274, #9499ad);
   --line: light-dark(#e1e5ee, #2a2d3e);
   --hover: light-dark(#e4e8f0, #22253a);
-  --selected: light-dark(#dce2fd, #2b3366);
+  --selected: light-dark(#dce2fd, #262d5a);
   --text: light-dark(#1a1c2b, #e7e9f2);
   --msg-hover: light-dark(#f6f7fa, #222435);
   --mention-bg: light-dark(#fdeef0, #33232f);
@@ -60,7 +60,7 @@
   --graphite: #8d9bb0;
   --line: #24334a;
   --hover: #1d2a3b;
-  --selected: #24395e;
+  --selected: #1f3154;
   --text: #c8d2e0;
   --msg-hover: #1b2736;
   --mention-bg: #33263a;
@@ -433,7 +433,7 @@ kbd {
   padding: 0 5px;
   border-radius: 4px;
   background: var(--selected);
-  color: var(--raspberry);
+  color: color-mix(in srgb, var(--raspberry) 60%, var(--ink));
   vertical-align: 1px;
   margin-left: 6px;
 }
@@ -512,6 +512,11 @@ kbd {
   display: inline-block;
   flex: none;
   --ring: var(--paper);
+}
+/* Initials are decoration (the button carries the name), so they live in CSS where name checks skip them. */
+.avatar-initials::before,
+.cicon[data-i]::before {
+  content: attr(data-i);
 }
 .avatar > img,
 .avatar-initials {
@@ -1916,8 +1921,9 @@ li.sw-empty {
   color: var(--graphite);
   white-space: pre-wrap;
 }
+/* Pulled a little toward the text color so it stays readable on its own tint, hover and mention rows. */
 .mention {
-  color: var(--raspberry);
+  color: color-mix(in srgb, var(--raspberry) 75%, var(--text));
   background: color-mix(in srgb, var(--raspberry) 12%, transparent);
   border-radius: 4px;
   padding: 0 3px;
@@ -1927,7 +1933,7 @@ li.sw-empty {
   background: color-mix(in srgb, var(--raspberry) 22%, transparent);
 }
 .mention.me {
-  color: var(--cherry-text);
+  color: color-mix(in srgb, var(--cherry-text) 65%, var(--text));
   background: color-mix(in srgb, var(--cherry) 14%, transparent);
 }
 /* "(edited)" follows the last line of text, like Slack. */
@@ -2524,7 +2530,7 @@ li.sw-empty {
   background: var(--hover);
 }
 .member[data-off="true"] {
-  opacity: 0.6;
+  opacity: 0.66;
 }
 .member-text {
   display: grid;
@@ -3109,4 +3115,35 @@ li.sw-empty {
 }
 .access-list .toggle-row {
   margin-top: 12px;
+}
+
+/* Keyboard */
+.msg:focus-visible {
+  outline: 2px solid var(--raspberry);
+  outline-offset: -2px;
+}
+.scroller:focus-visible {
+  outline: 2px solid var(--raspberry);
+  outline-offset: -2px;
+}
+.keys-list {
+  display: grid;
+  margin: 0;
+}
+.keys-list div {
+  display: grid;
+  grid-template-columns: minmax(150px, 2fr) 3fr;
+  gap: 16px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.keys-list div:last-child {
+  border-bottom: 0;
+}
+.keys-list dt kbd + kbd {
+  margin-left: 3px;
+}
+.keys-list dd {
+  margin: 0;
 }

@@ -330,12 +330,12 @@ export const timeLabel = (ms: number, h24 = false) =>
 export const memberRoles = (m: Member | undefined, roles: Role[]) => (m ? roles.filter((r) => m.roleIds.includes(r.id)) : []);
 
 const fitted = new Map<string, string>();
-/** Name color from a member's first colored role, made readable on the paper color. "" when none. */
-export function nameColor(m: Member | undefined, roles: Role[], paper: string) {
+/** Name color from a member's first colored role, made readable on every surface a message sits on. "" when none. */
+export function nameColor(m: Member | undefined, roles: Role[], surfaces: string[]) {
   const color = memberRoles(m, roles).find((r) => r.color)?.color;
-  if (!color || !paper) return "";
-  const k = `${color} ${paper}`;
-  if (!fitted.has(k)) fitted.set(k, fitContrast(color, [paper], 4.5));
+  if (!color || !surfaces.length) return "";
+  const k = `${color} ${surfaces.join()}`;
+  if (!fitted.has(k)) fitted.set(k, fitContrast(color, surfaces, 4.5));
   return fitted.get(k)!;
 }
 
@@ -695,11 +695,15 @@ export const initials = (name: string) =>
 
 /** Stable soda-fountain color for a name, used for avatars without images. */
 const SWATCHES = ["#3550F0", "#E8344E", "#7B5CE6", "#D9822B", "#0F9D8A", "#2C8BD6", "#C2457A", "#4F7A28"];
+let swatchFills: string[] | null = null;
 export function swatch(seed: string): string {
   let h = 0;
   for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return SWATCHES[h % SWATCHES.length];
+  swatchFills ??= SWATCHES.map(onWhite);
+  return swatchFills[h % SWATCHES.length];
 }
+/** A fill dark enough for white initials or labels on it (4.5:1). */
+export const onWhite = (c: string) => fitContrast(c, ["#ffffff"], 4.5);
 
 /** DM label: the other people's names. */
 export function channelLabel(ch: Channel, members: Record<string, Member>, meId?: string): string {

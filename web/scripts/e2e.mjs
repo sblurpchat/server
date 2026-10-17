@@ -232,6 +232,25 @@ try {
   await page.getByRole("button", { name: "Browse channels" }).waitFor();
   await page.keyboard.press("Escape");
 
+  // Keyboard: Ctrl+/ opens the shortcuts sheet; arrow keys, Home and End move focus between messages.
+  await page.keyboard.press("Control+/");
+  await page.getByRole("dialog", { name: "Keyboard shortcuts" }).locator("dt").first().waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog", { name: "Keyboard shortcuts" }).waitFor({ state: "hidden" });
+  await page.locator(".channel .scroller").focus();
+  const focusedAt = () =>
+    page.evaluate(() => {
+      const all = [...document.querySelectorAll(".channel .scroller .msg")];
+      return `${all.indexOf(document.activeElement)}/${all.length}`;
+    });
+  await page.keyboard.press("End");
+  const [atEnd, n] = (await focusedAt()).split("/").map(Number);
+  await page.keyboard.press("ArrowUp");
+  const up = Number((await focusedAt()).split("/")[0]);
+  await page.keyboard.press("Home");
+  const home = Number((await focusedAt()).split("/")[0]);
+  if (atEnd !== n - 1 || up !== n - 2 || home !== 0) throw new Error(`message focus End/Up/Home went to ${atEnd}, ${up}, ${home} of ${n}`);
+
   // An invite link fills in the server and the code; a bad code is refused.
   await page.getByRole("button", { name: "Add a community" }).click();
   await page.getByLabel("Community address or invite link").fill("https://letterpress.club/invite/WRONG");
@@ -251,7 +270,7 @@ try {
   await page.locator(".side-head", { hasText: "Letterpress Club" }).waitFor();
 
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions, shortcuts sheet, message keyboard focus)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message, errors.join("; "));

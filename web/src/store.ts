@@ -92,6 +92,7 @@ export type Modal =
   | { t: "community"; tab?: SettingsTab }
   | { t: "newdm" }
   | { t: "browse" }
+  | { t: "keys" }
   | { t: "profile" }
   | { t: "remove"; url: string; memberId: string; ban: boolean }
   | { t: "lightbox"; src: string; name: string };
@@ -109,7 +110,7 @@ export interface State {
   popover: { url: string; memberId: string; rect: DOMRect } | null;
   look: Appearance;
   /** The page background as rgb(), for fitting role colors to it. */
-  paper: string;
+  surfaces: string[]; // paper, msg-hover, mention-bg: what message text sits on
   notify: boolean;
   drawer: boolean;
   collapsed: Record<string, boolean>;
@@ -131,7 +132,7 @@ let state: State = {
   modal: null,
   popover: null,
   look: parseAppearance(load("appearance", APPEARANCE)),
-  paper: "",
+  surfaces: [],
   notify: load("notify", false),
   drawer: false,
   collapsed: load("collapsed", {}),
@@ -757,9 +758,9 @@ function applyLook() {
   // Read the theme's own surfaces, resolved for the current light or dark scheme.
   const probe = document.body.appendChild(document.createElement("i"));
   const read = (v: string) => ((probe.style.color = `var(${v})`), getComputedStyle(probe).color);
-  const [paper, frost, onAccent] = [read("--paper"), read("--frost"), read("--on-accent")];
+  const [paper, frost, onAccent, hover, mention] = ["--paper", "--frost", "--on-accent", "--msg-hover", "--mention-bg"].map(read);
   probe.remove();
-  if (paper !== state.paper) set({ paper });
+  if ([paper, hover, mention].join() !== state.surfaces.join()) set({ surfaces: [paper, hover, mention] });
   if (!accent) return;
   const min = theme === "contrast" ? 7 : 4.5;
   root.style.setProperty("--raspberry", fitContrast(accent, [paper, frost], min));
