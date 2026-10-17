@@ -9,7 +9,8 @@ export default defineConfig({
       name: "devnotes",
       apply: "serve",
       transformIndexHtml: () => [
-        { tag: "script", attrs: { src: "http://localhost:8090/devnotes.js", async: true, onerror: "this.remove()" }, injectTo: "body" },
+        // Over tailscale serve (https, ports 1xxxx) the board is on 18090 of the same host.
+        { tag: "script", children: `{const s=document.createElement("script");s.async=true;s.onerror=()=>s.remove();s.src=location.hostname.endsWith(".ts.net")?"https://"+location.hostname+":18090/devnotes.js":"http://localhost:8090/devnotes.js";document.body.append(s)}`, injectTo: "body" },
       ],
     },
   ],
