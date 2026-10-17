@@ -1,12 +1,15 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/rand/v2"
+	"net/http/httptest"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -243,5 +246,52 @@ func TestQueryPlans(t *testing.T) {
 		if !strings.Contains(all, c.want) || strings.Contains(all, "SCAN messages") {
 			t.Errorf("%s plan:\n%s\nwant %q and no full scan", name, all, c.want)
 		}
+	}
+}
+
+// flushCounter counts network flushes of a Subscribe response.
+type flushCounter struct {
+	*httptest.ResponseRecorder
+	mu sync.Mutex
+	n  int
+}
+
+func (f *flushCounter) Write(b []byte) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.ResponseRecorder.Write(b)
+}
+
+func (f *flushCounter) Flush() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.n++
+}
+
+// TestSubscribeReplayFlushesPerBatch: a resume replayed each event with its
+// own flush (one write syscall each), 10k events took 90 ms (1155).
+func TestSubscribeReplayFlushesPerBatch(t *testing.T) {
+	e := newEnv(t)
+	ana := e.join("ana")
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	for i := range 30 {
+		e.clock.Advance(time.Second)
+		ana.send(gen.Id, fmt.Sprint("m", i))
+	}
+	body, _ := proto.Marshal(&v1.SubscribeRequest{})
+	env := append([]byte{0, 0, 0, 0, byte(len(body))}, body...)
+	cx, cancel := context.WithTimeout(ctx(), 300*time.Millisecond)
+	defer cancel()
+	req := httptest.NewRequestWithContext(cx, "POST", "/sblurp.v1.ServerService/Subscribe", bytes.NewReader(env))
+	req.Header.Set("Content-Type", "application/connect+proto")
+	req.Header.Set("Authorization", "Bearer "+ana.tok)
+	w := &flushCounter{ResponseRecorder: httptest.NewRecorder()}
+	e.s.Handler().ServeHTTP(w, req)
+	if !strings.Contains(w.Body.String(), "m29") {
+		t.Fatalf("replay missing: status %d %q", w.Code, w.Body.String())
+	}
+	// The first heartbeat, the replay batch, own presence, end of stream.
+	if w.n > 4 {
+		t.Fatalf("%d flushes for a 30-message replay, want one per batch", w.n)
 	}
 }

@@ -844,6 +844,10 @@ func (s *Server) Subscribe(ctx context.Context, req *connect.Request[v1.Subscrib
 		}
 		last = newest
 	}
+	hw, _ := ctx.Value(heldWriterKey{}).(*heldWriter)
+	if hw == nil {
+		hw = &heldWriter{}
+	}
 	for {
 		n := 0
 		rows, err := s.db.r.QueryContext(ctx, "SELECT seq, payload FROM events WHERE seq > ? AND ("+visibleEvents+") ORDER BY seq LIMIT 500", last, m.Id, m.Id)
@@ -869,10 +873,16 @@ func (s *Server) Subscribe(ctx context.Context, req *connect.Request[v1.Subscrib
 		if err := rows.Err(); err != nil {
 			return err
 		}
+		// One network flush per batch, not per event (1155).
+		hw.hold = true
 		for _, ev := range batch {
 			if err := stream.Send(ev); err != nil {
 				return err
 			}
+		}
+		hw.hold = false
+		if hw.ResponseWriter != nil {
+			hw.Flush()
 		}
 		if n < 500 {
 			break
@@ -882,10 +892,6 @@ func (s *Server) Subscribe(ctx context.Context, req *connect.Request[v1.Subscrib
 	// flush sends first, everything else already queued, then the latest
 	// presence, with one network flush. Queued events go before presence so
 	// a member_joined is never overtaken by that member's presence.
-	hw, _ := ctx.Value(heldWriterKey{}).(*heldWriter)
-	if hw == nil {
-		hw = &heldWriter{}
-	}
 	send := func(ev *v1.Event) error {
 		if ev.Seq != 0 {
 			if ev.Seq <= last {
