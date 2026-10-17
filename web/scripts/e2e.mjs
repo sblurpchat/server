@@ -138,6 +138,22 @@ try {
   if ((await bg()) !== "rgb(255, 255, 255)") throw new Error(`Light gave ${await bg()}`);
   await page.getByRole("radio", { name: "Midnight" }).check();
   if ((await bg()) === before || (await bg()) !== "rgb(23, 34, 48)") throw new Error(`Midnight did not repaint the page: ${await bg()}`);
+  // Custom theme: starts from the theme on screen, fixes unreadable text, takes a pasted string.
+  await page.getByRole("radio", { name: "Custom" }).check();
+  const shared = page.getByLabel("Theme to share");
+  if ((await shared.inputValue()).split(",")[2] !== "#172230") throw new Error(`Custom did not start from Midnight: ${await shared.inputValue()}`);
+  await page.getByLabel("Message text").fill("#172230");
+  await page.getByText(/Message text was too close to the background/).waitFor();
+  const fg = await page.evaluate(() => getComputedStyle(document.body).color);
+  if (fg === "rgb(23, 34, 48)") throw new Error("unreadable custom text was not adjusted");
+  await page.getByLabel("Paste a theme").fill("nonsense");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await page.getByRole("alert").filter({ hasText: "That is not a theme" }).waitFor();
+  await page.getByLabel("Paste a theme").fill("#3f0e40,#ffffff,#1a1d21,#d1d2d3,#1164a3,#cd2553");
+  await page.getByRole("button", { name: "Apply" }).click();
+  if ((await bg()) !== "rgb(26, 29, 33)") throw new Error(`pasted theme gave ${await bg()}`);
+  await page.getByRole("radio", { name: "Midnight" }).check();
+  if ((await bg()) !== "rgb(23, 34, 48)") throw new Error(`leaving Custom left ${await bg()}`);
   await page.getByRole("radio", { name: "Compact" }).first().check();
   if (await page.locator(".channel .msg .avatar-btn").first().isVisible()) throw new Error("compact density still shows avatars");
   await page.getByRole("slider", { name: /Text size/ }).fill("18");
@@ -315,7 +331,7 @@ try {
   await phone.close();
 
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, light, dark and midnight themes, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, light, dark and midnight themes, custom theme, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message, errors.join("; "));

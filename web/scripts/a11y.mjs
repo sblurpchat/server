@@ -61,6 +61,13 @@ const views = {
     await p.getByRole("button", { name: "Continue" }).click();
     await p.locator(".consent").waitFor();
   },
+  // Last, since the custom theme it picks stays in this context's storage.
+  custom: async (p) => {
+    await views.settings(p);
+    await p.getByRole("radio", { name: "Custom" }).check();
+    await p.getByLabel("Message text").fill(await p.locator(".custom-colors input").nth(2).inputValue());
+    await p.locator(".custom-warn").waitFor();
+  },
 };
 
 try {

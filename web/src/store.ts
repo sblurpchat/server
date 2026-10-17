@@ -47,6 +47,9 @@ import {
   type MsgList,
   APPEARANCE,
   fitContrast,
+  customTheme,
+  themeString,
+  toHex,
   parseAppearance,
   type Appearance,
   sentence,
@@ -786,9 +789,21 @@ export function setLook(patch: Partial<Appearance>) {
   save("appearance", state.look);
   applyLook();
 }
+/** Switches to the custom theme, starting from the colors on screen the first time. */
+export function startCustomTheme() {
+  const custom = state.look.custom || themeString(readTokens(["--frost", "--ink", "--paper", "--text", "--accent-fill", "--badge"]).map(toHex));
+  setLook({ theme: "custom", custom });
+}
+/** Token values resolved for the current theme and light or dark scheme, as rgb() strings. */
+function readTokens(vars: string[]) {
+  const probe = document.body.appendChild(document.createElement("i"));
+  const out = vars.map((v) => ((probe.style.color = `var(${v})`), getComputedStyle(probe).color));
+  probe.remove();
+  return out;
+}
 /** Puts the appearance on <html>: data attributes for CSS, a font size, and an accent fitted to the theme. */
 function applyLook() {
-  const { theme, density, sidebar, motion, fontSize, accent } = state.look;
+  const { theme, density, sidebar, motion, fontSize, accent, custom } = state.look;
   const root = document.documentElement;
   const attrs = { theme, density, sidebar, motion };
   for (const [k, v] of Object.entries(attrs)) {
@@ -796,14 +811,15 @@ function applyLook() {
     else root.dataset[k] = v;
   }
   root.style.fontSize = fontSize === APPEARANCE.fontSize ? "" : `${(fontSize / 15) * 100}%`;
-  for (const v of ["--raspberry", "--accent-fill", "--selected"]) root.style.removeProperty(v);
-  // Read the theme's own surfaces, resolved for the current light or dark scheme.
-  const probe = document.body.appendChild(document.createElement("i"));
-  const read = (v: string) => ((probe.style.color = `var(${v})`), getComputedStyle(probe).color);
-  const [paper, frost, onAccent, hover, mention] = ["--paper", "--frost", "--on-accent", "--msg-hover", "--mention-bg"].map(read);
-  probe.remove();
+  for (const v of [...root.style].filter((v) => v.startsWith("--") || v === "color-scheme")) root.style.removeProperty(v);
+  if (theme === "custom") {
+    const { tokens, dark } = customTheme(custom.split(","));
+    for (const [k, v] of Object.entries(tokens)) root.style.setProperty(k, v);
+    root.style.colorScheme = dark ? "dark" : "light";
+  }
+  const [paper, frost, onAccent, hover, mention] = readTokens(["--paper", "--frost", "--on-accent", "--msg-hover", "--mention-bg"]);
   if ([paper, hover, mention].join() !== state.surfaces.join()) set({ surfaces: [paper, hover, mention] });
-  if (!accent) return;
+  if (!accent || theme === "custom") return;
   const min = theme === "contrast" ? 7 : 4.5;
   root.style.setProperty("--raspberry", fitContrast(accent, [paper, frost], min));
   root.style.setProperty("--accent-fill", fitContrast(accent, [onAccent], min));

@@ -25,6 +25,9 @@ import {
   memberRoles,
   contrast,
   fitContrast,
+  customTheme,
+  parseThemeString,
+  themeString,
   parseAppearance,
   timeLabel,
   acQuery,
@@ -564,10 +567,10 @@ describe("reorderChannel", () => {
 
 describe("appearance", () => {
   it("parses stored settings and drops bad values field by field", () => {
-    expect(parseAppearance(null)).toEqual({ theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system" });
+    expect(parseAppearance(null)).toEqual({ theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system", custom: "" });
     expect(parseAppearance("dark")).toMatchObject({ theme: "system" });
     const bad = parseAppearance({ theme: "neon", accent: "red", density: "COMPACT", sidebar: 1, fontSize: "18", clock: 24, motion: true });
-    expect(bad).toEqual({ theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system" });
+    expect(bad).toEqual({ theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system", custom: "" });
     expect(parseAppearance({ theme: "mint", accent: "#D0306A", density: "irc", fontSize: 99, clock: "24", motion: "reduce" })).toMatchObject({
       theme: "mint",
       accent: "#d0306a",
@@ -579,6 +582,38 @@ describe("appearance", () => {
     expect(parseAppearance({ fontSize: 3 }).fontSize).toBe(12);
     expect(parseAppearance({ fontSize: NaN }).fontSize).toBe(15);
     expect(parseAppearance({ accent: "#12345" }).accent).toBe("");
+    // A custom theme needs its colors; without them it falls back to the default theme.
+    expect(parseAppearance({ theme: "custom" }).theme).toBe("system");
+    expect(parseAppearance({ theme: "custom", custom: "#fff" })).toMatchObject({ theme: "system", custom: "" });
+    expect(parseAppearance({ theme: "custom", custom: "#AABBCC,#000000,#ffffff,#111111,#3550f0,#d42a44" })).toMatchObject({
+      theme: "custom",
+      custom: "#aabbcc,#000000,#ffffff,#111111,#3550f0,#d42a44",
+    });
+  });
+
+  it("reads and writes a pasted theme string", () => {
+    const six = ["#171925", "#e7e9f2", "#1d1f2d", "#e7e9f2", "#4a5ef2", "#d42a44"];
+    expect(themeString(six)).toBe("#171925,#e7e9f2,#1d1f2d,#e7e9f2,#4a5ef2,#d42a44");
+    expect(parseThemeString("#171925,#e7e9f2,#1d1f2d,#e7e9f2,#4a5ef2,#d42a44")).toEqual(six);
+    // Slack-style pastes: spaces, upper case, no #.
+    expect(parseThemeString(" 171925, E7E9F2 #1d1f2d,e7e9f2  4A5EF2,#d42a44\n")).toEqual(six);
+    expect(parseThemeString("#171925,#e7e9f2,#1d1f2d,#e7e9f2,#4a5ef2")).toBeNull();
+    expect(parseThemeString("#171925,#e7e9f2,#1d1f2d,#e7e9f2,#4a5ef2,#d42a44,#000000")).toBeNull();
+    expect(parseThemeString("#171925,#e7e9f2,#1d1f2d,#e7e9f2,#4a5ef2,red")).toBeNull();
+    expect(parseThemeString("")).toBeNull();
+  });
+
+  it("derives a custom theme and moves only the text that would be hard to read", () => {
+    const good = customTheme(["#eef1f6", "#1a1c2b", "#ffffff", "#1a1c2b", "#3550f0", "#d42a44"]);
+    expect(good.fixed).toEqual([]);
+    expect(good.tokens["--text"]).toBe("#1a1c2b");
+    expect(good.dark).toBe(false);
+    // White text on white messages, dark sidebar text on a dark sidebar: both get fixed.
+    const bad = customTheme(["#202020", "#303030", "#ffffff", "#ffffff", "#3550f0", "#d42a44"]);
+    expect(bad.fixed).toEqual(["Sidebar text", "Message text"]);
+    expect(contrast(bad.tokens["--text"], "#ffffff")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(bad.tokens["--ink"], "#202020")).toBeGreaterThanOrEqual(4.5);
+    expect(customTheme(["#202020", "#eeeeee", "#101010", "#eeeeee", "#ffff00", "#ff0000"]).dark).toBe(true);
   });
 
   it("formats 12 and 24 hour clocks", () => {
@@ -622,8 +657,22 @@ describe("appearance", () => {
       light: Object.fromEntries(Object.entries(base).map(([k, v]) => [k, side(v, 0)])),
       dark: Object.fromEntries(Object.entries(base).map(([k, v]) => [k, side(v, 1)])),
     };
-    for (const t of THEMES.filter((t) => !["system", "light", "dark"].includes(t))) themes[t] = { ...themes.light, ...block(`[data-theme="${t}"] {`) };
-    expect(Object.keys(themes)).toHaveLength(THEMES.length - 1);
+    for (const t of THEMES.filter((t) => !["system", "light", "dark", "custom"].includes(t))) themes[t] = { ...themes.light, ...block(`[data-theme="${t}"] {`) };
+    expect(Object.keys(themes)).toHaveLength(THEMES.length - 2);
+    // Custom themes, including careless and mid-gray picks, pass the same pairs once derived.
+    const picks = [
+      "#eef1f6,#1a1c2b,#ffffff,#1a1c2b,#3550f0,#d42a44",
+      "#171925,#e7e9f2,#1d1f2d,#e7e9f2,#4a5ef2,#d42a44",
+      "#ffffff,#ffffff,#ffffff,#ffffff,#ffff00,#ffccdd",
+      "#000000,#000000,#000000,#000000,#000080,#400000",
+      "#777777,#767676,#757575,#787878,#777777,#777777",
+      "#3f0e40,#ffffff,#1a1d21,#d1d2d3,#1164a3,#cd2553",
+    ];
+    for (const p of picks) {
+      const { tokens, dark } = customTheme(parseThemeString(p)!);
+      const scheme = dark ? themes.dark : themes.light;
+      themes[`custom ${p}`] = { ...scheme, ...Object.fromEntries(Object.entries(tokens).map(([k, v]) => [k.replace(/^--/, ""), v])) };
+    }
     const pairs = [
       ["text", "paper"],
       ["ink", "frost"],

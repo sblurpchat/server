@@ -372,7 +372,7 @@ export function browseDetail(ch: Channel): string {
 // Appearance: per-device settings, parsed defensively because localStorage is user-editable.
 // ---------------------------------------------------------------------------
 
-export const THEMES = ["system", "light", "dark", "midnight", "contrast", "cola", "mint"] as const;
+export const THEMES = ["system", "light", "dark", "midnight", "contrast", "cola", "mint", "custom"] as const;
 export type Theme = (typeof THEMES)[number];
 const DENSITIES = ["cozy", "compact", "irc"] as const;
 export interface Appearance {
@@ -385,21 +385,25 @@ export interface Appearance {
   fontSize: number;
   clock: "12" | "24";
   motion: "system" | "reduce" | "full";
+  /** The custom theme as a share string (see themeString), or "". */
+  custom: string;
 }
-export const APPEARANCE: Appearance = { theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system" };
+export const APPEARANCE: Appearance = { theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system", custom: "" };
 
 export function parseAppearance(v: unknown): Appearance {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
   const one = <T>(x: unknown, ok: readonly T[], d: T) => (ok.includes(x as T) ? (x as T) : d);
+  const custom = typeof o.custom === "string" ? parseThemeString(o.custom) : null;
   const size = typeof o.fontSize === "number" && Number.isFinite(o.fontSize) ? Math.round(Math.min(20, Math.max(12, o.fontSize))) : APPEARANCE.fontSize;
   return {
-    theme: one(o.theme, THEMES, APPEARANCE.theme),
+    theme: o.theme === "custom" && !custom ? APPEARANCE.theme : one(o.theme, THEMES, APPEARANCE.theme),
     accent: typeof o.accent === "string" && /^#[0-9a-f]{6}$/i.test(o.accent) ? o.accent.toLowerCase() : "",
     density: one(o.density, DENSITIES, APPEARANCE.density),
     sidebar: one(o.sidebar, ["cozy", "compact"] as const, APPEARANCE.sidebar),
     fontSize: size,
     clock: one(o.clock, ["12", "24"] as const, APPEARANCE.clock),
     motion: one(o.motion, ["system", "reduce", "full"] as const, APPEARANCE.motion),
+    custom: custom ? themeString(custom) : "",
   };
 }
 
@@ -421,15 +425,72 @@ export function contrast(a: string, b: string) {
   return (x + 0.05) / (y + 0.05);
 }
 const hex = (rgb: number[]) => "#" + rgb.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
-/** Darkens or lightens fg, away from the first background, until it reaches min against every background. */
+/** Darkens or lightens fg, away from the first background (or the other way if that fails), until it reaches min against every background. */
 export function fitContrast(fg: string, bgs: string[], min: number) {
-  const to = luminance(bgs[0]) > 0.18 ? 0 : 255;
+  const away = luminance(bgs[0]) > 0.18 ? 0 : 255;
   const rgb = parseColor(fg);
-  for (let t = 0; t <= 1; t += 0.04) {
-    const c = hex(rgb.map((v) => v + (to - v) * t));
-    if (bgs.every((b) => contrast(c, b) >= min)) return c;
+  for (const to of [away, 255 - away]) {
+    for (let t = 0; t <= 1.001; t += 0.04) {
+      const c = hex(rgb.map((v) => v + (to - v) * t));
+      if (bgs.every((b) => contrast(c, b) >= min)) return c;
+    }
   }
-  return to ? "#ffffff" : "#000000";
+  return away ? "#ffffff" : "#000000";
+}
+export const toHex = (c: string) => hex(parseColor(c));
+/** color-mix(in srgb, a w, b): w of a, the rest b. */
+const mix = (a: string, b: string, w: number) => {
+  const y = parseColor(b);
+  return hex(parseColor(a).map((v, i) => v * w + y[i] * (1 - w)));
+};
+
+/** The base colors of a custom theme, in share-string order. Like Slack's, a pasted string is just these. */
+export const CUSTOM_COLORS = ["Sidebar", "Sidebar text", "Messages", "Message text", "Accent", "Mentions and badges"];
+export const themeString = (colors: string[]) => colors.join(",");
+/** "#171925,#e7e9f2,..." (commas or spaces, # optional) to six lowercase hex colors, or null. */
+export function parseThemeString(s: string): string[] | null {
+  const c = s.split(/[\s,]+/).filter(Boolean).map((x) => "#" + x.replace(/^#/, "").toLowerCase());
+  return c.length === CUSTOM_COLORS.length && c.every((x) => /^#[0-9a-f]{6}$/.test(x)) ? c : null;
+}
+/**
+ * Every token of a custom theme from its six base colors. Text colors are moved until they pass
+ * WCAG AA on every surface they sit on; `fixed` names the base colors the person chose that moved.
+ * Tokens not set here (presence, tooltips) come from the light or dark side of :root.
+ */
+export function customTheme(colors: string[]) {
+  const [frost, ink0, paper, text0, accent, badge0] = colors;
+  const dark = luminance(paper) <= 0.18;
+  const selected = mix(accent, frost, dark ? 0.3 : 0.2);
+  const hover = mix(ink0, frost, 0.07);
+  const msgHover = mix(text0, paper, 0.04);
+  const mentionBg = mix(badge0, paper, dark ? 0.18 : 0.1);
+  const codeBg = mix(frost, paper, 0.5);
+  const text = fitContrast(text0, [paper, msgHover, mentionBg, codeBg], 4.5);
+  const ink = fitContrast(ink0, [frost, selected, hover], 4.5);
+  const cherry = fitContrast(badge0, [paper, frost, codeBg], 4.5);
+  const tokens: Record<string, string> = {
+    "--frost": frost,
+    "--ink": ink,
+    "--paper": paper,
+    "--text": text,
+    "--rail": dark ? mix(frost, "#000000", 0.6) : ink,
+    "--raspberry": fitContrast(accent, [paper, frost, codeBg], 4.5),
+    "--accent-fill": fitContrast(accent, ["#ffffff"], 4.5),
+    "--on-accent": "#ffffff",
+    "--badge": fitContrast(badge0, ["#ffffff"], 4.5),
+    "--cherry": cherry,
+    "--cherry-text": cherry,
+    "--graphite": fitContrast(mix(text, paper, 0.6), [paper, frost, selected, codeBg], 4.5),
+    "--line": mix(text, paper, 0.12),
+    "--hover": hover,
+    "--selected": selected,
+    "--msg-hover": msgHover,
+    "--mention-bg": mentionBg,
+    "--raised": mix("#ffffff", paper, dark ? 0.04 : 0.5),
+    "--code-bg": codeBg,
+  };
+  const fixed = [ink !== ink0 && CUSTOM_COLORS[1], text !== text0 && CUSTOM_COLORS[3]].filter((x): x is string => !!x);
+  return { tokens, dark, fixed };
 }
 
 // ---------------------------------------------------------------------------

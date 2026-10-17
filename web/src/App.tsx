@@ -22,6 +22,10 @@ import {
   browseDetail,
   browseList,
   THEMES,
+  CUSTOM_COLORS,
+  customTheme,
+  parseThemeString,
+  themeString,
   timeLabel,
   type Appearance as Look,
   type Theme,
@@ -53,6 +57,7 @@ import {
   setRole,
   setNotify,
   setLook,
+  startCustomTheme,
   signIn,
   signOut,
   toggleCollapsed,
@@ -830,6 +835,7 @@ const THEME_NAMES: Record<Theme, string> = {
   contrast: "High contrast",
   cola: "Cherry cola",
   mint: "Mint",
+  custom: "Custom",
 };
 const ACCENTS: [string, string][] = [
   ["", "Theme default"],
@@ -863,6 +869,66 @@ const SAMPLE = [
   { who: null, at: 9 * 60 + 42, text: "Bring a jumper, the shed gets cold.", head: false },
   { who: create(MemberSchema, { id: "ana", username: "ana", displayName: "Ana Ruiz" }), at: 13 * 60 + 5, text: "Saving you both a seat by the window.", head: true },
 ];
+
+/** Slack-style custom theme: six base colors, the rest derived, shared as a pasted string. */
+function CustomTheme() {
+  const custom = useApp((s) => s.look.custom);
+  const colors = custom.split(",");
+  const { fixed } = customTheme(colors);
+  const [paste, setPaste] = useState("");
+  const [bad, setBad] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const apply = (e: FormEvent) => {
+    e.preventDefault();
+    const c = parseThemeString(paste);
+    setBad(!c);
+    if (!c) return;
+    setLook({ custom: themeString(c) });
+    setPaste("");
+  };
+  return (
+    <fieldset className="choice custom-theme">
+      <legend>Custom theme</legend>
+      <div className="custom-colors">
+        {CUSTOM_COLORS.map((name, i) => (
+          <label key={name}>
+            <input type="color" value={colors[i]} onChange={(e) => setLook({ custom: themeString(colors.map((c, j) => (j === i ? e.target.value : c))) })} />
+            {name}
+          </label>
+        ))}
+      </div>
+      {fixed.length > 0 && (
+        <p className="fine custom-warn">
+          <Icon name="info" size={16} /> {fixed.join(" and ")} {fixed.length > 1 ? "were" : "was"} too close to the background, so Sblurp adjusted {fixed.length > 1 ? "them" : "it"} to pass WCAG AA contrast.
+        </p>
+      )}
+      <div className="copy-row">
+        <input className="input" readOnly value={custom} aria-label="Theme to share" onFocus={(e) => e.target.select()} />
+        <button className="btn" onClick={() => navigator.clipboard.writeText(custom).then(() => setCopied(true))}>
+          <Icon name={copied ? "check" : "copy"} size={16} /> {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <form className="copy-row" onSubmit={apply}>
+        <input
+          className="input"
+          aria-label="Paste a theme"
+          placeholder="Paste a theme: #171925,#e7e9f2,…"
+          value={paste}
+          aria-invalid={bad}
+          onChange={(e) => (setPaste(e.target.value), setBad(false))}
+        />
+        <button className="btn" disabled={!paste.trim()}>
+          Apply
+        </button>
+      </form>
+      {bad && (
+        <p className="error custom-warn" role="alert">
+          That is not a theme. Paste six colors separated by commas, like the one above.
+        </p>
+      )}
+    </fieldset>
+  );
+}
 
 function Appearance() {
   const look = useApp((s) => s.look);
@@ -910,8 +976,23 @@ function Appearance() {
         <div className="theme-pick">
           {THEMES.map((t) => (
             <label key={t} className="theme-opt">
-              <input type="radio" name="theme" checked={look.theme === t} onChange={() => setLook({ theme: t })} />
-              {t === "system" ? (
+              <input type="radio" name="theme" checked={look.theme === t} onChange={() => (t === "custom" ? startCustomTheme() : setLook({ theme: t }))} />
+              {t === "custom" ? (
+                <span className="theme-swatch" data-empty={!look.custom} aria-hidden="true" style={look.custom ? customTheme(look.custom.split(",")).tokens : undefined}>
+                  {look.custom ? (
+                    <>
+                      <i />
+                      <i />
+                      <i>
+                        <b />
+                        <b />
+                      </i>
+                    </>
+                  ) : (
+                    <Icon name="sliders" />
+                  )}
+                </span>
+              ) : t === "system" ? (
                 <span className="theme-swatch split" aria-hidden="true">
                   {(["light", "dark"] as const).map((half) => (
                     <span key={half} className="theme-swatch" data-theme={half}>
@@ -939,6 +1020,9 @@ function Appearance() {
           ))}
         </div>
       </fieldset>
+      {look.theme === "custom" ? (
+        <CustomTheme />
+      ) : (
       <fieldset className="choice">
         <legend>Accent color</legend>
         <div className="accents">
@@ -960,6 +1044,7 @@ function Appearance() {
         </div>
         <small className="fine">Sblurp darkens or lightens the color if text on it would be hard to read.</small>
       </fieldset>
+      )}
       <Choice
         k="density"
         label="Messages"
