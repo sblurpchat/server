@@ -28,6 +28,7 @@ import {
   messageHash,
   nameColor,
   listStep,
+  pasteTarget,
 } from "./logic";
 import {
   absUrl,
@@ -726,9 +727,21 @@ function useAutosize(value: string) {
   return ref;
 }
 
+const revoke = (f: Pending) => f.src && URL.revokeObjectURL(f.src);
+
+// Which side was touched last, the main channel or the side pane, so a stray paste knows where to go.
+let lastZone: "pane" | "channel" | null = null;
+const touch = (e: Event) => {
+  const z = e.target instanceof Element ? e.target.closest(".channel, .pane") : null;
+  if (z) lastZone = z.classList.contains("pane") ? "pane" : "channel";
+};
+document.addEventListener("pointerdown", touch, true);
+document.addEventListener("focusin", touch, true);
+
 interface Pending {
   id: string;
   name: string;
+  src?: string; // object URL for an image preview (1078)
   att?: Attachment;
   error?: string;
 }
@@ -767,7 +780,8 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
   const addFiles = (list: FileList | File[]) => {
     for (const file of Array.from(list)) {
       const id = crypto.randomUUID();
-      setFiles((fs) => [...fs, { id, name: file.name }]);
+      const src = file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
+      setFiles((fs) => [...fs, { id, name: file.name, src }]);
       upload(url, file).then(
         (att) => setFiles((fs) => fs.map((f) => (f.id === id ? { ...f, att } : f))),
         (e) => setFiles((fs) => fs.map((f) => (f.id === id ? { ...f, error: errorText(e, c.info?.name) } : f))),
@@ -780,8 +794,20 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
     if (uploading || (!text.trim() && !ready.length)) return;
     void send(url, channelId, rootId, encodeMentions(text.trim(), Object.values(c.members)), ready);
     setDraft(key, "");
+    files.forEach(revoke);
     setFiles([]);
   };
+
+  // Fade the chip out, then drop it; with motion reduced there is no transition, so drop at once.
+  const remove = (f: Pending, el: HTMLElement) => {
+    const gone = () => (revoke(f), setFiles((fs) => fs.filter((x) => x.id !== f.id)));
+    if (!parseFloat(getComputedStyle(el).transitionDuration)) return gone();
+    el.dataset.leaving = "true";
+    el.addEventListener("transitionend", gone, { once: true });
+  };
+  const live = useRef(files);
+  live.current = files;
+  useEffect(() => () => live.current.forEach(revoke), []);
 
   const choose = (i: number) => {
     const o = options[i];
@@ -828,6 +854,21 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
     };
   }, [ref]);
 
+  // A paste with files outside any text field lands here when this is the pane last touched (1077).
+  useEffect(() => {
+    const mine = rootId ? "pane" : "channel";
+    const onPaste = (e: globalThis.ClipboardEvent) => {
+      const t = e.target instanceof Element ? e.target : null;
+      const editable = !!t?.closest("input, textarea, select, [contenteditable]:not([contenteditable='false']), dialog, [role='dialog']");
+      if (pasteTarget(editable, !!e.clipboardData?.files.length, lastZone, !!document.querySelector(".pane .composer")) !== mine) return;
+      e.preventDefault();
+      add.current(e.clipboardData!.files);
+      ref.current?.focus();
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [rootId, ref]);
+
   return (
     <form className="composer" ref={form} onSubmit={submit}>
       {options.length > 0 && (
@@ -857,9 +898,9 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
           <ul className="chips" aria-label="Attachments">
             {files.map((f) => (
               <li key={f.id} className="chip" data-error={!!f.error} aria-busy={!f.att && !f.error}>
-                <Icon name="file" size={16} />
+                {f.src ? <img src={f.src} alt="" /> : <Icon name="file" size={16} />}
                 <span className="truncate">{f.error ? `${f.name}: ${f.error}` : f.att ? f.name : `Uploading ${f.name}…`}</span>
-                <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles((fs) => fs.filter((x) => x.id !== f.id))}>
+                <button type="button" aria-label={`Remove ${f.name}`} onClick={(e) => remove(f, e.currentTarget.closest("li")!)}>
                   <Icon name="x" size={14} />
                 </button>
               </li>

@@ -975,3 +975,8 @@ export function keyWidth(p: Panel, w: number, key: string, big = false): number 
 export const READ_EVERY_MS = 3000;
 export const readDelay = (lastSentMs: number | undefined, nowMs: number, everyMs = READ_EVERY_MS) =>
   lastSentMs === undefined ? 0 : Math.max(0, lastSentMs + everyMs - nowMs);
+
+// A paste outside any text field (1077): which composer takes the files. The thread pane wins only
+// when it was the last place touched and a thread is open there; otherwise the main channel.
+export const pasteTarget = (editable: boolean, hasFiles: boolean, last: "pane" | "channel" | null, threadOpen: boolean) =>
+  editable || !hasFiles ? null : last === "pane" && threadOpen ? "pane" : "channel";

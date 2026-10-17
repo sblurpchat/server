@@ -19,6 +19,7 @@ import {
   THEMES,
   banDetail,
   readDelay,
+  pasteTarget,
   browseDetail,
   browseList,
   swatch,
@@ -886,5 +887,18 @@ describe("squareCrop", () => {
     expect(squareCrop(1200, 800, 512)).toEqual({ sx: 200, sy: 0, side: 800, out: 512 });
     expect(squareCrop(300, 501, 512)).toEqual({ sx: 0, sy: 100, side: 300, out: 300 });
     expect(squareCrop(64, 64, 512)).toEqual({ sx: 0, sy: 0, side: 64, out: 64 });
+  });
+});
+
+describe("pasteTarget", () => {
+  it("leaves pastes in text fields and pastes without files alone", () => {
+    expect(pasteTarget(true, true, "pane", true)).toBeNull();
+    expect(pasteTarget(false, false, "channel", false)).toBeNull();
+  });
+  it("sends files to the thread only when it was last touched and is open", () => {
+    expect(pasteTarget(false, true, "pane", true)).toBe("pane");
+    expect(pasteTarget(false, true, "pane", false)).toBe("channel");
+    expect(pasteTarget(false, true, "channel", true)).toBe("channel");
+    expect(pasteTarget(false, true, null, true)).toBe("channel");
   });
 });

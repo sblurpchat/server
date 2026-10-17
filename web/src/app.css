@@ -2631,6 +2631,32 @@ li.sw-empty {
   font-size: 0.8125rem;
   font-weight: 500;
 }
+.chip {
+  transition:
+    opacity 150ms ease-out,
+    transform 150ms ease-out;
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+.chip[data-leaving] {
+  opacity: 0;
+  transform: scale(0.96);
+}
+/* Image chips show a small preview of what will be sent (1078). */
+.chip:has(> img) {
+  height: 44px;
+  padding-left: 4px;
+}
+.chip > img {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 5px;
+  object-fit: cover;
+  background: var(--line);
+}
 .chip[aria-busy="true"] {
   color: var(--graphite);
 }
