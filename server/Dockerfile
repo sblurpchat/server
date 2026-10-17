@@ -43,7 +43,7 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOWORK=off go build -trimpat
 	-ldflags="-s -w -X main.version=$VERSION -X main.track=$TRACK -X main.updateURL=$UPDATE_URL" \
 	-o /out/sblurp-server ./cmd/sblurp-server && mkdir /out/data
 
-FROM cgr.dev/chainguard/wolfi-base@sha256:256c88bb066424045021090932d50be93c8e3f2ce3586707702a401b146f3e43
+FROM cgr.dev/chainguard/wolfi-base:latest@sha256:256c88bb066424045021090932d50be93c8e3f2ce3586707702a401b146f3e43
 RUN apk add --no-cache restic su-exec
 COPY --from=litestream /out/litestream /usr/bin/litestream
 COPY --from=build /out/sblurp-server /usr/bin/sblurp-server
