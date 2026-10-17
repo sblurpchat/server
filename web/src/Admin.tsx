@@ -825,7 +825,7 @@ function Plugins({ url, plugins, reload }: { url: string; plugins: Plugin[]; rel
           {plugins.map((p) => {
             const st = pluginStatus(p);
             return (
-              <li key={p.name} className="plugin-row" data-confirm={confirm === p.name || undefined}>
+              <li key={p.name} className="plugin-row">
                 <span className="plugin-icon" data-tone={st.tone}>
                   <Icon name="puzzle" size={18} />
                 </span>

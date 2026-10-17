@@ -2185,6 +2185,9 @@ func (s *Server) botFor(ctx context.Context, q queryer, botID string) (*memberRo
 	if err == nil && bot == nil {
 		err = errf(connect.CodeNotFound, "bot not found")
 	}
+	if err == nil && (exists(filepath.Join(s.pluginDir(), bot.Username+".js")) || exists(filepath.Join(s.pluginDir(), bot.Username+".js.disabled"))) {
+		err = errf(connect.CodeFailedPrecondition, "%s is a plugin's bot; delete or turn off the plugin instead", bot.Username)
+	}
 	return bot, err
 }
 

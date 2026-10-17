@@ -3210,17 +3210,6 @@ li.sw-empty {
     flex-wrap: wrap;
     gap: 4px;
   }
-  /* Name on the first line, controls under it, lined up with the name. */
-  .admin-list li {
-    flex-wrap: wrap;
-    row-gap: 6px;
-  }
-  .admin-list li > .truncate {
-    flex-basis: calc(100% - 44px);
-  }
-  .admin-list li > .row {
-    margin-left: 44px;
-  }
 }
 .admin-list {
   list-style: none;
@@ -3244,6 +3233,20 @@ li.sw-empty {
 }
 .admin-list .perm {
   padding: 0 8px;
+}
+/* After the base rules, which would reset flex-basis (1097). */
+@media (max-width: 640px) {
+  /* Name on the first line, controls under it, lined up with the name. */
+  .admin-list li {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .admin-list li > .truncate {
+    flex-basis: calc(100% - 44px);
+  }
+  .admin-list li > .row {
+    margin-left: 44px;
+  }
 }
 .token-once {
   display: grid;
@@ -3296,17 +3299,7 @@ li.sw-empty {
   white-space: normal;
   overflow-wrap: anywhere;
 }
-/* Delete confirm buttons go on their own line under the name. */
-.plugin-row[data-confirm] {
-  flex-wrap: wrap;
-  row-gap: 6px;
-}
-.plugin-row[data-confirm] > .truncate {
-  flex-basis: calc(100% - 44px);
-}
-.plugin-row[data-confirm] > .row {
-  margin-left: 44px;
-}
+
 .plugin-row .btn.danger-ghost {
   width: 30px;
   height: 30px;

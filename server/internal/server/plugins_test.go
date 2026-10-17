@@ -399,6 +399,18 @@ func TestPluginAdmin(t *testing.T) {
 		t.Fatalf("ping = %v", p)
 	}
 
+	// A plugin's bot cannot be deleted or given a token as a token bot,
+	// whether the plugin is on or off.
+	_, err = ana.bots.DeleteBot(ctx(), connect.NewRequest(&v1.DeleteBotRequest{BotId: p.BotId}))
+	wantCode(t, err, connect.CodeFailedPrecondition)
+	if !strings.Contains(err.Error(), "delete or turn off the plugin") {
+		t.Fatalf("DeleteBot error = %v", err)
+	}
+	setEnabled("hi", false)
+	_, err = ana.bots.RotateBotToken(ctx(), connect.NewRequest(&v1.RotateBotTokenRequest{BotId: p.BotId}))
+	wantCode(t, err, connect.CodeFailedPrecondition)
+	setEnabled("hi", true)
+
 	// Delete removes the file and the bot.
 	must(ana.bots.DeletePlugin(ctx(), connect.NewRequest(&v1.DeletePluginRequest{Name: "hi"})))
 	if _, err := os.Stat(filepath.Join(dir, "hi.js")); !os.IsNotExist(err) {

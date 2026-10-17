@@ -246,10 +246,12 @@ Admins install plugins in the web client (community settings, Bots) or with
 load, or nothing changes), `SetPluginEnabled` and `DeletePlugin`. Changes
 apply at once, with no restart, and send a `plugins_changed` event. You can
 also drop JavaScript files in `<data>/plugins/` and restart the server. A
-disabled plugin is kept as `name.js.disabled`. Each `name.js` runs as a bot member called `name` (the file name must be a valid
-username, and must not be a person's). `plugins/examples/dice.js` is a
-working example: `/roll 2d6`, and only people with a verified email may
-join.
+disabled plugin is kept as `name.js.disabled`. `DeleteBot` and
+`RotateBotToken` refuse a plugin's bot (`failed_precondition`); use
+`DeletePlugin` or `SetPluginEnabled`. Each `name.js` runs as a bot member
+called `name` (the file name must be a valid username, and must not be a
+person's). `plugins/examples/dice.js` is a working example: `/roll 2d6`,
+and only people with a verified email may join.
 
 A plugin defines any of these global functions:
 
