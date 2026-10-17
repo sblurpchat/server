@@ -155,7 +155,7 @@ client. There is no separate apps system. The bot is ~150 lines in
   message within a day is deleted.
 - **Roles and moderation**: owner > admin > moderator > member. Nobody
   acts on someone of equal or higher rank. `SetMemberRole`: admins and the
-  owner, to MEMBER, MODERATOR or ADMIN below their own role (there is no
+  owner, to MEMBER, MODERATOR or ADMIN below their own role (there is no in-app
   ownership transfer). `KickMember` and `BanMember`: moderator or higher.
   A kicked or banned person, or one who calls `LeaveCommunity` (not the
   owner), gets their streams closed, leaves every channel, loses their custom
