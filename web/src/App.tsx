@@ -1,5 +1,5 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent } from "react";
 import { ChannelDialog, CommunitySettings, Invites, PERMISSION, RoleChips } from "./Admin";
 import { ChannelView, openProfile, PeoplePicker, RightPane } from "./Chat";
 import { create } from "@bufbuild/protobuf";
@@ -70,7 +70,7 @@ import {
   peekChannel,
 } from "./store";
 import { AvatarField } from "./AvatarField";
-import { Avatar, AvatarEditOverlay, CommunityIcon, Dialog, Editable, EmojiPicker, emojiChar, Icon, Markdown, Pop, Resizer, useClamped } from "./ui";
+import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, presenceLabel, Resizer, useClamped } from "./ui";
 
 export function App() {
   const auth = useApp((s) => s.auth);
@@ -149,19 +149,37 @@ function useShortcuts() {
 // Shell
 // ---------------------------------------------------------------------------
 
+// The phone layout (< 768px), where the rail and sidebar are a drawer over the channel.
+const NARROW = matchMedia("(max-width: 767px)");
+const onNarrow = (f: () => void) => (NARROW.addEventListener("change", f), () => NARROW.removeEventListener("change", f));
+
+/** Skip past the rail and sidebar: to the message box, else the message list, else the main area. */
 function Shell() {
   const url = useApp((s) => s.url);
   const c = useApp((s) => s.cs[s.url]);
   const pane = useApp((s) => s.pane);
   const drawer = useApp((s) => s.drawer);
   const channelId = useApp((s) => s.channelId);
+  const narrow = useSyncExternalStore(onNarrow, () => NARROW.matches);
+  const covered = narrow && (drawer || !channelId);
+  // On a phone the open drawer covers the channel: focus goes in, and back to the menu button when it closes.
+  const was = useRef(false);
+  useEffect(() => {
+    if (!narrow) return;
+    if (drawer) document.querySelector<HTMLElement>(".drawer [aria-current=page], .drawer button")?.focus();
+    else if (was.current) document.querySelector<HTMLElement>(".menu-btn")?.focus();
+    was.current = drawer;
+  }, [drawer, narrow]);
   return (
     <div className="app" data-drawer={drawer || !channelId} data-pane={!!pane}>
+      <button className="btn skip-link" onClick={focusMain}>
+        Skip to messages
+      </button>
       <div className="drawer">
         <Rail />
         {c && <Sidebar c={c} />}
       </div>
-      <main className="main">
+      <main className="main" tabIndex={-1} inert={covered}>
         {!url || !c ? (
           <Empty
             title="You're not in any communities yet."
@@ -307,7 +325,7 @@ function Rail() {
               >
                 <CommunityIcon name={name} icon={c?.info?.iconUrl ? absUrl(u, c.info.iconUrl) : ""} accent={c?.info?.accentColor} />
               </button>
-              {b.mentions > 0 && <span className="badge rail-badge">{b.mentions > 99 ? "99+" : b.mentions}</span>}
+              {b.mentions > 0 && <span className="badge rail-badge" aria-hidden="true">{b.mentions > 99 ? "99+" : b.mentions}</span>}
               <span className="tip" aria-hidden="true">
                 {name}
               </span>
@@ -368,6 +386,7 @@ function Sidebar({ c }: { c: Community }) {
       <button
         className="side-head"
         aria-haspopup="menu"
+        aria-expanded={!!menu}
         data-banner={banner ? true : undefined}
         style={banner ? ({ "--banner": cssUrl(banner) } as CSSProperties) : undefined}
         onClick={(e) => setMenu(e.currentTarget.getBoundingClientRect())}
@@ -377,7 +396,7 @@ function Sidebar({ c }: { c: Community }) {
       </button>
       {c.info?.description && <SideAbout c={c} text={c.info.description} admin={admin} />}
       <Pop anchor={menu} onClose={() => setMenu(null)} className="menu" label={`${name} menu`}>
-        <div role="menu" onClick={() => setMenu(null)}>
+        <div role="menu" onClick={() => setMenu(null)} onKeyDown={menuKeys}>
           <button role="menuitem" onClick={() => set({ modal: { t: "info" } })}>
             <Icon name="info" size={18} /> Community info
           </button>
@@ -470,9 +489,12 @@ function Sidebar({ c }: { c: Community }) {
                             </span>
                           )}
                           <span className="truncate">{label}</span>
+                          {other && ch.memberIds.length === 2 && <span className="visually-hidden">, {presenceLabel(other.presence)}</span>}
+                          {unread && <span className="visually-hidden">, unread</span>}
                           {(rs?.mentionCount ?? 0) > 0 && ch.id !== channelId && (
-                            <span className="badge" aria-label={`${rs!.mentionCount} mentions`}>
+                            <span className="badge">
                               {rs!.mentionCount}
+                              <span className="visually-hidden"> {rs!.mentionCount === 1 ? "mention" : "mentions"}</span>
                             </span>
                           )}
                         </a>
@@ -902,7 +924,6 @@ function CustomTheme() {
   const { fixed } = customTheme(colors);
   const [paste, setPaste] = useState("");
   const [bad, setBad] = useState(false);
-  const [copied, setCopied] = useState(false);
   const apply = (e: FormEvent) => {
     e.preventDefault();
     const c = parseThemeString(paste);
@@ -929,9 +950,7 @@ function CustomTheme() {
       )}
       <div className="copy-row">
         <input className="input" readOnly value={custom} aria-label="Theme to share" onFocus={(e) => e.target.select()} />
-        <button className="btn" onClick={() => navigator.clipboard.writeText(custom).then(() => setCopied(true))}>
-          <Icon name={copied ? "check" : "copy"} size={16} /> {copied ? "Copied" : "Copy"}
-        </button>
+        <CopyButton text={custom} />
       </div>
       <form className="copy-row" onSubmit={apply}>
         <input
@@ -1226,6 +1245,8 @@ function Switcher() {
         <input
           autoFocus
           role="combobox"
+          aria-label="Jump to a channel or person"
+          aria-autocomplete="list"
           aria-expanded="true"
           aria-controls="switcher-list"
           aria-activedescendant={items[sel] ? `sw-${sel}` : undefined}
@@ -1265,7 +1286,13 @@ function Switcher() {
                 </span>
               )}
               <span className="truncate">{x.label}</span>
-              {x.mentions > 0 && <span className="badge">{x.mentions}</span>}
+              {x.unread && <span className="visually-hidden">, unread</span>}
+              {x.mentions > 0 && (
+                <span className="badge">
+                  {x.mentions}
+                  <span className="visually-hidden"> {x.mentions === 1 ? "mention" : "mentions"}</span>
+                </span>
+              )}
               <span className="sw-community">
                 <CommunityIcon name={x.c.info?.name ?? ""} icon={x.c.info?.iconUrl ? absUrl(x.u, x.c.info.iconUrl) : ""} accent={x.c.info?.accentColor} size={18} />
                 <span className="truncate">{x.c.info?.name ?? hostOf(x.u)}</span>
@@ -1321,10 +1348,8 @@ function LeaveDialog({ c, name }: { c: Community; name: string }) {
 
 function CommunityDialog({ kind }: { kind: "info" | "invite" | "leave" }) {
   const c = useApp((s) => s.cs[s.url]);
-  const [copied, setCopied] = useState(false);
   if (!c) return null;
   const name = c.info?.name ?? hostOf(c.url);
-  const copy = () => navigator.clipboard.writeText(c.url).then(() => setCopied(true));
   const close = () => set({ modal: null });
   if (kind === "leave") return <LeaveDialog c={c} name={name} />;
   return (
@@ -1351,9 +1376,7 @@ function CommunityDialog({ kind }: { kind: "info" | "invite" | "leave" }) {
       {(kind === "info" || !c.info?.inviteOnly) && (
         <div className="copy-row">
           <input className="input" readOnly value={c.url} aria-label="Community address" onFocus={(e) => e.target.select()} />
-          <button className="btn" onClick={copy}>
-            <Icon name={copied ? "check" : "copy"} size={16} /> {copied ? "Copied" : "Copy"}
-          </button>
+          <CopyButton text={c.url} />
         </div>
       )}
     </Dialog>
@@ -1626,7 +1649,11 @@ function DeleteConfirm({ id }: { id: string }) {
       <h2>Delete message?</h2>
       <blockquote className="delete-preview">{m.text || "(attachment)"}</blockquote>
       <p className="muted">This can't be undone.</p>
-      {err && <p className="error">{err}</p>}
+      {err && (
+        <p className="error" role="alert">
+          {err}
+        </p>
+      )}
       <div className="row-end">
         <button className="btn ghost" autoFocus onClick={() => set({ modal: null })}>
           Cancel
@@ -1662,7 +1689,11 @@ function RemoveMember({ url, memberId, ban }: { url: string; memberId: string; b
           ? `${name} is removed from ${where} and can't join again with this account.`
           : `${name} is removed from ${where}. They can join again with its address.`}
       </p>
-      {err && <p className="error">{err}</p>}
+      {err && (
+        <p className="error" role="alert">
+          {err}
+        </p>
+      )}
       <div className="row-end">
         <button className="btn ghost" autoFocus onClick={() => set({ modal: null })}>
           Cancel
@@ -1684,7 +1715,7 @@ function ProfilePopover() {
   const [err, setErr] = useState("");
   const mod = m ? modActions(me, m) : { remove: false, roles: [] };
   return (
-    <Pop anchor={p && m ? p.rect : null} side="right" className="profile" label="Profile" onClose={() => (setErr(""), set({ popover: null }))}>
+    <Pop anchor={p && m ? p.rect : null} side="right" className="profile" label={m ? `${m.displayName || m.username}'s profile` : "Profile"} onClose={() => (setErr(""), set({ popover: null }))}>
       {m && p && (
         <>
           <div className="profile-band" style={{ background: "color-mix(in srgb, var(--raspberry) 18%, var(--paper))" }} />
@@ -1702,7 +1733,10 @@ function ProfilePopover() {
               {m.kind === MemberKind.BOT && <span className="tag">Bot</span>}
               {m.role > MemberRole.MEMBER && <span className="tag role">{PERMISSION[m.role]}</span>}
             </h3>
-            <p className="muted">@{m.username}</p>
+            <p className="muted">
+              @{m.username}
+              <span className="visually-hidden">, {presenceLabel(m.presence)}</span>
+            </p>
             {(m.statusText || m.statusEmoji) && (
               <p className="profile-status">
                 {m.statusEmoji} {m.statusText}
@@ -1726,7 +1760,11 @@ function ProfilePopover() {
                 <p>{new Date(Number(m.joinedAtMs)).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
               </>
             )}
-            {err && <p className="error small">{err}</p>}
+            {err && (
+              <p className="error small" role="alert">
+                {err}
+              </p>
+            )}
             {m.id === me?.id ? (
               <button className="btn wide" onClick={() => set({ popover: null, modal: { t: "profile" } })}>
                 Edit profile and status

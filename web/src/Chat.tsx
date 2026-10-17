@@ -5,6 +5,7 @@ import { LinkPreviews } from "./LinkPreview";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
 import {
   acQuery,
+  arrivalText,
   canRemoveFromChannel,
   buildRows,
   channelLabel,
@@ -64,7 +65,7 @@ import {
   unfurled,
   unfurlKey,
 } from "./store";
-import { Avatar, Dialog, Editable, EMOJI, EmojiPicker, emojiChar, Icon, Markdown, Pop, Resizer, useClamped } from "./ui";
+import { Avatar, Dialog, Editable, EMOJI, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, Resizer, useClamped } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
 export const openProfile = (url: string, memberId: string, el: HTMLElement) =>
@@ -85,7 +86,7 @@ function Topic({ c, topic, title, onEdit }: { c: Community; topic: string; title
         </div>
       </Editable>
       {cut && (
-        <button className="icon-btn topic-more" aria-label="Show full topic" title="Show full topic" onClick={(e) => setFull(e.currentTarget.getBoundingClientRect())}>
+        <button className="icon-btn topic-more" aria-label="Show full topic" title="Show full topic" aria-expanded={!!full} onClick={(e) => setFull(e.currentTarget.getBoundingClientRect())}>
           <Icon name="chevron" size={16} />
         </button>
       )}
@@ -166,12 +167,12 @@ export function ChannelView() {
           <input type="search" aria-label={`Search ${c.info?.name ?? ""}`} placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
         {(canEdit || canLeave) && (
-          <button className="icon-btn" aria-label={`#${title} options`} title="Channel options" aria-haspopup="menu" onClick={(e) => setMenu(e.currentTarget.getBoundingClientRect())}>
+          <button className="icon-btn" aria-label={`#${title} options`} title="Channel options" aria-haspopup="menu" aria-expanded={!!menu} onClick={(e) => setMenu(e.currentTarget.getBoundingClientRect())}>
             <Icon name="more" />
           </button>
         )}
         <Pop anchor={menu} onClose={() => setMenu(null)} className="menu" label={`#${title} options`}>
-          <div role="menu" onClick={() => setMenu(null)}>
+          <div role="menu" onClick={() => setMenu(null)} onKeyDown={menuKeys}>
             {canEdit && (
               <button role="menuitem" onClick={() => set({ modal: { t: "channel", id: ch.id } })}>
                 <Icon name="edit" size={18} /> Edit channel
@@ -221,9 +222,10 @@ function Banner({ c }: { c: Community }) {
   const secs = useCountdown(c.retryAt);
   if (c.status !== "reconnecting" && c.status !== "error") return null;
   return (
-    <div className="banner" role="status">
+    <div className="banner">
       <span>
-        Can't reach {c.info?.name ?? hostOf(c.url)}. {c.status === "reconnecting" && (secs > 0 ? `Trying again in ${secs}s.` : "Reconnecting…")}
+        {/* Only the first sentence is live: the countdown would be read out every second. */}
+        <span role="status">Can't reach {c.info?.name ?? hostOf(c.url)}.</span> {c.status === "reconnecting" && (secs > 0 ? `Trying again in ${secs}s.` : "Reconnecting…")}
       </span>
       <button className="btn small" onClick={() => retryNow(c.url)}>
         Try now
@@ -318,7 +320,7 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
         tabIndex={0}
         aria-label="Message list. Arrow keys move between messages."
       >
-        <div className="msgs" role="log" aria-live="polite" aria-relevant="additions" aria-label="Messages">
+        <div className="msgs">
           {list?.error ? (
             <div className="list-note">
               <p className="error">{list.error}</p>
@@ -377,6 +379,10 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
           )}
         </div>
       </div>
+      {/* New messages from others are read out one at a time; history and switching channels stay quiet. */}
+      <p className="visually-hidden" aria-live="polite">
+        {arrivalText(items, mountedAt.current, c.me?.id, c.members)}
+      </p>
       {(!atBottom || list?.hasMoreAfter) && (
         <button
           className="jump jump-latest"
@@ -585,7 +591,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
                 </button>
               );
             })}
-            <button className="reaction add" aria-label="Add reaction" onClick={(e) => setPick(e.currentTarget.getBoundingClientRect())}>
+            <button className="reaction add" aria-label="Add reaction" aria-haspopup="dialog" onClick={(e) => setPick(e.currentTarget.getBoundingClientRect())}>
               <Icon name="smile" size={16} />
             </button>
           </div>
@@ -593,8 +599,8 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
         {!inThread && m.replyCount > 0 && <ThreadLink m={m} />}
       </div>
       {!pending && !editing && (
-        <div className="toolbar" role="toolbar" aria-label="Message actions">
-          <button aria-label="Add reaction" title="Add reaction" onClick={(e) => setPick(e.currentTarget.getBoundingClientRect())}>
+        <div className="toolbar" role="group" aria-label="Message actions">
+          <button aria-label="Add reaction" title="Add reaction" aria-haspopup="dialog" aria-expanded={!!pick} onClick={(e) => setPick(e.currentTarget.getBoundingClientRect())}>
             <Icon name="smile" size={18} />
           </button>
           {!inThread && (
@@ -607,7 +613,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
               <Icon name="edit" size={18} />
             </button>
           )}
-          <button aria-label="More actions" title="More" aria-haspopup="menu" onClick={(e) => setMore(e.currentTarget.getBoundingClientRect())}>
+          <button aria-label="More actions" title="More" aria-haspopup="menu" aria-expanded={!!more} onClick={(e) => setMore(e.currentTarget.getBoundingClientRect())}>
             <Icon name="more" size={18} />
           </button>
         </div>
@@ -638,7 +644,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
         )}
       </Pop>
       <Pop anchor={more} side="left" onClose={() => setMore(null)} className="menu" label="Message actions">
-        <div role="menu" onClick={() => setMore(null)}>
+        <div role="menu" onClick={() => setMore(null)} onKeyDown={menuKeys}>
           <button role="menuitem" onClick={() => navigator.clipboard.writeText(decodeMentions(m.text, c.members))}>
             <Icon name="copy" size={18} /> Copy text
           </button>
@@ -678,7 +684,7 @@ function Unfurl({ link }: { link: Permalink }) {
   const at = Number(m.createdAtMs);
   const text = decodeMentions(m.text, c.members) || count(m.attachments.length, "attachment", "attachments");
   return (
-    <button className="unfurl" onClick={() => jumpTo(u, m, true)} aria-label={`Message from ${name} in ${where}: ${text}`}>
+    <button className="unfurl" onClick={() => jumpTo(u, m, true)}>
       <span className="unfurl-head">
         <Avatar m={author} size={20} />
         <b>{name}</b>
@@ -774,7 +780,11 @@ function EditBox({ url, m }: { url: string; m: Message }) {
           }
         }}
       />
-      {err && <p className="error small">{err}</p>}
+      {err && (
+        <p className="error small" role="alert">
+          {err}
+        </p>
+      )}
       <p className="fine">
         Enter to save, Esc to cancel.{" "}
         <button className="link-btn" onClick={() => set({ editing: null })}>
@@ -1017,9 +1027,7 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
             aria-label={placeholder}
             placeholder={placeholder}
             value={text}
-            role="combobox"
             aria-autocomplete="list"
-            aria-expanded={options.length > 0}
             aria-controls={options.length ? `ac-${key}` : undefined}
             aria-activedescendant={options.length ? `ac-${key}-${sel}` : undefined}
             onChange={(e) => {
@@ -1087,6 +1095,11 @@ export function RightPane() {
   const pane = useApp((s) => s.pane);
   const c = useC();
   const channelId = useApp((s) => s.channelId);
+  const open = !!pane;
+  // Closing would drop focus on body (its close button is gone): send it back to the conversation.
+  useLayoutEffect(() => {
+    if (open) return () => void ((document.activeElement === document.body || document.activeElement?.closest(".pane")) && focusMain());
+  }, [open]);
   if (!pane) return null;
   const ch = c.channels[channelId];
   const close = () => set({ pane: null });
@@ -1320,9 +1333,14 @@ function SearchResults({ c, q }: { c: Community; q: string }) {
   useEffect(() => {
     search(c.url, q).then(setRes, (e) => setErr(errorText(e, c.info?.name)));
   }, [c.url, q]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (err) return <p className="error pane-note">{err}</p>;
-  if (!res) return <p className="muted pane-note">Searching…</p>;
-  if (!res.length) return <p className="muted pane-note">No messages match “{q}”. Try fewer words.</p>;
+  if (err)
+    return (
+      <p className="error pane-note" role="alert">
+        {err}
+      </p>
+    );
+  if (!res) return <p className="muted pane-note" role="status">Searching…</p>;
+  if (!res.length) return <p className="muted pane-note" role="status">No messages match “{q}”. Try fewer words.</p>;
   return (
     <ul className="pane-scroll results">
       {res.map((m) => {

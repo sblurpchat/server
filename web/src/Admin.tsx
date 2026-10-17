@@ -37,7 +37,7 @@ import {
   useApp,
 } from "./store";
 import { EmojiTab } from "./CustomEmoji";
-import { Avatar, Dialog, Icon } from "./ui";
+import { Avatar, CopyButton, Dialog, Icon } from "./ui";
 
 /** The old rank. The UI calls it "Permission"; "Roles" are the custom tags from ticket 1011. */
 export const PERMISSION: Record<number, string> = {
@@ -690,16 +690,13 @@ function BansTab({ url }: { url: string }) {
 }
 
 function TokenOnce({ who, token, onDone }: { who: string; token: string; onDone: () => void }) {
-  const [copied, setCopied] = useState(false);
   return (
     <div className="token-once" role="status">
       <b>Token for {who}</b>
       <p className="small">Copy it now. Sblurp shows it only once. Anyone with it can post as {who}.</p>
       <div className="copy-row">
         <input className="input" readOnly value={token} aria-label={`Token for ${who}`} onFocus={(e) => e.target.select()} />
-        <button className="btn" onClick={() => navigator.clipboard.writeText(token).then(() => setCopied(true))}>
-          <Icon name={copied ? "check" : "copy"} size={16} /> {copied ? "Copied" : "Copy"}
-        </button>
+        <CopyButton text={token} />
       </div>
       <button className="btn ghost small" onClick={onDone}>
         Done
@@ -1082,7 +1079,7 @@ export function Invites({ url, inviteOnly }: { url: string; inviteOnly: boolean 
                 </span>
                 {st.live && (
                   <button className="btn" onClick={() => copy(i.code)} aria-label={`Copy invite link ${i.code}`}>
-                    <Icon name={copied === i.code ? "check" : "copy"} size={16} /> {copied === i.code ? "Copied" : "Copy"}
+                    <Icon name={copied === i.code ? "check" : "copy"} size={16} /> <span aria-live="polite">{copied === i.code ? "Copied" : "Copy"}</span>
                   </button>
                 )}
                 <button

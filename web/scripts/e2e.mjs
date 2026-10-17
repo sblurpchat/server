@@ -49,8 +49,8 @@ try {
 
   // React, then right-click the chip to see who reacted.
   await sent.hover();
-  await sent.getByRole("toolbar").getByRole("button", { name: "Add reaction" }).click();
-  await page.getByRole("option", { name: "thumbsup" }).first().click();
+  await sent.getByRole("group", { name: "Message actions" }).getByRole("button", { name: "Add reaction" }).click();
+  await page.getByRole("button", { name: "thumbsup" }).first().click();
   const chip = sent.getByRole("button", { name: "You reacted with 👍" });
   await chip.click({ button: "right" });
   await page.locator(".pop.who li", { hasText: "You" }).waitFor();
