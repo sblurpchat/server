@@ -409,6 +409,22 @@ message KickMemberResponse {}
 message BanMemberRequest { string member_id = 1; }
 message BanMemberResponse {}
 
+// A banned login. The member row stays, so member.id keeps working.
+message Ban {
+  Member member = 1;          // the profile they had when banned
+  string banned_by = 2;       // member id
+  int64 banned_at_ms = 3;
+}
+
+// Moderator or higher. Newest first.
+message ListBansRequest {}
+message ListBansResponse { repeated Ban bans = 1; }
+
+// Moderator or higher. The login may Join again (with an invite if the
+// community is invite-only) and comes back with the same member id.
+message UnbanMemberRequest { string member_id = 1; }
+message UnbanMemberResponse {}
+
 // ---------------------------------------------------------------------------
 // Invites and settings (admin or owner)
 //
@@ -518,6 +534,8 @@ service ServerService {
   rpc LeaveCommunity(LeaveCommunityRequest) returns (LeaveCommunityResponse) {}
   rpc KickMember(KickMemberRequest) returns (KickMemberResponse) {}
   rpc BanMember(BanMemberRequest) returns (BanMemberResponse) {}
+  rpc ListBans(ListBansRequest) returns (ListBansResponse) {}
+  rpc UnbanMember(UnbanMemberRequest) returns (UnbanMemberResponse) {}
   rpc CreateInvite(CreateInviteRequest) returns (CreateInviteResponse) {}
   rpc ListInvites(ListInvitesRequest) returns (ListInvitesResponse) {}
   rpc RevokeInvite(RevokeInviteRequest) returns (RevokeInviteResponse) {}

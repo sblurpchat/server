@@ -70,6 +70,11 @@ const (
 	ServerServiceKickMemberProcedure = "/sblurp.v1.ServerService/KickMember"
 	// ServerServiceBanMemberProcedure is the fully-qualified name of the ServerService's BanMember RPC.
 	ServerServiceBanMemberProcedure = "/sblurp.v1.ServerService/BanMember"
+	// ServerServiceListBansProcedure is the fully-qualified name of the ServerService's ListBans RPC.
+	ServerServiceListBansProcedure = "/sblurp.v1.ServerService/ListBans"
+	// ServerServiceUnbanMemberProcedure is the fully-qualified name of the ServerService's UnbanMember
+	// RPC.
+	ServerServiceUnbanMemberProcedure = "/sblurp.v1.ServerService/UnbanMember"
 	// ServerServiceCreateInviteProcedure is the fully-qualified name of the ServerService's
 	// CreateInvite RPC.
 	ServerServiceCreateInviteProcedure = "/sblurp.v1.ServerService/CreateInvite"
@@ -162,6 +167,8 @@ type ServerServiceClient interface {
 	LeaveCommunity(context.Context, *connect.Request[v1.LeaveCommunityRequest]) (*connect.Response[v1.LeaveCommunityResponse], error)
 	KickMember(context.Context, *connect.Request[v1.KickMemberRequest]) (*connect.Response[v1.KickMemberResponse], error)
 	BanMember(context.Context, *connect.Request[v1.BanMemberRequest]) (*connect.Response[v1.BanMemberResponse], error)
+	ListBans(context.Context, *connect.Request[v1.ListBansRequest]) (*connect.Response[v1.ListBansResponse], error)
+	UnbanMember(context.Context, *connect.Request[v1.UnbanMemberRequest]) (*connect.Response[v1.UnbanMemberResponse], error)
 	CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error)
 	ListInvites(context.Context, *connect.Request[v1.ListInvitesRequest]) (*connect.Response[v1.ListInvitesResponse], error)
 	RevokeInvite(context.Context, *connect.Request[v1.RevokeInviteRequest]) (*connect.Response[v1.RevokeInviteResponse], error)
@@ -243,6 +250,18 @@ func NewServerServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(serverServiceMethods.ByName("BanMember")),
 			connect.WithClientOptions(opts...),
 		),
+		listBans: connect.NewClient[v1.ListBansRequest, v1.ListBansResponse](
+			httpClient,
+			baseURL+ServerServiceListBansProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("ListBans")),
+			connect.WithClientOptions(opts...),
+		),
+		unbanMember: connect.NewClient[v1.UnbanMemberRequest, v1.UnbanMemberResponse](
+			httpClient,
+			baseURL+ServerServiceUnbanMemberProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("UnbanMember")),
+			connect.WithClientOptions(opts...),
+		),
 		createInvite: connect.NewClient[v1.CreateInviteRequest, v1.CreateInviteResponse](
 			httpClient,
 			baseURL+ServerServiceCreateInviteProcedure,
@@ -306,6 +325,8 @@ type serverServiceClient struct {
 	leaveCommunity       *connect.Client[v1.LeaveCommunityRequest, v1.LeaveCommunityResponse]
 	kickMember           *connect.Client[v1.KickMemberRequest, v1.KickMemberResponse]
 	banMember            *connect.Client[v1.BanMemberRequest, v1.BanMemberResponse]
+	listBans             *connect.Client[v1.ListBansRequest, v1.ListBansResponse]
+	unbanMember          *connect.Client[v1.UnbanMemberRequest, v1.UnbanMemberResponse]
 	createInvite         *connect.Client[v1.CreateInviteRequest, v1.CreateInviteResponse]
 	listInvites          *connect.Client[v1.ListInvitesRequest, v1.ListInvitesResponse]
 	revokeInvite         *connect.Client[v1.RevokeInviteRequest, v1.RevokeInviteResponse]
@@ -366,6 +387,16 @@ func (c *serverServiceClient) BanMember(ctx context.Context, req *connect.Reques
 	return c.banMember.CallUnary(ctx, req)
 }
 
+// ListBans calls sblurp.v1.ServerService.ListBans.
+func (c *serverServiceClient) ListBans(ctx context.Context, req *connect.Request[v1.ListBansRequest]) (*connect.Response[v1.ListBansResponse], error) {
+	return c.listBans.CallUnary(ctx, req)
+}
+
+// UnbanMember calls sblurp.v1.ServerService.UnbanMember.
+func (c *serverServiceClient) UnbanMember(ctx context.Context, req *connect.Request[v1.UnbanMemberRequest]) (*connect.Response[v1.UnbanMemberResponse], error) {
+	return c.unbanMember.CallUnary(ctx, req)
+}
+
 // CreateInvite calls sblurp.v1.ServerService.CreateInvite.
 func (c *serverServiceClient) CreateInvite(ctx context.Context, req *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error) {
 	return c.createInvite.CallUnary(ctx, req)
@@ -420,6 +451,8 @@ type ServerServiceHandler interface {
 	LeaveCommunity(context.Context, *connect.Request[v1.LeaveCommunityRequest]) (*connect.Response[v1.LeaveCommunityResponse], error)
 	KickMember(context.Context, *connect.Request[v1.KickMemberRequest]) (*connect.Response[v1.KickMemberResponse], error)
 	BanMember(context.Context, *connect.Request[v1.BanMemberRequest]) (*connect.Response[v1.BanMemberResponse], error)
+	ListBans(context.Context, *connect.Request[v1.ListBansRequest]) (*connect.Response[v1.ListBansResponse], error)
+	UnbanMember(context.Context, *connect.Request[v1.UnbanMemberRequest]) (*connect.Response[v1.UnbanMemberResponse], error)
 	CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error)
 	ListInvites(context.Context, *connect.Request[v1.ListInvitesRequest]) (*connect.Response[v1.ListInvitesResponse], error)
 	RevokeInvite(context.Context, *connect.Request[v1.RevokeInviteRequest]) (*connect.Response[v1.RevokeInviteResponse], error)
@@ -497,6 +530,18 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(serverServiceMethods.ByName("BanMember")),
 		connect.WithHandlerOptions(opts...),
 	)
+	serverServiceListBansHandler := connect.NewUnaryHandler(
+		ServerServiceListBansProcedure,
+		svc.ListBans,
+		connect.WithSchema(serverServiceMethods.ByName("ListBans")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceUnbanMemberHandler := connect.NewUnaryHandler(
+		ServerServiceUnbanMemberProcedure,
+		svc.UnbanMember,
+		connect.WithSchema(serverServiceMethods.ByName("UnbanMember")),
+		connect.WithHandlerOptions(opts...),
+	)
 	serverServiceCreateInviteHandler := connect.NewUnaryHandler(
 		ServerServiceCreateInviteProcedure,
 		svc.CreateInvite,
@@ -567,6 +612,10 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 			serverServiceKickMemberHandler.ServeHTTP(w, r)
 		case ServerServiceBanMemberProcedure:
 			serverServiceBanMemberHandler.ServeHTTP(w, r)
+		case ServerServiceListBansProcedure:
+			serverServiceListBansHandler.ServeHTTP(w, r)
+		case ServerServiceUnbanMemberProcedure:
+			serverServiceUnbanMemberHandler.ServeHTTP(w, r)
 		case ServerServiceCreateInviteProcedure:
 			serverServiceCreateInviteHandler.ServeHTTP(w, r)
 		case ServerServiceListInvitesProcedure:
@@ -630,6 +679,14 @@ func (UnimplementedServerServiceHandler) KickMember(context.Context, *connect.Re
 
 func (UnimplementedServerServiceHandler) BanMember(context.Context, *connect.Request[v1.BanMemberRequest]) (*connect.Response[v1.BanMemberResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.BanMember is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) ListBans(context.Context, *connect.Request[v1.ListBansRequest]) (*connect.Response[v1.ListBansResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.ListBans is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) UnbanMember(context.Context, *connect.Request[v1.UnbanMemberRequest]) (*connect.Response[v1.UnbanMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.UnbanMember is not implemented"))
 }
 
 func (UnimplementedServerServiceHandler) CreateInvite(context.Context, *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error) {

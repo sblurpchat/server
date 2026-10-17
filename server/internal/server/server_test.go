@@ -611,11 +611,33 @@ func TestLeaveKickAndBan(t *testing.T) {
 	}
 
 	// Ban: she cannot come back.
+	_, err = dee.srv.ListBans(ctx(), connect.NewRequest(&v1.ListBansRequest{}))
+	wantCode(t, err, connect.CodePermissionDenied) // members cannot see bans
 	if err := ban(bob, dee.me.Id); err != nil {
 		t.Fatal(err)
 	}
 	_, err = dee.srv.Join(ctx(), connect.NewRequest(&v1.JoinRequest{DisplayName: "Dee"}))
 	wantCode(t, err, connect.CodePermissionDenied)
+
+	// List and lift the ban: she comes back with the same id.
+	bans := must(cy.srv.ListBans(ctx(), connect.NewRequest(&v1.ListBansRequest{}))).Bans
+	if len(bans) != 1 || bans[0].Member.GetId() != dee.me.Id || bans[0].Member.DisplayName != "Dee" || bans[0].BannedBy != bob.me.Id || bans[0].BannedAtMs == 0 {
+		t.Fatalf("bans = %v", bans)
+	}
+	unban := func(id string) error {
+		_, err := cy.srv.UnbanMember(ctx(), connect.NewRequest(&v1.UnbanMemberRequest{MemberId: id}))
+		return err
+	}
+	if err := unban(dee.me.Id); err != nil {
+		t.Fatal(err)
+	}
+	wantCode(t, unban(dee.me.Id), connect.CodeNotFound)
+	if n := len(must(cy.srv.ListBans(ctx(), connect.NewRequest(&v1.ListBansRequest{}))).Bans); n != 0 {
+		t.Fatalf("%d bans after unban", n)
+	}
+	if back := must(dee.srv.Join(ctx(), connect.NewRequest(&v1.JoinRequest{DisplayName: "Dee"}))); back.Member.Id != dee.me.Id {
+		t.Fatalf("unbanned rejoin got id %s", back.Member.Id)
+	}
 
 	// Leave: anyone but the owner.
 	_, err = ana.srv.LeaveCommunity(ctx(), connect.NewRequest(&v1.LeaveCommunityRequest{}))

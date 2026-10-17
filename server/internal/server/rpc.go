@@ -1568,6 +1568,70 @@ func (s *Server) BanMember(ctx context.Context, req *connect.Request[v1.BanMembe
 	return connect.NewResponse(&v1.BanMemberResponse{}), nil
 }
 
+func requireModerator(ctx context.Context) error {
+	if !canModerate(me(ctx)) {
+		return errf(connect.CodePermissionDenied, "only moderators and up can manage bans")
+	}
+	return nil
+}
+
+func (s *Server) ListBans(ctx context.Context, _ *connect.Request[v1.ListBansRequest]) (*connect.Response[v1.ListBansResponse], error) {
+	if err := requireModerator(ctx); err != nil {
+		return nil, err
+	}
+	rows, err := s.db.r.QueryContext(ctx, "SELECT member_id, by_id, at_ms FROM bans ORDER BY at_ms DESC, rowid DESC")
+	if err != nil {
+		return nil, err
+	}
+	out := &v1.ListBansResponse{}
+	var ids []string
+	for rows.Next() {
+		b := &v1.Ban{}
+		var id string
+		if err := rows.Scan(&id, &b.BannedBy, &b.BannedAtMs); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+		out.Bans = append(out.Bans, b)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for i, id := range ids {
+		m, err := s.loadMember(ctx, s.db.r, "id = ?", id)
+		if err != nil {
+			return nil, err
+		}
+		if m != nil {
+			out.Bans[i].Member = m.Member
+		}
+	}
+	return connect.NewResponse(out), nil
+}
+
+func (s *Server) UnbanMember(ctx context.Context, req *connect.Request[v1.UnbanMemberRequest]) (*connect.Response[v1.UnbanMemberResponse], error) {
+	if err := requireModerator(ctx); err != nil {
+		return nil, err
+	}
+	err := s.writeTx(ctx, func(t *wtx) error {
+		res, err := t.ExecContext(ctx, "DELETE FROM bans WHERE member_id = ?", req.Msg.MemberId)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return errf(connect.CodeNotFound, "that member is not banned")
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.log.Info("member unbanned", "member", req.Msg.MemberId, "by", me(ctx).Id)
+	return connect.NewResponse(&v1.UnbanMemberResponse{}), nil
+}
+
 // kick removes a person of lower rank, and with ban also blocks their login.
 func (s *Server) kick(ctx context.Context, memberID string, ban bool) error {
 	by := me(ctx).Id

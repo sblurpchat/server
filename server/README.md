@@ -139,7 +139,9 @@ client. There is no separate apps system. The bot is ~150 lines in
   roles and shows
   as `member_left`. Their member row stays (same id when they Join again,
   as a plain member). `BanMember` also blocks their `(iss, sub)` from
-  `Join`. Bots are removed with `DeleteBot`, not kicked.
+  `Join`. `ListBans` and `UnbanMember` (moderator or higher) show and lift
+  bans; an unbanned person may Join again with the same member id. Bots are
+  removed with `DeleteBot`, not kicked.
 - **Invites**: a community is open (anyone with a login from a trusted
   issuer may `Join`) until an admin calls
   `UpdateServerSettings{invite_only: true}`. `GetServerInfo.invite_only`
