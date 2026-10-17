@@ -2121,7 +2121,7 @@ type Event_ChannelModeChanged struct {
 }
 
 type Event_ServerUpdated struct {
-	ServerUpdated bool `protobuf:"varint,27,opt,name=server_updated,json=serverUpdated,proto3,oneof"` // description or banner changed; call GetServerInfo
+	ServerUpdated bool `protobuf:"varint,27,opt,name=server_updated,json=serverUpdated,proto3,oneof"` // description, banner or icon changed; call GetServerInfo
 }
 
 func (*Event_MessageCreated) isEvent_Kind() {}
@@ -4784,6 +4784,7 @@ type UpdateServerSettingsRequest struct {
 	ChannelMode   ChannelMode            `protobuf:"varint,2,opt,name=channel_mode,json=channelMode,proto3,enum=sblurp.v1.ChannelMode" json:"channel_mode,omitempty"` // UNSPECIFIED = leave as is
 	Description   *string                `protobuf:"bytes,3,opt,name=description,proto3,oneof" json:"description,omitempty"`                                          // Markdown; "" falls back to the server's -description
 	BannerId      *string                `protobuf:"bytes,4,opt,name=banner_id,json=bannerId,proto3,oneof" json:"banner_id,omitempty"`                                // an uploaded image's id (POST /upload); "" removes it
+	IconId        *string                `protobuf:"bytes,5,opt,name=icon_id,json=iconId,proto3,oneof" json:"icon_id,omitempty"`                                      // rail icon, an uploaded image's id; "" falls back to -icon-url
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4846,12 +4847,20 @@ func (x *UpdateServerSettingsRequest) GetBannerId() string {
 	return ""
 }
 
+func (x *UpdateServerSettingsRequest) GetIconId() string {
+	if x != nil && x.IconId != nil {
+		return *x.IconId
+	}
+	return ""
+}
+
 type UpdateServerSettingsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	InviteOnly    bool                   `protobuf:"varint,1,opt,name=invite_only,json=inviteOnly,proto3" json:"invite_only,omitempty"`
 	ChannelMode   ChannelMode            `protobuf:"varint,2,opt,name=channel_mode,json=channelMode,proto3,enum=sblurp.v1.ChannelMode" json:"channel_mode,omitempty"`
 	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
 	Banner        *Attachment            `protobuf:"bytes,4,opt,name=banner,proto3" json:"banner,omitempty"`
+	IconUrl       string                 `protobuf:"bytes,5,opt,name=icon_url,json=iconUrl,proto3" json:"icon_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4912,6 +4921,13 @@ func (x *UpdateServerSettingsResponse) GetBanner() *Attachment {
 		return x.Banner
 	}
 	return nil
+}
+
+func (x *UpdateServerSettingsResponse) GetIconUrl() string {
+	if x != nil {
+		return x.IconUrl
+	}
+	return ""
 }
 
 type CreateRoleRequest struct {
@@ -6004,23 +6020,27 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\ainvites\x18\x01 \x03(\v2\x11.sblurp.v1.InviteR\ainvites\")\n" +
 	"\x13RevokeInviteRequest\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\"\x16\n" +
-	"\x14RevokeInviteResponse\"\xf5\x01\n" +
+	"\x14RevokeInviteResponse\"\x9f\x02\n" +
 	"\x1bUpdateServerSettingsRequest\x12$\n" +
 	"\vinvite_only\x18\x01 \x01(\bH\x00R\n" +
 	"inviteOnly\x88\x01\x01\x129\n" +
 	"\fchannel_mode\x18\x02 \x01(\x0e2\x16.sblurp.v1.ChannelModeR\vchannelMode\x12%\n" +
 	"\vdescription\x18\x03 \x01(\tH\x01R\vdescription\x88\x01\x01\x12 \n" +
-	"\tbanner_id\x18\x04 \x01(\tH\x02R\bbannerId\x88\x01\x01B\x0e\n" +
+	"\tbanner_id\x18\x04 \x01(\tH\x02R\bbannerId\x88\x01\x01\x12\x1c\n" +
+	"\aicon_id\x18\x05 \x01(\tH\x03R\x06iconId\x88\x01\x01B\x0e\n" +
 	"\f_invite_onlyB\x0e\n" +
 	"\f_descriptionB\f\n" +
 	"\n" +
-	"_banner_id\"\xcb\x01\n" +
+	"_banner_idB\n" +
+	"\n" +
+	"\b_icon_id\"\xe6\x01\n" +
 	"\x1cUpdateServerSettingsResponse\x12\x1f\n" +
 	"\vinvite_only\x18\x01 \x01(\bR\n" +
 	"inviteOnly\x129\n" +
 	"\fchannel_mode\x18\x02 \x01(\x0e2\x16.sblurp.v1.ChannelModeR\vchannelMode\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12-\n" +
-	"\x06banner\x18\x04 \x01(\v2\x15.sblurp.v1.AttachmentR\x06banner\"=\n" +
+	"\x06banner\x18\x04 \x01(\v2\x15.sblurp.v1.AttachmentR\x06banner\x12\x19\n" +
+	"\bicon_url\x18\x05 \x01(\tR\aiconUrl\"=\n" +
 	"\x11CreateRoleRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05color\x18\x02 \x01(\tR\x05color\"9\n" +

@@ -256,7 +256,7 @@ message Event {
     Role role_updated = 24;         // created or changed
     string role_deleted = 25;       // role id; drop it from members and channels
     ChannelMode channel_mode_changed = 26;
-    bool server_updated = 27;       // description or banner changed; call GetServerInfo
+    bool server_updated = 27;       // description, banner or icon changed; call GetServerInfo
   }
 }
 
@@ -466,12 +466,14 @@ message UpdateServerSettingsRequest {
   ChannelMode channel_mode = 2;       // UNSPECIFIED = leave as is
   optional string description = 3;    // Markdown; "" falls back to the server's -description
   optional string banner_id = 4;      // an uploaded image's id (POST /upload); "" removes it
+  optional string icon_id = 5;        // rail icon, an uploaded image's id; "" falls back to -icon-url
 }
 message UpdateServerSettingsResponse {
   bool invite_only = 1;
   ChannelMode channel_mode = 2;
   string description = 3;
   Attachment banner = 4;
+  string icon_url = 5;
 }
 
 // Roles (admins only, except that everyone sees them in GetState).

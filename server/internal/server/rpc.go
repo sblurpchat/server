@@ -454,11 +454,15 @@ func (s *Server) GetServerInfo(ctx context.Context, _ *connect.Request[v1.GetSer
 	if err != nil {
 		return nil, err
 	}
+	icon, err := s.iconURL(ctx, s.db.r)
+	if err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&v1.GetServerInfoResponse{
 		Name:            s.cfg.Name,
 		Description:     desc,
 		Banner:          banner,
-		IconUrl:         s.cfg.IconURL,
+		IconUrl:         icon,
 		ProtocolVersion: protocolVersion,
 		TrustedIssuers:  s.cfg.TrustedIssuers,
 		BaseUrl:         s.cfg.BaseURL,
@@ -1815,6 +1819,20 @@ func (s *Server) profile(ctx context.Context, q queryer) (string, *v1.Attachment
 	return cmp.Or(desc, s.cfg.Description), a, err
 }
 
+// iconURL returns the uploaded rail icon's signed URL, else -icon-url.
+func (s *Server) iconURL(ctx context.Context, q queryer) (string, error) {
+	var id string
+	err := q.QueryRowContext(ctx, "SELECT COALESCE((SELECT value FROM settings WHERE key = 'icon'), '')").Scan(&id)
+	if err != nil || id == "" {
+		return s.cfg.IconURL, err
+	}
+	a, err := loadAttachment(ctx, q, id)
+	if err != nil || a == nil {
+		return s.cfg.IconURL, err
+	}
+	return signedFileURL(s.fileKey, a.Id, a.Name, s.now()), nil
+}
+
 func isInviteOnly(ctx context.Context, q queryer) (bool, error) {
 	var on bool
 	err := q.QueryRowContext(ctx, "SELECT COALESCE((SELECT value = '1' FROM settings WHERE key = 'invite_only'), 0)").Scan(&on)
@@ -1944,9 +1962,12 @@ func (s *Server) UpdateServerSettings(ctx context.Context, req *connect.Request[
 	}
 	out := &v1.UpdateServerSettingsResponse{}
 	err := s.writeTx(ctx, func(t *wtx) error {
-		profile := map[string]*string{"description": r.Description, "banner": r.BannerId}
-		if r.BannerId != nil {
-			if err := checkBannerUpload(ctx, t, *r.BannerId, me(ctx).Id); err != nil {
+		profile := map[string]*string{"description": r.Description, "banner": r.BannerId, "icon": r.IconId}
+		for _, id := range []*string{r.BannerId, r.IconId} {
+			if id == nil {
+				continue
+			}
+			if err := checkBannerUpload(ctx, t, *id, me(ctx).Id); err != nil {
 				return err
 			}
 		}
@@ -1971,6 +1992,9 @@ func (s *Server) UpdateServerSettings(ctx context.Context, req *connect.Request[
 		}
 		var err error
 		if out.Description, out.Banner, err = s.profile(ctx, t); err != nil {
+			return err
+		}
+		if out.IconUrl, err = s.iconURL(ctx, t); err != nil {
 			return err
 		}
 		if v := req.Msg.InviteOnly; v != nil {

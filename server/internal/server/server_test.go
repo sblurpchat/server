@@ -1522,6 +1522,56 @@ func TestBannerAndHeaderImage(t *testing.T) {
 	}
 }
 
+func TestServerIcon(t *testing.T) {
+	e := newEnv(t)
+	e.s.cfg.IconURL = "https://cdn.test/flag.png"
+	ana, bob := e.join("ana"), e.join("bob")
+	_, icon := ana.upload("icon.png", pngBytes(2, 2))
+	_, txt := ana.upload("notes.txt", []byte("hi"))
+	settings := func(c *client, id string) (*v1.UpdateServerSettingsResponse, error) {
+		res, err := c.srv.UpdateServerSettings(ctx(), connect.NewRequest(&v1.UpdateServerSettingsRequest{IconId: &id}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg, nil
+	}
+	info := func() string {
+		return must(e.client("").srv.GetServerInfo(ctx(), connect.NewRequest(&v1.GetServerInfoRequest{}))).IconUrl
+	}
+	_, err := settings(bob, icon.Id)
+	wantCode(t, err, connect.CodePermissionDenied)
+	_, err = settings(ana, txt.Id)
+	wantCode(t, err, connect.CodeInvalidArgument)
+
+	sub := bob.subscribe(bob.state().Seq)
+	out := must2(settings(ana, icon.Id))
+	if !strings.HasPrefix(out.IconUrl, "/files/"+icon.Id+"/icon.png?exp=") || info() != out.IconUrl {
+		t.Fatalf("icon_url = %q, info %q", out.IconUrl, info())
+	}
+	sub.next(func(ev *v1.Event) bool { return ev.GetServerUpdated() }, nil)
+	if code := getStatus(t, e.url+out.IconUrl); code != http.StatusOK {
+		t.Fatalf("GET icon: %d", code)
+	}
+
+	exists := func() bool {
+		var n int
+		e.s.db.r.QueryRow("SELECT COUNT(*) FROM attachments WHERE id = ?", icon.Id).Scan(&n)
+		return n == 1
+	}
+	e.clock.Advance(25 * time.Hour)
+	ana = e.client(e.token("ana"))
+	if err := e.s.prune(ctx()); err != nil || !exists() {
+		t.Fatalf("prune kept icon: %v %v", err, exists())
+	}
+	// Removing falls back to -icon-url and frees the upload.
+	if out = must2(settings(ana, "")); out.IconUrl != "https://cdn.test/flag.png" || info() != out.IconUrl {
+		t.Fatalf("cleared icon_url = %q", out.IconUrl)
+	}
+	if err := e.s.prune(ctx()); err != nil || exists() {
+		t.Fatalf("prune after clear: %v %v", err, exists())
+	}
+}
+
 func must2[T any](v T, err error) T {
 	if err != nil {
 		panic(err)

@@ -32,7 +32,7 @@ Every flag can also come from an environment variable.
 | `-data` | `SBLURP_DATA` | `data` | Data directory: `sblurp.db`, `files/`, `file-key`, `bot-token.txt`. |
 | `-name` | `SBLURP_NAME` | `Sblurp Community` | Community name. |
 | `-description` | `SBLURP_DESCRIPTION` | seed's text | One line for the join screen. |
-| `-icon-url` | `SBLURP_ICON_URL` | | Rail icon. |
+| `-icon-url` | `SBLURP_ICON_URL` | | Rail icon, unless an admin uploads one. |
 | `-accent` | `SBLURP_ACCENT` | seed's color | `#rrggbb` for the rail icon. |
 | `-base-url` | `SBLURP_BASE_URL` | required | Public URL. Also the JWT audience. |
 | `-trusted-issuer` | `SBLURP_TRUSTED_ISSUERS` (comma separated) | `https://sblurp.chat` | Login issuers to accept. Repeat the flag for more. |
@@ -163,6 +163,10 @@ client. There is no separate apps system. The bot is ~150 lines in
   `Channel.header_image`, with signed URLs; a change emits `server_updated`
   (clients call `GetServerInfo` again) or `channel_updated`. Images in use
   are kept out of the orphan prune. Topics may span lines.
+- **Community icon** (1044). `UpdateServerSettings{icon_id}` takes an
+  upload with the same rules as the banner. `GetServerInfo.icon_url` is then
+  its signed URL instead of `-icon-url`; `""` falls back to the flag. A
+  change emits `server_updated`.
 - **Channel modes and custom roles** (ticket 1011). `GetState` has
   `channel_mode`, `roles` (sorted by `position`) and, in `channels`, only
   the channels I am in: my sidebar. `UpdateServerSettings{channel_mode}`
