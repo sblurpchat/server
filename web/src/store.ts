@@ -896,11 +896,11 @@ function readTokens(vars: string[]) {
 }
 /** Puts the appearance on <html>: data attributes for CSS, a font size, and an accent fitted to the theme. */
 function applyLook() {
-  const { theme, density, sidebar, motion, fontSize, accent, custom } = state.look;
+  const { theme, density, sidebar, motion, fontSize, accent, custom, font } = state.look;
   const root = document.documentElement;
-  const attrs = { theme, density, sidebar, motion };
+  const attrs = { theme, density, sidebar, motion, font };
   for (const [k, v] of Object.entries(attrs)) {
-    if (v === "system" || v === "cozy") delete root.dataset[k];
+    if (v === "system" || v === "cozy" || v === "default") delete root.dataset[k];
     else root.dataset[k] = v;
   }
   root.style.fontSize = fontSize === APPEARANCE.fontSize ? "" : `${(fontSize / 15) * 100}%`;

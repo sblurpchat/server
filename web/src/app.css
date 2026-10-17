@@ -157,6 +157,235 @@
   color-scheme: light;
 }
 
+/* Cocoa (1191): warm brown terminal, cream text, amber signals, monospace by default. */
+[data-theme="cocoa"] {
+  --ink: #f0e4d0;
+  --rail: #171310;
+  --frost: #211c18;
+  --paper: #2a2420;
+  --raspberry: #e8b06a;
+  --accent-fill: #94561c;
+  --cherry: #f08a64;
+  --cherry-text: #f39a78;
+  --badge: #b0462a;
+  --graphite: #b5a693;
+  --line: #3b332d;
+  --hover: #342c26;
+  --selected: #45362a;
+  --text: #e6d9c3;
+  --msg-hover: #2f2924;
+  --mention-bg: #45351f;
+  --raised: #322a25;
+  --shadow-c: rgb(0 0 0 / 0.45);
+  --scrim: rgb(8 6 4 / 0.7);
+  --online: #a9c46e;
+  --away: #e8b06a;
+  --code-bg: #1f1a16;
+  --tip: #120f0c;
+  --sans: "Iosevka", var(--mono);
+  color-scheme: dark;
+}
+/* Colorblind safe: blue and orange signals (Okabe-Ito), never red against green. */
+[data-theme="cvd"] {
+  --ink: #141a26;
+  --rail: #1c2433;
+  --frost: #eef1f5;
+  --paper: #ffffff;
+  --raspberry: #0057b8;
+  --accent-fill: #0057b8;
+  --cherry: #d55e00;
+  --cherry-text: #ad4700;
+  --badge: #ad4700;
+  --graphite: #4f5866;
+  --line: #d8dde5;
+  --hover: #e2e7ee;
+  --selected: #d6e6fa;
+  --text: #141a26;
+  --msg-hover: #f5f7fa;
+  --mention-bg: #fdefe2;
+  --raised: #ffffff;
+  --shadow-c: rgb(20 26 38 / 0.12);
+  --scrim: rgb(10 14 22 / 0.5);
+  --online: #0072b2;
+  --away: #e69f00;
+  --code-bg: #f0f2f6;
+  --tip: #141a26;
+  --add: #56b4e9;
+  --add-hover: #0072b2;
+  color-scheme: light;
+}
+/* Fjord: cool blue-gray dark, frosted cyan accent. */
+[data-theme="fjord"] {
+  --ink: #eceff4;
+  --rail: #1b1f27;
+  --frost: #232833;
+  --paper: #2b303b;
+  --raspberry: #88c0d0;
+  --accent-fill: #3b6e8f;
+  --cherry: #e27d86;
+  --cherry-text: #ee949c;
+  --badge: #b03f4b;
+  --graphite: #adb5c2;
+  --line: #3a4150;
+  --hover: #343a47;
+  --selected: #36455a;
+  --text: #e2e7ef;
+  --msg-hover: #30353f;
+  --mention-bg: #4a3a3f;
+  --raised: #323845;
+  --shadow-c: rgb(0 0 0 / 0.4);
+  --scrim: rgb(8 10 14 / 0.65);
+  --online: #a3be8c;
+  --away: #ebcb8b;
+  --code-bg: #242933;
+  --tip: #11141a;
+  color-scheme: dark;
+}
+/* Sand: warm paper light with a deep teal accent. */
+[data-theme="sand"] {
+  --ink: #2b2118;
+  --rail: #3b2f24;
+  --frost: #f1ebe1;
+  --paper: #fbf8f3;
+  --raspberry: #1d6a73;
+  --accent-fill: #1d6a73;
+  --cherry: #c8343f;
+  --cherry-text: #b42d38;
+  --badge: #b42d38;
+  --graphite: #66594b;
+  --line: #e3d9ca;
+  --hover: #e9e0d2;
+  --selected: #d3e6e5;
+  --text: #2b2118;
+  --msg-hover: #f5f0e8;
+  --mention-bg: #fbe8d4;
+  --raised: #fffdf9;
+  --shadow-c: rgb(43 33 24 / 0.12);
+  --scrim: rgb(24 18 12 / 0.5);
+  --online: #2f8a4f;
+  --away: #b26b00;
+  --code-bg: #f0e9dd;
+  --tip: #2b2118;
+  color-scheme: light;
+}
+/* Grape: deep violet dark with a lilac accent. */
+[data-theme="grape"] {
+  --ink: #f2edf9;
+  --rail: #140f1b;
+  --frost: #1e1728;
+  --paper: #261e31;
+  --raspberry: #c4a8ff;
+  --accent-fill: #7449d4;
+  --cherry: #ff7aa8;
+  --cherry-text: #ff8fb6;
+  --badge: #c02d69;
+  --graphite: #aa9ebd;
+  --line: #3a2f4a;
+  --hover: #30273d;
+  --selected: #3f2f63;
+  --text: #ebe5f4;
+  --msg-hover: #2c2338;
+  --mention-bg: #47283d;
+  --raised: #2e2539;
+  --shadow-c: rgb(0 0 0 / 0.45);
+  --scrim: rgb(8 4 12 / 0.7);
+  --online: #6fd6a0;
+  --away: #f2c063;
+  --code-bg: #1b1524;
+  --tip: #0d0912;
+  color-scheme: dark;
+}
+/* Black: true black for OLED screens. */
+[data-theme="black"] {
+  --ink: #f2f2f2;
+  --rail: #000000;
+  --frost: #0a0a0a;
+  --paper: #000000;
+  --raspberry: #8aa4ff;
+  --accent-fill: #3d5ce6;
+  --cherry: #ff5c72;
+  --cherry-text: #ff7084;
+  --badge: #d42a44;
+  --graphite: #9c9c9c;
+  --line: #262626;
+  --hover: #1a1a1a;
+  --selected: #1c2448;
+  --text: #e6e6e6;
+  --msg-hover: #0f0f0f;
+  --mention-bg: #2a1418;
+  --raised: #141414;
+  --shadow-c: rgb(0 0 0 / 0.6);
+  --scrim: rgb(0 0 0 / 0.75);
+  --online: #3ccf80;
+  --away: #f0aa45;
+  --code-bg: #111111;
+  --tip: #262626;
+  color-scheme: dark;
+}
+
+/* Fonts (1197): self-hosted, latin subsets, all SIL OFL 1.1 (public/fonts/OFL.txt).
+   A browser downloads a face only when text uses it, so unpicked fonts never load. */
+@font-face {
+  font-family: "Schibsted Grotesk";
+  src: url(/fonts/schibsted-grotesk.woff2) format("woff2");
+  font-weight: 400 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url(/fonts/jetbrains-mono.woff2) format("woff2");
+  font-weight: 100 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url(/fonts/inter.woff2) format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Source Serif 4";
+  src: url(/fonts/source-serif-4.woff2) format("woff2");
+  font-weight: 200 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "PT Mono";
+  src: url(/fonts/pt-mono.woff2) format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Iosevka";
+  src: url(/fonts/iosevka-400.woff2) format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Iosevka";
+  src: url(/fonts/iosevka-700.woff2) format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+/* A picked font beats the theme's own (Cocoa is monospace by default). */
+:root[data-font="schibsted"] {
+  --sans: "Schibsted Grotesk", system-ui, sans-serif;
+}
+:root[data-font="system"] {
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+:root[data-font="inter"] {
+  --sans: "Inter", system-ui, sans-serif;
+}
+:root[data-font="serif"] {
+  --sans: "Source Serif 4", Georgia, serif;
+}
+:root[data-font="pt-mono"] {
+  --sans: "PT Mono", var(--mono);
+}
+:root[data-font="iosevka"] {
+  --sans: "Iosevka", var(--mono);
+}
+
 /* ------------------------------------------------------------------ base */
 
 *,
@@ -1339,18 +1568,25 @@ kbd {
   outline: 2px solid var(--raspberry);
   outline-offset: 4px;
 }
+/* Compact tiles (1189): a small window of each theme, its name under it. */
 .theme-pick {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-  gap: 12px 10px;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 10px 8px;
 }
 .theme-opt {
   --ring: var(--raspberry);
   display: grid;
-  gap: 8px;
-  font-size: 0.875rem;
+  align-content: start;
+  gap: 5px;
+  font-size: 0.75rem;
   font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
   cursor: pointer;
+}
+.theme-opt:has(:checked) .theme-name {
+  color: var(--raspberry);
 }
 .theme-opt input {
   position: absolute;
@@ -1358,8 +1594,8 @@ kbd {
 }
 .theme-swatch {
   display: grid;
-  grid-template-columns: 14px 30px 1fr;
-  height: 64px;
+  grid-template-columns: 9px 18px 1fr;
+  height: 40px;
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -1377,11 +1613,11 @@ kbd {
 .theme-swatch i:nth-child(3) {
   display: grid;
   align-content: center;
-  gap: 6px;
-  padding: 0 10px;
+  gap: 5px;
+  padding: 0 6px;
 }
 .theme-swatch b {
-  height: 6px;
+  height: 5px;
   border-radius: 3px;
   background: var(--raspberry);
 }
@@ -1396,7 +1632,7 @@ kbd {
   height: auto;
   border: 0;
   border-radius: 0;
-  grid-template-columns: 10px 14px 1fr;
+  grid-template-columns: 5px 8px 1fr;
 }
 .theme-opt input:checked + .theme-swatch {
   outline: 2px solid var(--ring);
@@ -1407,6 +1643,7 @@ kbd {
 }
 .theme-swatch[data-empty="true"] {
   display: grid;
+  grid-template-columns: 1fr;
   place-items: center;
   border-style: dashed;
   border-color: var(--graphite);

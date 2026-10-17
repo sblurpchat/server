@@ -391,9 +391,11 @@ export function browseDetail(ch: Channel): string {
 // Appearance: per-device settings, parsed defensively because localStorage is user-editable.
 // ---------------------------------------------------------------------------
 
-export const THEMES = ["system", "light", "dark", "midnight", "contrast", "cola", "mint", "custom"] as const;
+export const THEMES = ["system", "light", "dark", "midnight", "contrast", "cvd", "cola", "mint", "cocoa", "fjord", "sand", "grape", "black", "custom"] as const;
 export type Theme = (typeof THEMES)[number];
 const DENSITIES = ["cozy", "compact", "irc"] as const;
+/** "default" is the theme's own font (Schibsted Grotesk, or Iosevka in Cocoa). */
+export const FONTS = ["default", "schibsted", "system", "inter", "serif", "pt-mono", "iosevka"] as const;
 export interface Appearance {
   theme: Theme;
   /** "" keeps the theme's own accent. */
@@ -406,8 +408,9 @@ export interface Appearance {
   motion: "system" | "reduce" | "full";
   /** The custom theme as a share string (see themeString), or "". */
   custom: string;
+  font: (typeof FONTS)[number];
 }
-export const APPEARANCE: Appearance = { theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system", custom: "" };
+export const APPEARANCE: Appearance = { theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system", custom: "", font: "default" };
 
 export function parseAppearance(v: unknown): Appearance {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
@@ -423,6 +426,7 @@ export function parseAppearance(v: unknown): Appearance {
     clock: one(o.clock, ["12", "24"] as const, APPEARANCE.clock),
     motion: one(o.motion, ["system", "reduce", "full"] as const, APPEARANCE.motion),
     custom: custom ? themeString(custom) : "",
+    font: one(o.font, FONTS, APPEARANCE.font),
   };
 }
 

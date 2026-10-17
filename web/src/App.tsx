@@ -841,9 +841,24 @@ const THEME_NAMES: Record<Theme, string> = {
   dark: "Dark",
   midnight: "Midnight",
   contrast: "High contrast",
+  cvd: "Colorblind safe",
   cola: "Cherry cola",
   mint: "Mint",
+  cocoa: "Cocoa",
+  fjord: "Fjord",
+  sand: "Sand",
+  grape: "Grape",
+  black: "Black",
   custom: "Custom",
+};
+const FONT_NAMES: Record<Look["font"], string> = {
+  default: "Theme default",
+  schibsted: "Schibsted Grotesk",
+  system: "System",
+  inter: "Inter",
+  serif: "Source Serif",
+  "pt-mono": "PT Mono",
+  iosevka: "Iosevka",
 };
 const ACCENTS: [string, string][] = [
   ["", "Theme default"],
@@ -1023,7 +1038,7 @@ function Appearance() {
                   </i>
                 </span>
               )}
-              {THEME_NAMES[t]}
+              <span className="theme-name">{THEME_NAMES[t]}</span>
             </label>
           ))}
         </div>
@@ -1070,6 +1085,16 @@ function Appearance() {
           ["compact", "Compact"],
         ]}
       />
+      <label className="choice size">
+        <span className="legend">Font</span>
+        <select className="input" value={look.font} onChange={(e) => setLook({ font: e.target.value as Look["font"] })}>
+          {Object.entries(FONT_NAMES).map(([f, name]) => (
+            <option key={f} value={f}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
       <label className="choice size">
         <span className="legend">
           Text size <span>{look.fontSize}px</span>
