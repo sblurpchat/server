@@ -324,11 +324,12 @@ describe("upsertMessage", () => {
 });
 
 describe("timing", () => {
-  it("backs off exponentially with jitter and caps at 30s", () => {
-    expect(backoffMs(0, 0)).toBe(500);
-    expect(backoffMs(0, 0.999999)).toBe(1000);
-    expect(backoffMs(3, 0)).toBe(4000);
-    expect(backoffMs(10, 0)).toBe(15000);
+  it("backs off exponentially with full jitter and caps at 30s", () => {
+    expect(backoffMs(0, 0)).toBe(0);
+    expect(backoffMs(0, 0.5)).toBe(1000);
+    expect(backoffMs(0, 0.999999)).toBe(2000);
+    expect(backoffMs(3, 0.5)).toBe(8000);
+    expect(backoffMs(10, 0.5)).toBe(15000);
     expect(backoffMs(10, 0.999999)).toBe(30000);
   });
   it("refreshes tokens with less than a minute left", () => {

@@ -148,9 +148,11 @@ func (b bearer) RoundTrip(r *http.Request) (*http.Response, error) {
 	return http.DefaultTransport.RoundTrip(r)
 }
 
+// sleep waits a random time in [0, d) (full jitter), so bots that lost the
+// server at the same moment do not all come back at the same moment.
 func sleep(ctx context.Context, d time.Duration) {
 	select {
 	case <-ctx.Done():
-	case <-time.After(d):
+	case <-time.After(rand.N(d)):
 	}
 }

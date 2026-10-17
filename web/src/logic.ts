@@ -652,9 +652,15 @@ export function typingLabel(names: string[]): string {
 // Connection timing
 // ---------------------------------------------------------------------------
 
-/** Exponential backoff, 1s doubling to 30s, with jitter in [50%, 100%]. `rand` is in [0, 1). */
-export const backoffMs = (attempt: number, rand: number) =>
-  Math.round(Math.min(30_000, 1000 * 2 ** attempt) * (0.5 + rand / 2));
+/**
+ * Full-jitter backoff: a random wait in [0, 2s doubling to 30s). After a server restart every
+ * client loses its stream at once, so the first retry is spread over 2s, not bunched together.
+ * `rand` is in [0, 1).
+ */
+export const backoffMs = (attempt: number, rand: number) => Math.round(rand * Math.min(30_000, 2000 * 2 ** attempt));
+
+/** A stream must stay up this long before backoff starts over, so a server that accepts and then drops does not get retried at full speed. */
+export const STABLE_MS = 30_000;
 
 /** Servers send a heartbeat every 25s. Two missed beats plus slack means the stream is dead. */
 export const HEARTBEAT_TIMEOUT_MS = 60_000;

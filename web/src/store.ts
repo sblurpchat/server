@@ -27,6 +27,7 @@ import {
   applyEvent,
   applySnapshot,
   backoffMs,
+  STABLE_MS,
   channelLabel,
   emptyCommunity,
   formatHash,
@@ -277,6 +278,7 @@ async function connect(url: string) {
   const { server } = api(url);
   refreshInfo(url, ctl.signal);
   let attempt = 0;
+  let liveAt = 0;
   let snapshot = true;
   while (!ctl.signal.aborted) {
     try {
@@ -295,7 +297,7 @@ async function connect(url: string) {
         for await (const ev of server.subscribe({ afterSeq: state.cs[url]?.seq ?? 0n }, { signal: beat.signal })) {
           clearTimeout(timer);
           timer = setTimeout(stop, HEARTBEAT_TIMEOUT_MS);
-          attempt = 0;
+          liveAt ||= Date.now();
           // Live only once the server answers (it sends a heartbeat at once), so the banner does
           // not flicker off on every retry while the server is still down.
           if (state.cs[url]?.status !== "live") patchC(url, (c) => ({ ...c, status: "live", error: undefined, retryAt: undefined }));
@@ -326,6 +328,8 @@ async function connect(url: string) {
       }
       patchC(url, (c) => ({ ...c, error: errorText(e, c.info?.name) }));
     }
+    if (liveAt && Date.now() - liveAt > STABLE_MS) attempt = 0;
+    liveAt = 0;
     const delay = backoffMs(attempt++, Math.random());
     patchC(url, (c) => ({ ...c, status: "reconnecting", retryAt: Date.now() + delay }));
     await new Promise<void>((r) => {
