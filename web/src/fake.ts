@@ -33,7 +33,7 @@ import {
   type ReadState,
   type Role,
 } from "./gen/sblurp/v1/sblurp_pb";
-import { encodeMentions, mentionsMe } from "./logic";
+import { BANNER_TYPES, encodeMentions, mentionsMe } from "./logic";
 
 type Extra = {
   replies?: [number, string, string][];
@@ -60,6 +60,8 @@ interface Seed {
   optIn?: { defaults: string[]; notIn: string[] }; // OPT_IN mode: default channels and the ones I have not joined
   roles?: [name: string, color: string, users: string[], gates: string[]][];
   banned?: [username: string, name: string, daysAgo: number, by: string][];
+  banner?: string; // community banner image (1026)
+  headers?: Record<string, string>; // channel name -> header image (1027)
   questions?: string[]; // join questions; a blank or very short answer is refused, like a plugin would
 }
 
@@ -75,6 +77,8 @@ const SEEDS: Seed[] = [
     description: "Where people who use Sblurp help each other, share what they build, and argue about fonts.",
     accent: "#3550F0",
     icon: "/fake/sblurp.svg",
+    banner: "/fake/community-banner.svg",
+    headers: { help: "/fake/help-header.svg" },
     joined: true,
     members: [
       ["ian", "Ian Langworth", OWNER, ONLINE, "Making Sblurp. Ask me about the rail.", "Shipping the web client"],
@@ -95,7 +99,7 @@ const SEEDS: Seed[] = [
       ["Talk", "general", "Anything about Sblurp, or anything at all"],
       ["Talk", "design", "Critique, screenshots and type nerdery"],
       ["Talk", "show-and-tell", "Things you made with or for Sblurp"],
-      ["Talk", "help", "Stuck? Ask here. No question is too small."],
+      ["Talk", "help", "Stuck? Ask here. No question is too small.\nCheck the [self-hosting guide](https://sblurp.chat/docs) first, and paste `sblurp-server -version` with your question. **Be kind** to people who are new."],
       ["Building", "self-hosting", "Running your own community server"],
       ["Building", "ideas-box", "One idea per message. React to vote."],
       ["Building", "core-team", "Release dates and things not ready to share", ["ana", "priya"]],
@@ -355,6 +359,9 @@ interface Fake {
 let nextId = 1;
 const id = (p: string) => `${p}${(nextId++).toString(36).padStart(5, "0")}`;
 
+const fakeImage = (url: string, width: number, height: number) =>
+  create(AttachmentSchema, { id: id("a"), name: url.split("/").pop(), contentType: "image/svg+xml", url, width, height });
+
 function seed(s: Seed, now: number): Fake {
   const f: Fake = {
     info: create(GetServerInfoResponseSchema, {
@@ -368,6 +375,7 @@ function seed(s: Seed, now: number): Fake {
       accentColor: s.accent,
       inviteOnly: !!s.invite,
       joinQuestions: s.questions ?? [],
+      banner: s.banner ? fakeImage(s.banner, 1200, 400) : undefined,
     }),
     invites: s.invite ? [create(InviteSchema, { code: s.invite, createdAtMs: BigInt(now - D * 60_000) })] : [],
     joined: s.joined,
@@ -424,6 +432,7 @@ function seed(s: Seed, now: number): Fake {
       position: i,
       memberIds: privateTo ? [f.meId, ...privateTo.map((n) => byName.get(n)!.id)] : [],
     });
+    if (s.headers?.[name]) ch.headerImage = fakeImage(s.headers[name], 1600, 200);
     f.channels.set(ch.id, ch);
     chanByKey.set(name, ch);
   });
@@ -588,6 +597,12 @@ function service(f: Fake) {
     need();
     if (me().role < MemberRole.ADMIN) throw new ConnectError("admins only", Code.PermissionDenied);
   };
+  // Like the server: the caller's own image upload.
+  const image = (id: string) => {
+    const a = f.uploads.get(id);
+    if (!a || !BANNER_TYPES.includes(a.contentType)) throw new ConnectError("upload the image first", Code.InvalidArgument);
+    return a;
+  };
   const mod = () => {
     need();
     if (me().role < MemberRole.MODERATOR) throw new ConnectError("moderators and up only", Code.PermissionDenied);
@@ -685,9 +700,12 @@ function service(f: Fake) {
         f.invites = f.invites.filter((i) => i.code !== req.code);
         return {};
       },
-      updateServerSettings(req: { inviteOnly?: boolean; channelMode: ChannelMode }) {
+      updateServerSettings(req: { inviteOnly?: boolean; channelMode: ChannelMode; description?: string; bannerId?: string }) {
         admin();
         if (req.inviteOnly !== undefined) f.info.inviteOnly = req.inviteOnly;
+        if (req.description !== undefined) f.info.description = req.description.trim();
+        if (req.bannerId !== undefined) f.info.banner = req.bannerId ? image(req.bannerId) : undefined;
+        if (req.description !== undefined || req.bannerId !== undefined) emit(f, { case: "serverUpdated", value: true });
         if (req.channelMode && req.channelMode !== f.mode) {
           f.mode = req.channelMode;
           // OPT_IN to ROLES puts everyone in everything they can see.
@@ -697,7 +715,7 @@ function service(f: Fake) {
           }
           emit(f, { case: "channelModeChanged", value: f.mode });
         }
-        return { inviteOnly: f.info.inviteOnly, channelMode: f.mode };
+        return { inviteOnly: f.info.inviteOnly, channelMode: f.mode, description: f.info.description, banner: f.info.banner };
       },
       createRole(req: { name: string; color: string }) {
         admin();
@@ -810,10 +828,11 @@ function service(f: Fake) {
         emit(f, { case: "channelCreated", value: ch });
         return { channel: ch };
       },
-      updateChannel(req: { channelId: string; name?: string; topic?: string; category?: string; position?: number }) {
+      updateChannel(req: { channelId: string; name?: string; topic?: string; category?: string; position?: number; headerImageId?: string }) {
         admin();
         const ch = f.channels.get(req.channelId);
         if (!ch) throw new ConnectError("channel not found", Code.NotFound);
+        if (req.headerImageId !== undefined) ch.headerImage = req.headerImageId ? image(req.headerImageId) : undefined;
         for (const k of ["name", "topic", "category", "position"] as const) {
           if (req[k] !== undefined) (ch as Record<string, unknown>)[k] = req[k];
         }

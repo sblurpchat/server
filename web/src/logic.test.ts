@@ -68,6 +68,8 @@ import {
   keyWidth,
   paneQuery,
   parsePane,
+  bannerFileError,
+  cssUrl,
 } from "./logic";
 
 const T0 = new Date(2026, 9, 16, 10, 0).getTime();
@@ -770,5 +772,21 @@ describe("panel resize", () => {
     expect(keyWidth(pane, 300, "End")).toBe(640);
     expect(keyWidth(side, 300, "Enter")).toBe(260);
     expect(keyWidth(side, 300, "a")).toBeNull();
+  });
+});
+
+describe("banner images", () => {
+  it("takes the image types the server takes, up to 8 MB", () => {
+    expect(bannerFileError({ type: "image/png", size: 1000 })).toBe("");
+    expect(bannerFileError({ type: "image/webp", size: 8 * 1024 * 1024 })).toBe("");
+    expect(bannerFileError({ type: "image/svg+xml", size: 10 })).toMatch(/PNG, JPEG/);
+    expect(bannerFileError({ type: "", size: 10 })).toMatch(/PNG, JPEG/);
+    expect(bannerFileError({ type: "image/jpeg", size: 8 * 1024 * 1024 + 1 })).toMatch(/over 8 MB/);
+  });
+  it("quotes a URL for CSS", () => {
+    expect(cssUrl("")).toBe("");
+    expect(cssUrl("https://x.test/a.png?exp=1&sig=a_b")).toBe('url("https://x.test/a.png?exp=1&sig=a_b")');
+    expect(cssUrl('blob:x/"); background: red; ("')).toBe('url("blob:x/\\"); background: red; (\\"")');
+    expect(cssUrl("a\\b\nc")).toBe('url("a\\\\b\\a c")');
   });
 });

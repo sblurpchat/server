@@ -236,6 +236,7 @@ const toInfo = (i: GetServerInfoResponse): Info => ({
   accentColor: i.accentColor,
   memberCount: i.memberCount,
   inviteOnly: i.inviteOnly,
+  bannerUrl: i.banner?.url,
 });
 
 /** Resolve an attachment or icon URL relative to its server. */
@@ -252,20 +253,23 @@ export function retryNow(url: string) {
   conns.get(url)?.wake();
 }
 
+function refreshInfo(url: string, signal?: AbortSignal) {
+  api(url)
+    .server.getServerInfo({}, { signal })
+    .then((i) => {
+      patchC(url, (c) => ({ ...c, info: toInfo(i) }));
+      save("info", { ...load<Record<string, Info>>("info", {}), [url]: toInfo(i) });
+    })
+    .catch(() => {});
+}
+
 async function connect(url: string) {
   conns.get(url)?.ctl.abort();
   const ctl = new AbortController();
   const conn = { ctl, wake: () => {} };
   conns.set(url, conn);
   const { server } = api(url);
-  const infos = load<Record<string, Info>>("info", {});
-  server
-    .getServerInfo({}, { signal: ctl.signal })
-    .then((i) => {
-      patchC(url, (c) => ({ ...c, info: toInfo(i) }));
-      save("info", { ...infos, [url]: toInfo(i) });
-    })
-    .catch(() => {});
+  refreshInfo(url, ctl.signal);
   let attempt = 0;
   let snapshot = true;
   while (!ctl.signal.aborted) {
@@ -292,6 +296,7 @@ async function connect(url: string) {
             snapshot = true;
             break;
           }
+          if (ev.kind.case === "serverUpdated") refreshInfo(url, ctl.signal);
           dispatch(url, ev);
         }
       } finally {
@@ -611,7 +616,7 @@ export async function createChannel(url: string, req: { name: string; kind: Chan
     selectChannel(url, r.channel.id);
   }
 }
-export async function updateChannel(url: string, req: { channelId: string; name?: string; topic?: string; category?: string; position?: number }) {
+export async function updateChannel(url: string, req: { channelId: string; name?: string; topic?: string; category?: string; position?: number; headerImageId?: string }) {
   const r = await api(url).chat.updateChannel(req);
   if (r.channel) local(url, { case: "channelUpdated", value: r.channel });
 }
@@ -692,6 +697,12 @@ export const revokeInvite = (url: string, code: string) => api(url).server.revok
 export async function setInviteOnly(url: string, inviteOnly: boolean) {
   const r = await api(url).server.updateServerSettings({ inviteOnly });
   patchC(url, (c) => ({ ...c, info: c.info && { ...c.info, inviteOnly: r.inviteOnly } }));
+}
+
+/** Banner and Markdown description (1026). bannerId "" removes the banner. */
+export async function setCommunityProfile(url: string, req: { description?: string; bannerId?: string }) {
+  const r = await api(url).server.updateServerSettings(req);
+  patchC(url, (c) => ({ ...c, info: c.info && { ...c.info, description: r.description, bannerUrl: r.banner?.url } }));
 }
 
 // ---------------------------------------------------------------------------

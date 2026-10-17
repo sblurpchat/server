@@ -29,6 +29,7 @@ export interface Info {
   accentColor: string;
   memberCount: number;
   inviteOnly?: boolean;
+  bannerUrl?: string;
 }
 
 export interface MsgList {
@@ -635,6 +636,20 @@ export function joinHashInput(hash: string): string | null {
   const invite = q.get("invite") || n.invite;
   return invite ? inviteLink(n.url, invite) : n.url;
 }
+
+/** Image types a server takes for a banner or channel header (it refuses the rest). */
+export const BANNER_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"];
+const MAX_BANNER = 8 << 20;
+
+/** Why a picked file cannot be a banner or header image, or "" if it can. */
+export function bannerFileError(f: { type: string; size: number }): string {
+  if (!BANNER_TYPES.includes(f.type)) return "Pick a PNG, JPEG, GIF, WebP or AVIF image.";
+  if (f.size > MAX_BANNER) return "That image is over 8 MB. Pick a smaller one.";
+  return "";
+}
+
+/** A CSS url() for an inline style; quotes and backslashes in the URL cannot end the string. */
+export const cssUrl = (u: string) => (u ? `url("${u.replace(/["\\\n]/g, (ch) => `\\${ch === "\n" ? "a " : ch}`)}")` : "");
 
 /** A link "Add a community" understands (normalizeCommunityUrl reads the code back out). */
 export const inviteLink = (url: string, code: string) => `${url}/invite/${code}`;
