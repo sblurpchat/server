@@ -911,8 +911,21 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
       add.current(e.clipboardData!.files);
       ref.current?.focus();
     };
+    // Typing a character outside any text field goes to the composer of the pane last clicked (1194).
+    // Focusing on keydown lets the browser put the character in the composer.
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      const t = e.target instanceof Element ? e.target : null;
+      const editable = !!t?.closest("input, textarea, select, button, a, [contenteditable]:not([contenteditable='false']), dialog, [role='dialog'], [role='menu']");
+      const typing = e.key.length === 1 && e.key !== " " && !e.ctrlKey && !e.metaKey && !e.altKey;
+      if (get().modal || document.querySelector(":popover-open")) return;
+      if (pasteTarget(editable, typing, lastZone, !!document.querySelector(".pane .composer")) === mine) ref.current?.focus();
+    };
     document.addEventListener("paste", onPaste);
-    return () => document.removeEventListener("paste", onPaste);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("paste", onPaste);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [rootId, ref]);
 
   return (
