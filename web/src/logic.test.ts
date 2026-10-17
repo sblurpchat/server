@@ -18,6 +18,7 @@ import {
 import {
   THEMES,
   banDetail,
+  readDelay,
   browseDetail,
   browseList,
   swatch,
@@ -837,5 +838,30 @@ describe("banner images", () => {
     expect(cssUrl("https://x.test/a.png?exp=1&sig=a_b")).toBe('url("https://x.test/a.png?exp=1&sig=a_b")');
     expect(cssUrl('blob:x/"); background: red; ("')).toBe('url("blob:x/\\"); background: red; (\\"")');
     expect(cssUrl("a\\b\nc")).toBe('url("a\\\\b\\a c")');
+  });
+});
+
+describe("readDelay (1040)", () => {
+  it("sends the first read now and holds the rest for the window", () => {
+    expect(readDelay(undefined, 10_000)).toBe(0);
+    expect(readDelay(10_000, 10_000)).toBe(3000);
+    expect(readDelay(10_000, 11_000)).toBe(2000);
+    expect(readDelay(10_000, 13_000)).toBe(0);
+    expect(readDelay(10_000, 60_000)).toBe(0);
+  });
+  it("a busy channel sends one read per window, not one per message", () => {
+    let sent: number | undefined;
+    let sends = 0;
+    let due = -1;
+    // One message every 100 ms for 10 s; a timer fires when due.
+    for (let t = 0; t <= 10_000; t += 100) {
+      if (due >= 0 && t >= due) (sends++, (sent = t), (due = -1));
+      if (due < 0) {
+        const d = readDelay(sent, t);
+        if (d === 0) (sends++, (sent = t));
+        else due = t + d;
+      }
+    }
+    expect(sends).toBe(4);
   });
 });

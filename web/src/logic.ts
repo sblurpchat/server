@@ -943,3 +943,9 @@ export function keyWidth(p: Panel, w: number, key: string, big = false): number 
   if (key === "Enter") return p.def;
   return null;
 }
+
+// MarkRead is a server write, so the client sends it at most once per READ_EVERY_MS per channel
+// (1040). Returns how long to wait before sending: 0 sends now.
+export const READ_EVERY_MS = 3000;
+export const readDelay = (lastSentMs: number | undefined, nowMs: number, everyMs = READ_EVERY_MS) =>
+  lastSentMs === undefined ? 0 : Math.max(0, lastSentMs + everyMs - nowMs);

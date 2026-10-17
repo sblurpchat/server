@@ -37,6 +37,7 @@ import {
   leaveList,
   loadList,
   markRead,
+  flushReads,
   jumpTo,
   react,
   refreshMessage,
@@ -276,6 +277,7 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
   useEffect(() => {
     if (viewing && list) markRead(url, channelId);
   }, [viewing, ch?.lastMessageSeq, list, url, channelId]);
+  useEffect(() => flushReads, [url, channelId]);
 
   const empty = list && !list.loading && !list.hasMore && !list.items.length;
   return (

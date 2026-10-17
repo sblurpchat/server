@@ -54,6 +54,7 @@ import {
   type Appearance,
   sentence,
   joinHashInput,
+  readDelay,
 } from "./logic";
 
 const params = new URLSearchParams(location.search);
@@ -569,7 +570,26 @@ export function markRead(url: string, channelId: string) {
     ...x,
     reads: { ...x.reads, [channelId]: { ...(rs ?? create(ReadStateSchema, { channelId })), lastReadSeq: seq, unreadCount: 0, mentionCount: 0 } },
   }));
-  api(url).chat.markRead({ channelId, seq }).catch(() => sentRead.delete(k));
+  const p = pendingRead.get(k);
+  if (p) return void (p.seq = seq);
+  const t = setTimeout(() => sendRead(k), readDelay(readSentAt.get(k), Date.now()));
+  pendingRead.set(k, { url, channelId, seq, t });
+}
+
+// The local read state above changes at once; the server write waits (see readDelay, 1040).
+const readSentAt = new Map<string, number>();
+const pendingRead = new Map<string, { url: string; channelId: string; seq: bigint; t: ReturnType<typeof setTimeout> }>();
+function sendRead(k: string) {
+  const p = pendingRead.get(k);
+  if (!p) return;
+  clearTimeout(p.t);
+  pendingRead.delete(k);
+  readSentAt.set(k, Date.now());
+  api(p.url).chat.markRead({ channelId: p.channelId, seq: p.seq }).catch(() => sentRead.delete(k));
+}
+/** Sends every waiting read now: on blur, channel switch and page hide, so none is lost. */
+export function flushReads() {
+  for (const k of [...pendingRead.keys()]) sendRead(k);
 }
 
 const lastTyping = new Map<string, number>();
@@ -900,6 +920,9 @@ export async function boot() {
   applyLook();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyLook);
   addEventListener("popstate", applyHash);
+  addEventListener("blur", flushReads);
+  addEventListener("pagehide", flushReads);
+  document.addEventListener("visibilitychange", () => document.hidden && flushReads());
   const join = joinHashInput(location.hash);
   if (join) {
     try {
