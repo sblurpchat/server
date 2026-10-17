@@ -243,6 +243,14 @@ client. There is no separate apps system. The bot is ~150 lines in
 - `GET /invite/{code}` (and `/i/{code}`) redirects a browser to the web client's
   join screen: `{web}/#/join?url={base}&invite={code}`. Set the web client with
   `-web-url` / `SBLURP_WEB_URL` (default `https://app.sblurp.chat`).
+- Link previews: `ChatService.GetLinkPreviews(message_id)` returns previews of
+  up to 5 http(s) links in a message the caller can see. The server fetches
+  each page itself (User-Agent `Sblurpbot/1.0`), public addresses on ports 80
+  and 443 only, checked on every redirect, at most 3 redirects, 5 s, 512 KB of
+  HTML and a 2 MB PNG, JPEG, GIF, WebP or AVIF image. Results are cached in
+  SQLite for 24 hours (failures for 1 hour), and concurrent requests for one
+  link share one fetch. `GET /unfurl/{id}` serves the cached image, so viewers
+  never contact the linked site.
 - `GET /healthz` returns `ok`.
 
 ## Plugins

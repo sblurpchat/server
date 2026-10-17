@@ -73,6 +73,7 @@ type Server struct {
 	writeWait       time.Duration
 	updateAvailable atomic.Pointer[string]
 	emoji           emojiCache
+	unfurl          unfurler
 	wg              sync.WaitGroup
 	stop            chan struct{}
 }
@@ -202,6 +203,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /emoji", s.uploadEmoji)
 	mux.HandleFunc("GET /emoji.zip", s.exportEmoji)
 	mux.HandleFunc("GET /emoji/{id}", s.serveEmoji)
+	mux.HandleFunc("GET /unfurl/{id}", s.serveUnfurlImage)
 	mux.HandleFunc("GET /invite/{code}", s.inviteRedirect)
 	mux.HandleFunc("GET /i/{code}", s.inviteRedirect)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok\n")) })

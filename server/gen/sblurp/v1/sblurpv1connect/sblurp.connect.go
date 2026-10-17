@@ -128,6 +128,9 @@ const (
 	ChatServiceSetTypingProcedure = "/sblurp.v1.ChatService/SetTyping"
 	// ChatServiceSearchProcedure is the fully-qualified name of the ChatService's Search RPC.
 	ChatServiceSearchProcedure = "/sblurp.v1.ChatService/Search"
+	// ChatServiceGetLinkPreviewsProcedure is the fully-qualified name of the ChatService's
+	// GetLinkPreviews RPC.
+	ChatServiceGetLinkPreviewsProcedure = "/sblurp.v1.ChatService/GetLinkPreviews"
 	// ChatServiceAddChannelMembersProcedure is the fully-qualified name of the ChatService's
 	// AddChannelMembers RPC.
 	ChatServiceAddChannelMembersProcedure = "/sblurp.v1.ChatService/AddChannelMembers"
@@ -773,6 +776,7 @@ type ChatServiceClient interface {
 	MarkRead(context.Context, *connect.Request[v1.MarkReadRequest]) (*connect.Response[v1.MarkReadResponse], error)
 	SetTyping(context.Context, *connect.Request[v1.SetTypingRequest]) (*connect.Response[v1.SetTypingResponse], error)
 	Search(context.Context, *connect.Request[v1.SearchRequest]) (*connect.Response[v1.SearchResponse], error)
+	GetLinkPreviews(context.Context, *connect.Request[v1.GetLinkPreviewsRequest]) (*connect.Response[v1.GetLinkPreviewsResponse], error)
 	AddChannelMembers(context.Context, *connect.Request[v1.AddChannelMembersRequest]) (*connect.Response[v1.AddChannelMembersResponse], error)
 	RemoveChannelMember(context.Context, *connect.Request[v1.RemoveChannelMemberRequest]) (*connect.Response[v1.RemoveChannelMemberResponse], error)
 	SetChannelAccess(context.Context, *connect.Request[v1.SetChannelAccessRequest]) (*connect.Response[v1.SetChannelAccessResponse], error)
@@ -858,6 +862,12 @@ func NewChatServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(chatServiceMethods.ByName("Search")),
 			connect.WithClientOptions(opts...),
 		),
+		getLinkPreviews: connect.NewClient[v1.GetLinkPreviewsRequest, v1.GetLinkPreviewsResponse](
+			httpClient,
+			baseURL+ChatServiceGetLinkPreviewsProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("GetLinkPreviews")),
+			connect.WithClientOptions(opts...),
+		),
 		addChannelMembers: connect.NewClient[v1.AddChannelMembersRequest, v1.AddChannelMembersResponse](
 			httpClient,
 			baseURL+ChatServiceAddChannelMembersProcedure,
@@ -910,6 +920,7 @@ type chatServiceClient struct {
 	markRead            *connect.Client[v1.MarkReadRequest, v1.MarkReadResponse]
 	setTyping           *connect.Client[v1.SetTypingRequest, v1.SetTypingResponse]
 	search              *connect.Client[v1.SearchRequest, v1.SearchResponse]
+	getLinkPreviews     *connect.Client[v1.GetLinkPreviewsRequest, v1.GetLinkPreviewsResponse]
 	addChannelMembers   *connect.Client[v1.AddChannelMembersRequest, v1.AddChannelMembersResponse]
 	removeChannelMember *connect.Client[v1.RemoveChannelMemberRequest, v1.RemoveChannelMemberResponse]
 	setChannelAccess    *connect.Client[v1.SetChannelAccessRequest, v1.SetChannelAccessResponse]
@@ -973,6 +984,11 @@ func (c *chatServiceClient) Search(ctx context.Context, req *connect.Request[v1.
 	return c.search.CallUnary(ctx, req)
 }
 
+// GetLinkPreviews calls sblurp.v1.ChatService.GetLinkPreviews.
+func (c *chatServiceClient) GetLinkPreviews(ctx context.Context, req *connect.Request[v1.GetLinkPreviewsRequest]) (*connect.Response[v1.GetLinkPreviewsResponse], error) {
+	return c.getLinkPreviews.CallUnary(ctx, req)
+}
+
 // AddChannelMembers calls sblurp.v1.ChatService.AddChannelMembers.
 func (c *chatServiceClient) AddChannelMembers(ctx context.Context, req *connect.Request[v1.AddChannelMembersRequest]) (*connect.Response[v1.AddChannelMembersResponse], error) {
 	return c.addChannelMembers.CallUnary(ctx, req)
@@ -1016,6 +1032,7 @@ type ChatServiceHandler interface {
 	MarkRead(context.Context, *connect.Request[v1.MarkReadRequest]) (*connect.Response[v1.MarkReadResponse], error)
 	SetTyping(context.Context, *connect.Request[v1.SetTypingRequest]) (*connect.Response[v1.SetTypingResponse], error)
 	Search(context.Context, *connect.Request[v1.SearchRequest]) (*connect.Response[v1.SearchResponse], error)
+	GetLinkPreviews(context.Context, *connect.Request[v1.GetLinkPreviewsRequest]) (*connect.Response[v1.GetLinkPreviewsResponse], error)
 	AddChannelMembers(context.Context, *connect.Request[v1.AddChannelMembersRequest]) (*connect.Response[v1.AddChannelMembersResponse], error)
 	RemoveChannelMember(context.Context, *connect.Request[v1.RemoveChannelMemberRequest]) (*connect.Response[v1.RemoveChannelMemberResponse], error)
 	SetChannelAccess(context.Context, *connect.Request[v1.SetChannelAccessRequest]) (*connect.Response[v1.SetChannelAccessResponse], error)
@@ -1097,6 +1114,12 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(chatServiceMethods.ByName("Search")),
 		connect.WithHandlerOptions(opts...),
 	)
+	chatServiceGetLinkPreviewsHandler := connect.NewUnaryHandler(
+		ChatServiceGetLinkPreviewsProcedure,
+		svc.GetLinkPreviews,
+		connect.WithSchema(chatServiceMethods.ByName("GetLinkPreviews")),
+		connect.WithHandlerOptions(opts...),
+	)
 	chatServiceAddChannelMembersHandler := connect.NewUnaryHandler(
 		ChatServiceAddChannelMembersProcedure,
 		svc.AddChannelMembers,
@@ -1157,6 +1180,8 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 			chatServiceSetTypingHandler.ServeHTTP(w, r)
 		case ChatServiceSearchProcedure:
 			chatServiceSearchHandler.ServeHTTP(w, r)
+		case ChatServiceGetLinkPreviewsProcedure:
+			chatServiceGetLinkPreviewsHandler.ServeHTTP(w, r)
 		case ChatServiceAddChannelMembersProcedure:
 			chatServiceAddChannelMembersHandler.ServeHTTP(w, r)
 		case ChatServiceRemoveChannelMemberProcedure:
@@ -1220,6 +1245,10 @@ func (UnimplementedChatServiceHandler) SetTyping(context.Context, *connect.Reque
 
 func (UnimplementedChatServiceHandler) Search(context.Context, *connect.Request[v1.SearchRequest]) (*connect.Response[v1.SearchResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ChatService.Search is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) GetLinkPreviews(context.Context, *connect.Request[v1.GetLinkPreviewsRequest]) (*connect.Response[v1.GetLinkPreviewsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ChatService.GetLinkPreviews is not implemented"))
 }
 
 func (UnimplementedChatServiceHandler) AddChannelMembers(context.Context, *connect.Request[v1.AddChannelMembersRequest]) (*connect.Response[v1.AddChannelMembersResponse], error) {
