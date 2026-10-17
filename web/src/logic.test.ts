@@ -420,6 +420,9 @@ describe("message link previews", () => {
     expect(permalinks(`[here](${l("m9")})`, app).map((x) => x.messageId)).toEqual(["m9"]);
     expect(permalinks([1, 2, 3, 4].map((i) => l(`m${i}`)).join(" "), app)).toHaveLength(3);
     expect(permalinks("no links", app)).toEqual([]);
+    // A bad escape in someone's message must not throw while rendering it.
+    expect(permalinks(`${app}#/c/x.test/c1/%E0%A4`, app)).toEqual([]);
+    expect(parseHash("#/c/%zz")).toBeNull();
   });
 });
 

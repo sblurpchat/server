@@ -780,7 +780,11 @@ export const hostOf = (url: string) => new URL(url).host;
 export function parseHash(hash: string): { host: string; channelId: string; messageId: string; rootId: string } | null {
   const m = /^#\/c\/([^/?]+)(?:\/([^/?]+))?(?:\/([^/?]+))?(?:\/([^/?]+))?/.exec(hash);
   const d = (i: number) => decodeURIComponent(m![i] ?? "");
-  return m ? { host: d(1), channelId: d(2), messageId: m[2] ? d(3) : "", rootId: m[3] ? d(4) : "" } : null;
+  try {
+    return m ? { host: d(1), channelId: d(2), messageId: m[2] ? d(3) : "", rootId: m[3] ? d(4) : "" } : null;
+  } catch {
+    return null; // a bad %-escape, maybe from a link in someone's message
+  }
 }
 
 /** A link to one message; a thread reply also names its root so the thread opens. */
