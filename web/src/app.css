@@ -542,6 +542,9 @@ kbd {
 .avatar-initials::before,
 .cicon[data-i]::before {
   content: attr(data-i);
+  /* Trim the line box to cap height and baseline so grid centering centers the letters themselves (1046). */
+  line-height: 1;
+  text-box: trim-both cap alphabetic;
 }
 .avatar > img,
 .avatar-initials {
