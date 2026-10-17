@@ -7,7 +7,9 @@ import (
 )
 
 // hub fans live events out to open subscriptions. publish never blocks: a
-// subscriber whose buffer is full is dropped and must reconnect.
+// subscriber whose buffer is full is dropped and must reconnect. Presence
+// does not use the buffer: each sub keeps the latest presence per member,
+// so a reconnect burst coalesces instead of dropping subscribers (1060).
 type hub struct {
 	mu     sync.Mutex
 	subs   map[*sub]bool
@@ -19,6 +21,10 @@ type sub struct {
 	member string
 	ch     chan *v1.Event
 	gone   chan struct{} // closed when dropped for being slow
+	wake   chan struct{} // signalled when pres has news
+	// ponytail: one entry per changed member, so at most the online count
+	// per sub; a stalled client holds that much until it is dropped.
+	pres map[string]*v1.Event // guarded by hub.mu
 }
 
 const subBuffer = 512
@@ -28,13 +34,13 @@ func newHub(now func() int64) *hub {
 }
 
 func (h *hub) add(member string) *sub {
-	s := &sub{member: member, ch: make(chan *v1.Event, subBuffer), gone: make(chan struct{})}
+	s := &sub{member: member, ch: make(chan *v1.Event, subBuffer), gone: make(chan struct{}), wake: make(chan struct{}, 1)}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.subs[s] = true
 	h.online[member]++
 	if h.online[member] == 1 {
-		h.publishLocked(presenceEvent(member, v1.Presence_PRESENCE_ONLINE, h.now()), nil)
+		h.presenceLocked(member, v1.Presence_PRESENCE_ONLINE)
 	}
 	return s
 }
@@ -53,12 +59,31 @@ func (h *hub) removeLocked(s *sub) {
 	h.online[s.member]--
 	if h.online[s.member] == 0 {
 		delete(h.online, s.member)
-		h.publishLocked(presenceEvent(s.member, v1.Presence_PRESENCE_OFFLINE, h.now()), nil)
+		h.presenceLocked(s.member, v1.Presence_PRESENCE_OFFLINE)
 	}
 }
 
-func presenceEvent(member string, p v1.Presence, at int64) *v1.Event {
-	return &v1.Event{AtMs: at, Kind: &v1.Event_Presence{Presence: &v1.PresenceEvent{MemberId: member, Presence: p}}}
+func (h *hub) presenceLocked(member string, p v1.Presence) {
+	ev := &v1.Event{AtMs: h.now(), Kind: &v1.Event_Presence{Presence: &v1.PresenceEvent{MemberId: member, Presence: p}}}
+	for s := range h.subs {
+		if s.pres == nil {
+			s.pres = map[string]*v1.Event{}
+		}
+		s.pres[member] = ev
+		select {
+		case s.wake <- struct{}{}:
+		default:
+		}
+	}
+}
+
+// takePresence returns and clears the presence changes waiting for s.
+func (h *hub) takePresence(s *sub) map[string]*v1.Event {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	p := s.pres
+	s.pres = nil
+	return p
 }
 
 // publish sends ev to every subscriber in audience (nil = everyone).
@@ -81,7 +106,7 @@ func (h *hub) publishLocked(ev *v1.Event, audience map[string]bool) {
 		}
 	}
 	for _, s := range slow {
-		if h.subs[s] { // removing publishes presence, which may drop it first
+		if h.subs[s] {
 			close(s.gone)
 			h.removeLocked(s)
 		}

@@ -782,6 +782,47 @@ func (s *Server) Subscribe(ctx context.Context, req *connect.Request[v1.Subscrib
 		}
 	}
 
+	// flush sends first, everything else already queued, then the latest
+	// presence, with one network flush. Queued events go before presence so
+	// a member_joined is never overtaken by that member's presence.
+	hw, _ := ctx.Value(heldWriterKey{}).(*heldWriter)
+	if hw == nil {
+		hw = &heldWriter{}
+	}
+	send := func(ev *v1.Event) error {
+		if ev.Seq != 0 {
+			if ev.Seq <= last {
+				return nil
+			}
+			last = ev.Seq
+		}
+		return stream.Send(ev)
+	}
+	flush := func(first *v1.Event) error {
+		hw.hold = true
+		defer func() { hw.hold = false }()
+		if first != nil {
+			if err := send(first); err != nil {
+				return err
+			}
+		}
+		for range len(sb.ch) {
+			if err := send(<-sb.ch); err != nil {
+				return err
+			}
+		}
+		for _, ev := range s.hub.takePresence(sb) {
+			if err := stream.Send(ev); err != nil {
+				return err
+			}
+		}
+		hw.hold = false
+		if hw.ResponseWriter != nil {
+			hw.Flush()
+		}
+		return nil
+	}
+
 	tick := time.NewTicker(s.heartbeat)
 	defer tick.Stop()
 	for {
@@ -791,13 +832,11 @@ func (s *Server) Subscribe(ctx context.Context, req *connect.Request[v1.Subscrib
 		case <-sb.gone:
 			return errf(connect.CodeResourceExhausted, "subscription fell behind; reconnect with your last seq")
 		case ev := <-sb.ch:
-			if ev.Seq != 0 {
-				if ev.Seq <= last {
-					continue
-				}
-				last = ev.Seq
+			if err := flush(ev); err != nil {
+				return err
 			}
-			if err := stream.Send(ev); err != nil {
+		case <-sb.wake:
+			if err := flush(nil); err != nil {
 				return err
 			}
 		case <-tick.C:

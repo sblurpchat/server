@@ -182,9 +182,12 @@ func (s *Server) Close() {
 // Handler returns the full HTTP handler: Connect services, uploads, files,
 // all behind CORS.
 func (s *Server) Handler() http.Handler {
-	opts := connect.WithInterceptors(interceptor{s})
+	// Most events are a few hundred bytes; gzip per streamed event cost
+	// about 10% CPU for little gain. Big replies (GetState) still compress.
+	opts := connect.WithHandlerOptions(connect.WithInterceptors(interceptor{s}), connect.WithCompressMinBytes(1024))
 	mux := http.NewServeMux()
-	mux.Handle(sblurpv1connect.NewServerServiceHandler(s, opts))
+	path, h := sblurpv1connect.NewServerServiceHandler(s, opts)
+	mux.Handle(path, batchFlushes(h))
 	mux.Handle(sblurpv1connect.NewChatServiceHandler(s, opts))
 	mux.Handle(sblurpv1connect.NewBotServiceHandler(s, opts))
 	mux.HandleFunc("POST /upload", s.upload)
@@ -221,6 +224,34 @@ func cors(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r)
+	})
+}
+
+// heldWriter lets Subscribe write several events with one flush: connect
+// flushes after every Send (1059).
+type heldWriter struct {
+	http.ResponseWriter
+	hold bool
+}
+
+func (w *heldWriter) Flush() {
+	if !w.hold {
+		http.NewResponseController(w.ResponseWriter).Flush()
+	}
+}
+
+func (w *heldWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
+type heldWriterKey struct{}
+
+func batchFlushes(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != sblurpv1connect.ServerServiceSubscribeProcedure {
+			next.ServeHTTP(w, r)
+			return
+		}
+		hw := &heldWriter{ResponseWriter: w}
+		next.ServeHTTP(hw, r.WithContext(context.WithValue(r.Context(), heldWriterKey{}, hw)))
 	})
 }
 
