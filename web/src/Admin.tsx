@@ -63,10 +63,10 @@ function Head({ title, children }: { title: string; children?: ReactNode }) {
 // Create or edit a channel
 // ---------------------------------------------------------------------------
 
-export function ChannelDialog({ id, category = "" }: { id?: string; category?: string }) {
+export function ChannelDialog({ id, category = "", name: initial = "" }: { id?: string; category?: string; name?: string }) {
   const c = useApp((s) => s.cs[s.url]);
   const ch = id ? c?.channels[id] : undefined;
-  const [name, setName] = useState(ch?.name ?? "");
+  const [name, setName] = useState(ch?.name ?? initial);
   const [topic, setTopic] = useState(ch?.topic ?? "");
   const [cat, setCat] = useState(ch?.category ?? category);
   const [priv, setPriv] = useState(false);

@@ -32,6 +32,7 @@ import {
   sentence,
   listStep,
   cssUrl,
+  channelSlug,
 } from "./logic";
 import {
   absUrl,
@@ -803,7 +804,7 @@ function Modals() {
     case "delete":
       return <DeleteConfirm id={modal.id} />;
     case "channel":
-      return <ChannelDialog key={modal.id ?? "new"} id={modal.id} category={modal.category} />;
+      return <ChannelDialog key={modal.id ?? "new"} id={modal.id} category={modal.category} name={modal.name} />;
     case "community":
       return <CommunitySettings tab={modal.tab} />;
     case "newdm":
@@ -1382,6 +1383,8 @@ function BrowseChannels() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState("");
   const load = () => browseChannels(url).then(setAll, (x) => setErr(errorText(x)));
+  const admin = (c?.me?.role ?? 0) >= MemberRole.ADMIN;
+  const create = (name = "") => set({ modal: { t: "channel", name } });
   useEffect(() => {
     if (url) load();
   }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1399,6 +1402,11 @@ function BrowseChannels() {
     <Dialog label="Browse channels" className="browse">
       <header className="dialog-head">
         <h2>Browse channels</h2>
+        {admin && (
+          <button className="btn small" onClick={() => create()}>
+            <Icon name="plus" size={16} /> Create channel
+          </button>
+        )}
         <button className="icon-btn" aria-label="Close" onClick={() => set({ modal: null })}>
           <Icon name="x" />
         </button>
@@ -1410,7 +1418,16 @@ function BrowseChannels() {
         </p>
       )}
       {!all && !err && <p className="fine">Loading channels…</p>}
-      {all && !rows.length && <p className="fine">{q ? `No channel matches "${q}".` : "There are no channels you can join yet."}</p>}
+      {all && !rows.length && (
+        <p className="fine">
+          {q ? `No channel matches "${q}".` : "There are no channels you can join yet."}{" "}
+          {admin && channelSlug(q) && (
+            <button className="link-btn" onClick={() => create(q)}>
+              Create #{channelSlug(q)}
+            </button>
+          )}
+        </p>
+      )}
       <ul className="browse-list">
         {rows.map(({ ch, joined }) => (
           <li key={ch.id}>
