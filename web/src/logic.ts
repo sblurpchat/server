@@ -1098,3 +1098,49 @@ export function unsavedBlock(dirty: readonly string[], from: string, to: string 
 // The hover toolbar sits 16px above its message; the scroller's top 20px fade out under a mask.
 // A message closer to the top than that gets its toolbar inside instead of clipped (1193).
 export const toolsInside = (msgTop: number, scrollerTop: number) => msgTop - scrollerTop < 16 + 20;
+
+// ---------------------------------------------------------------------------
+// Keyboard and screen readers (1188)
+// ---------------------------------------------------------------------------
+
+/** Menu keys: Down and Up wrap, Home and End jump. The new index, or -1 when the key is not a move. */
+export function listMove(i: number, n: number, key: string): number {
+  if (!n) return -1;
+  if (key === "ArrowDown") return (i + 1) % n;
+  if (key === "ArrowUp") return i < 0 ? n - 1 : (i - 1 + n) % n;
+  if (key === "Home") return 0;
+  if (key === "End") return n - 1;
+  return -1;
+}
+
+/** Arrow keys in a grid laid out by the browser (rows can be short, as at the end of an emoji section).
+ * Left and right step through the order; up and down go to the nearest row that way, then the closest column.
+ * The new index, or -1 when the key is not a move. */
+export function gridMove(cells: { x: number; y: number }[], i: number, key: string): number {
+  const n = cells.length;
+  if (key === "ArrowLeft") return Math.max(0, i - 1);
+  if (key === "ArrowRight") return Math.min(n - 1, i + 1);
+  if (key === "Home") return 0;
+  if (key === "End") return n - 1;
+  if (key !== "ArrowDown" && key !== "ArrowUp") return -1;
+  const at = cells[i];
+  const sign = key === "ArrowDown" ? 1 : -1;
+  let best = i;
+  let dyBest = Infinity;
+  let dxBest = Infinity;
+  cells.forEach((c, j) => {
+    const dy = (c.y - at.y) * sign;
+    const dx = Math.abs(c.x - at.x);
+    if (dy > 0 && (dy < dyBest || (dy === dyBest && dx < dxBest))) [best, dyBest, dxBest] = [j, dy, dx];
+  });
+  return best;
+}
+
+/** What a screen reader says when a message arrives in an open list: the newest one if someone
+ * else sent it after `since`. History pages and your own messages stay quiet. */
+export function arrivalText(items: Message[], since: number, meId: string | undefined, members: Record<string, Member>): string {
+  const m = items.at(-1);
+  if (!m || m.deleted || m.authorId === meId || Number(m.createdAtMs) <= since) return "";
+  const who = members[m.authorId];
+  return `${who?.displayName || who?.username || "Someone"}: ${plainText(m.text, members) || count(m.attachments.length, "attachment", "attachments")}`;
+}

@@ -86,6 +86,9 @@ import {
   squareCrop,
   cssUrl,
   toolsInside,
+  listMove,
+  gridMove,
+  arrivalText,
 } from "./logic";
 
 const T0 = new Date(2026, 9, 16, 10, 0).getTime();
@@ -998,5 +1001,49 @@ describe("toolsInside", () => {
     expect(toolsInside(135, 100)).toBe(true);
     expect(toolsInside(136, 100)).toBe(false);
     expect(toolsInside(400, 100)).toBe(false);
+  });
+});
+
+describe("keyboard and screen readers (1188)", () => {
+  it("moves through a menu with wrapping", () => {
+    expect(listMove(0, 3, "ArrowDown")).toBe(1);
+    expect(listMove(2, 3, "ArrowDown")).toBe(0);
+    expect(listMove(0, 3, "ArrowUp")).toBe(2);
+    expect(listMove(-1, 3, "ArrowUp")).toBe(2);
+    expect(listMove(-1, 3, "ArrowDown")).toBe(0);
+    expect(listMove(1, 3, "Home")).toBe(0);
+    expect(listMove(1, 3, "End")).toBe(2);
+    expect(listMove(1, 3, "a")).toBe(-1);
+    expect(listMove(0, 0, "ArrowDown")).toBe(-1);
+  });
+  it("moves through a grid with short rows by position", () => {
+    // Section one: a full row of 3 and a short row of 1. Section two starts a new row below its header.
+    const cells = [
+      { x: 0, y: 0 }, { x: 10, y: 0 }, { x: 20, y: 0 },
+      { x: 0, y: 10 },
+      { x: 0, y: 40 }, { x: 10, y: 40 }, { x: 20, y: 40 },
+    ];
+    expect(gridMove(cells, 2, "ArrowDown")).toBe(3); // nearest row, closest column
+    expect(gridMove(cells, 3, "ArrowDown")).toBe(4);
+    expect(gridMove(cells, 6, "ArrowUp")).toBe(3);
+    expect(gridMove(cells, 5, "ArrowUp")).toBe(3);
+    expect(gridMove(cells, 1, "ArrowUp")).toBe(1); // top row stays
+    expect(gridMove(cells, 6, "ArrowDown")).toBe(6);
+    expect(gridMove(cells, 3, "ArrowRight")).toBe(4);
+    expect(gridMove(cells, 0, "ArrowLeft")).toBe(0);
+    expect(gridMove(cells, 6, "ArrowRight")).toBe(6);
+    expect(gridMove(cells, 3, "End")).toBe(6);
+    expect(gridMove(cells, 3, "Enter")).toBe(-1);
+  });
+  it("announces only new messages from other people", () => {
+    const members = { ana: create(MemberSchema, { id: "ana", displayName: "Ana" }) };
+    const msg = (authorId: string, at: number, text = "kiln is hot") => create(MessageSchema, { id: `${authorId}${at}`, authorId, createdAtMs: BigInt(at), text, seq: 1n });
+    expect(arrivalText([msg("ana", 200)], 100, "me", members)).toBe("Ana: kiln is hot");
+    expect(arrivalText([msg("ana", 200, "hi <@ana>")], 100, "me", members)).toBe("Ana: hi @Ana");
+    expect(arrivalText([msg("ana", 50)], 100, "me", members)).toBe(""); // history
+    expect(arrivalText([msg("me", 200)], 100, "me", members)).toBe(""); // your own
+    expect(arrivalText([msg("ana", 200), msg("ana", 50)], 100, "me", members)).toBe(""); // only the newest counts
+    expect(arrivalText([msg("gone", 200, "")], 100, "me", members)).toBe("Someone: 0 attachments");
+    expect(arrivalText([], 100, "me", members)).toBe("");
   });
 });

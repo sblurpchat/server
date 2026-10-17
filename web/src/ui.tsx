@@ -1,7 +1,7 @@
 // Shared UI primitives: icons, avatars, dialogs, popovers, the emoji picker and the markdown renderer.
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MemberRole, Presence, type Member } from "./gen/sblurp/v1/sblurp_pb";
-import { PANELS, clampWidth, initials, keyWidth, onBackdrop, onWhite, parseMarkdown, swatch, type Inline } from "./logic";
+import { PANELS, clampWidth, gridMove, initials, keyWidth, listMove, onBackdrop, onWhite, parseMarkdown, swatch, type Inline } from "./logic";
 import { Img, Shortcodes, useEmojiSet, useMore } from "./CustomEmoji";
 import { bumpRecent, pickerSections, type PickItem } from "./emoji";
 import { absUrl, set, useApp } from "./store";
@@ -69,6 +69,9 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
 // Avatars
 // ---------------------------------------------------------------------------
 
+/** Presence in words, for avatars (which screen readers skip) and the text around them. */
+export const presenceLabel = (p?: Presence) => (p === Presence.ONLINE ? "Online" : p === Presence.AWAY ? "Away" : "Offline");
+
 export function Avatar({ m, size = 36, presence = false }: { m?: Member; size?: number; presence?: boolean }) {
   const name = m?.displayName || m?.username || "?";
   const p = m?.presence;
@@ -82,7 +85,7 @@ export function Avatar({ m, size = 36, presence = false }: { m?: Member; size?: 
       {presence && (
         <span
           className={`presence ${p === Presence.ONLINE ? "on" : p === Presence.AWAY ? "away" : "off"}`}
-          title={p === Presence.ONLINE ? "Online" : p === Presence.AWAY ? "Away" : "Offline"}
+          title={presenceLabel(p)}
         />
       )}
     </span>
@@ -108,6 +111,19 @@ export function CommunityIcon({ name, icon, accent, size = 48 }: { name: string;
 // Dialogs (native <dialog>: focus trap, Escape and backdrop come for free)
 // ---------------------------------------------------------------------------
 
+// Who opened each popover, so focus can go back there: a menu item that opens a dialog is hidden by
+// the time the dialog closes, so focus returns to the button that opened the menu.
+const openers = new WeakMap<Element, HTMLElement>();
+function opener(el: Element | null): HTMLElement | null {
+  const pop = el?.closest("[popover]");
+  const o = pop && openers.get(pop);
+  return o ? opener(o) : (el as HTMLElement | null);
+}
+const focusBack = (el: HTMLElement | null) => el?.isConnected && el.focus();
+/** Focus the open channel's composer, else its messages: the skip link and a closed side pane land here. */
+export const focusMain = () =>
+  [".main .composer-input", ".main .scroller", ".main"].map((q) => document.querySelector<HTMLElement>(q)).find(Boolean)?.focus();
+
 export function Dialog({
   label,
   children,
@@ -128,9 +144,15 @@ export function Dialog({
   const [open, setOpen] = useState(false);
   useLayoutEffect(() => {
     const d = ref.current!;
+    // A menu item that opened this has already unmounted, leaving focus on body: use its menu.
+    const a = document.activeElement;
+    const back = opener(a === document.body ? document.querySelector(":popover-open") : a);
     d.showModal();
     setOpen(true);
-    return () => d.close();
+    return () => {
+      d.close();
+      focusBack(back);
+    };
   }, []);
   return (
     <dialog
@@ -186,10 +208,17 @@ export function Pop({
   useLayoutEffect(() => {
     const el = ref.current!;
     if (anchor) {
-      if (!el.matches(":popover-open")) el.showPopover();
+      if (!el.matches(":popover-open")) {
+        openers.set(el, document.activeElement as HTMLElement);
+        el.showPopover();
+      }
       place(el, anchor, side);
       el.querySelector<HTMLElement>("input, button, [tabindex]")?.focus();
-    } else if (el.matches(":popover-open")) el.hidePopover();
+    } else if (el.matches(":popover-open")) {
+      const a = document.activeElement; // body when the focused child just unmounted
+      if (a === document.body || el.contains(a)) focusBack(openers.get(el) ?? null); // its blur may hide it already
+      if (el.matches(":popover-open")) el.hidePopover();
+    }
   }, [anchor, side]);
   return (
     <div
@@ -198,10 +227,36 @@ export function Pop({
       role="dialog"
       aria-label={label}
       className={`pop ${className}`}
-      onToggle={(e) => (e as unknown as ToggleEvent).newState === "closed" && onClose()}
+      onToggle={(e) => {
+        if ((e as unknown as ToggleEvent).newState !== "closed") return;
+        const a = document.activeElement;
+        if (!a || a === document.body || ref.current!.contains(a)) focusBack(openers.get(ref.current!) ?? null);
+        onClose();
+      }}
+      // Tabbing out closes it, like a click outside does.
+      onBlur={(e) => e.relatedTarget && !e.currentTarget.contains(e.relatedTarget) && e.currentTarget.matches(":popover-open") && e.currentTarget.hidePopover()}
     >
       {anchor && children}
     </div>
+  );
+}
+
+/** Up, Down, Home and End move between a role="menu"'s items. */
+export function menuKeys(e: React.KeyboardEvent<HTMLElement>) {
+  const items = [...e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]:not(:disabled)')];
+  const to = listMove(items.indexOf(document.activeElement as HTMLElement), items.length, e.key);
+  if (to < 0) return;
+  e.preventDefault();
+  items[to].focus();
+}
+
+/** Copy text to the clipboard; "Copied" is announced. */
+export function CopyButton({ text, label }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button type="button" className="btn" aria-label={label} onClick={() => navigator.clipboard.writeText(text).then(() => setCopied(true))}>
+      <Icon name={copied ? "check" : "copy"} size={16} /> <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>
+    </button>
   );
 }
 
@@ -266,6 +321,8 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
   const [recent] = useState(readRecent);
   const [hover, setHover] = useState<PickItem | null>(null);
   const [at, setAt] = useState("");
+  const [cur, setCur] = useState(0); // the grid's one tab stop (roving tabindex)
+  const uid = useId();
   const [limit, more] = useMore(180);
   const grid = useRef<HTMLDivElement>(null);
   const jump = useRef("");
@@ -282,7 +339,16 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
     if (jump.current) go(jump.current);
     else grid.current!.scrollTop = 0;
     jump.current = "";
+    setCur(0);
   }, [q]);
+  const cells = () => [...grid.current!.querySelectorAll<HTMLElement>("button")];
+  const arrows = (e: React.KeyboardEvent) => {
+    const all = cells();
+    const to = gridMove(all.map((b) => ({ x: b.offsetLeft, y: b.offsetTop })), all.indexOf(document.activeElement as HTMLElement), e.key);
+    if (to < 0) return;
+    e.preventDefault();
+    all[to].focus();
+  };
   const spy = () => {
     const g = grid.current!;
     let id = "";
@@ -309,7 +375,10 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
         aria-label="Search emoji"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && first && pick(first)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && first) pick(first);
+          else if (e.key === "ArrowDown" && first) (e.preventDefault(), cells()[cur]?.focus());
+        }}
       />
       <nav className="emoji-tabs" aria-label="Emoji categories">
         {base.map((s) => (
@@ -325,21 +394,30 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
           </button>
         ))}
       </nav>
-      <div className="emoji-grid" role="listbox" aria-label="Emoji" ref={grid} onScroll={spy} onMouseLeave={() => setHover(null)}>
+      <div className="emoji-grid" aria-label="Emoji, arrow keys move" role="group" ref={grid} onScroll={spy} onKeyDown={arrows} onMouseLeave={() => setHover(null)}>
         {shown.map((s) => {
           const room = Math.max(0, limit - n);
+          const from = n;
           n += s.items.length;
           return (
-            <Fragment key={s.id}>
-              <p className="emoji-section" data-sec={s.id}>
+            <div key={s.id} role="group" aria-labelledby={`${uid}${s.id}`}>
+              <p className="emoji-section" id={`${uid}${s.id}`} data-sec={s.id}>
                 {s.label}
               </p>
-              {s.items.slice(0, room).map((e) => (
-                <button key={e.name} role="option" aria-selected="false" title={`:${e.name}:`} aria-label={e.name.replace(/[_-]/g, " ")} onMouseEnter={() => setHover(e)} onFocus={() => setHover(e)} onClick={() => pick(e)}>
+              {s.items.slice(0, room).map((e, j) => (
+                <button
+                  key={e.name}
+                  tabIndex={from + j === cur ? 0 : -1}
+                  title={`:${e.name}:`}
+                  aria-label={e.name.replace(/[_-]/g, " ")}
+                  onMouseEnter={() => setHover(e)}
+                  onFocus={() => (setHover(e), setCur(from + j))}
+                  onClick={() => pick(e)}
+                >
                   <Face e={e} />
                 </button>
               ))}
-            </Fragment>
+            </div>
           );
         })}
         {limit < n && <div ref={more} className="emoji-more" />}
