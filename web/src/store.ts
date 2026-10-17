@@ -5,6 +5,7 @@ import { createConnectTransport } from "@connectrpc/connect-web";
 import { useSyncExternalStore } from "react";
 import type { SettingsTab } from "./Admin";
 import { AUTH_URL, fetchProfile, finishLogin, getToken, hasSession, SignedOutError, signOut as authSignOut, startLogin, type Profile } from "./auth";
+import { loadEmoji } from "./CustomEmoji";
 import { fakeTransport, fakeUpload, FAKE_URLS, startSimulation } from "./fake";
 import {
   AttachmentSchema,
@@ -282,6 +283,7 @@ async function connect(url: string) {
       if (snapshot) {
         const st = await server.getState({}, { signal: ctl.signal });
         patchC(url, (c) => applySnapshot(c, st));
+        void loadEmoji(url);
         snapshot = false;
         ensureChannel(url);
       }
@@ -302,6 +304,7 @@ async function connect(url: string) {
             break;
           }
           if (ev.kind.case === "serverUpdated") refreshInfo(url, ctl.signal);
+          if (ev.kind.case === "emojiChanged") void loadEmoji(url);
           dispatch(url, ev);
         }
       } finally {

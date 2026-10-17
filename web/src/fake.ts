@@ -147,6 +147,7 @@ const SEEDS: Seed[] = [
         [6 * H, "lotte", "Morning! Is there a way to see who reacted with what? Hovering on mobile is… not a thing."],
         [6 * H - 2, "jun", "Long-press the reaction. It lists everyone."],
         [6 * H - 3, "lotte", "Oh. That's nice. Thank you!"],
+        [6 * H - 6, "marcus", "Custom emoji work now :party_blob: I dropped a whole Slackmoji folder on Settings > Emoji and it took all 140 :catjam:", { react: { ":sblurp:": ["ana", "jun", "priya"], ":lgtm:": ["sam"], ":party_blob:": ["lotte", "theo"] } }],
         [3 * H, "theo", "Question for the room: our co-op wants a read-only #announcements for members and a private channel for the board. Is that two servers or one?", {
           replies: [
             [3 * H - 5, "ana", "One server. Make the board channel private and invite the board."],

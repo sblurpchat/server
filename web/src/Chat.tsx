@@ -1,5 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type FormEvent, type KeyboardEvent } from "react";
 import { useCountdown } from "./App";
+import { Glyph, useCustomMatches } from "./CustomEmoji";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
 import {
   acQuery,
@@ -546,7 +547,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
                     else void react(url, m, r.emoji);
                   }}
                 >
-                  <span className="emoji">{emojiChar(r.emoji)}</span> {r.memberIds.length}
+                  <Glyph e={r.emoji} /> {r.memberIds.length}
                 </button>
               );
             })}
@@ -589,7 +590,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
         {whoR && (
           <>
             <p className="who-head">
-              <span className="emoji">{emojiChar(whoR.emoji)}</span> {count(whoR.memberIds.length, "reaction", "reactions")}
+              <Glyph e={whoR.emoji} /> {count(whoR.memberIds.length, "reaction", "reactions")}
             </p>
             <ul>
               {whoR.memberIds.map((id) => (
@@ -739,16 +740,23 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
   const ref = useAutosize(text);
   const form = useRef<HTMLFormElement>(null);
   const ac = acQuery(text, caret);
+  const custom = useCustomMatches(ac?.kind === ":" ? ac.q : null, 8);
   const options = useMemo(() => {
     if (!ac) return [];
-    if (ac.kind === ":") return EMOJI.filter(([n]) => n.includes(ac.q)).slice(0, 8).map(([n, ch]) => ({ id: n, label: `:${n}:`, insert: `${ch} `, m: undefined }));
+    if (ac.kind === ":")
+      return [
+        ...EMOJI.filter(([n]) => n.includes(ac.q))
+          .slice(0, custom.length ? 4 : 8)
+          .map(([n, ch]) => ({ id: n, label: `:${n}:`, insert: `${ch} `, m: undefined })),
+        ...custom.map((e) => ({ id: `c:${e.name}`, label: `:${e.name}:`, insert: `:${e.name}: `, m: undefined })),
+      ].slice(0, 8);
     return Object.values(c.members)
       .map((m) => ({ m, s: Math.max(matchScore(ac.q, m.username), matchScore(ac.q, m.displayName)) }))
       .filter((x) => x.s >= 0)
       .sort((a, b) => b.s - a.s || a.m.username.localeCompare(b.m.username))
       .slice(0, 8)
       .map(({ m }) => ({ id: m.id, label: m.displayName || m.username, insert: `@${m.username} `, m: m as Member | undefined }));
-  }, [ac?.kind, ac?.q, c.members]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ac?.kind, ac?.q, c.members, custom]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const uploading = files.some((f) => !f.att && !f.error);
   const ready = files.filter((f) => f.att).map((f) => f.att!);
@@ -833,7 +841,7 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
               }}
               onMouseMove={() => setSel(i)}
             >
-              {o.m ? <Avatar m={o.m} size={22} /> : <span className="emoji">{o.insert.trim()}</span>}
+              {o.m ? <Avatar m={o.m} size={22} /> : <Glyph e={o.label} />}
               <b>{o.label}</b>
               {o.m && <span className="muted">@{o.m.username}</span>}
               {o.m?.kind === MemberKind.BOT && <span className="tag">Bot</span>}

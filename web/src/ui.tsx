@@ -2,6 +2,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Presence, type Member } from "./gen/sblurp/v1/sblurp_pb";
 import { PANELS, clampWidth, initials, keyWidth, onWhite, parseMarkdown, swatch, type Inline } from "./logic";
+import { CustomPicks, Shortcodes } from "./CustomEmoji";
 import { set } from "./store";
 
 // ---------------------------------------------------------------------------
@@ -37,6 +38,9 @@ const ICONS = {
   check: "M20 6 9 17l-5-5",
   external: "M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6",
   image: "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2H5a2 2 0 0 1 -2 -2V5a2 2 0 0 1 2 -2zM7 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0M21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21",
+  upload: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12",
+  download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3",
+  folder: "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z",
   retry: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5",
 };
 export type IconName = keyof typeof ICONS;
@@ -216,7 +220,7 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
             {ch}
           </button>
         ))}
-        {!list.length && <p className="muted small">No emoji match “{q}”.</p>}
+        <CustomPicks key={q} q={q} onPick={onPick} none={!list.length && <p className="muted small">No emoji match “{q}”.</p>} />
       </div>
     </div>
   );
@@ -230,7 +234,7 @@ function renderInline(nodes: Inline[], members: Record<string, Member>, meId: st
   return nodes.map((n, i) => {
     switch (n.t) {
       case "text":
-        return n.v;
+        return n.v.includes(":") ? <Shortcodes key={i} text={n.v} /> : n.v;
       case "code":
         return <code key={i}>{n.v}</code>;
       case "b":

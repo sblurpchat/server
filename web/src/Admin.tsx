@@ -31,6 +31,7 @@ import {
   updateChannel,
   useApp,
 } from "./store";
+import { EmojiTab } from "./CustomEmoji";
 import { Avatar, Dialog, Icon } from "./ui";
 
 /** The old rank. The UI calls it "Permission"; "Roles" are the custom tags from ticket 1011. */
@@ -388,6 +389,7 @@ const TABS = [
   ["invites", "Invites"],
   ["bans", "Bans"],
   ["bots", "Bots"],
+  ["emoji", "Emoji"],
   ["about", "About"],
 ] as const;
 export type SettingsTab = (typeof TABS)[number][0];
@@ -432,6 +434,7 @@ export function CommunitySettings({ tab = "members" }: { tab?: SettingsTab }) {
           {tab === "invites" && <Invites url={c.url} inviteOnly={!!c.info?.inviteOnly} />}
           {tab === "bans" && <BansTab url={c.url} />}
           {tab === "bots" && <BotsTab url={c.url} />}
+          {tab === "emoji" && <EmojiTab url={c.url} />}
           {tab === "about" && <AboutTab url={c.url} />}
         </div>
       </div>
