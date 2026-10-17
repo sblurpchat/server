@@ -256,6 +256,14 @@ ul {
   color: var(--cherry-text);
   font-size: 0.875rem;
 }
+/* An icon after link text stays on the line of its last word (1186). */
+a:not(.btn) > .icon:last-child {
+  display: inline;
+  vertical-align: -2px;
+}
+a:not(.btn):has(> .icon:last-child) {
+  white-space: nowrap;
+}
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -3359,7 +3367,7 @@ li.sw-empty {
 .cs-panel {
   overflow-y: auto;
   min-height: 0;
-  padding: 2px 4px 4px 2px;
+  padding: 2px 8px 4px; /* room for the unsaved-form outline */
 }
 .cs-panel h3 {
   margin: 8px 0 0;
@@ -3387,11 +3395,57 @@ li.sw-empty {
 .update-note a {
   color: inherit; /* raspberry on the --selected tint is under 4.5:1 in dark themes */
   font-weight: 600;
-  white-space: nowrap;
 }
-.update-note a .icon {
-  display: inline;
-  vertical-align: -2px;
+/* Unsaved settings (1183): a Discord-style bar, and a shake when you try to leave. */
+.unsaved-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 8px 8px 8px 14px;
+  border-radius: 10px;
+  background: var(--tip);
+  color: var(--on-tip);
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  animation: rise-in 150ms ease-out;
+  transition: background-color 150ms ease-out;
+}
+.unsaved-bar span {
+  flex: 1 1 12em;
+}
+.unsaved-bar .btn.ghost {
+  color: inherit;
+}
+.unsaved-bar .btn.ghost:hover {
+  background: rgb(255 255 255 / 0.12);
+}
+.cs-panel[data-nag] .unsaved-bar {
+  background: var(--badge);
+}
+.cs-panel[data-nag] form[data-dirty] {
+  border-radius: 8px;
+  outline: 2px solid var(--cherry);
+  outline-offset: 4px;
+}
+.community-settings[data-shake],
+.unsaved-bar[data-shake] {
+  animation: shake 300ms ease-in-out;
+}
+@keyframes shake {
+  20%,
+  60% {
+    translate: -6px 0;
+  }
+  40%,
+  80% {
+    translate: 6px 0;
+  }
 }
 @media (max-width: 640px) {
   .cs-body {
@@ -3509,8 +3563,13 @@ li.sw-empty {
   font: 0.8125rem/1.5 var(--mono);
   font-variant-ligatures: none;
 }
-.plugin-file {
+.file-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
   padding: 6px 8px;
+  cursor: pointer;
 }
 .toggle-row span.row {
   display: flex;
@@ -3788,14 +3847,48 @@ li.sw-empty {
   height: 72px;
   border-radius: 28%;
 }
-.image-field {
-  border-radius: 8px;
-  outline: 2px dashed transparent;
-  outline-offset: 4px;
-  transition: outline-color 150ms ease-out;
+/* Drop targets (1185): a dashed edge that reads as "drop here", solid accent while a file is over it. */
+.dropzone {
+  border: 2px dashed color-mix(in srgb, var(--graphite) 55%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--raspberry) 3%, var(--raised));
+  transition:
+    border-color 150ms ease-out,
+    background-color 150ms ease-out;
 }
-.image-field[data-over] {
-  outline-color: var(--accent-fill);
+.dropzone:hover {
+  border-color: color-mix(in srgb, var(--raspberry) 70%, transparent);
+}
+.dropzone[data-over] {
+  border-style: solid;
+  border-color: var(--raspberry);
+  background: var(--selected);
+}
+.image-field {
+  padding: 14px;
+}
+.drop-well {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--selected);
+  color: var(--raspberry);
+  transition:
+    transform 150ms ease-out,
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+}
+.dropzone[data-over] .drop-well {
+  transform: translateY(-3px);
+  background: var(--accent-fill);
+  color: var(--on-accent);
+}
+/* A visually hidden file input inside its label: the label shows the focus ring (1187). */
+label:has(> input.visually-hidden:focus-visible) {
+  outline: 2px solid var(--raspberry);
+  outline-offset: 2px;
 }
 
 /* Custom emoji (CustomEmoji.tsx) */
@@ -3843,14 +3936,8 @@ li.sw-empty {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 8px 14px;
-  padding: 16px;
-  border: 1.5px dashed var(--line);
-  border-radius: 12px;
-  color: var(--graphite);
-  transition:
-    border-color 150ms ease,
-    background-color 150ms ease;
+  gap: 12px 14px;
+  padding: 18px;
 }
 .emoji-drop p {
   display: grid;
@@ -3866,14 +3953,6 @@ li.sw-empty {
 }
 .emoji-actions label {
   cursor: pointer;
-}
-.emoji-actions label:focus-within {
-  outline: 2px solid var(--raspberry);
-  outline-offset: 2px;
-}
-.emoji-tab[data-drag] .emoji-drop {
-  border-color: var(--raspberry);
-  background: var(--selected);
 }
 .emoji-status,
 .emoji-results {

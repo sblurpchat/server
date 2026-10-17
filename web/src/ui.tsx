@@ -104,11 +104,14 @@ export function Dialog({
   children,
   className = "",
   onClose = () => set({ modal: null }),
+  guard,
 }: {
   label: string;
   children: ReactNode;
   className?: string;
   onClose?: () => void;
+  /** Returns true to keep the dialog open on Escape or a backdrop click. */
+  guard?: () => boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   // Children mount only once the dialog is open: a closed dialog cannot take focus, so
@@ -126,7 +129,10 @@ export function Dialog({
       aria-label={label}
       className={`dialog ${className}`}
       onClose={onClose}
-      onMouseDown={(e) => e.target === ref.current && onBackdrop(ref.current.getBoundingClientRect(), e.clientX, e.clientY) && ref.current.close()}
+      // Escape's keydown too: Chrome ignores a cancelled cancel event when Escape is pressed twice.
+      onKeyDown={(e) => e.key === "Escape" && guard?.() && e.preventDefault()}
+      onCancel={(e) => guard?.() && e.preventDefault()}
+      onMouseDown={(e) => e.target === ref.current && onBackdrop(ref.current.getBoundingClientRect(), e.clientX, e.clientY) && !guard?.() && ref.current.close()}
     >
       {open && children}
     </dialog>

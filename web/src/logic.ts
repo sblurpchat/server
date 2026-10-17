@@ -1085,3 +1085,8 @@ export function shownPreviews<T extends { url: string }>(ps: T[], app: string): 
     })
     .slice(0, 5);
 }
+
+/** Leaving Community settings (1183): null lets it go, else the id of the unsaved form to show. `to` is the next tab, null to close. */
+export function unsavedBlock(dirty: readonly string[], from: string, to: string | null): string | null {
+  return from === to ? null : (dirty[0] ?? null);
+}

@@ -244,11 +244,17 @@ export function EmojiTab({ url }: { url: string }) {
     >
       <p className="muted small">
         Use custom emoji in messages and reactions as <code>:name:</code>.{" "}
-        {manage ? "PNG, GIF or WebP, up to 256 KB and 512 × 512. The file name becomes the emoji name." : "Moderators and admins can add and delete them."}
+        {manage ? "PNG, GIF or WebP, up to 256 KB and 512 × 512. The file name becomes the emoji name." : "Moderators and admins can add and delete them."}{" "}
+        Want to automate this?{" "}
+        <a href="https://sblurp.chat/docs/api/files#custom-emoji" target="_blank" rel="noreferrer">
+          See the emoji API <Icon name="external" size={14} />
+        </a>
       </p>
       {manage && (
-        <div className="emoji-drop" aria-busy={!!busy}>
-          <Icon name="upload" size={22} />
+        <div className="emoji-drop dropzone" data-over={drag || undefined} aria-busy={!!busy}>
+          <span className="drop-well">
+            <Icon name="upload" size={22} />
+          </span>
           <p>
             <b>Drop images, folders or .zip files here</b>
             <span className="muted small">Slackmoji packs work as they are. Names that exist are skipped.</span>

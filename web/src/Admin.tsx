@@ -1,7 +1,7 @@
 // Admin screens: create and edit channels, and community settings (members, invites, bots).
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Ban, type Channel, type GetMeResponse, type Invite, type Member, type Plugin, type Role } from "./gen/sblurp/v1/sblurp_pb";
-import { BANNER_TYPES, bannerFileError, banDetail, channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, pluginFormError, pluginNameFromFile, pluginStatus, tokenBots, reorderChannel, sidebarSections, squareCrop } from "./logic";
+import { BANNER_TYPES, bannerFileError, banDetail, channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, pluginFormError, pluginNameFromFile, pluginStatus, tokenBots, reorderChannel, sidebarSections, squareCrop, unsavedBlock } from "./logic";
 import {
   absUrl,
   setCommunityProfile,
@@ -47,12 +47,12 @@ export const PERMISSION: Record<number, string> = {
   [MemberRole.MEMBER]: "Member",
 };
 
-function Head({ title, children }: { title: string; children?: ReactNode }) {
+function Head({ title, children, close = () => set({ modal: null }) }: { title: string; children?: ReactNode; close?: () => void }) {
   return (
     <header className="dialog-head">
       <h2>{title}</h2>
       {children}
-      <button type="button" className="icon-btn" aria-label="Close" onClick={() => set({ modal: null })}>
+      <button type="button" className="icon-btn" aria-label="Close" onClick={close}>
         <Icon name="x" />
       </button>
     </header>
@@ -252,7 +252,7 @@ function ImageField({
   };
   return (
     <div
-      className="field image-field"
+      className="field image-field dropzone"
       data-over={over || undefined}
       onDragOver={(e) => {
         e.preventDefault();
@@ -305,6 +305,8 @@ function AboutTab({ url }: { url: string }) {
   const [desc, setDesc] = useState(saved);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const dirty = desc.trim() !== saved;
+  useDirty("about-form", dirty);
   if (!c) return null;
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -332,7 +334,7 @@ function AboutTab({ url }: { url: string }) {
         square
         onChange={(id) => setCommunityProfile(url, { iconId: id })}
       />
-      <form className="field" onSubmit={submit}>
+      <form id="about-form" className="field" onSubmit={submit} onReset={(e) => (e.preventDefault(), setDesc(saved))} data-dirty={dirty || undefined}>
         <label htmlFor="about-desc">
           <b>Description</b>
         </label>
@@ -344,7 +346,7 @@ function AboutTab({ url }: { url: string }) {
           </p>
         )}
         <div className="row-end">
-          <button className="btn primary" disabled={busy || desc.trim() === saved}>
+          <button className="btn primary" disabled={busy || !dirty}>
             Save description
           </button>
         </div>
@@ -367,6 +369,12 @@ function Retention({ url }: { url: string }) {
   const days = pick === "custom" ? custom : pick;
   const valid = Number.isInteger(days) && days >= 0 && days <= 3650;
   const shorter = days > 0 && (saved === 0 || days < saved);
+  useDirty("retention-form", days !== saved);
+  const reset = (e: FormEvent) => {
+    e.preventDefault();
+    setPick(saved && !KEEP.includes(saved) ? "custom" : saved);
+    setCustom(saved || 180);
+  };
   const save = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -379,7 +387,7 @@ function Retention({ url }: { url: string }) {
     setBusy(false);
   };
   return (
-    <form className="field" onSubmit={save}>
+    <form id="retention-form" className="field" onSubmit={save} onReset={reset} data-dirty={days !== saved || undefined}>
       <label htmlFor="retention">
         <b>Message history</b>
       </label>
@@ -466,14 +474,47 @@ const TABS = [
 ] as const;
 export type SettingsTab = (typeof TABS)[number][0];
 
+/** Settings forms report unsaved changes here, so the dialog can stop you leaving (1183). */
+const Dirty = createContext<(id: string, dirty: boolean) => void>(() => {});
+function useDirty(id: string, dirty: boolean) {
+  const mark = useContext(Dirty);
+  useEffect(() => {
+    mark(id, dirty);
+    return () => mark(id, false);
+  }, [mark, id, dirty]);
+}
+
+/** Restart a CSS animation keyed on a data attribute. */
+function replay(el: Element | null | undefined, attr: string) {
+  el?.removeAttribute(attr);
+  void (el as HTMLElement | null)?.offsetWidth;
+  el?.setAttribute(attr, "");
+}
+
 export function CommunitySettings({ tab = "about" }: { tab?: SettingsTab }) {
   const c = useApp((s) => s.cs[s.url]);
+  const [dirty, setDirty] = useState<string[]>([]);
+  const [nag, setNag] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
+  const mark = useCallback((id: string, d: boolean) => setDirty((l) => (d ? (l.includes(id) ? l : [...l, id]) : l.filter((x) => x !== id))), []);
+  if (nag && !dirty.length) setNag(false);
   if (!c?.me) return null;
   const name = c.info?.name ?? hostOf(c.url);
-  const go = (t: SettingsTab) => set({ modal: { t: "community", tab: t } });
+  // Like Discord: stay put, show the unsaved form and shake the dialog.
+  const blocked = (to: SettingsTab | null) => {
+    const id = unsavedBlock(dirty, tab, to);
+    if (!id) return false;
+    setNag(true);
+    document.getElementById(id)?.scrollIntoView({ block: "nearest" });
+    replay(panel.current?.closest("dialog"), "data-shake");
+    replay(panel.current?.querySelector(".unsaved-bar"), "data-shake");
+    return true;
+  };
+  const go = (t: SettingsTab) => !blocked(t) && (set({ modal: { t: "community", tab: t } }), true);
+  const forms = () => dirty.map((id) => document.getElementById(id) as HTMLFormElement | null);
   return (
-    <Dialog label={`${name} settings`} className="community-settings">
-      <Head title={`${name} settings`} />
+    <Dialog label={`${name} settings`} className="community-settings" guard={() => blocked(null)}>
+      <Head title={`${name} settings`} close={() => blocked(null) || set({ modal: null })} />
       <div className="cs-body">
         <nav role="tablist" aria-label="Sections" className="cs-tabs">
           {TABS.map(([t, label]) => (
@@ -491,23 +532,35 @@ export function CommunitySettings({ tab = "about" }: { tab?: SettingsTab }) {
                 if (!d) return;
                 e.preventDefault();
                 const next = TABS[(i + d + TABS.length) % TABS.length][0];
-                go(next);
-                requestAnimationFrame(() => document.getElementById(`cs-tab-${next}`)?.focus());
+                if (go(next)) requestAnimationFrame(() => document.getElementById(`cs-tab-${next}`)?.focus());
               }}
             >
               {label}
             </button>
           ))}
         </nav>
-        <div role="tabpanel" id="cs-panel" aria-labelledby={`cs-tab-${tab}`} className="cs-panel">
-          {tab === "members" && <MembersTab url={c.url} />}
-          {tab === "roles" && <RolesTab url={c.url} />}
-          {tab === "channels" && <ChannelsTab url={c.url} />}
-          {tab === "invites" && <Invites url={c.url} inviteOnly={!!c.info?.inviteOnly} />}
-          {tab === "bans" && <BansTab url={c.url} />}
-          {tab === "bots" && <BotsTab url={c.url} />}
-          {tab === "emoji" && <EmojiTab url={c.url} />}
-          {tab === "about" && <AboutTab url={c.url} />}
+        <div role="tabpanel" id="cs-panel" aria-labelledby={`cs-tab-${tab}`} className="cs-panel" ref={panel} data-nag={nag || undefined}>
+          <Dirty.Provider value={mark}>
+            {tab === "members" && <MembersTab url={c.url} />}
+            {tab === "roles" && <RolesTab url={c.url} />}
+            {tab === "channels" && <ChannelsTab url={c.url} />}
+            {tab === "invites" && <Invites url={c.url} inviteOnly={!!c.info?.inviteOnly} />}
+            {tab === "bans" && <BansTab url={c.url} />}
+            {tab === "bots" && <BotsTab url={c.url} />}
+            {tab === "emoji" && <EmojiTab url={c.url} />}
+            {tab === "about" && <AboutTab url={c.url} />}
+          </Dirty.Provider>
+          {dirty.length > 0 && (
+            <div className="unsaved-bar" role="status">
+              <span>Careful, you have unsaved changes.</span>
+              <button type="button" className="btn ghost small" onClick={() => forms().forEach((f) => f?.reset())}>
+                Reset
+              </button>
+              <button type="button" className="btn primary small" onClick={() => forms().forEach((f) => f?.requestSubmit())}>
+                Save changes
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </Dialog>
@@ -782,11 +835,14 @@ function Plugins({ url, plugins, reload }: { url: string; plugins: Plugin[]; rel
   const [source, setSource] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState("");
+  const [picked, setPicked] = useState("");
+  const [over, setOver] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const formErr = pluginFormError(name, source);
   const replaces = plugins.some((p) => p.name === name);
   const pick = async (f?: File) => {
     if (!f) return;
+    setPicked(f.name);
     setSource(await f.text());
     if (!name) setName(pluginNameFromFile(f.name));
   };
@@ -807,6 +863,7 @@ function Plugins({ url, plugins, reload }: { url: string; plugins: Plugin[]; rel
       await installPlugin(url, name, source);
       setName("");
       setSource("");
+      setPicked("");
       if (file.current) file.current.value = "";
     });
   };
@@ -873,10 +930,22 @@ function Plugins({ url, plugins, reload }: { url: string; plugins: Plugin[]; rel
       <form className="bot-new stack" onSubmit={install}>
         <h3>Install a plugin</h3>
         <div className="row-fields">
-          <label className="field">
+          <div className="field">
             <b>File</b>
-            <input ref={file} type="file" accept=".js,text/javascript" className="input plugin-file" onChange={(e) => pick(e.target.files?.[0])} />
-          </label>
+            <label
+              className="dropzone file-pick"
+              data-over={over || undefined}
+              onDragOver={(e) => (e.preventDefault(), setOver(true))}
+              onDragLeave={() => setOver(false)}
+              onDrop={(e) => (e.preventDefault(), setOver(false), void pick(e.dataTransfer.files[0]))}
+            >
+              <input ref={file} type="file" accept=".js,text/javascript" className="visually-hidden" onChange={(e) => pick(e.target.files?.[0])} />
+              <span className="btn small">
+                <Icon name="upload" size={16} /> Choose a .js file
+              </span>
+              <span className="truncate muted small">{picked || "or drop one here"}</span>
+            </label>
+          </div>
           <label className="field">
             <b>Name</b>
             <input
