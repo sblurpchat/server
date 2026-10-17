@@ -2855,6 +2855,7 @@ li.sw-empty {
 }
 .results {
   display: grid;
+  align-content: start;
   gap: 6px;
 }
 .result {
