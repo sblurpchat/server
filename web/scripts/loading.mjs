@@ -31,6 +31,7 @@ const states = {
     await s.press("Enter");
   },
   older: async (p) => {
+    await p.keyboard.press("Escape"); // close the search pane left open on a phone
     await drawer(p);
     await p.locator(".chan", { hasText: "show-and-tell" }).first().click();
     await p.locator(".channel .msg").first().waitFor();

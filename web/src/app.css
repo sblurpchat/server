@@ -1376,8 +1376,8 @@ kbd {
   margin-top: auto;
 }
 .skel-composer {
-  height: 88px;
-  margin-bottom: 26px;
+  height: 46px;
+  margin-bottom: 22px; /* the typing line under the real one */
 }
 .side-skel {
   gap: 0;
