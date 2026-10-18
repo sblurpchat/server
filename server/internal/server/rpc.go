@@ -592,6 +592,16 @@ func (s *Server) Join(ctx context.Context, req *connect.Request[v1.JoinRequest])
 		if err := t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberJoined{MemberJoined: out.Member}}, "", ""); err != nil {
 			return err
 		}
+		// The owner of a brand-new community lands in #general, not in an empty server.
+		var none bool
+		if err := t.QueryRowContext(ctx, "SELECT NOT EXISTS(SELECT 1 FROM channels WHERE dm_key IS NULL)").Scan(&none); err != nil {
+			return err
+		}
+		if role == v1.MemberRole_MEMBER_ROLE_OWNER && none {
+			if _, err := s.createChannel(t, v1.ChannelKind_CHANNEL_KIND_TEXT, "general", "", "", "", []string{mid}); err != nil {
+				return err
+			}
+		}
 		return s.syncAccess(t, mid)
 	})
 	if err != nil {

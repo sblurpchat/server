@@ -201,7 +201,15 @@ func wantCode(t *testing.T, err error, code connect.Code) {
 	}
 }
 
+// channel creates a channel. #general already exists once the owner joins, so it is looked up instead.
 func (c *client) channel(name string, kind v1.ChannelKind) *v1.Channel {
+	if name == "general" && kind == v1.ChannelKind_CHANNEL_KIND_TEXT {
+		for _, ch := range c.state().Channels {
+			if ch.Name == name {
+				return ch
+			}
+		}
+	}
 	return must(c.chat.CreateChannel(ctx(), connect.NewRequest(&v1.CreateChannelRequest{Name: name, Kind: kind}))).Channel
 }
 
@@ -1636,6 +1644,9 @@ func TestInvites(t *testing.T) {
 	}
 	if !needs() {
 		t.Fatal("a claimed new community must be invite only")
+	}
+	if chs := e.join("first").state().Channels; len(chs) != 1 || chs[0].Name != "general" {
+		t.Fatalf("the owner of a new community must land in #general, got %v", chs)
 	}
 	_, err := e.client(e.token("second")).srv.Join(ctx(), connect.NewRequest(&v1.JoinRequest{}))
 	wantCode(t, err, connect.CodePermissionDenied)

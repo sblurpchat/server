@@ -122,8 +122,17 @@ export function ChannelView() {
     return (
       <section className="channel">
         <div className="empty">
-          <h2>This channel isn't here anymore.</h2>
-          <p>It may have been deleted or made private. Pick another from the sidebar.</p>
+          {channelId ? (
+            <>
+              <h2>This channel isn't here anymore.</h2>
+              <p>It may have been deleted or made private. Pick another from the sidebar.</p>
+            </>
+          ) : (
+            <>
+              <h2>No channels yet.</h2>
+              <p>{(c.me?.role ?? 0) >= MemberRole.ADMIN ? "Click the community name at the top of the sidebar to create one." : "An admin can create one."}</p>
+            </>
+          )}
         </div>
       </section>
     );
