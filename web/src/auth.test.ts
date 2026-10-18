@@ -7,7 +7,7 @@ vi.stubGlobal("localStorage", {
   removeItem: (k: string) => void store.delete(k),
 });
 
-const { pkceChallenge, getToken, SignedOutError, AUTH_URL, savePkce, takePkce } = await import("./auth");
+const { pkceChallenge, getToken, SignedOutError, AUTH_URL, savePkce, takePkce, authorizeUrl } = await import("./auth");
 
 describe("PKCE verifier storage", () => {
   beforeEach(() => store.clear());
@@ -95,5 +95,31 @@ describe("getToken", () => {
     });
     await getToken(AUTH_URL);
     expect(body?.has("audience")).toBe(false);
+  });
+});
+
+describe("authorizeUrl redirect", () => {
+  const redirect = () => new URL(authorizeUrl("ch", "st", false)).searchParams.get("redirect_uri");
+  vi.stubGlobal("location", { origin: "https://app.sblurp.chat" });
+
+  it("returns to the page origin in a browser", () => {
+    vi.stubEnv("DEV", false);
+    expect(redirect()).toBe("https://app.sblurp.chat/auth/callback");
+    vi.unstubAllEnvs();
+  });
+
+  it("returns to the sblurp: scheme in the packaged app, but not in the dev app", () => {
+    (globalThis as Record<string, unknown>).__TAURI_INTERNALS__ = {};
+    try {
+      vi.stubEnv("DEV", false);
+      expect(redirect()).toBe("sblurp://auth/callback");
+      const signup = new URL(authorizeUrl("ch", "st", true));
+      expect(new URL(signup.searchParams.get("next")!, AUTH_URL).searchParams.get("redirect_uri")).toBe("sblurp://auth/callback");
+      vi.stubEnv("DEV", true);
+      expect(redirect()).toBe("https://app.sblurp.chat/auth/callback");
+    } finally {
+      delete (globalThis as Record<string, unknown>).__TAURI_INTERNALS__;
+      vi.unstubAllEnvs();
+    }
   });
 });
