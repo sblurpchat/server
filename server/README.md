@@ -236,6 +236,15 @@ client. There is no separate apps system. The bot is ~150 lines in
   `RemoveChannelMember` with your own id leaves; removing someone else
   needs a higher rank (moderator or higher). The removed member gets
   `channel_deleted` with the channel id.
+- **Leaving a DM and blocking** (1118). `RemoveChannelMember` with your own
+  id also works in a DM: it hides the DM (`channel_deleted` for you) until
+  someone writes there or you `OpenDM` the same people again, which puts you
+  back with the history. `BlockMember` / `UnblockMember` (any member, for
+  themselves) stop DMs between the two, either way: `OpenDM` and
+  `SendMessage` in a shared DM are `permission_denied`. Nothing else changes
+  on the server; `GetState.blocked_member_ids` and the blocker-only events
+  `member_blocked` / `member_unblocked` let clients collapse the blocked
+  member's messages.
 - Errors use Connect codes with plain messages: `invalid_argument`,
   `permission_denied`, `not_found` (also for channels you may not see),
   `already_exists`, `resource_exhausted`, `unauthenticated`.
