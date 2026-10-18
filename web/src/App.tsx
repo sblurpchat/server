@@ -72,6 +72,7 @@ import {
   peekChannel,
   removeFromChannel,
   setBlocked,
+  setMuted,
 } from "./store";
 import { AvatarField } from "./AvatarField";
 import { pond } from "./pond";
@@ -1821,6 +1822,7 @@ function ProfilePopover() {
   const me = useApp((s) => (s.popover ? s.cs[s.popover.url]?.me : undefined));
   const roleCount = useApp((s) => (s.popover ? s.cs[s.popover.url]?.roles.length ?? 0 : 0));
   const blocked = useApp((s) => !!s.popover && !!s.cs[s.popover.url]?.blocked.includes(s.popover.memberId));
+  const muted = useApp((s) => !!s.popover && !!s.cs[s.popover.url]?.muted.includes(s.popover.memberId));
   const admin = (me?.role ?? 0) >= MemberRole.ADMIN;
   const [err, setErr] = useState("");
   const mod = m ? modActions(me, m) : { remove: false, roles: [] };
@@ -1881,7 +1883,7 @@ function ProfilePopover() {
               </button>
             ) : blocked ? (
               <>
-                <p className="muted small">You blocked this member. Their messages show collapsed, and neither of you can send direct messages.</p>
+                <p className="muted small">You blocked this member. Their messages show collapsed and never ping you, and neither of you can send direct messages.</p>
                 <button className="btn wide" onClick={() => (setErr(""), setBlocked(p.url, m.id, false).catch((e) => setErr(errorText(e))))}>
                   Unblock
                 </button>
@@ -1909,6 +1911,11 @@ function ProfilePopover() {
             )}
             {(mod.remove || (m.id !== me?.id && !blocked)) && (
               <div className="row-end profile-mod">
+                {m.id !== me?.id && !blocked && (
+                  <button className="btn ghost small" title={muted ? undefined : "Collapse their messages and skip their pings, unread and typing. They are not told."} onClick={() => (setErr(""), setMuted(p.url, m.id, !muted).catch((e) => setErr(errorText(e))))}>
+                    <Icon name={muted ? "bell" : "bellOff"} size={16} /> {muted ? "Unmute" : "Mute"}
+                  </button>
+                )}
                 {m.id !== me?.id && !blocked && (
                   <button className="btn danger-ghost small" onClick={() => set({ popover: null, modal: { t: "block", url: p.url, memberId: m.id } })}>
                     Block

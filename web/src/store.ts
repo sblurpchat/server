@@ -38,6 +38,7 @@ import {
   landingChannel,
   listKey,
   mentionsMe,
+  quiet,
   parseHash,
   parsePane,
   paneQuery,
@@ -365,7 +366,7 @@ function dispatch(url: string, ev: Event) {
 function maybeNotify(url: string, m: Message) {
   const c = state.cs[url];
   const ch = c?.channels[m.channelId];
-  if (!c || !ch || m.authorId === c.me?.id || !state.notify || !document.hidden) return;
+  if (!c || !ch || m.authorId === c.me?.id || quiet(c, m.authorId) || !state.notify || !document.hidden) return;
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
   if (!isDM(ch) && !mentionsMe(m.text, c.me?.id)) return;
   const author = c.members[m.authorId]?.displayName ?? "Someone";
@@ -720,6 +721,12 @@ export async function setBlocked(url: string, memberId: string, on: boolean) {
   if (on) await api(url).server.blockMember({ memberId });
   else await api(url).server.unblockMember({ memberId });
   local(url, on ? { case: "memberBlocked", value: memberId } : { case: "memberUnblocked", value: memberId });
+}
+
+export async function setMuted(url: string, memberId: string, on: boolean) {
+  if (on) await api(url).server.muteMember({ memberId });
+  else await api(url).server.unmuteMember({ memberId });
+  local(url, on ? { case: "memberMuted", value: memberId } : { case: "memberUnmuted", value: memberId });
 }
 
 export async function search(url: string, q: string) {

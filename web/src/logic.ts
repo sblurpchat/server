@@ -72,6 +72,8 @@ export interface Community {
   pluginsRev?: number;
   /** Members I blocked (1118): their messages show collapsed. */
   blocked: string[];
+  /** Members I muted (1293): collapsed too, but DMs stay open. */
+  muted: string[];
 }
 
 export const emptyCommunity = (url: string, info?: Info): Community => ({
@@ -88,7 +90,11 @@ export const emptyCommunity = (url: string, info?: Info): Community => ({
   typing: {},
   failed: {},
   blocked: [],
+  muted: [],
 });
+
+/** A blocked or muted member: no unread, mentions, notifications or typing (1244, 1293). */
+export const quiet = (c: Community, id: string) => c.blocked.includes(id) || c.muted.includes(id);
 
 export const listKey = (channelId: string, rootId = "") => (rootId ? `t:${rootId}` : channelId);
 
@@ -107,6 +113,7 @@ export function applySnapshot(c: Community, s: GetStateResponse): Community {
     reads: Object.fromEntries(s.readStates.map((r) => [r.channelId, r])),
     seq: s.seq,
     blocked: s.blockedMemberIds,
+    muted: s.mutedMemberIds,
     // Lists may have missed events; the open view reloads them.
     lists: {},
     typing: {},
@@ -192,13 +199,12 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
         next.typing = { ...c.typing, [key]: rest };
       }
       const ch = c.channels[m.channelId];
+      // Blocked and muted members never count, as on the server (1244, 1293).
+      const counts = !quiet(c, m.authorId);
       if (ch && !m.threadRootId) {
         next.channels = { ...c.channels, [ch.id]: { ...ch, lastMessageSeq: ev.seq } };
-        next.reads = {
-          ...c.reads,
-          [ch.id]: bumpUnread(c.reads[ch.id], ch.id, m, ev.seq, c.me?.id, isDM(ch), viewing === ch.id),
-        };
-      } else if (ch && m.authorId !== c.me?.id && (isDM(ch) || mentionsMe(m.text, c.me?.id))) {
+        if (counts) next.reads = { ...c.reads, [ch.id]: bumpUnread(c.reads[ch.id], ch.id, m, ev.seq, c.me?.id, isDM(ch), viewing === ch.id) };
+      } else if (ch && counts && m.authorId !== c.me?.id && (isDM(ch) || mentionsMe(m.text, c.me?.id))) {
         // Thread replies are not channel unread, but a mention in one (or any DM reply) still counts.
         const rs = c.reads[ch.id] ?? create(ReadStateSchema, { channelId: ch.id });
         next.reads = { ...c.reads, [ch.id]: { ...rs, mentionCount: rs.mentionCount + 1 } };
@@ -258,7 +264,7 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
       return next;
     case "typing": {
       const t = k.value;
-      if (t.memberId === c.me?.id) return c;
+      if (t.memberId === c.me?.id || quiet(c, t.memberId)) return c;
       const key = listKey(t.channelId, t.threadRootId);
       next.typing = { ...c.typing, [key]: { ...c.typing[key], [t.memberId]: now + TYPING_TTL } };
       return next;
@@ -279,6 +285,12 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
       return next;
     case "memberUnblocked":
       next.blocked = c.blocked.filter((id) => id !== k.value);
+      return next;
+    case "memberMuted":
+      if (!c.muted.includes(k.value)) next.muted = [...c.muted, k.value];
+      return next;
+    case "memberUnmuted":
+      next.muted = c.muted.filter((id) => id !== k.value);
       return next;
     case "pluginsChanged":
       next.pluginsRev = (c.pluginsRev ?? 0) + 1;

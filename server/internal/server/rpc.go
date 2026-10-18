@@ -421,10 +421,12 @@ func currentSeq(ctx context.Context, q queryer) (int64, error) {
 
 // unreadCounts uses messages_unread: replies count as mentions, so the
 // range is on (channel_id, created_seq), not messages_channel (1155).
+// Members the reader blocked or muted never count (1244, 1293).
 const unreadCounts = `SELECT
 	COUNT(*) FILTER (WHERE thread_root_id = ''),
-	COUNT(*) FILTER (WHERE ? OR instr(text, ?) > 0)
-	FROM messages WHERE channel_id = ? AND created_seq > ? AND author_id != ? AND deleted = 0`
+	COUNT(*) FILTER (WHERE ?1 OR instr(text, ?2) > 0)
+	FROM messages WHERE channel_id = ?3 AND created_seq > ?4 AND author_id != ?5 AND deleted = 0
+	AND author_id NOT IN (SELECT blocked_id FROM blocks WHERE blocker_id = ?5 UNION ALL SELECT muted_id FROM mutes WHERE muter_id = ?5)`
 
 // readState counts unread top-level messages and mentions after the
 // member's last read seq (or their join, whichever is later). A mention is
@@ -813,7 +815,10 @@ func (s *Server) GetState(ctx context.Context, _ *connect.Request[v1.GetStateReq
 	if out.Members, err = s.listMembers(ctx, tx, "deleted = 0"); err != nil {
 		return nil, err
 	}
-	if out.BlockedMemberIds, err = blockedBy(ctx, tx, m.Id); err != nil {
+	if out.BlockedMemberIds, err = listRel(ctx, tx, blockRel, m.Id); err != nil {
+		return nil, err
+	}
+	if out.MutedMemberIds, err = listRel(ctx, tx, muteRel, m.Id); err != nil {
 		return nil, err
 	}
 	for _, c := range out.Channels {

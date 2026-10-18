@@ -108,6 +108,12 @@ const (
 	// ServerServiceUnblockMemberProcedure is the fully-qualified name of the ServerService's
 	// UnblockMember RPC.
 	ServerServiceUnblockMemberProcedure = "/sblurp.v1.ServerService/UnblockMember"
+	// ServerServiceMuteMemberProcedure is the fully-qualified name of the ServerService's MuteMember
+	// RPC.
+	ServerServiceMuteMemberProcedure = "/sblurp.v1.ServerService/MuteMember"
+	// ServerServiceUnmuteMemberProcedure is the fully-qualified name of the ServerService's
+	// UnmuteMember RPC.
+	ServerServiceUnmuteMemberProcedure = "/sblurp.v1.ServerService/UnmuteMember"
 	// ServerServiceReportMessageProcedure is the fully-qualified name of the ServerService's
 	// ReportMessage RPC.
 	ServerServiceReportMessageProcedure = "/sblurp.v1.ServerService/ReportMessage"
@@ -211,6 +217,8 @@ type ServerServiceClient interface {
 	DeleteEmoji(context.Context, *connect.Request[v1.DeleteEmojiRequest]) (*connect.Response[v1.DeleteEmojiResponse], error)
 	BlockMember(context.Context, *connect.Request[v1.BlockMemberRequest]) (*connect.Response[v1.BlockMemberResponse], error)
 	UnblockMember(context.Context, *connect.Request[v1.UnblockMemberRequest]) (*connect.Response[v1.UnblockMemberResponse], error)
+	MuteMember(context.Context, *connect.Request[v1.MuteMemberRequest]) (*connect.Response[v1.MuteMemberResponse], error)
+	UnmuteMember(context.Context, *connect.Request[v1.UnmuteMemberRequest]) (*connect.Response[v1.UnmuteMemberResponse], error)
 	ReportMessage(context.Context, *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error)
 	ListReports(context.Context, *connect.Request[v1.ListReportsRequest]) (*connect.Response[v1.ListReportsResponse], error)
 	ResolveReport(context.Context, *connect.Request[v1.ResolveReportRequest]) (*connect.Response[v1.ResolveReportResponse], error)
@@ -365,6 +373,18 @@ func NewServerServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(serverServiceMethods.ByName("UnblockMember")),
 			connect.WithClientOptions(opts...),
 		),
+		muteMember: connect.NewClient[v1.MuteMemberRequest, v1.MuteMemberResponse](
+			httpClient,
+			baseURL+ServerServiceMuteMemberProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("MuteMember")),
+			connect.WithClientOptions(opts...),
+		),
+		unmuteMember: connect.NewClient[v1.UnmuteMemberRequest, v1.UnmuteMemberResponse](
+			httpClient,
+			baseURL+ServerServiceUnmuteMemberProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("UnmuteMember")),
+			connect.WithClientOptions(opts...),
+		),
 		reportMessage: connect.NewClient[v1.ReportMessageRequest, v1.ReportMessageResponse](
 			httpClient,
 			baseURL+ServerServiceReportMessageProcedure,
@@ -411,6 +431,8 @@ type serverServiceClient struct {
 	deleteEmoji          *connect.Client[v1.DeleteEmojiRequest, v1.DeleteEmojiResponse]
 	blockMember          *connect.Client[v1.BlockMemberRequest, v1.BlockMemberResponse]
 	unblockMember        *connect.Client[v1.UnblockMemberRequest, v1.UnblockMemberResponse]
+	muteMember           *connect.Client[v1.MuteMemberRequest, v1.MuteMemberResponse]
+	unmuteMember         *connect.Client[v1.UnmuteMemberRequest, v1.UnmuteMemberResponse]
 	reportMessage        *connect.Client[v1.ReportMessageRequest, v1.ReportMessageResponse]
 	listReports          *connect.Client[v1.ListReportsRequest, v1.ListReportsResponse]
 	resolveReport        *connect.Client[v1.ResolveReportRequest, v1.ResolveReportResponse]
@@ -531,6 +553,16 @@ func (c *serverServiceClient) UnblockMember(ctx context.Context, req *connect.Re
 	return c.unblockMember.CallUnary(ctx, req)
 }
 
+// MuteMember calls sblurp.v1.ServerService.MuteMember.
+func (c *serverServiceClient) MuteMember(ctx context.Context, req *connect.Request[v1.MuteMemberRequest]) (*connect.Response[v1.MuteMemberResponse], error) {
+	return c.muteMember.CallUnary(ctx, req)
+}
+
+// UnmuteMember calls sblurp.v1.ServerService.UnmuteMember.
+func (c *serverServiceClient) UnmuteMember(ctx context.Context, req *connect.Request[v1.UnmuteMemberRequest]) (*connect.Response[v1.UnmuteMemberResponse], error) {
+	return c.unmuteMember.CallUnary(ctx, req)
+}
+
 // ReportMessage calls sblurp.v1.ServerService.ReportMessage.
 func (c *serverServiceClient) ReportMessage(ctx context.Context, req *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error) {
 	return c.reportMessage.CallUnary(ctx, req)
@@ -573,6 +605,8 @@ type ServerServiceHandler interface {
 	DeleteEmoji(context.Context, *connect.Request[v1.DeleteEmojiRequest]) (*connect.Response[v1.DeleteEmojiResponse], error)
 	BlockMember(context.Context, *connect.Request[v1.BlockMemberRequest]) (*connect.Response[v1.BlockMemberResponse], error)
 	UnblockMember(context.Context, *connect.Request[v1.UnblockMemberRequest]) (*connect.Response[v1.UnblockMemberResponse], error)
+	MuteMember(context.Context, *connect.Request[v1.MuteMemberRequest]) (*connect.Response[v1.MuteMemberResponse], error)
+	UnmuteMember(context.Context, *connect.Request[v1.UnmuteMemberRequest]) (*connect.Response[v1.UnmuteMemberResponse], error)
 	ReportMessage(context.Context, *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error)
 	ListReports(context.Context, *connect.Request[v1.ListReportsRequest]) (*connect.Response[v1.ListReportsResponse], error)
 	ResolveReport(context.Context, *connect.Request[v1.ResolveReportRequest]) (*connect.Response[v1.ResolveReportResponse], error)
@@ -723,6 +757,18 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(serverServiceMethods.ByName("UnblockMember")),
 		connect.WithHandlerOptions(opts...),
 	)
+	serverServiceMuteMemberHandler := connect.NewUnaryHandler(
+		ServerServiceMuteMemberProcedure,
+		svc.MuteMember,
+		connect.WithSchema(serverServiceMethods.ByName("MuteMember")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceUnmuteMemberHandler := connect.NewUnaryHandler(
+		ServerServiceUnmuteMemberProcedure,
+		svc.UnmuteMember,
+		connect.WithSchema(serverServiceMethods.ByName("UnmuteMember")),
+		connect.WithHandlerOptions(opts...),
+	)
 	serverServiceReportMessageHandler := connect.NewUnaryHandler(
 		ServerServiceReportMessageProcedure,
 		svc.ReportMessage,
@@ -789,6 +835,10 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 			serverServiceBlockMemberHandler.ServeHTTP(w, r)
 		case ServerServiceUnblockMemberProcedure:
 			serverServiceUnblockMemberHandler.ServeHTTP(w, r)
+		case ServerServiceMuteMemberProcedure:
+			serverServiceMuteMemberHandler.ServeHTTP(w, r)
+		case ServerServiceUnmuteMemberProcedure:
+			serverServiceUnmuteMemberHandler.ServeHTTP(w, r)
 		case ServerServiceReportMessageProcedure:
 			serverServiceReportMessageHandler.ServeHTTP(w, r)
 		case ServerServiceListReportsProcedure:
@@ -894,6 +944,14 @@ func (UnimplementedServerServiceHandler) BlockMember(context.Context, *connect.R
 
 func (UnimplementedServerServiceHandler) UnblockMember(context.Context, *connect.Request[v1.UnblockMemberRequest]) (*connect.Response[v1.UnblockMemberResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.UnblockMember is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) MuteMember(context.Context, *connect.Request[v1.MuteMemberRequest]) (*connect.Response[v1.MuteMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.MuteMember is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) UnmuteMember(context.Context, *connect.Request[v1.UnmuteMemberRequest]) (*connect.Response[v1.UnmuteMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.UnmuteMember is not implemented"))
 }
 
 func (UnimplementedServerServiceHandler) ReportMessage(context.Context, *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error) {

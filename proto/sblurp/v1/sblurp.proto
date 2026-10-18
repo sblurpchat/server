@@ -223,6 +223,7 @@ message GetStateResponse {
   repeated Role roles = 6;            // sorted by position
   ChannelMode channel_mode = 7;
   repeated string blocked_member_ids = 8; // members I blocked, see BlockMember
+  repeated string muted_member_ids = 9;   // members I muted, see MuteMember
 }
 
 message SubscribeRequest {
@@ -278,6 +279,8 @@ message Event {
     bool plugins_changed = 30;      // a plugin was installed, enabled, disabled or deleted; admins call ListPlugins
     string member_blocked = 31;     // member id; I blocked them (from any of my devices)
     string member_unblocked = 32;   // member id; I unblocked them
+    string member_muted = 33;       // member id; I muted them (from any of my devices)
+    string member_unmuted = 34;     // member id; I unmuted them
   }
 }
 
@@ -492,6 +495,17 @@ message BlockMemberRequest { string member_id = 1; }
 message BlockMemberResponse {}
 message UnblockMemberRequest { string member_id = 1; }
 message UnblockMemberResponse {}
+
+// Any member, for themselves only. Muting is quieter than blocking and does
+// not stop DMs: a muted member's messages do not count toward my unread or
+// mention counts, and clients collapse them, skip their notifications and
+// hide their typing. Blocking does the same. Only the muter's devices see the
+// mute list (GetState.muted_member_ids, Event.member_muted or
+// member_unmuted). Muting twice is fine.
+message MuteMemberRequest { string member_id = 1; }
+message MuteMemberResponse {}
+message UnmuteMemberRequest { string member_id = 1; }
+message UnmuteMemberResponse {}
 
 // ---------------------------------------------------------------------------
 // Reports (1119)
@@ -741,6 +755,8 @@ service ServerService {
   rpc DeleteEmoji(DeleteEmojiRequest) returns (DeleteEmojiResponse) {}
   rpc BlockMember(BlockMemberRequest) returns (BlockMemberResponse) {}
   rpc UnblockMember(UnblockMemberRequest) returns (UnblockMemberResponse) {}
+  rpc MuteMember(MuteMemberRequest) returns (MuteMemberResponse) {}
+  rpc UnmuteMember(UnmuteMemberRequest) returns (UnmuteMemberResponse) {}
   rpc ReportMessage(ReportMessageRequest) returns (ReportMessageResponse) {}
   rpc ListReports(ListReportsRequest) returns (ListReportsResponse) {}
   rpc ResolveReport(ResolveReportRequest) returns (ResolveReportResponse) {}

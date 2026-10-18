@@ -379,6 +379,7 @@ interface Fake {
   bans: Ban[];
   plugins: Plugin[];
   blocked: Set<string>; // members I blocked (1118)
+  muted: Set<string>; // members I muted (1293)
   reports: Report[]; // open reports, newest first (1119)
   hidden: Set<string>; // DMs I left; a new message brings one back
 }
@@ -422,6 +423,7 @@ function seed(s: Seed, now: number): Fake {
     roles: [],
     notIn: new Set(),
     blocked: new Set(),
+    muted: new Set(),
     reports: [],
     hidden: new Set(),
     bans: [],
@@ -725,6 +727,16 @@ function service(f: Fake) {
         if (f.blocked.delete(req.memberId)) emit(f, { case: "memberUnblocked", value: req.memberId });
         return {};
       },
+      muteMember(req: { memberId: string }) {
+        need();
+        if (!f.muted.has(req.memberId)) (f.muted.add(req.memberId), emit(f, { case: "memberMuted", value: req.memberId }));
+        return {};
+      },
+      unmuteMember(req: { memberId: string }) {
+        need();
+        if (f.muted.delete(req.memberId)) emit(f, { case: "memberUnmuted", value: req.memberId });
+        return {};
+      },
       leaveCommunity() {
         need();
         if (me().role === MemberRole.OWNER) throw new ConnectError("the owner cannot leave", Code.FailedPrecondition);
@@ -883,6 +895,7 @@ function service(f: Fake) {
           roles: [...f.roles].sort((a, b) => a.position - b.position),
           channelMode: f.mode,
           blockedMemberIds: [...f.blocked],
+          mutedMemberIds: [...f.muted],
           seq: f.seq,
         };
       },

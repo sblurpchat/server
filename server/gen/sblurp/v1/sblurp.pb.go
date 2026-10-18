@@ -1638,6 +1638,7 @@ type GetStateResponse struct {
 	Roles            []*Role                `protobuf:"bytes,6,rep,name=roles,proto3" json:"roles,omitempty"` // sorted by position
 	ChannelMode      ChannelMode            `protobuf:"varint,7,opt,name=channel_mode,json=channelMode,proto3,enum=sblurp.v1.ChannelMode" json:"channel_mode,omitempty"`
 	BlockedMemberIds []string               `protobuf:"bytes,8,rep,name=blocked_member_ids,json=blockedMemberIds,proto3" json:"blocked_member_ids,omitempty"` // members I blocked, see BlockMember
+	MutedMemberIds   []string               `protobuf:"bytes,9,rep,name=muted_member_ids,json=mutedMemberIds,proto3" json:"muted_member_ids,omitempty"`       // members I muted, see MuteMember
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1724,6 +1725,13 @@ func (x *GetStateResponse) GetChannelMode() ChannelMode {
 func (x *GetStateResponse) GetBlockedMemberIds() []string {
 	if x != nil {
 		return x.BlockedMemberIds
+	}
+	return nil
+}
+
+func (x *GetStateResponse) GetMutedMemberIds() []string {
+	if x != nil {
+		return x.MutedMemberIds
 	}
 	return nil
 }
@@ -1964,6 +1972,8 @@ type Event struct {
 	//	*Event_PluginsChanged
 	//	*Event_MemberBlocked
 	//	*Event_MemberUnblocked
+	//	*Event_MemberMuted
+	//	*Event_MemberUnmuted
 	Kind          isEvent_Kind `protobuf_oneof:"kind"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2227,6 +2237,24 @@ func (x *Event) GetMemberUnblocked() string {
 	return ""
 }
 
+func (x *Event) GetMemberMuted() string {
+	if x != nil {
+		if x, ok := x.Kind.(*Event_MemberMuted); ok {
+			return x.MemberMuted
+		}
+	}
+	return ""
+}
+
+func (x *Event) GetMemberUnmuted() string {
+	if x != nil {
+		if x, ok := x.Kind.(*Event_MemberUnmuted); ok {
+			return x.MemberUnmuted
+		}
+	}
+	return ""
+}
+
 type isEvent_Kind interface {
 	isEvent_Kind()
 }
@@ -2323,6 +2351,14 @@ type Event_MemberUnblocked struct {
 	MemberUnblocked string `protobuf:"bytes,32,opt,name=member_unblocked,json=memberUnblocked,proto3,oneof"` // member id; I unblocked them
 }
 
+type Event_MemberMuted struct {
+	MemberMuted string `protobuf:"bytes,33,opt,name=member_muted,json=memberMuted,proto3,oneof"` // member id; I muted them (from any of my devices)
+}
+
+type Event_MemberUnmuted struct {
+	MemberUnmuted string `protobuf:"bytes,34,opt,name=member_unmuted,json=memberUnmuted,proto3,oneof"` // member id; I unmuted them
+}
+
 func (*Event_MessageCreated) isEvent_Kind() {}
 
 func (*Event_MessageUpdated) isEvent_Kind() {}
@@ -2368,6 +2404,10 @@ func (*Event_PluginsChanged) isEvent_Kind() {}
 func (*Event_MemberBlocked) isEvent_Kind() {}
 
 func (*Event_MemberUnblocked) isEvent_Kind() {}
+
+func (*Event_MemberMuted) isEvent_Kind() {}
+
+func (*Event_MemberUnmuted) isEvent_Kind() {}
 
 // Admin or owner only. Names are normalized: "Book Club" becomes book-club.
 type CreateChannelRequest struct {
@@ -4992,6 +5032,172 @@ func (*UnblockMemberResponse) Descriptor() ([]byte, []int) {
 	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{75}
 }
 
+// Any member, for themselves only. Muting is quieter than blocking and does
+// not stop DMs: a muted member's messages do not count toward my unread or
+// mention counts, and clients collapse them, skip their notifications and
+// hide their typing. Blocking does the same. Only the muter's devices see the
+// mute list (GetState.muted_member_ids, Event.member_muted or
+// member_unmuted). Muting twice is fine.
+type MuteMemberRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MemberId      string                 `protobuf:"bytes,1,opt,name=member_id,json=memberId,proto3" json:"member_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MuteMemberRequest) Reset() {
+	*x = MuteMemberRequest{}
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[76]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MuteMemberRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MuteMemberRequest) ProtoMessage() {}
+
+func (x *MuteMemberRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[76]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MuteMemberRequest.ProtoReflect.Descriptor instead.
+func (*MuteMemberRequest) Descriptor() ([]byte, []int) {
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{76}
+}
+
+func (x *MuteMemberRequest) GetMemberId() string {
+	if x != nil {
+		return x.MemberId
+	}
+	return ""
+}
+
+type MuteMemberResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MuteMemberResponse) Reset() {
+	*x = MuteMemberResponse{}
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[77]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MuteMemberResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MuteMemberResponse) ProtoMessage() {}
+
+func (x *MuteMemberResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[77]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MuteMemberResponse.ProtoReflect.Descriptor instead.
+func (*MuteMemberResponse) Descriptor() ([]byte, []int) {
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{77}
+}
+
+type UnmuteMemberRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MemberId      string                 `protobuf:"bytes,1,opt,name=member_id,json=memberId,proto3" json:"member_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnmuteMemberRequest) Reset() {
+	*x = UnmuteMemberRequest{}
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[78]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnmuteMemberRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnmuteMemberRequest) ProtoMessage() {}
+
+func (x *UnmuteMemberRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[78]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnmuteMemberRequest.ProtoReflect.Descriptor instead.
+func (*UnmuteMemberRequest) Descriptor() ([]byte, []int) {
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{78}
+}
+
+func (x *UnmuteMemberRequest) GetMemberId() string {
+	if x != nil {
+		return x.MemberId
+	}
+	return ""
+}
+
+type UnmuteMemberResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnmuteMemberResponse) Reset() {
+	*x = UnmuteMemberResponse{}
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[79]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnmuteMemberResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnmuteMemberResponse) ProtoMessage() {}
+
+func (x *UnmuteMemberResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[79]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnmuteMemberResponse.ProtoReflect.Descriptor instead.
+func (*UnmuteMemberResponse) Descriptor() ([]byte, []int) {
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{79}
+}
+
 // Any member, about a message they can see that someone else wrote, with an
 // optional note (up to 1,000 characters). The server keeps a copy of the
 // text, so the report outlives an edit or a delete. A report of a DM
@@ -5009,7 +5215,7 @@ type ReportMessageRequest struct {
 
 func (x *ReportMessageRequest) Reset() {
 	*x = ReportMessageRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[76]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5021,7 +5227,7 @@ func (x *ReportMessageRequest) String() string {
 func (*ReportMessageRequest) ProtoMessage() {}
 
 func (x *ReportMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[76]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5034,7 +5240,7 @@ func (x *ReportMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportMessageRequest.ProtoReflect.Descriptor instead.
 func (*ReportMessageRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{76}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *ReportMessageRequest) GetMessageId() string {
@@ -5059,7 +5265,7 @@ type ReportMessageResponse struct {
 
 func (x *ReportMessageResponse) Reset() {
 	*x = ReportMessageResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[77]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5071,7 +5277,7 @@ func (x *ReportMessageResponse) String() string {
 func (*ReportMessageResponse) ProtoMessage() {}
 
 func (x *ReportMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[77]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5084,7 +5290,7 @@ func (x *ReportMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportMessageResponse.ProtoReflect.Descriptor instead.
 func (*ReportMessageResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{77}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{81}
 }
 
 type Report struct {
@@ -5102,7 +5308,7 @@ type Report struct {
 
 func (x *Report) Reset() {
 	*x = Report{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[78]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5114,7 +5320,7 @@ func (x *Report) String() string {
 func (*Report) ProtoMessage() {}
 
 func (x *Report) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[78]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5127,7 +5333,7 @@ func (x *Report) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Report.ProtoReflect.Descriptor instead.
 func (*Report) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{78}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *Report) GetId() string {
@@ -5189,7 +5395,7 @@ type ListReportsRequest struct {
 
 func (x *ListReportsRequest) Reset() {
 	*x = ListReportsRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[79]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5201,7 +5407,7 @@ func (x *ListReportsRequest) String() string {
 func (*ListReportsRequest) ProtoMessage() {}
 
 func (x *ListReportsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[79]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5214,7 +5420,7 @@ func (x *ListReportsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListReportsRequest.ProtoReflect.Descriptor instead.
 func (*ListReportsRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{79}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{83}
 }
 
 type ListReportsResponse struct {
@@ -5226,7 +5432,7 @@ type ListReportsResponse struct {
 
 func (x *ListReportsResponse) Reset() {
 	*x = ListReportsResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[80]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5238,7 +5444,7 @@ func (x *ListReportsResponse) String() string {
 func (*ListReportsResponse) ProtoMessage() {}
 
 func (x *ListReportsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[80]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5251,7 +5457,7 @@ func (x *ListReportsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListReportsResponse.ProtoReflect.Descriptor instead.
 func (*ListReportsResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{80}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *ListReportsResponse) GetReports() []*Report {
@@ -5272,7 +5478,7 @@ type ResolveReportRequest struct {
 
 func (x *ResolveReportRequest) Reset() {
 	*x = ResolveReportRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[81]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5284,7 +5490,7 @@ func (x *ResolveReportRequest) String() string {
 func (*ResolveReportRequest) ProtoMessage() {}
 
 func (x *ResolveReportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[81]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5297,7 +5503,7 @@ func (x *ResolveReportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveReportRequest.ProtoReflect.Descriptor instead.
 func (*ResolveReportRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{81}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *ResolveReportRequest) GetReportId() string {
@@ -5315,7 +5521,7 @@ type ResolveReportResponse struct {
 
 func (x *ResolveReportResponse) Reset() {
 	*x = ResolveReportResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[82]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5327,7 +5533,7 @@ func (x *ResolveReportResponse) String() string {
 func (*ResolveReportResponse) ProtoMessage() {}
 
 func (x *ResolveReportResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[82]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5340,7 +5546,7 @@ func (x *ResolveReportResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveReportResponse.ProtoReflect.Descriptor instead.
 func (*ResolveReportResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{82}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{86}
 }
 
 type Invite struct {
@@ -5357,7 +5563,7 @@ type Invite struct {
 
 func (x *Invite) Reset() {
 	*x = Invite{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[83]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5369,7 +5575,7 @@ func (x *Invite) String() string {
 func (*Invite) ProtoMessage() {}
 
 func (x *Invite) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[83]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5382,7 +5588,7 @@ func (x *Invite) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Invite.ProtoReflect.Descriptor instead.
 func (*Invite) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{83}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *Invite) GetCode() string {
@@ -5437,7 +5643,7 @@ type CreateInviteRequest struct {
 
 func (x *CreateInviteRequest) Reset() {
 	*x = CreateInviteRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[84]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5449,7 +5655,7 @@ func (x *CreateInviteRequest) String() string {
 func (*CreateInviteRequest) ProtoMessage() {}
 
 func (x *CreateInviteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[84]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5462,7 +5668,7 @@ func (x *CreateInviteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateInviteRequest.ProtoReflect.Descriptor instead.
 func (*CreateInviteRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{84}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *CreateInviteRequest) GetExpiresInSeconds() int64 {
@@ -5488,7 +5694,7 @@ type CreateInviteResponse struct {
 
 func (x *CreateInviteResponse) Reset() {
 	*x = CreateInviteResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[85]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5500,7 +5706,7 @@ func (x *CreateInviteResponse) String() string {
 func (*CreateInviteResponse) ProtoMessage() {}
 
 func (x *CreateInviteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[85]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5513,7 +5719,7 @@ func (x *CreateInviteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateInviteResponse.ProtoReflect.Descriptor instead.
 func (*CreateInviteResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{85}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *CreateInviteResponse) GetInvite() *Invite {
@@ -5533,7 +5739,7 @@ type ListInvitesRequest struct {
 
 func (x *ListInvitesRequest) Reset() {
 	*x = ListInvitesRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[86]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5545,7 +5751,7 @@ func (x *ListInvitesRequest) String() string {
 func (*ListInvitesRequest) ProtoMessage() {}
 
 func (x *ListInvitesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[86]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5558,7 +5764,7 @@ func (x *ListInvitesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInvitesRequest.ProtoReflect.Descriptor instead.
 func (*ListInvitesRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{86}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{90}
 }
 
 type ListInvitesResponse struct {
@@ -5570,7 +5776,7 @@ type ListInvitesResponse struct {
 
 func (x *ListInvitesResponse) Reset() {
 	*x = ListInvitesResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[87]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5582,7 +5788,7 @@ func (x *ListInvitesResponse) String() string {
 func (*ListInvitesResponse) ProtoMessage() {}
 
 func (x *ListInvitesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[87]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5595,7 +5801,7 @@ func (x *ListInvitesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInvitesResponse.ProtoReflect.Descriptor instead.
 func (*ListInvitesResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{87}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *ListInvitesResponse) GetInvites() []*Invite {
@@ -5614,7 +5820,7 @@ type RevokeInviteRequest struct {
 
 func (x *RevokeInviteRequest) Reset() {
 	*x = RevokeInviteRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[88]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5626,7 +5832,7 @@ func (x *RevokeInviteRequest) String() string {
 func (*RevokeInviteRequest) ProtoMessage() {}
 
 func (x *RevokeInviteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[88]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5639,7 +5845,7 @@ func (x *RevokeInviteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeInviteRequest.ProtoReflect.Descriptor instead.
 func (*RevokeInviteRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{88}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *RevokeInviteRequest) GetCode() string {
@@ -5657,7 +5863,7 @@ type RevokeInviteResponse struct {
 
 func (x *RevokeInviteResponse) Reset() {
 	*x = RevokeInviteResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[89]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5669,7 +5875,7 @@ func (x *RevokeInviteResponse) String() string {
 func (*RevokeInviteResponse) ProtoMessage() {}
 
 func (x *RevokeInviteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[89]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5682,7 +5888,7 @@ func (x *RevokeInviteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeInviteResponse.ProtoReflect.Descriptor instead.
 func (*RevokeInviteResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{89}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{93}
 }
 
 type UpdateServerSettingsRequest struct {
@@ -5700,7 +5906,7 @@ type UpdateServerSettingsRequest struct {
 
 func (x *UpdateServerSettingsRequest) Reset() {
 	*x = UpdateServerSettingsRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[90]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5712,7 +5918,7 @@ func (x *UpdateServerSettingsRequest) String() string {
 func (*UpdateServerSettingsRequest) ProtoMessage() {}
 
 func (x *UpdateServerSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[90]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5725,7 +5931,7 @@ func (x *UpdateServerSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateServerSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateServerSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{90}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *UpdateServerSettingsRequest) GetInviteOnly() bool {
@@ -5791,7 +5997,7 @@ type UpdateServerSettingsResponse struct {
 
 func (x *UpdateServerSettingsResponse) Reset() {
 	*x = UpdateServerSettingsResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[91]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5803,7 +6009,7 @@ func (x *UpdateServerSettingsResponse) String() string {
 func (*UpdateServerSettingsResponse) ProtoMessage() {}
 
 func (x *UpdateServerSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[91]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5816,7 +6022,7 @@ func (x *UpdateServerSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateServerSettingsResponse.ProtoReflect.Descriptor instead.
 func (*UpdateServerSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{91}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *UpdateServerSettingsResponse) GetInviteOnly() bool {
@@ -5871,7 +6077,7 @@ type CreateRoleRequest struct {
 
 func (x *CreateRoleRequest) Reset() {
 	*x = CreateRoleRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[92]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5883,7 +6089,7 @@ func (x *CreateRoleRequest) String() string {
 func (*CreateRoleRequest) ProtoMessage() {}
 
 func (x *CreateRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[92]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5896,7 +6102,7 @@ func (x *CreateRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRoleRequest.ProtoReflect.Descriptor instead.
 func (*CreateRoleRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{92}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *CreateRoleRequest) GetName() string {
@@ -5922,7 +6128,7 @@ type CreateRoleResponse struct {
 
 func (x *CreateRoleResponse) Reset() {
 	*x = CreateRoleResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[93]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5934,7 +6140,7 @@ func (x *CreateRoleResponse) String() string {
 func (*CreateRoleResponse) ProtoMessage() {}
 
 func (x *CreateRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[93]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5947,7 +6153,7 @@ func (x *CreateRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRoleResponse.ProtoReflect.Descriptor instead.
 func (*CreateRoleResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{93}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *CreateRoleResponse) GetRole() *Role {
@@ -5969,7 +6175,7 @@ type UpdateRoleRequest struct {
 
 func (x *UpdateRoleRequest) Reset() {
 	*x = UpdateRoleRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[94]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5981,7 +6187,7 @@ func (x *UpdateRoleRequest) String() string {
 func (*UpdateRoleRequest) ProtoMessage() {}
 
 func (x *UpdateRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[94]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5994,7 +6200,7 @@ func (x *UpdateRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateRoleRequest.ProtoReflect.Descriptor instead.
 func (*UpdateRoleRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{94}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *UpdateRoleRequest) GetRoleId() string {
@@ -6034,7 +6240,7 @@ type UpdateRoleResponse struct {
 
 func (x *UpdateRoleResponse) Reset() {
 	*x = UpdateRoleResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[95]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6046,7 +6252,7 @@ func (x *UpdateRoleResponse) String() string {
 func (*UpdateRoleResponse) ProtoMessage() {}
 
 func (x *UpdateRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[95]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6059,7 +6265,7 @@ func (x *UpdateRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateRoleResponse.ProtoReflect.Descriptor instead.
 func (*UpdateRoleResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{95}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *UpdateRoleResponse) GetRole() *Role {
@@ -6080,7 +6286,7 @@ type DeleteRoleRequest struct {
 
 func (x *DeleteRoleRequest) Reset() {
 	*x = DeleteRoleRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[96]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6092,7 +6298,7 @@ func (x *DeleteRoleRequest) String() string {
 func (*DeleteRoleRequest) ProtoMessage() {}
 
 func (x *DeleteRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[96]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6105,7 +6311,7 @@ func (x *DeleteRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRoleRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRoleRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{96}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *DeleteRoleRequest) GetRoleId() string {
@@ -6123,7 +6329,7 @@ type DeleteRoleResponse struct {
 
 func (x *DeleteRoleResponse) Reset() {
 	*x = DeleteRoleResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[97]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6135,7 +6341,7 @@ func (x *DeleteRoleResponse) String() string {
 func (*DeleteRoleResponse) ProtoMessage() {}
 
 func (x *DeleteRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[97]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6148,7 +6354,7 @@ func (x *DeleteRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRoleResponse.ProtoReflect.Descriptor instead.
 func (*DeleteRoleResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{97}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{101}
 }
 
 // Replaces the member's roles. Works for bots too.
@@ -6162,7 +6368,7 @@ type SetMemberRolesRequest struct {
 
 func (x *SetMemberRolesRequest) Reset() {
 	*x = SetMemberRolesRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[98]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6174,7 +6380,7 @@ func (x *SetMemberRolesRequest) String() string {
 func (*SetMemberRolesRequest) ProtoMessage() {}
 
 func (x *SetMemberRolesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[98]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6187,7 +6393,7 @@ func (x *SetMemberRolesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetMemberRolesRequest.ProtoReflect.Descriptor instead.
 func (*SetMemberRolesRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{98}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *SetMemberRolesRequest) GetMemberId() string {
@@ -6213,7 +6419,7 @@ type SetMemberRolesResponse struct {
 
 func (x *SetMemberRolesResponse) Reset() {
 	*x = SetMemberRolesResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[99]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6225,7 +6431,7 @@ func (x *SetMemberRolesResponse) String() string {
 func (*SetMemberRolesResponse) ProtoMessage() {}
 
 func (x *SetMemberRolesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[99]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6238,7 +6444,7 @@ func (x *SetMemberRolesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetMemberRolesResponse.ProtoReflect.Descriptor instead.
 func (*SetMemberRolesResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{99}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *SetMemberRolesResponse) GetMember() *Member {
@@ -6258,7 +6464,7 @@ type CustomEmoji struct {
 
 func (x *CustomEmoji) Reset() {
 	*x = CustomEmoji{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[100]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6270,7 +6476,7 @@ func (x *CustomEmoji) String() string {
 func (*CustomEmoji) ProtoMessage() {}
 
 func (x *CustomEmoji) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[100]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6283,7 +6489,7 @@ func (x *CustomEmoji) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CustomEmoji.ProtoReflect.Descriptor instead.
 func (*CustomEmoji) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{100}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *CustomEmoji) GetName() string {
@@ -6309,7 +6515,7 @@ type ListEmojiResponse struct {
 
 func (x *ListEmojiResponse) Reset() {
 	*x = ListEmojiResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[101]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6321,7 +6527,7 @@ func (x *ListEmojiResponse) String() string {
 func (*ListEmojiResponse) ProtoMessage() {}
 
 func (x *ListEmojiResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[101]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6334,7 +6540,7 @@ func (x *ListEmojiResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEmojiResponse.ProtoReflect.Descriptor instead.
 func (*ListEmojiResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{101}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *ListEmojiResponse) GetEmoji() []*CustomEmoji {
@@ -6356,7 +6562,7 @@ type EmojiUploadResult struct {
 
 func (x *EmojiUploadResult) Reset() {
 	*x = EmojiUploadResult{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[102]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6368,7 +6574,7 @@ func (x *EmojiUploadResult) String() string {
 func (*EmojiUploadResult) ProtoMessage() {}
 
 func (x *EmojiUploadResult) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[102]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6381,7 +6587,7 @@ func (x *EmojiUploadResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EmojiUploadResult.ProtoReflect.Descriptor instead.
 func (*EmojiUploadResult) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{102}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{106}
 }
 
 func (x *EmojiUploadResult) GetFile() string {
@@ -6421,7 +6627,7 @@ type UploadEmojiResponse struct {
 
 func (x *UploadEmojiResponse) Reset() {
 	*x = UploadEmojiResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[103]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6433,7 +6639,7 @@ func (x *UploadEmojiResponse) String() string {
 func (*UploadEmojiResponse) ProtoMessage() {}
 
 func (x *UploadEmojiResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[103]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6446,7 +6652,7 @@ func (x *UploadEmojiResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadEmojiResponse.ProtoReflect.Descriptor instead.
 func (*UploadEmojiResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{103}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *UploadEmojiResponse) GetResults() []*EmojiUploadResult {
@@ -6466,7 +6672,7 @@ type DeleteEmojiRequest struct {
 
 func (x *DeleteEmojiRequest) Reset() {
 	*x = DeleteEmojiRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[104]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6478,7 +6684,7 @@ func (x *DeleteEmojiRequest) String() string {
 func (*DeleteEmojiRequest) ProtoMessage() {}
 
 func (x *DeleteEmojiRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[104]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6491,7 +6697,7 @@ func (x *DeleteEmojiRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteEmojiRequest.ProtoReflect.Descriptor instead.
 func (*DeleteEmojiRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{104}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *DeleteEmojiRequest) GetName() string {
@@ -6509,7 +6715,7 @@ type DeleteEmojiResponse struct {
 
 func (x *DeleteEmojiResponse) Reset() {
 	*x = DeleteEmojiResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[105]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6521,7 +6727,7 @@ func (x *DeleteEmojiResponse) String() string {
 func (*DeleteEmojiResponse) ProtoMessage() {}
 
 func (x *DeleteEmojiResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[105]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6534,7 +6740,7 @@ func (x *DeleteEmojiResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteEmojiResponse.ProtoReflect.Descriptor instead.
 func (*DeleteEmojiResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{105}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{109}
 }
 
 // Admin or owner only. username is 2 to 32 of a-z, 0-9, _, . and -.
@@ -6550,7 +6756,7 @@ type CreateBotRequest struct {
 
 func (x *CreateBotRequest) Reset() {
 	*x = CreateBotRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[106]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[110]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6562,7 +6768,7 @@ func (x *CreateBotRequest) String() string {
 func (*CreateBotRequest) ProtoMessage() {}
 
 func (x *CreateBotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[106]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[110]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6575,7 +6781,7 @@ func (x *CreateBotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateBotRequest.ProtoReflect.Descriptor instead.
 func (*CreateBotRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{106}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{110}
 }
 
 func (x *CreateBotRequest) GetUsername() string {
@@ -6616,7 +6822,7 @@ type CreateBotResponse struct {
 
 func (x *CreateBotResponse) Reset() {
 	*x = CreateBotResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[107]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[111]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6628,7 +6834,7 @@ func (x *CreateBotResponse) String() string {
 func (*CreateBotResponse) ProtoMessage() {}
 
 func (x *CreateBotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[107]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[111]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6641,7 +6847,7 @@ func (x *CreateBotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateBotResponse.ProtoReflect.Descriptor instead.
 func (*CreateBotResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{107}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *CreateBotResponse) GetBot() *Member {
@@ -6667,7 +6873,7 @@ type ListBotsRequest struct {
 
 func (x *ListBotsRequest) Reset() {
 	*x = ListBotsRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[108]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[112]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6679,7 +6885,7 @@ func (x *ListBotsRequest) String() string {
 func (*ListBotsRequest) ProtoMessage() {}
 
 func (x *ListBotsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[108]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[112]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6692,7 +6898,7 @@ func (x *ListBotsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBotsRequest.ProtoReflect.Descriptor instead.
 func (*ListBotsRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{108}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{112}
 }
 
 type ListBotsResponse struct {
@@ -6704,7 +6910,7 @@ type ListBotsResponse struct {
 
 func (x *ListBotsResponse) Reset() {
 	*x = ListBotsResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[109]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[113]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6716,7 +6922,7 @@ func (x *ListBotsResponse) String() string {
 func (*ListBotsResponse) ProtoMessage() {}
 
 func (x *ListBotsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[109]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[113]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6729,7 +6935,7 @@ func (x *ListBotsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListBotsResponse.ProtoReflect.Descriptor instead.
 func (*ListBotsResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{109}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{113}
 }
 
 func (x *ListBotsResponse) GetBots() []*Member {
@@ -6749,7 +6955,7 @@ type RotateBotTokenRequest struct {
 
 func (x *RotateBotTokenRequest) Reset() {
 	*x = RotateBotTokenRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[110]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[114]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6761,7 +6967,7 @@ func (x *RotateBotTokenRequest) String() string {
 func (*RotateBotTokenRequest) ProtoMessage() {}
 
 func (x *RotateBotTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[110]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[114]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6774,7 +6980,7 @@ func (x *RotateBotTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotateBotTokenRequest.ProtoReflect.Descriptor instead.
 func (*RotateBotTokenRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{110}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{114}
 }
 
 func (x *RotateBotTokenRequest) GetBotId() string {
@@ -6793,7 +6999,7 @@ type RotateBotTokenResponse struct {
 
 func (x *RotateBotTokenResponse) Reset() {
 	*x = RotateBotTokenResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[111]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[115]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6805,7 +7011,7 @@ func (x *RotateBotTokenResponse) String() string {
 func (*RotateBotTokenResponse) ProtoMessage() {}
 
 func (x *RotateBotTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[111]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[115]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6818,7 +7024,7 @@ func (x *RotateBotTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RotateBotTokenResponse.ProtoReflect.Descriptor instead.
 func (*RotateBotTokenResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{111}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{115}
 }
 
 func (x *RotateBotTokenResponse) GetToken() string {
@@ -6838,7 +7044,7 @@ type DeleteBotRequest struct {
 
 func (x *DeleteBotRequest) Reset() {
 	*x = DeleteBotRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[112]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[116]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6850,7 +7056,7 @@ func (x *DeleteBotRequest) String() string {
 func (*DeleteBotRequest) ProtoMessage() {}
 
 func (x *DeleteBotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[112]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[116]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6863,7 +7069,7 @@ func (x *DeleteBotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteBotRequest.ProtoReflect.Descriptor instead.
 func (*DeleteBotRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{112}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{116}
 }
 
 func (x *DeleteBotRequest) GetBotId() string {
@@ -6881,7 +7087,7 @@ type DeleteBotResponse struct {
 
 func (x *DeleteBotResponse) Reset() {
 	*x = DeleteBotResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[113]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[117]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6893,7 +7099,7 @@ func (x *DeleteBotResponse) String() string {
 func (*DeleteBotResponse) ProtoMessage() {}
 
 func (x *DeleteBotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[113]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[117]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6906,7 +7112,7 @@ func (x *DeleteBotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteBotResponse.ProtoReflect.Descriptor instead.
 func (*DeleteBotResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{113}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{117}
 }
 
 // A JavaScript plugin in the plugins folder of the data directory. name is
@@ -6924,7 +7130,7 @@ type Plugin struct {
 
 func (x *Plugin) Reset() {
 	*x = Plugin{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[114]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[118]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6936,7 +7142,7 @@ func (x *Plugin) String() string {
 func (*Plugin) ProtoMessage() {}
 
 func (x *Plugin) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[114]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[118]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6949,7 +7155,7 @@ func (x *Plugin) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Plugin.ProtoReflect.Descriptor instead.
 func (*Plugin) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{114}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{118}
 }
 
 func (x *Plugin) GetName() string {
@@ -6996,7 +7202,7 @@ type ListPluginsRequest struct {
 
 func (x *ListPluginsRequest) Reset() {
 	*x = ListPluginsRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[115]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[119]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7008,7 +7214,7 @@ func (x *ListPluginsRequest) String() string {
 func (*ListPluginsRequest) ProtoMessage() {}
 
 func (x *ListPluginsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[115]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[119]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7021,7 +7227,7 @@ func (x *ListPluginsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPluginsRequest.ProtoReflect.Descriptor instead.
 func (*ListPluginsRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{115}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{119}
 }
 
 type ListPluginsResponse struct {
@@ -7033,7 +7239,7 @@ type ListPluginsResponse struct {
 
 func (x *ListPluginsResponse) Reset() {
 	*x = ListPluginsResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[116]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[120]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7045,7 +7251,7 @@ func (x *ListPluginsResponse) String() string {
 func (*ListPluginsResponse) ProtoMessage() {}
 
 func (x *ListPluginsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[116]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[120]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7058,7 +7264,7 @@ func (x *ListPluginsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPluginsResponse.ProtoReflect.Descriptor instead.
 func (*ListPluginsResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{116}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{120}
 }
 
 func (x *ListPluginsResponse) GetPlugins() []*Plugin {
@@ -7080,7 +7286,7 @@ type InstallPluginRequest struct {
 
 func (x *InstallPluginRequest) Reset() {
 	*x = InstallPluginRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[117]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[121]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7092,7 +7298,7 @@ func (x *InstallPluginRequest) String() string {
 func (*InstallPluginRequest) ProtoMessage() {}
 
 func (x *InstallPluginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[117]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[121]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7105,7 +7311,7 @@ func (x *InstallPluginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstallPluginRequest.ProtoReflect.Descriptor instead.
 func (*InstallPluginRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{117}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{121}
 }
 
 func (x *InstallPluginRequest) GetName() string {
@@ -7131,7 +7337,7 @@ type InstallPluginResponse struct {
 
 func (x *InstallPluginResponse) Reset() {
 	*x = InstallPluginResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[118]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[122]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7143,7 +7349,7 @@ func (x *InstallPluginResponse) String() string {
 func (*InstallPluginResponse) ProtoMessage() {}
 
 func (x *InstallPluginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[118]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[122]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7156,7 +7362,7 @@ func (x *InstallPluginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InstallPluginResponse.ProtoReflect.Descriptor instead.
 func (*InstallPluginResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{118}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{122}
 }
 
 func (x *InstallPluginResponse) GetPlugin() *Plugin {
@@ -7177,7 +7383,7 @@ type SetPluginEnabledRequest struct {
 
 func (x *SetPluginEnabledRequest) Reset() {
 	*x = SetPluginEnabledRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[119]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[123]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7189,7 +7395,7 @@ func (x *SetPluginEnabledRequest) String() string {
 func (*SetPluginEnabledRequest) ProtoMessage() {}
 
 func (x *SetPluginEnabledRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[119]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[123]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7202,7 +7408,7 @@ func (x *SetPluginEnabledRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPluginEnabledRequest.ProtoReflect.Descriptor instead.
 func (*SetPluginEnabledRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{119}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{123}
 }
 
 func (x *SetPluginEnabledRequest) GetName() string {
@@ -7228,7 +7434,7 @@ type SetPluginEnabledResponse struct {
 
 func (x *SetPluginEnabledResponse) Reset() {
 	*x = SetPluginEnabledResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[120]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[124]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7240,7 +7446,7 @@ func (x *SetPluginEnabledResponse) String() string {
 func (*SetPluginEnabledResponse) ProtoMessage() {}
 
 func (x *SetPluginEnabledResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[120]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[124]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7253,7 +7459,7 @@ func (x *SetPluginEnabledResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPluginEnabledResponse.ProtoReflect.Descriptor instead.
 func (*SetPluginEnabledResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{120}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{124}
 }
 
 func (x *SetPluginEnabledResponse) GetPlugin() *Plugin {
@@ -7273,7 +7479,7 @@ type DeletePluginRequest struct {
 
 func (x *DeletePluginRequest) Reset() {
 	*x = DeletePluginRequest{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[121]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[125]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7285,7 +7491,7 @@ func (x *DeletePluginRequest) String() string {
 func (*DeletePluginRequest) ProtoMessage() {}
 
 func (x *DeletePluginRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[121]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[125]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7298,7 +7504,7 @@ func (x *DeletePluginRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePluginRequest.ProtoReflect.Descriptor instead.
 func (*DeletePluginRequest) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{121}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{125}
 }
 
 func (x *DeletePluginRequest) GetName() string {
@@ -7316,7 +7522,7 @@ type DeletePluginResponse struct {
 
 func (x *DeletePluginResponse) Reset() {
 	*x = DeletePluginResponse{}
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[122]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[126]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7328,7 +7534,7 @@ func (x *DeletePluginResponse) String() string {
 func (*DeletePluginResponse) ProtoMessage() {}
 
 func (x *DeletePluginResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_sblurp_v1_sblurp_proto_msgTypes[122]
+	mi := &file_sblurp_v1_sblurp_proto_msgTypes[126]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7341,7 +7547,7 @@ func (x *DeletePluginResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePluginResponse.ProtoReflect.Descriptor instead.
 func (*DeletePluginResponse) Descriptor() ([]byte, []int) {
-	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{122}
+	return file_sblurp_v1_sblurp_proto_rawDescGZIP(), []int{126}
 }
 
 var File_sblurp_v1_sblurp_proto protoreflect.FileDescriptor
@@ -7478,7 +7684,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\r_status_emoji\"B\n" +
 	"\x15UpdateProfileResponse\x12)\n" +
 	"\x06member\x18\x01 \x01(\v2\x11.sblurp.v1.MemberR\x06member\"\x11\n" +
-	"\x0fGetStateRequest\"\xeb\x02\n" +
+	"\x0fGetStateRequest\"\x95\x03\n" +
 	"\x10GetStateResponse\x12!\n" +
 	"\x02me\x18\x01 \x01(\v2\x11.sblurp.v1.MemberR\x02me\x12.\n" +
 	"\bchannels\x18\x02 \x03(\v2\x12.sblurp.v1.ChannelR\bchannels\x12+\n" +
@@ -7488,7 +7694,8 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x03seq\x18\x05 \x01(\x03R\x03seq\x12%\n" +
 	"\x05roles\x18\x06 \x03(\v2\x0f.sblurp.v1.RoleR\x05roles\x129\n" +
 	"\fchannel_mode\x18\a \x01(\x0e2\x16.sblurp.v1.ChannelModeR\vchannelMode\x12,\n" +
-	"\x12blocked_member_ids\x18\b \x03(\tR\x10blockedMemberIds\"/\n" +
+	"\x12blocked_member_ids\x18\b \x03(\tR\x10blockedMemberIds\x12(\n" +
+	"\x10muted_member_ids\x18\t \x03(\tR\x0emutedMemberIds\"/\n" +
 	"\x10SubscribeRequest\x12\x1b\n" +
 	"\tafter_seq\x18\x01 \x01(\x03R\bafterSeq\"o\n" +
 	"\vTypingEvent\x12\x1d\n" +
@@ -7500,7 +7707,8 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\tmember_id\x18\x01 \x01(\tR\bmemberId\x12/\n" +
 	"\bpresence\x18\x02 \x01(\x0e2\x13.sblurp.v1.PresenceR\bpresence\"C\n" +
 	"\rPresenceBatch\x122\n" +
-	"\achanges\x18\x01 \x03(\v2\x18.sblurp.v1.PresenceEventR\achanges\"\xcb\t\n" +
+	"\achanges\x18\x01 \x03(\v2\x18.sblurp.v1.PresenceEventR\achanges\"\x99\n" +
+	"\n" +
 	"\x05Event\x12\x10\n" +
 	"\x03seq\x18\x01 \x01(\x03R\x03seq\x12\x13\n" +
 	"\x05at_ms\x18\x02 \x01(\x03R\x04atMs\x12=\n" +
@@ -7529,7 +7737,9 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x0epresence_batch\x18\x1d \x01(\v2\x18.sblurp.v1.PresenceBatchH\x00R\rpresenceBatch\x12)\n" +
 	"\x0fplugins_changed\x18\x1e \x01(\bH\x00R\x0epluginsChanged\x12'\n" +
 	"\x0emember_blocked\x18\x1f \x01(\tH\x00R\rmemberBlocked\x12+\n" +
-	"\x10member_unblocked\x18  \x01(\tH\x00R\x0fmemberUnblockedB\x06\n" +
+	"\x10member_unblocked\x18  \x01(\tH\x00R\x0fmemberUnblocked\x12#\n" +
+	"\fmember_muted\x18! \x01(\tH\x00R\vmemberMuted\x12'\n" +
+	"\x0emember_unmuted\x18\" \x01(\tH\x00R\rmemberUnmutedB\x06\n" +
 	"\x04kind\"\x88\x01\n" +
 	"\x14CreateChannelRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12*\n" +
@@ -7688,7 +7898,13 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x13BlockMemberResponse\"3\n" +
 	"\x14UnblockMemberRequest\x12\x1b\n" +
 	"\tmember_id\x18\x01 \x01(\tR\bmemberId\"\x17\n" +
-	"\x15UnblockMemberResponse\"I\n" +
+	"\x15UnblockMemberResponse\"0\n" +
+	"\x11MuteMemberRequest\x12\x1b\n" +
+	"\tmember_id\x18\x01 \x01(\tR\bmemberId\"\x14\n" +
+	"\x12MuteMemberResponse\"2\n" +
+	"\x13UnmuteMemberRequest\x12\x1b\n" +
+	"\tmember_id\x18\x01 \x01(\tR\bmemberId\"\x16\n" +
+	"\x14UnmuteMemberResponse\"I\n" +
 	"\x14ReportMessageRequest\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x12\n" +
@@ -7861,7 +8077,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x1fEMOJI_UPLOAD_STATUS_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19EMOJI_UPLOAD_STATUS_ADDED\x10\x01\x12\x1e\n" +
 	"\x1aEMOJI_UPLOAD_STATUS_EXISTS\x10\x02\x12 \n" +
-	"\x1cEMOJI_UPLOAD_STATUS_REJECTED\x10\x032\xab\x10\n" +
+	"\x1cEMOJI_UPLOAD_STATUS_REJECTED\x10\x032\xcb\x11\n" +
 	"\rServerService\x12T\n" +
 	"\rGetServerInfo\x12\x1f.sblurp.v1.GetServerInfoRequest\x1a .sblurp.v1.GetServerInfoResponse\"\x00\x129\n" +
 	"\x04Join\x12\x16.sblurp.v1.JoinRequest\x1a\x17.sblurp.v1.JoinResponse\"\x00\x12<\n" +
@@ -7889,7 +8105,10 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x0eSetMemberRoles\x12 .sblurp.v1.SetMemberRolesRequest\x1a!.sblurp.v1.SetMemberRolesResponse\"\x00\x12N\n" +
 	"\vDeleteEmoji\x12\x1d.sblurp.v1.DeleteEmojiRequest\x1a\x1e.sblurp.v1.DeleteEmojiResponse\"\x00\x12N\n" +
 	"\vBlockMember\x12\x1d.sblurp.v1.BlockMemberRequest\x1a\x1e.sblurp.v1.BlockMemberResponse\"\x00\x12T\n" +
-	"\rUnblockMember\x12\x1f.sblurp.v1.UnblockMemberRequest\x1a .sblurp.v1.UnblockMemberResponse\"\x00\x12T\n" +
+	"\rUnblockMember\x12\x1f.sblurp.v1.UnblockMemberRequest\x1a .sblurp.v1.UnblockMemberResponse\"\x00\x12K\n" +
+	"\n" +
+	"MuteMember\x12\x1c.sblurp.v1.MuteMemberRequest\x1a\x1d.sblurp.v1.MuteMemberResponse\"\x00\x12Q\n" +
+	"\fUnmuteMember\x12\x1e.sblurp.v1.UnmuteMemberRequest\x1a\x1f.sblurp.v1.UnmuteMemberResponse\"\x00\x12T\n" +
 	"\rReportMessage\x12\x1f.sblurp.v1.ReportMessageRequest\x1a .sblurp.v1.ReportMessageResponse\"\x00\x12N\n" +
 	"\vListReports\x12\x1d.sblurp.v1.ListReportsRequest\x1a\x1e.sblurp.v1.ListReportsResponse\"\x00\x12T\n" +
 	"\rResolveReport\x12\x1f.sblurp.v1.ResolveReportRequest\x1a .sblurp.v1.ResolveReportResponse\"\x002\xd4\v\n" +
@@ -7936,7 +8155,7 @@ func file_sblurp_v1_sblurp_proto_rawDescGZIP() []byte {
 }
 
 var file_sblurp_v1_sblurp_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_sblurp_v1_sblurp_proto_msgTypes = make([]protoimpl.MessageInfo, 123)
+var file_sblurp_v1_sblurp_proto_msgTypes = make([]protoimpl.MessageInfo, 127)
 var file_sblurp_v1_sblurp_proto_goTypes = []any{
 	(MemberKind)(0),                      // 0: sblurp.v1.MemberKind
 	(MemberRole)(0),                      // 1: sblurp.v1.MemberRole
@@ -8020,53 +8239,57 @@ var file_sblurp_v1_sblurp_proto_goTypes = []any{
 	(*BlockMemberResponse)(nil),          // 79: sblurp.v1.BlockMemberResponse
 	(*UnblockMemberRequest)(nil),         // 80: sblurp.v1.UnblockMemberRequest
 	(*UnblockMemberResponse)(nil),        // 81: sblurp.v1.UnblockMemberResponse
-	(*ReportMessageRequest)(nil),         // 82: sblurp.v1.ReportMessageRequest
-	(*ReportMessageResponse)(nil),        // 83: sblurp.v1.ReportMessageResponse
-	(*Report)(nil),                       // 84: sblurp.v1.Report
-	(*ListReportsRequest)(nil),           // 85: sblurp.v1.ListReportsRequest
-	(*ListReportsResponse)(nil),          // 86: sblurp.v1.ListReportsResponse
-	(*ResolveReportRequest)(nil),         // 87: sblurp.v1.ResolveReportRequest
-	(*ResolveReportResponse)(nil),        // 88: sblurp.v1.ResolveReportResponse
-	(*Invite)(nil),                       // 89: sblurp.v1.Invite
-	(*CreateInviteRequest)(nil),          // 90: sblurp.v1.CreateInviteRequest
-	(*CreateInviteResponse)(nil),         // 91: sblurp.v1.CreateInviteResponse
-	(*ListInvitesRequest)(nil),           // 92: sblurp.v1.ListInvitesRequest
-	(*ListInvitesResponse)(nil),          // 93: sblurp.v1.ListInvitesResponse
-	(*RevokeInviteRequest)(nil),          // 94: sblurp.v1.RevokeInviteRequest
-	(*RevokeInviteResponse)(nil),         // 95: sblurp.v1.RevokeInviteResponse
-	(*UpdateServerSettingsRequest)(nil),  // 96: sblurp.v1.UpdateServerSettingsRequest
-	(*UpdateServerSettingsResponse)(nil), // 97: sblurp.v1.UpdateServerSettingsResponse
-	(*CreateRoleRequest)(nil),            // 98: sblurp.v1.CreateRoleRequest
-	(*CreateRoleResponse)(nil),           // 99: sblurp.v1.CreateRoleResponse
-	(*UpdateRoleRequest)(nil),            // 100: sblurp.v1.UpdateRoleRequest
-	(*UpdateRoleResponse)(nil),           // 101: sblurp.v1.UpdateRoleResponse
-	(*DeleteRoleRequest)(nil),            // 102: sblurp.v1.DeleteRoleRequest
-	(*DeleteRoleResponse)(nil),           // 103: sblurp.v1.DeleteRoleResponse
-	(*SetMemberRolesRequest)(nil),        // 104: sblurp.v1.SetMemberRolesRequest
-	(*SetMemberRolesResponse)(nil),       // 105: sblurp.v1.SetMemberRolesResponse
-	(*CustomEmoji)(nil),                  // 106: sblurp.v1.CustomEmoji
-	(*ListEmojiResponse)(nil),            // 107: sblurp.v1.ListEmojiResponse
-	(*EmojiUploadResult)(nil),            // 108: sblurp.v1.EmojiUploadResult
-	(*UploadEmojiResponse)(nil),          // 109: sblurp.v1.UploadEmojiResponse
-	(*DeleteEmojiRequest)(nil),           // 110: sblurp.v1.DeleteEmojiRequest
-	(*DeleteEmojiResponse)(nil),          // 111: sblurp.v1.DeleteEmojiResponse
-	(*CreateBotRequest)(nil),             // 112: sblurp.v1.CreateBotRequest
-	(*CreateBotResponse)(nil),            // 113: sblurp.v1.CreateBotResponse
-	(*ListBotsRequest)(nil),              // 114: sblurp.v1.ListBotsRequest
-	(*ListBotsResponse)(nil),             // 115: sblurp.v1.ListBotsResponse
-	(*RotateBotTokenRequest)(nil),        // 116: sblurp.v1.RotateBotTokenRequest
-	(*RotateBotTokenResponse)(nil),       // 117: sblurp.v1.RotateBotTokenResponse
-	(*DeleteBotRequest)(nil),             // 118: sblurp.v1.DeleteBotRequest
-	(*DeleteBotResponse)(nil),            // 119: sblurp.v1.DeleteBotResponse
-	(*Plugin)(nil),                       // 120: sblurp.v1.Plugin
-	(*ListPluginsRequest)(nil),           // 121: sblurp.v1.ListPluginsRequest
-	(*ListPluginsResponse)(nil),          // 122: sblurp.v1.ListPluginsResponse
-	(*InstallPluginRequest)(nil),         // 123: sblurp.v1.InstallPluginRequest
-	(*InstallPluginResponse)(nil),        // 124: sblurp.v1.InstallPluginResponse
-	(*SetPluginEnabledRequest)(nil),      // 125: sblurp.v1.SetPluginEnabledRequest
-	(*SetPluginEnabledResponse)(nil),     // 126: sblurp.v1.SetPluginEnabledResponse
-	(*DeletePluginRequest)(nil),          // 127: sblurp.v1.DeletePluginRequest
-	(*DeletePluginResponse)(nil),         // 128: sblurp.v1.DeletePluginResponse
+	(*MuteMemberRequest)(nil),            // 82: sblurp.v1.MuteMemberRequest
+	(*MuteMemberResponse)(nil),           // 83: sblurp.v1.MuteMemberResponse
+	(*UnmuteMemberRequest)(nil),          // 84: sblurp.v1.UnmuteMemberRequest
+	(*UnmuteMemberResponse)(nil),         // 85: sblurp.v1.UnmuteMemberResponse
+	(*ReportMessageRequest)(nil),         // 86: sblurp.v1.ReportMessageRequest
+	(*ReportMessageResponse)(nil),        // 87: sblurp.v1.ReportMessageResponse
+	(*Report)(nil),                       // 88: sblurp.v1.Report
+	(*ListReportsRequest)(nil),           // 89: sblurp.v1.ListReportsRequest
+	(*ListReportsResponse)(nil),          // 90: sblurp.v1.ListReportsResponse
+	(*ResolveReportRequest)(nil),         // 91: sblurp.v1.ResolveReportRequest
+	(*ResolveReportResponse)(nil),        // 92: sblurp.v1.ResolveReportResponse
+	(*Invite)(nil),                       // 93: sblurp.v1.Invite
+	(*CreateInviteRequest)(nil),          // 94: sblurp.v1.CreateInviteRequest
+	(*CreateInviteResponse)(nil),         // 95: sblurp.v1.CreateInviteResponse
+	(*ListInvitesRequest)(nil),           // 96: sblurp.v1.ListInvitesRequest
+	(*ListInvitesResponse)(nil),          // 97: sblurp.v1.ListInvitesResponse
+	(*RevokeInviteRequest)(nil),          // 98: sblurp.v1.RevokeInviteRequest
+	(*RevokeInviteResponse)(nil),         // 99: sblurp.v1.RevokeInviteResponse
+	(*UpdateServerSettingsRequest)(nil),  // 100: sblurp.v1.UpdateServerSettingsRequest
+	(*UpdateServerSettingsResponse)(nil), // 101: sblurp.v1.UpdateServerSettingsResponse
+	(*CreateRoleRequest)(nil),            // 102: sblurp.v1.CreateRoleRequest
+	(*CreateRoleResponse)(nil),           // 103: sblurp.v1.CreateRoleResponse
+	(*UpdateRoleRequest)(nil),            // 104: sblurp.v1.UpdateRoleRequest
+	(*UpdateRoleResponse)(nil),           // 105: sblurp.v1.UpdateRoleResponse
+	(*DeleteRoleRequest)(nil),            // 106: sblurp.v1.DeleteRoleRequest
+	(*DeleteRoleResponse)(nil),           // 107: sblurp.v1.DeleteRoleResponse
+	(*SetMemberRolesRequest)(nil),        // 108: sblurp.v1.SetMemberRolesRequest
+	(*SetMemberRolesResponse)(nil),       // 109: sblurp.v1.SetMemberRolesResponse
+	(*CustomEmoji)(nil),                  // 110: sblurp.v1.CustomEmoji
+	(*ListEmojiResponse)(nil),            // 111: sblurp.v1.ListEmojiResponse
+	(*EmojiUploadResult)(nil),            // 112: sblurp.v1.EmojiUploadResult
+	(*UploadEmojiResponse)(nil),          // 113: sblurp.v1.UploadEmojiResponse
+	(*DeleteEmojiRequest)(nil),           // 114: sblurp.v1.DeleteEmojiRequest
+	(*DeleteEmojiResponse)(nil),          // 115: sblurp.v1.DeleteEmojiResponse
+	(*CreateBotRequest)(nil),             // 116: sblurp.v1.CreateBotRequest
+	(*CreateBotResponse)(nil),            // 117: sblurp.v1.CreateBotResponse
+	(*ListBotsRequest)(nil),              // 118: sblurp.v1.ListBotsRequest
+	(*ListBotsResponse)(nil),             // 119: sblurp.v1.ListBotsResponse
+	(*RotateBotTokenRequest)(nil),        // 120: sblurp.v1.RotateBotTokenRequest
+	(*RotateBotTokenResponse)(nil),       // 121: sblurp.v1.RotateBotTokenResponse
+	(*DeleteBotRequest)(nil),             // 122: sblurp.v1.DeleteBotRequest
+	(*DeleteBotResponse)(nil),            // 123: sblurp.v1.DeleteBotResponse
+	(*Plugin)(nil),                       // 124: sblurp.v1.Plugin
+	(*ListPluginsRequest)(nil),           // 125: sblurp.v1.ListPluginsRequest
+	(*ListPluginsResponse)(nil),          // 126: sblurp.v1.ListPluginsResponse
+	(*InstallPluginRequest)(nil),         // 127: sblurp.v1.InstallPluginRequest
+	(*InstallPluginResponse)(nil),        // 128: sblurp.v1.InstallPluginResponse
+	(*SetPluginEnabledRequest)(nil),      // 129: sblurp.v1.SetPluginEnabledRequest
+	(*SetPluginEnabledResponse)(nil),     // 130: sblurp.v1.SetPluginEnabledResponse
+	(*DeletePluginRequest)(nil),          // 131: sblurp.v1.DeletePluginRequest
+	(*DeletePluginResponse)(nil),         // 132: sblurp.v1.DeletePluginResponse
 }
 var file_sblurp_v1_sblurp_proto_depIdxs = []int32{
 	0,   // 0: sblurp.v1.Member.kind:type_name -> sblurp.v1.MemberKind
@@ -8124,23 +8347,23 @@ var file_sblurp_v1_sblurp_proto_depIdxs = []int32{
 	11,  // 52: sblurp.v1.Report.message:type_name -> sblurp.v1.Message
 	6,   // 53: sblurp.v1.Report.author:type_name -> sblurp.v1.Member
 	6,   // 54: sblurp.v1.Report.reporter:type_name -> sblurp.v1.Member
-	84,  // 55: sblurp.v1.ListReportsResponse.reports:type_name -> sblurp.v1.Report
-	89,  // 56: sblurp.v1.CreateInviteResponse.invite:type_name -> sblurp.v1.Invite
-	89,  // 57: sblurp.v1.ListInvitesResponse.invites:type_name -> sblurp.v1.Invite
+	88,  // 55: sblurp.v1.ListReportsResponse.reports:type_name -> sblurp.v1.Report
+	93,  // 56: sblurp.v1.CreateInviteResponse.invite:type_name -> sblurp.v1.Invite
+	93,  // 57: sblurp.v1.ListInvitesResponse.invites:type_name -> sblurp.v1.Invite
 	3,   // 58: sblurp.v1.UpdateServerSettingsRequest.channel_mode:type_name -> sblurp.v1.ChannelMode
 	3,   // 59: sblurp.v1.UpdateServerSettingsResponse.channel_mode:type_name -> sblurp.v1.ChannelMode
 	9,   // 60: sblurp.v1.UpdateServerSettingsResponse.banner:type_name -> sblurp.v1.Attachment
 	7,   // 61: sblurp.v1.CreateRoleResponse.role:type_name -> sblurp.v1.Role
 	7,   // 62: sblurp.v1.UpdateRoleResponse.role:type_name -> sblurp.v1.Role
 	6,   // 63: sblurp.v1.SetMemberRolesResponse.member:type_name -> sblurp.v1.Member
-	106, // 64: sblurp.v1.ListEmojiResponse.emoji:type_name -> sblurp.v1.CustomEmoji
+	110, // 64: sblurp.v1.ListEmojiResponse.emoji:type_name -> sblurp.v1.CustomEmoji
 	5,   // 65: sblurp.v1.EmojiUploadResult.status:type_name -> sblurp.v1.EmojiUploadStatus
-	108, // 66: sblurp.v1.UploadEmojiResponse.results:type_name -> sblurp.v1.EmojiUploadResult
+	112, // 66: sblurp.v1.UploadEmojiResponse.results:type_name -> sblurp.v1.EmojiUploadResult
 	6,   // 67: sblurp.v1.CreateBotResponse.bot:type_name -> sblurp.v1.Member
 	6,   // 68: sblurp.v1.ListBotsResponse.bots:type_name -> sblurp.v1.Member
-	120, // 69: sblurp.v1.ListPluginsResponse.plugins:type_name -> sblurp.v1.Plugin
-	120, // 70: sblurp.v1.InstallPluginResponse.plugin:type_name -> sblurp.v1.Plugin
-	120, // 71: sblurp.v1.SetPluginEnabledResponse.plugin:type_name -> sblurp.v1.Plugin
+	124, // 69: sblurp.v1.ListPluginsResponse.plugins:type_name -> sblurp.v1.Plugin
+	124, // 70: sblurp.v1.InstallPluginResponse.plugin:type_name -> sblurp.v1.Plugin
+	124, // 71: sblurp.v1.SetPluginEnabledResponse.plugin:type_name -> sblurp.v1.Plugin
 	13,  // 72: sblurp.v1.ServerService.GetServerInfo:input_type -> sblurp.v1.GetServerInfoRequest
 	15,  // 73: sblurp.v1.ServerService.Join:input_type -> sblurp.v1.JoinRequest
 	17,  // 74: sblurp.v1.ServerService.GetMe:input_type -> sblurp.v1.GetMeRequest
@@ -8153,100 +8376,104 @@ var file_sblurp_v1_sblurp_proto_depIdxs = []int32{
 	71,  // 81: sblurp.v1.ServerService.BanMember:input_type -> sblurp.v1.BanMemberRequest
 	74,  // 82: sblurp.v1.ServerService.ListBans:input_type -> sblurp.v1.ListBansRequest
 	76,  // 83: sblurp.v1.ServerService.UnbanMember:input_type -> sblurp.v1.UnbanMemberRequest
-	90,  // 84: sblurp.v1.ServerService.CreateInvite:input_type -> sblurp.v1.CreateInviteRequest
-	92,  // 85: sblurp.v1.ServerService.ListInvites:input_type -> sblurp.v1.ListInvitesRequest
-	94,  // 86: sblurp.v1.ServerService.RevokeInvite:input_type -> sblurp.v1.RevokeInviteRequest
-	96,  // 87: sblurp.v1.ServerService.UpdateServerSettings:input_type -> sblurp.v1.UpdateServerSettingsRequest
-	98,  // 88: sblurp.v1.ServerService.CreateRole:input_type -> sblurp.v1.CreateRoleRequest
-	100, // 89: sblurp.v1.ServerService.UpdateRole:input_type -> sblurp.v1.UpdateRoleRequest
-	102, // 90: sblurp.v1.ServerService.DeleteRole:input_type -> sblurp.v1.DeleteRoleRequest
-	104, // 91: sblurp.v1.ServerService.SetMemberRoles:input_type -> sblurp.v1.SetMemberRolesRequest
-	110, // 92: sblurp.v1.ServerService.DeleteEmoji:input_type -> sblurp.v1.DeleteEmojiRequest
+	94,  // 84: sblurp.v1.ServerService.CreateInvite:input_type -> sblurp.v1.CreateInviteRequest
+	96,  // 85: sblurp.v1.ServerService.ListInvites:input_type -> sblurp.v1.ListInvitesRequest
+	98,  // 86: sblurp.v1.ServerService.RevokeInvite:input_type -> sblurp.v1.RevokeInviteRequest
+	100, // 87: sblurp.v1.ServerService.UpdateServerSettings:input_type -> sblurp.v1.UpdateServerSettingsRequest
+	102, // 88: sblurp.v1.ServerService.CreateRole:input_type -> sblurp.v1.CreateRoleRequest
+	104, // 89: sblurp.v1.ServerService.UpdateRole:input_type -> sblurp.v1.UpdateRoleRequest
+	106, // 90: sblurp.v1.ServerService.DeleteRole:input_type -> sblurp.v1.DeleteRoleRequest
+	108, // 91: sblurp.v1.ServerService.SetMemberRoles:input_type -> sblurp.v1.SetMemberRolesRequest
+	114, // 92: sblurp.v1.ServerService.DeleteEmoji:input_type -> sblurp.v1.DeleteEmojiRequest
 	78,  // 93: sblurp.v1.ServerService.BlockMember:input_type -> sblurp.v1.BlockMemberRequest
 	80,  // 94: sblurp.v1.ServerService.UnblockMember:input_type -> sblurp.v1.UnblockMemberRequest
-	82,  // 95: sblurp.v1.ServerService.ReportMessage:input_type -> sblurp.v1.ReportMessageRequest
-	85,  // 96: sblurp.v1.ServerService.ListReports:input_type -> sblurp.v1.ListReportsRequest
-	87,  // 97: sblurp.v1.ServerService.ResolveReport:input_type -> sblurp.v1.ResolveReportRequest
-	28,  // 98: sblurp.v1.ChatService.CreateChannel:input_type -> sblurp.v1.CreateChannelRequest
-	30,  // 99: sblurp.v1.ChatService.UpdateChannel:input_type -> sblurp.v1.UpdateChannelRequest
-	40,  // 100: sblurp.v1.ChatService.OpenDM:input_type -> sblurp.v1.OpenDMRequest
-	42,  // 101: sblurp.v1.ChatService.ListMessages:input_type -> sblurp.v1.ListMessagesRequest
-	44,  // 102: sblurp.v1.ChatService.SendMessage:input_type -> sblurp.v1.SendMessageRequest
-	46,  // 103: sblurp.v1.ChatService.EditMessage:input_type -> sblurp.v1.EditMessageRequest
-	48,  // 104: sblurp.v1.ChatService.DeleteMessage:input_type -> sblurp.v1.DeleteMessageRequest
-	50,  // 105: sblurp.v1.ChatService.React:input_type -> sblurp.v1.ReactRequest
-	52,  // 106: sblurp.v1.ChatService.MarkRead:input_type -> sblurp.v1.MarkReadRequest
-	54,  // 107: sblurp.v1.ChatService.SetTyping:input_type -> sblurp.v1.SetTypingRequest
-	56,  // 108: sblurp.v1.ChatService.Search:input_type -> sblurp.v1.SearchRequest
-	58,  // 109: sblurp.v1.ChatService.GetLinkPreviews:input_type -> sblurp.v1.GetLinkPreviewsRequest
-	61,  // 110: sblurp.v1.ChatService.AddChannelMembers:input_type -> sblurp.v1.AddChannelMembersRequest
-	63,  // 111: sblurp.v1.ChatService.RemoveChannelMember:input_type -> sblurp.v1.RemoveChannelMemberRequest
-	32,  // 112: sblurp.v1.ChatService.SetChannelAccess:input_type -> sblurp.v1.SetChannelAccessRequest
-	34,  // 113: sblurp.v1.ChatService.BrowseChannels:input_type -> sblurp.v1.BrowseChannelsRequest
-	36,  // 114: sblurp.v1.ChatService.JoinChannel:input_type -> sblurp.v1.JoinChannelRequest
-	38,  // 115: sblurp.v1.ChatService.LeaveChannel:input_type -> sblurp.v1.LeaveChannelRequest
-	112, // 116: sblurp.v1.BotService.CreateBot:input_type -> sblurp.v1.CreateBotRequest
-	114, // 117: sblurp.v1.BotService.ListBots:input_type -> sblurp.v1.ListBotsRequest
-	116, // 118: sblurp.v1.BotService.RotateBotToken:input_type -> sblurp.v1.RotateBotTokenRequest
-	118, // 119: sblurp.v1.BotService.DeleteBot:input_type -> sblurp.v1.DeleteBotRequest
-	121, // 120: sblurp.v1.BotService.ListPlugins:input_type -> sblurp.v1.ListPluginsRequest
-	123, // 121: sblurp.v1.BotService.InstallPlugin:input_type -> sblurp.v1.InstallPluginRequest
-	125, // 122: sblurp.v1.BotService.SetPluginEnabled:input_type -> sblurp.v1.SetPluginEnabledRequest
-	127, // 123: sblurp.v1.BotService.DeletePlugin:input_type -> sblurp.v1.DeletePluginRequest
-	14,  // 124: sblurp.v1.ServerService.GetServerInfo:output_type -> sblurp.v1.GetServerInfoResponse
-	16,  // 125: sblurp.v1.ServerService.Join:output_type -> sblurp.v1.JoinResponse
-	18,  // 126: sblurp.v1.ServerService.GetMe:output_type -> sblurp.v1.GetMeResponse
-	20,  // 127: sblurp.v1.ServerService.UpdateProfile:output_type -> sblurp.v1.UpdateProfileResponse
-	22,  // 128: sblurp.v1.ServerService.GetState:output_type -> sblurp.v1.GetStateResponse
-	27,  // 129: sblurp.v1.ServerService.Subscribe:output_type -> sblurp.v1.Event
-	66,  // 130: sblurp.v1.ServerService.SetMemberRole:output_type -> sblurp.v1.SetMemberRoleResponse
-	68,  // 131: sblurp.v1.ServerService.LeaveCommunity:output_type -> sblurp.v1.LeaveCommunityResponse
-	70,  // 132: sblurp.v1.ServerService.KickMember:output_type -> sblurp.v1.KickMemberResponse
-	72,  // 133: sblurp.v1.ServerService.BanMember:output_type -> sblurp.v1.BanMemberResponse
-	75,  // 134: sblurp.v1.ServerService.ListBans:output_type -> sblurp.v1.ListBansResponse
-	77,  // 135: sblurp.v1.ServerService.UnbanMember:output_type -> sblurp.v1.UnbanMemberResponse
-	91,  // 136: sblurp.v1.ServerService.CreateInvite:output_type -> sblurp.v1.CreateInviteResponse
-	93,  // 137: sblurp.v1.ServerService.ListInvites:output_type -> sblurp.v1.ListInvitesResponse
-	95,  // 138: sblurp.v1.ServerService.RevokeInvite:output_type -> sblurp.v1.RevokeInviteResponse
-	97,  // 139: sblurp.v1.ServerService.UpdateServerSettings:output_type -> sblurp.v1.UpdateServerSettingsResponse
-	99,  // 140: sblurp.v1.ServerService.CreateRole:output_type -> sblurp.v1.CreateRoleResponse
-	101, // 141: sblurp.v1.ServerService.UpdateRole:output_type -> sblurp.v1.UpdateRoleResponse
-	103, // 142: sblurp.v1.ServerService.DeleteRole:output_type -> sblurp.v1.DeleteRoleResponse
-	105, // 143: sblurp.v1.ServerService.SetMemberRoles:output_type -> sblurp.v1.SetMemberRolesResponse
-	111, // 144: sblurp.v1.ServerService.DeleteEmoji:output_type -> sblurp.v1.DeleteEmojiResponse
-	79,  // 145: sblurp.v1.ServerService.BlockMember:output_type -> sblurp.v1.BlockMemberResponse
-	81,  // 146: sblurp.v1.ServerService.UnblockMember:output_type -> sblurp.v1.UnblockMemberResponse
-	83,  // 147: sblurp.v1.ServerService.ReportMessage:output_type -> sblurp.v1.ReportMessageResponse
-	86,  // 148: sblurp.v1.ServerService.ListReports:output_type -> sblurp.v1.ListReportsResponse
-	88,  // 149: sblurp.v1.ServerService.ResolveReport:output_type -> sblurp.v1.ResolveReportResponse
-	29,  // 150: sblurp.v1.ChatService.CreateChannel:output_type -> sblurp.v1.CreateChannelResponse
-	31,  // 151: sblurp.v1.ChatService.UpdateChannel:output_type -> sblurp.v1.UpdateChannelResponse
-	41,  // 152: sblurp.v1.ChatService.OpenDM:output_type -> sblurp.v1.OpenDMResponse
-	43,  // 153: sblurp.v1.ChatService.ListMessages:output_type -> sblurp.v1.ListMessagesResponse
-	45,  // 154: sblurp.v1.ChatService.SendMessage:output_type -> sblurp.v1.SendMessageResponse
-	47,  // 155: sblurp.v1.ChatService.EditMessage:output_type -> sblurp.v1.EditMessageResponse
-	49,  // 156: sblurp.v1.ChatService.DeleteMessage:output_type -> sblurp.v1.DeleteMessageResponse
-	51,  // 157: sblurp.v1.ChatService.React:output_type -> sblurp.v1.ReactResponse
-	53,  // 158: sblurp.v1.ChatService.MarkRead:output_type -> sblurp.v1.MarkReadResponse
-	55,  // 159: sblurp.v1.ChatService.SetTyping:output_type -> sblurp.v1.SetTypingResponse
-	57,  // 160: sblurp.v1.ChatService.Search:output_type -> sblurp.v1.SearchResponse
-	59,  // 161: sblurp.v1.ChatService.GetLinkPreviews:output_type -> sblurp.v1.GetLinkPreviewsResponse
-	62,  // 162: sblurp.v1.ChatService.AddChannelMembers:output_type -> sblurp.v1.AddChannelMembersResponse
-	64,  // 163: sblurp.v1.ChatService.RemoveChannelMember:output_type -> sblurp.v1.RemoveChannelMemberResponse
-	33,  // 164: sblurp.v1.ChatService.SetChannelAccess:output_type -> sblurp.v1.SetChannelAccessResponse
-	35,  // 165: sblurp.v1.ChatService.BrowseChannels:output_type -> sblurp.v1.BrowseChannelsResponse
-	37,  // 166: sblurp.v1.ChatService.JoinChannel:output_type -> sblurp.v1.JoinChannelResponse
-	39,  // 167: sblurp.v1.ChatService.LeaveChannel:output_type -> sblurp.v1.LeaveChannelResponse
-	113, // 168: sblurp.v1.BotService.CreateBot:output_type -> sblurp.v1.CreateBotResponse
-	115, // 169: sblurp.v1.BotService.ListBots:output_type -> sblurp.v1.ListBotsResponse
-	117, // 170: sblurp.v1.BotService.RotateBotToken:output_type -> sblurp.v1.RotateBotTokenResponse
-	119, // 171: sblurp.v1.BotService.DeleteBot:output_type -> sblurp.v1.DeleteBotResponse
-	122, // 172: sblurp.v1.BotService.ListPlugins:output_type -> sblurp.v1.ListPluginsResponse
-	124, // 173: sblurp.v1.BotService.InstallPlugin:output_type -> sblurp.v1.InstallPluginResponse
-	126, // 174: sblurp.v1.BotService.SetPluginEnabled:output_type -> sblurp.v1.SetPluginEnabledResponse
-	128, // 175: sblurp.v1.BotService.DeletePlugin:output_type -> sblurp.v1.DeletePluginResponse
-	124, // [124:176] is the sub-list for method output_type
-	72,  // [72:124] is the sub-list for method input_type
+	82,  // 95: sblurp.v1.ServerService.MuteMember:input_type -> sblurp.v1.MuteMemberRequest
+	84,  // 96: sblurp.v1.ServerService.UnmuteMember:input_type -> sblurp.v1.UnmuteMemberRequest
+	86,  // 97: sblurp.v1.ServerService.ReportMessage:input_type -> sblurp.v1.ReportMessageRequest
+	89,  // 98: sblurp.v1.ServerService.ListReports:input_type -> sblurp.v1.ListReportsRequest
+	91,  // 99: sblurp.v1.ServerService.ResolveReport:input_type -> sblurp.v1.ResolveReportRequest
+	28,  // 100: sblurp.v1.ChatService.CreateChannel:input_type -> sblurp.v1.CreateChannelRequest
+	30,  // 101: sblurp.v1.ChatService.UpdateChannel:input_type -> sblurp.v1.UpdateChannelRequest
+	40,  // 102: sblurp.v1.ChatService.OpenDM:input_type -> sblurp.v1.OpenDMRequest
+	42,  // 103: sblurp.v1.ChatService.ListMessages:input_type -> sblurp.v1.ListMessagesRequest
+	44,  // 104: sblurp.v1.ChatService.SendMessage:input_type -> sblurp.v1.SendMessageRequest
+	46,  // 105: sblurp.v1.ChatService.EditMessage:input_type -> sblurp.v1.EditMessageRequest
+	48,  // 106: sblurp.v1.ChatService.DeleteMessage:input_type -> sblurp.v1.DeleteMessageRequest
+	50,  // 107: sblurp.v1.ChatService.React:input_type -> sblurp.v1.ReactRequest
+	52,  // 108: sblurp.v1.ChatService.MarkRead:input_type -> sblurp.v1.MarkReadRequest
+	54,  // 109: sblurp.v1.ChatService.SetTyping:input_type -> sblurp.v1.SetTypingRequest
+	56,  // 110: sblurp.v1.ChatService.Search:input_type -> sblurp.v1.SearchRequest
+	58,  // 111: sblurp.v1.ChatService.GetLinkPreviews:input_type -> sblurp.v1.GetLinkPreviewsRequest
+	61,  // 112: sblurp.v1.ChatService.AddChannelMembers:input_type -> sblurp.v1.AddChannelMembersRequest
+	63,  // 113: sblurp.v1.ChatService.RemoveChannelMember:input_type -> sblurp.v1.RemoveChannelMemberRequest
+	32,  // 114: sblurp.v1.ChatService.SetChannelAccess:input_type -> sblurp.v1.SetChannelAccessRequest
+	34,  // 115: sblurp.v1.ChatService.BrowseChannels:input_type -> sblurp.v1.BrowseChannelsRequest
+	36,  // 116: sblurp.v1.ChatService.JoinChannel:input_type -> sblurp.v1.JoinChannelRequest
+	38,  // 117: sblurp.v1.ChatService.LeaveChannel:input_type -> sblurp.v1.LeaveChannelRequest
+	116, // 118: sblurp.v1.BotService.CreateBot:input_type -> sblurp.v1.CreateBotRequest
+	118, // 119: sblurp.v1.BotService.ListBots:input_type -> sblurp.v1.ListBotsRequest
+	120, // 120: sblurp.v1.BotService.RotateBotToken:input_type -> sblurp.v1.RotateBotTokenRequest
+	122, // 121: sblurp.v1.BotService.DeleteBot:input_type -> sblurp.v1.DeleteBotRequest
+	125, // 122: sblurp.v1.BotService.ListPlugins:input_type -> sblurp.v1.ListPluginsRequest
+	127, // 123: sblurp.v1.BotService.InstallPlugin:input_type -> sblurp.v1.InstallPluginRequest
+	129, // 124: sblurp.v1.BotService.SetPluginEnabled:input_type -> sblurp.v1.SetPluginEnabledRequest
+	131, // 125: sblurp.v1.BotService.DeletePlugin:input_type -> sblurp.v1.DeletePluginRequest
+	14,  // 126: sblurp.v1.ServerService.GetServerInfo:output_type -> sblurp.v1.GetServerInfoResponse
+	16,  // 127: sblurp.v1.ServerService.Join:output_type -> sblurp.v1.JoinResponse
+	18,  // 128: sblurp.v1.ServerService.GetMe:output_type -> sblurp.v1.GetMeResponse
+	20,  // 129: sblurp.v1.ServerService.UpdateProfile:output_type -> sblurp.v1.UpdateProfileResponse
+	22,  // 130: sblurp.v1.ServerService.GetState:output_type -> sblurp.v1.GetStateResponse
+	27,  // 131: sblurp.v1.ServerService.Subscribe:output_type -> sblurp.v1.Event
+	66,  // 132: sblurp.v1.ServerService.SetMemberRole:output_type -> sblurp.v1.SetMemberRoleResponse
+	68,  // 133: sblurp.v1.ServerService.LeaveCommunity:output_type -> sblurp.v1.LeaveCommunityResponse
+	70,  // 134: sblurp.v1.ServerService.KickMember:output_type -> sblurp.v1.KickMemberResponse
+	72,  // 135: sblurp.v1.ServerService.BanMember:output_type -> sblurp.v1.BanMemberResponse
+	75,  // 136: sblurp.v1.ServerService.ListBans:output_type -> sblurp.v1.ListBansResponse
+	77,  // 137: sblurp.v1.ServerService.UnbanMember:output_type -> sblurp.v1.UnbanMemberResponse
+	95,  // 138: sblurp.v1.ServerService.CreateInvite:output_type -> sblurp.v1.CreateInviteResponse
+	97,  // 139: sblurp.v1.ServerService.ListInvites:output_type -> sblurp.v1.ListInvitesResponse
+	99,  // 140: sblurp.v1.ServerService.RevokeInvite:output_type -> sblurp.v1.RevokeInviteResponse
+	101, // 141: sblurp.v1.ServerService.UpdateServerSettings:output_type -> sblurp.v1.UpdateServerSettingsResponse
+	103, // 142: sblurp.v1.ServerService.CreateRole:output_type -> sblurp.v1.CreateRoleResponse
+	105, // 143: sblurp.v1.ServerService.UpdateRole:output_type -> sblurp.v1.UpdateRoleResponse
+	107, // 144: sblurp.v1.ServerService.DeleteRole:output_type -> sblurp.v1.DeleteRoleResponse
+	109, // 145: sblurp.v1.ServerService.SetMemberRoles:output_type -> sblurp.v1.SetMemberRolesResponse
+	115, // 146: sblurp.v1.ServerService.DeleteEmoji:output_type -> sblurp.v1.DeleteEmojiResponse
+	79,  // 147: sblurp.v1.ServerService.BlockMember:output_type -> sblurp.v1.BlockMemberResponse
+	81,  // 148: sblurp.v1.ServerService.UnblockMember:output_type -> sblurp.v1.UnblockMemberResponse
+	83,  // 149: sblurp.v1.ServerService.MuteMember:output_type -> sblurp.v1.MuteMemberResponse
+	85,  // 150: sblurp.v1.ServerService.UnmuteMember:output_type -> sblurp.v1.UnmuteMemberResponse
+	87,  // 151: sblurp.v1.ServerService.ReportMessage:output_type -> sblurp.v1.ReportMessageResponse
+	90,  // 152: sblurp.v1.ServerService.ListReports:output_type -> sblurp.v1.ListReportsResponse
+	92,  // 153: sblurp.v1.ServerService.ResolveReport:output_type -> sblurp.v1.ResolveReportResponse
+	29,  // 154: sblurp.v1.ChatService.CreateChannel:output_type -> sblurp.v1.CreateChannelResponse
+	31,  // 155: sblurp.v1.ChatService.UpdateChannel:output_type -> sblurp.v1.UpdateChannelResponse
+	41,  // 156: sblurp.v1.ChatService.OpenDM:output_type -> sblurp.v1.OpenDMResponse
+	43,  // 157: sblurp.v1.ChatService.ListMessages:output_type -> sblurp.v1.ListMessagesResponse
+	45,  // 158: sblurp.v1.ChatService.SendMessage:output_type -> sblurp.v1.SendMessageResponse
+	47,  // 159: sblurp.v1.ChatService.EditMessage:output_type -> sblurp.v1.EditMessageResponse
+	49,  // 160: sblurp.v1.ChatService.DeleteMessage:output_type -> sblurp.v1.DeleteMessageResponse
+	51,  // 161: sblurp.v1.ChatService.React:output_type -> sblurp.v1.ReactResponse
+	53,  // 162: sblurp.v1.ChatService.MarkRead:output_type -> sblurp.v1.MarkReadResponse
+	55,  // 163: sblurp.v1.ChatService.SetTyping:output_type -> sblurp.v1.SetTypingResponse
+	57,  // 164: sblurp.v1.ChatService.Search:output_type -> sblurp.v1.SearchResponse
+	59,  // 165: sblurp.v1.ChatService.GetLinkPreviews:output_type -> sblurp.v1.GetLinkPreviewsResponse
+	62,  // 166: sblurp.v1.ChatService.AddChannelMembers:output_type -> sblurp.v1.AddChannelMembersResponse
+	64,  // 167: sblurp.v1.ChatService.RemoveChannelMember:output_type -> sblurp.v1.RemoveChannelMemberResponse
+	33,  // 168: sblurp.v1.ChatService.SetChannelAccess:output_type -> sblurp.v1.SetChannelAccessResponse
+	35,  // 169: sblurp.v1.ChatService.BrowseChannels:output_type -> sblurp.v1.BrowseChannelsResponse
+	37,  // 170: sblurp.v1.ChatService.JoinChannel:output_type -> sblurp.v1.JoinChannelResponse
+	39,  // 171: sblurp.v1.ChatService.LeaveChannel:output_type -> sblurp.v1.LeaveChannelResponse
+	117, // 172: sblurp.v1.BotService.CreateBot:output_type -> sblurp.v1.CreateBotResponse
+	119, // 173: sblurp.v1.BotService.ListBots:output_type -> sblurp.v1.ListBotsResponse
+	121, // 174: sblurp.v1.BotService.RotateBotToken:output_type -> sblurp.v1.RotateBotTokenResponse
+	123, // 175: sblurp.v1.BotService.DeleteBot:output_type -> sblurp.v1.DeleteBotResponse
+	126, // 176: sblurp.v1.BotService.ListPlugins:output_type -> sblurp.v1.ListPluginsResponse
+	128, // 177: sblurp.v1.BotService.InstallPlugin:output_type -> sblurp.v1.InstallPluginResponse
+	130, // 178: sblurp.v1.BotService.SetPluginEnabled:output_type -> sblurp.v1.SetPluginEnabledResponse
+	132, // 179: sblurp.v1.BotService.DeletePlugin:output_type -> sblurp.v1.DeletePluginResponse
+	126, // [126:180] is the sub-list for method output_type
+	72,  // [72:126] is the sub-list for method input_type
 	72,  // [72:72] is the sub-list for extension type_name
 	72,  // [72:72] is the sub-list for extension extendee
 	0,   // [0:72] is the sub-list for field type_name
@@ -8282,17 +8509,19 @@ func file_sblurp_v1_sblurp_proto_init() {
 		(*Event_PluginsChanged)(nil),
 		(*Event_MemberBlocked)(nil),
 		(*Event_MemberUnblocked)(nil),
+		(*Event_MemberMuted)(nil),
+		(*Event_MemberUnmuted)(nil),
 	}
 	file_sblurp_v1_sblurp_proto_msgTypes[24].OneofWrappers = []any{}
-	file_sblurp_v1_sblurp_proto_msgTypes[90].OneofWrappers = []any{}
 	file_sblurp_v1_sblurp_proto_msgTypes[94].OneofWrappers = []any{}
+	file_sblurp_v1_sblurp_proto_msgTypes[98].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_sblurp_v1_sblurp_proto_rawDesc), len(file_sblurp_v1_sblurp_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   123,
+			NumMessages:   127,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

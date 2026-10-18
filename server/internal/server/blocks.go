@@ -51,9 +51,18 @@ func checkDMBlocks(ctx context.Context, q queryer, me string, members []string) 
 	return nil
 }
 
-// blockedBy lists the members that member blocked.
-func blockedBy(ctx context.Context, q queryer, member string) ([]string, error) {
-	rows, err := q.QueryContext(ctx, "SELECT blocked_id FROM blocks WHERE blocker_id = ? ORDER BY at_ms", member)
+// Muting (1293) shares the code: a mutes row only drops the muted member's
+// messages from the muter's unread counts (see unreadCounts).
+type relation struct{ table, by, target, verb string }
+
+var (
+	blockRel = relation{"blocks", "blocker_id", "blocked_id", "block"}
+	muteRel  = relation{"mutes", "muter_id", "muted_id", "mute"}
+)
+
+// listRel lists the members that member blocked or muted.
+func listRel(ctx context.Context, q queryer, r relation, member string) ([]string, error) {
+	rows, err := q.QueryContext(ctx, "SELECT "+r.target+" FROM "+r.table+" WHERE "+r.by+" = ? ORDER BY at_ms", member)
 	if err != nil {
 		return nil, err
 	}
@@ -70,34 +79,42 @@ func blockedBy(ctx context.Context, q queryer, member string) ([]string, error) 
 }
 
 func (s *Server) BlockMember(ctx context.Context, req *connect.Request[v1.BlockMemberRequest]) (*connect.Response[v1.BlockMemberResponse], error) {
-	return connect.NewResponse(&v1.BlockMemberResponse{}), s.setBlock(ctx, req.Msg.MemberId, true)
+	return connect.NewResponse(&v1.BlockMemberResponse{}), s.setRel(ctx, blockRel, req.Msg.MemberId, true)
 }
 
 func (s *Server) UnblockMember(ctx context.Context, req *connect.Request[v1.UnblockMemberRequest]) (*connect.Response[v1.UnblockMemberResponse], error) {
-	return connect.NewResponse(&v1.UnblockMemberResponse{}), s.setBlock(ctx, req.Msg.MemberId, false)
+	return connect.NewResponse(&v1.UnblockMemberResponse{}), s.setRel(ctx, blockRel, req.Msg.MemberId, false)
 }
 
-// setBlock adds or removes a block and tells the blocker's devices. Doing it
-// twice is a no-op without an event.
-func (s *Server) setBlock(ctx context.Context, target string, on bool) error {
+func (s *Server) MuteMember(ctx context.Context, req *connect.Request[v1.MuteMemberRequest]) (*connect.Response[v1.MuteMemberResponse], error) {
+	return connect.NewResponse(&v1.MuteMemberResponse{}), s.setRel(ctx, muteRel, req.Msg.MemberId, true)
+}
+
+func (s *Server) UnmuteMember(ctx context.Context, req *connect.Request[v1.UnmuteMemberRequest]) (*connect.Response[v1.UnmuteMemberResponse], error) {
+	return connect.NewResponse(&v1.UnmuteMemberResponse{}), s.setRel(ctx, muteRel, req.Msg.MemberId, false)
+}
+
+// setRel adds or removes a block or mute and tells only the caller's
+// devices. Doing it twice is a no-op without an event.
+func (s *Server) setRel(ctx context.Context, r relation, target string, on bool) error {
 	m := me(ctx)
 	if err := checkID("member_id", target); err != nil {
 		return err
 	}
 	if target == "" || target == m.Id {
-		return errf(connect.CodeInvalidArgument, "pick another member to block")
+		return errf(connect.CodeInvalidArgument, "pick another member to %s", r.verb)
 	}
 	return s.writeTx(ctx, func(t *wtx) error {
-		q, args := "DELETE FROM blocks WHERE blocker_id = ? AND blocked_id = ?", []any{m.Id, target}
+		q, args := "DELETE FROM "+r.table+" WHERE "+r.by+" = ? AND "+r.target+" = ?", []any{m.Id, target}
 		if on {
-			// Someone who left stays blockable: they may Join again.
+			// Someone who left stays blockable and mutable: they may Join again.
 			if row, err := s.loadMember(ctx, t, "id = ?", target); err != nil || row == nil {
 				if err == nil {
 					err = errf(connect.CodeNotFound, "member %s not found", target)
 				}
 				return err
 			}
-			q, args = "INSERT OR IGNORE INTO blocks(blocker_id, blocked_id, at_ms) VALUES (?,?,?)", append(args, s.nowMs())
+			q, args = "INSERT OR IGNORE INTO "+r.table+"("+r.by+", "+r.target+", at_ms) VALUES (?,?,?)", append(args, s.nowMs())
 		}
 		res, err := t.ExecContext(ctx, q, args...)
 		if err != nil {
@@ -110,9 +127,16 @@ func (s *Server) setBlock(ctx context.Context, target string, on bool) error {
 		if err != nil {
 			return err
 		}
-		ev := &v1.Event{Seq: seq, Kind: &v1.Event_MemberUnblocked{MemberUnblocked: target}}
-		if on {
+		ev := &v1.Event{Seq: seq}
+		switch {
+		case r == blockRel && on:
 			ev.Kind = &v1.Event_MemberBlocked{MemberBlocked: target}
+		case r == blockRel:
+			ev.Kind = &v1.Event_MemberUnblocked{MemberUnblocked: target}
+		case on:
+			ev.Kind = &v1.Event_MemberMuted{MemberMuted: target}
+		default:
+			ev.Kind = &v1.Event_MemberUnmuted{MemberUnmuted: target}
 		}
 		return t.emit(ev, "", m.Id)
 	})

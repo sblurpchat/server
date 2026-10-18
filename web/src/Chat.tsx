@@ -58,6 +58,7 @@ import {
   send,
   set,
   setDraft,
+  setMuted,
   typing,
   upload,
   useApp,
@@ -468,6 +469,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
   };
   const editing = useApp((s) => s.editing === m.id);
   const blocked = useApp((s) => s.cs[s.url]!.blocked.includes(m.authorId));
+  const muted = useApp((s) => s.cs[s.url]!.muted.includes(m.authorId));
   const [reveal, setReveal] = useState(false);
   const links = useMemo(() => permalinks(m.text, location.origin + location.pathname), [m.text]);
   const [pick, setPick] = useState<DOMRect | null>(null);
@@ -508,13 +510,13 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
       </article>
     );
   }
-  if (blocked && !reveal) {
+  if ((blocked || muted) && !reveal) {
     return (
       <article className="msg blocked" data-head={head} tabIndex={-1}>
         <div className="msg-gutter">{head && <span className="avatar-ghost" />}</div>
         <div className="msg-body">
           <button className="blocked-btn" onClick={() => setReveal(true)}>
-            Message from a blocked member <span>Show</span>
+            {blocked ? "1 message from a blocked member" : "1 message from a muted member"} <span>Show</span>
           </button>
           {!inThread && m.replyCount > 0 && <ThreadLink m={m} />}
         </div>
@@ -524,7 +526,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
   return (
     <article
       className="msg"
-      data-revealed={blocked || undefined}
+      data-revealed={blocked || muted || undefined}
       data-head={head}
       data-mine={mine}
       data-pending={pending && !failed}
@@ -686,6 +688,11 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
           {!mine && (
             <button role="menuitem" onClick={() => set({ modal: { t: "report", url, message: m } })}>
               <Icon name="flag" size={18} /> Report message
+            </button>
+          )}
+          {!mine && !blocked && (
+            <button role="menuitem" onClick={() => void setMuted(url, m.authorId, !muted).catch(() => {})}>
+              <Icon name={muted ? "bell" : "bellOff"} size={18} /> {muted ? "Unmute" : "Mute"} {name}
             </button>
           )}
           {(mine || (c.me?.role ?? 0) >= MemberRole.MODERATOR) && (

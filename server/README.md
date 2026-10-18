@@ -241,10 +241,18 @@ client. There is no separate apps system. The bot is ~150 lines in
   someone writes there or you `OpenDM` the same people again, which puts you
   back with the history. `BlockMember` / `UnblockMember` (any member, for
   themselves) stop DMs between the two, either way: `OpenDM` and
-  `SendMessage` in a shared DM are `permission_denied`. Nothing else changes
-  on the server; `GetState.blocked_member_ids` and the blocker-only events
+  `SendMessage` in a shared DM are `permission_denied`. Their messages also
+  stop counting toward the blocker's unread and mention counts (1244).
+  `GetState.blocked_member_ids` and the blocker-only events
   `member_blocked` / `member_unblocked` let clients collapse the blocked
   member's messages.
+- **Muting** (1293). `MuteMember` / `UnmuteMember` (any member, for
+  themselves) is a quieter block that leaves DMs open: the muted member's
+  messages stop counting toward the muter's unread and mention counts.
+  Mutes live in their own table, so unblocking keeps a mute.
+  `GetState.muted_member_ids` and the muter-only events `member_muted` /
+  `member_unmuted` let clients collapse their messages, skip notifications
+  and hide typing. Nobody else sees the mute list.
 - **Reports** (1119). `ReportMessage` (any member, about a message they can
   see that someone else wrote, optional note) stores a copy of the text, so a
   report outlives an edit or delete. A DM report shares that one message and

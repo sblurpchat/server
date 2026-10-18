@@ -105,3 +105,62 @@ func TestBlockAndLeaveDM(t *testing.T) {
 		t.Fatalf("history = %d messages", len(msgs))
 	}
 }
+
+// A muted or blocked member's messages never count toward the reader's
+// unread or mention counts (1244, 1293), a mute leaves DMs open, and only the
+// muter sees the mute.
+func TestMuteSkipsUnreadAndIsPrivate(t *testing.T) {
+	e := newEnv(t)
+	ana, bob, cat := e.join("ana"), e.join("bob"), e.join("cat")
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	dm := must(bob.chat.OpenDM(ctx(), connect.NewRequest(&v1.OpenDMRequest{MemberIds: []string{ana.me.Id}}))).Channel
+	bobSub := bob.subscribe(bob.state().Seq)
+	anaSub := ana.subscribe(ana.state().Seq)
+
+	_, err := ana.srv.MuteMember(ctx(), connect.NewRequest(&v1.MuteMemberRequest{MemberId: ana.me.Id}))
+	wantCode(t, err, connect.CodeInvalidArgument)
+	_, err = ana.srv.MuteMember(ctx(), connect.NewRequest(&v1.MuteMemberRequest{MemberId: "nobody"}))
+	wantCode(t, err, connect.CodeNotFound)
+	for range 2 { // twice is fine
+		must(ana.srv.MuteMember(ctx(), connect.NewRequest(&v1.MuteMemberRequest{MemberId: bob.me.Id})))
+	}
+	must(ana.srv.BlockMember(ctx(), connect.NewRequest(&v1.BlockMemberRequest{MemberId: cat.me.Id})))
+	anaSub.next(func(ev *v1.Event) bool { return ev.GetMemberMuted() == bob.me.Id }, nil)
+	st := ana.state()
+	if len(st.MutedMemberIds) != 1 || st.MutedMemberIds[0] != bob.me.Id {
+		t.Fatalf("muted = %v", st.MutedMemberIds)
+	}
+
+	// A mute does not stop DMs, unlike a block.
+	bob.send(dm.Id, "still a DM")
+	bob.send(gen.Id, "hey <@"+ana.me.Id+">")
+	bob.send(gen.Id, "plain")
+	cat.send(gen.Id, "blocked <@"+ana.me.Id+">")
+	if rs := readStateFor(ana.state(), gen.Id); rs.UnreadCount != 0 || rs.MentionCount != 0 {
+		t.Fatalf("muted/blocked counted: %v", rs)
+	}
+	if rs := readStateFor(ana.state(), dm.Id); rs.UnreadCount != 0 || rs.MentionCount != 0 {
+		t.Fatalf("muted DM counted: %v", rs)
+	}
+	// Others still count bob, and bob never learns he is muted.
+	if rs := readStateFor(cat.state(), gen.Id); rs.UnreadCount != 2 || rs.MentionCount != 0 {
+		t.Fatalf("cat read state = %v", rs)
+	}
+	if got := bob.state().MutedMemberIds; len(got) != 0 {
+		t.Fatalf("bob sees mutes %v", got)
+	}
+
+	must(ana.srv.UnmuteMember(ctx(), connect.NewRequest(&v1.UnmuteMemberRequest{MemberId: bob.me.Id})))
+	anaSub.next(func(ev *v1.Event) bool { return ev.GetMemberUnmuted() == bob.me.Id }, nil)
+	if rs := readStateFor(ana.state(), gen.Id); rs.UnreadCount != 2 || rs.MentionCount != 1 {
+		t.Fatalf("after unmute = %v", rs)
+	}
+	var seen []*v1.Event
+	bob.send(gen.Id, "marker")
+	bobSub.next(isCreated("marker"), &seen)
+	for _, ev := range seen {
+		if ev.GetMemberMuted() != "" || ev.GetMemberUnmuted() != "" {
+			t.Fatalf("bob got %v", ev)
+		}
+	}
+}
