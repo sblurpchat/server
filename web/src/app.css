@@ -4804,10 +4804,11 @@ label:has(> input.visually-hidden:focus-visible) {
 .devline span {
   position: absolute;
   top: 3px;
-  right: 12px;
+  left: 50%;
+  transform: translateX(-50%);
   padding: 0 5px 1px;
   border-radius: 0 0 4px 4px;
   background: #f97316;
   color: #1c0a00;
-  font: 600 10px/14px system-ui, sans-serif;
+  font: 600 10px/13px system-ui, sans-serif;
 }
