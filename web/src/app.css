@@ -448,6 +448,15 @@ button {
   padding: 0;
   text-align: inherit;
 }
+/* Clicking a control should not select its text (1288). */
+button,
+[role="button"],
+[role="tab"],
+label:has(> input[type="radio"], > input[type="checkbox"]),
+legend {
+  -webkit-user-select: none;
+  user-select: none;
+}
 button:disabled {
   cursor: default;
 }
