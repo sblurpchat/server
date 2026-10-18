@@ -185,7 +185,9 @@ try {
   await page.getByRole("dialog", { name: "Reports" }).waitFor({ state: "detached" });
 
   // Appearance: theme, density and text size apply at once and survive a reload.
-  const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  // The switch runs inside a view transition (1268), so read after the pending update lands.
+  const settle = () => page.evaluate(() => document.activeViewTransition?.updateCallbackDone.catch(() => {}));
+  const bg = async () => { await settle(); return page.evaluate(() => getComputedStyle(document.body).backgroundColor); };
   const before = await bg();
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("radio", { name: "Dark", exact: true }).check();
@@ -211,8 +213,10 @@ try {
   await page.getByRole("radio", { name: "Midnight" }).check();
   if ((await bg()) !== "rgb(23, 34, 48)") throw new Error(`leaving Custom left ${await bg()}`);
   await page.getByRole("radio", { name: "Compact" }).first().check();
+  await settle();
   if (await page.locator(".channel .msg .avatar-btn").first().isVisible()) throw new Error("compact density still shows avatars");
   await page.getByRole("slider", { name: /Text size/ }).fill("18");
+  await settle();
   const px = await page.evaluate(() => getComputedStyle(document.body).fontSize);
   if (px !== "18px") throw new Error(`text size 18 gave ${px}`);
   await page.reload();
