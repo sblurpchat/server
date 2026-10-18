@@ -33,7 +33,7 @@
   --on-tip: #ffffff;
   --add: #7ee0a8;
   --add-hover: #1f9d5c;
-  color-scheme: light dark;
+  color-scheme: dark light; /* dark when the system gives no preference (1249) */
 }
 [data-theme="light"] {
   color-scheme: light;
@@ -2339,7 +2339,7 @@ li.sw-empty {
    Night pond in dark, Lily pad in light, following the system like the site does.
    Scoped to .signin so the chat themes stay untouched. */
 .signin {
-  color-scheme: light dark;
+  color-scheme: dark light; /* dark when the system gives no preference (1249) */
   --paper: light-dark(#f3faf2, #061209);
   --ink: light-dark(#0d2414, #e3f6e5);
   --text: var(--ink);

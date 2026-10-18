@@ -25,7 +25,7 @@ type Spot = { r: Row; i: number; p: string; pw: number; age: number };
 type Box = [number, number, number, number];
 
 export function pond(hero: HTMLElement, logo: HTMLElement, copy: HTMLElement[]): () => void {
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches, darkQ = matchMedia("(prefers-color-scheme: dark)");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches, darkQ = matchMedia("not (prefers-color-scheme: light)");
   const canvas = document.createElement("canvas"), ctx = canvas.getContext("2d")!, mask = document.createElement("canvas");
   canvas.setAttribute("aria-hidden", "true");
   canvas.className = "pond-fx";
