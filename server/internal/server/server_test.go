@@ -1923,3 +1923,13 @@ func TestSplashPage(t *testing.T) {
 		t.Fatalf("unknown path: %d", res.StatusCode)
 	}
 }
+
+// A QuickTime movie (CleanShot saves these as .mp4) uploads as a video, not a
+// download (1266). The header is the first bytes of Ian's recording.
+func TestUploadQuickTimeIsVideo(t *testing.T) {
+	ana := newEnv(t).join("ana")
+	mov := []byte("\x00\x00\x00\x14ftypqt  \x00\x00\x00\x00qt  \x00\x00\x00\x08wide\x00\x03\xcd\x3dmdat")
+	if _, a := ana.upload("clip.mp4", mov); a == nil || a.ContentType != "video/quicktime" {
+		t.Fatalf("got %v", a)
+	}
+}

@@ -91,8 +91,9 @@ func (s *Server) signURLs(m proto.Message) {
 	})
 }
 
-// sniffType is http.DetectContentType plus AVIF and HEIF, which it does
-// not know.
+// sniffType is http.DetectContentType plus AVIF, HEIF and QuickTime, which
+// it does not know. QuickTime matters because macOS screen recorders save
+// .mov data under a .mp4 name (1266).
 func sniffType(head []byte) string {
 	ct := http.DetectContentType(head)
 	if ct == "application/octet-stream" && len(head) >= 12 && string(head[4:8]) == "ftyp" {
@@ -103,6 +104,8 @@ func sniffType(head []byte) string {
 			return "image/heic"
 		case "mif1":
 			return "image/heif"
+		case "qt  ":
+			return "video/quicktime"
 		}
 	}
 	return ct
