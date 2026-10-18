@@ -24,7 +24,7 @@ func (s *Server) splash(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusInternalServerError, "cannot load server info")
 		return
 	}
-	inviteOnly, err := isInviteOnly(ctx, s.db.r)
+	inviteOnly, err := needsCode(ctx, s.db.r)
 	if err != nil {
 		httpError(w, http.StatusInternalServerError, "cannot load server info")
 		return

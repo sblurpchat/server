@@ -450,7 +450,7 @@ func (s *Server) GetServerInfo(ctx context.Context, _ *connect.Request[v1.GetSer
 	if err := s.db.r.QueryRowContext(ctx, "SELECT COUNT(*) FROM members WHERE deleted = 0").Scan(&n); err != nil {
 		return nil, err
 	}
-	inviteOnly, err := isInviteOnly(ctx, s.db.r)
+	inviteOnly, err := needsCode(ctx, s.db.r)
 	if err != nil {
 		return nil, err
 	}
@@ -2114,15 +2114,23 @@ func isInviteOnly(ctx context.Context, q queryer) (bool, error) {
 	return on, err
 }
 
-// useInvite lets a Join through: always on an open community, and for the
-// first person (the owner). Otherwise it needs a usable code and counts a use.
-func useInvite(t *wtx, code string, nowMs int64) error {
-	on, err := isInviteOnly(t.ctx, t)
+// needsCode is what a joiner sees: an invite-only community still lets its first
+// person (the owner) in without a code, so it reads as open until then.
+func needsCode(ctx context.Context, q queryer) (bool, error) {
+	on, err := isInviteOnly(ctx, q)
 	if err != nil || !on {
-		return err
+		return false, err
 	}
 	var humans int
-	if err := t.QueryRowContext(t.ctx, "SELECT COUNT(*) FROM members WHERE iss IS NOT NULL").Scan(&humans); err != nil || humans == 0 {
+	err = q.QueryRowContext(ctx, "SELECT COUNT(*) FROM members WHERE iss IS NOT NULL").Scan(&humans)
+	return humans > 0, err
+}
+
+// useInvite lets a Join through when no code is needed. Otherwise it needs a
+// usable code and counts a use.
+func useInvite(t *wtx, code string, nowMs int64) error {
+	need, err := needsCode(t.ctx, t)
+	if err != nil || !need {
 		return err
 	}
 	code = strings.ToUpper(strings.TrimSpace(code))

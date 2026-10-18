@@ -1622,13 +1622,20 @@ func must2[T any](v T, err error) T {
 // Invite-only communities need a usable invite code to Join (0103).
 func TestInvites(t *testing.T) {
 	e := newEnv(t)
-	// A new community is invite only, but its first person still gets in as owner (1161).
+	// A new community is invite only, but its first person still gets in as owner (1161),
+	// and the join form asks nobody for a code until then.
 	e.s.db.w.Exec("DELETE FROM settings WHERE key = 'invite_only'")
-	if !must(e.client("").srv.GetServerInfo(ctx(), connect.NewRequest(&v1.GetServerInfoRequest{}))).InviteOnly {
-		t.Fatal("a new community must be invite only")
+	needs := func() bool {
+		return must(e.client("").srv.GetServerInfo(ctx(), connect.NewRequest(&v1.GetServerInfoRequest{}))).InviteOnly
+	}
+	if needs() {
+		t.Fatal("an unclaimed community must not ask for a code")
 	}
 	if c := e.join("first"); c.me.Role != v1.MemberRole_MEMBER_ROLE_OWNER {
 		t.Fatalf("first person: %v", c.me.Role)
+	}
+	if !needs() {
+		t.Fatal("a claimed new community must be invite only")
 	}
 	_, err := e.client(e.token("second")).srv.Join(ctx(), connect.NewRequest(&v1.JoinRequest{}))
 	wantCode(t, err, connect.CodePermissionDenied)
