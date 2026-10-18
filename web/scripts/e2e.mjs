@@ -128,6 +128,30 @@ try {
   await page.getByRole("menuitem", { name: "Mark all as read" }).click();
   if (await page.locator(".sidebar .chan[data-unread='true']").count()) throw new Error("unread channels left after Mark all as read");
 
+  // Block (1118): confirm from the profile, messages collapse, click shows one, Settings unblocks. Close a DM.
+  await jumpTo(page, "general");
+  await page.locator(".channel .composer-input[placeholder='Message #general']").waitFor();
+  const other = page.locator(".channel .msg[data-head='true']:not([data-mine='true'])").first();
+  const who = await other.locator(".msg-head .name").textContent();
+  await other.locator(".msg-head .name").click();
+  await page.locator(".pop.profile").getByRole("button", { name: "Block" }).click();
+  await page.getByRole("dialog", { name: `Block ${who}` }).getByRole("button", { name: "Block" }).click();
+  const collapsed = page.locator(".channel .msg.blocked").first();
+  await collapsed.waitFor();
+  if (await page.locator(".channel .msg-head .name", { hasText: who }).count()) throw new Error(`${who}'s message still shows after blocking`);
+  await collapsed.getByRole("button", { name: /Message from a blocked member/ }).click();
+  await page.locator(".channel .msg[data-revealed='true'] .msg-head .name", { hasText: who }).first().waitFor();
+  await page.getByRole("button", { name: "Settings" }).click();
+  const blockedRow = page.locator(".blocked-list li", { hasText: who });
+  await blockedRow.getByRole("button", { name: "Unblock" }).click();
+  await blockedRow.waitFor({ state: "detached" });
+  await page.keyboard.press("Escape");
+  if (await page.locator(".channel .msg.blocked").count()) throw new Error("messages still collapsed after unblocking");
+  const dmRow = page.locator(".sidebar li", { hasText: "Ana Ruiz, Mei Chen" });
+  await dmRow.hover();
+  await dmRow.getByRole("button", { name: /Close conversation/ }).click();
+  await dmRow.waitFor({ state: "detached" });
+
   // Appearance: theme, density and text size apply at once and survive a reload.
   const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   const before = await bg();
@@ -331,7 +355,7 @@ try {
   await phone.close();
 
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, light, dark and midnight themes, custom theme, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, block and unblock, close a DM, light, dark and midnight themes, custom theme, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message, errors.join("; "));

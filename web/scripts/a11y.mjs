@@ -52,6 +52,15 @@ const views = {
     await p.locator(".browse-open").first().waitFor();
   },
   profile: (p) => p.locator(".channel .msg .avatar-btn").last().click().then(() => p.locator(".profile-body").waitFor()),
+  block: async (p) => {
+    await views.profile(p);
+    await p.locator(".pop.profile").getByRole("button", { name: "Block" }).click();
+  },
+  blocked: async (p) => {
+    await views.block(p);
+    await p.getByRole("dialog").getByRole("button", { name: "Block" }).click();
+    await p.locator(".channel .msg.blocked").first().waitFor();
+  },
   editprofile: async (p) => {
     await drawer(p);
     await p.locator(".me-btn").click();

@@ -358,6 +358,8 @@ interface Fake {
   notIn: Set<string>; // OPT_IN: visible text channels I have not joined
   bans: Ban[];
   plugins: Plugin[];
+  blocked: Set<string>; // members I blocked (1118)
+  hidden: Set<string>; // DMs I left; a new message brings one back
 }
 
 let nextId = 1;
@@ -397,6 +399,8 @@ function seed(s: Seed, now: number): Fake {
     mode: s.optIn ? ChannelMode.OPT_IN : ChannelMode.ROLES,
     roles: [],
     notIn: new Set(),
+    blocked: new Set(),
+    hidden: new Set(),
     bans: [],
     plugins: [
       create(PluginSchema, { name: "dice", enabled: true, running: true }),
@@ -559,7 +563,7 @@ function canSee(f: Fake, ch: Channel | undefined) {
 }
 /** Whether a channel is in my sidebar: visible and, in OPT_IN, joined. */
 function inside(f: Fake, ch: Channel | undefined) {
-  return canSee(f, ch) && !(ch!.kind === ChannelKind.TEXT && f.mode === ChannelMode.OPT_IN && f.notIn.has(ch!.id));
+  return canSee(f, ch) && !f.hidden.has(ch!.id) && !(ch!.kind === ChannelKind.TEXT && f.mode === ChannelMode.OPT_IN && f.notIn.has(ch!.id));
 }
 /** Events about channels outside my sidebar never reach me, like on the real server. */
 function delivered(f: Fake, e: Event) {
@@ -568,7 +572,19 @@ function delivered(f: Fake, e: Event) {
   return !chId || inside(f, f.channels.get(chId));
 }
 
+/** Like the real server: no DMs between me and someone I blocked. */
+function checkBlocks(f: Fake, dmMembers: string[]) {
+  if (dmMembers.some((m) => f.blocked.has(m)))
+    throw new ConnectError("you cannot message this member: one of you blocked the other", Code.PermissionDenied);
+}
+
+/** A hidden DM comes back on a new message or OpenDM. */
+function unhide(f: Fake, ch: Channel) {
+  if (f.hidden.delete(ch.id)) emit(f, { case: "channelUpdated", value: ch });
+}
+
 function post(f: Fake, channelId: string, authorId: string, text: string, threadRootId = "", clientId = "", attachments: Attachment[] = []) {
+  unhide(f, f.channels.get(channelId)!);
   const m = create(MessageSchema, {
     id: id("x"),
     channelId,
@@ -661,6 +677,16 @@ function service(f: Fake) {
           emit(f, { case: "memberJoined", value: m });
         }
         return { member: me(), created };
+      },
+      blockMember(req: { memberId: string }) {
+        need();
+        if (!f.blocked.has(req.memberId)) (f.blocked.add(req.memberId), emit(f, { case: "memberBlocked", value: req.memberId }));
+        return {};
+      },
+      unblockMember(req: { memberId: string }) {
+        need();
+        if (f.blocked.delete(req.memberId)) emit(f, { case: "memberUnblocked", value: req.memberId });
+        return {};
       },
       leaveCommunity() {
         need();
@@ -788,6 +814,7 @@ function service(f: Fake) {
           readStates: [...f.reads.values()].filter((r) => inside(f, f.channels.get(r.channelId))),
           roles: [...f.roles].sort((a, b) => a.position - b.position),
           channelMode: f.mode,
+          blockedMemberIds: [...f.blocked],
           seq: f.seq,
         };
       },
@@ -888,7 +915,9 @@ function service(f: Fake) {
         need();
         const want = [...new Set([f.meId, ...req.memberIds])].sort().join();
         let ch = [...f.channels.values()].find((c) => c.kind === ChannelKind.DM && [...c.memberIds].sort().join() === want);
-        if (!ch) {
+        checkBlocks(f, req.memberIds);
+        if (ch) unhide(f, ch);
+        else {
           ch = create(ChannelSchema, { id: id("d"), kind: ChannelKind.DM, memberIds: want.split(","), createdAtMs: BigInt(Date.now()) });
           f.channels.set(ch.id, ch);
           emit(f, { case: "channelCreated", value: ch });
@@ -918,6 +947,8 @@ function service(f: Fake) {
       sendMessage(req: { channelId: string; text: string; threadRootId: string; clientId: string; attachmentIds: string[] }) {
         need();
         if (!inside(f, f.channels.get(req.channelId))) throw new ConnectError("channel not found", Code.NotFound);
+        const target = f.channels.get(req.channelId)!;
+        if (target.kind === ChannelKind.DM) checkBlocks(f, target.memberIds);
         if (!req.text.trim() && !req.attachmentIds.length) throw new ConnectError("message is empty", Code.InvalidArgument);
         const dup = req.clientId && f.messages.find((m) => m.clientId === req.clientId);
         if (dup) return { message: dup };
@@ -985,7 +1016,13 @@ function service(f: Fake) {
       removeChannelMember(req: { channelId: string; memberId: string }) {
         need();
         const ch = f.channels.get(req.channelId);
-        if (!canSee(f, ch) || ch!.kind !== ChannelKind.PRIVATE) throw new ConnectError("channel not found", Code.NotFound);
+        if (!inside(f, ch)) throw new ConnectError("channel not found", Code.NotFound);
+        if (ch!.kind === ChannelKind.DM && req.memberId === f.meId) {
+          f.hidden.add(ch!.id);
+          emit(f, { case: "channelDeleted", value: ch!.id });
+          return { channel: ch };
+        }
+        if (ch!.kind !== ChannelKind.PRIVATE) throw new ConnectError("you can leave a DM, and remove members from private channels only", Code.InvalidArgument);
         const target = f.members.get(req.memberId);
         if (req.memberId !== f.meId && !(me().role >= MODERATOR && me().role > (target?.role ?? 0)))
           throw new ConnectError("you can't remove them", Code.PermissionDenied);

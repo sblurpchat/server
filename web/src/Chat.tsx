@@ -457,6 +457,8 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
     failed: useApp((s) => s.cs[s.url]!.failed),
   };
   const editing = useApp((s) => s.editing === m.id);
+  const blocked = useApp((s) => s.cs[s.url]!.blocked.includes(m.authorId));
+  const [reveal, setReveal] = useState(false);
   const links = useMemo(() => permalinks(m.text, location.origin + location.pathname), [m.text]);
   const [pick, setPick] = useState<DOMRect | null>(null);
   const [more, setMore] = useState<DOMRect | null>(null);
@@ -496,9 +498,23 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
       </article>
     );
   }
+  if (blocked && !reveal) {
+    return (
+      <article className="msg blocked" data-head={head} tabIndex={-1}>
+        <div className="msg-gutter">{head && <span className="avatar-ghost" />}</div>
+        <div className="msg-body">
+          <button className="blocked-btn" onClick={() => setReveal(true)}>
+            Message from a blocked member <span>Show</span>
+          </button>
+          {!inThread && m.replyCount > 0 && <ThreadLink m={m} />}
+        </div>
+      </article>
+    );
+  }
   return (
     <article
       className="msg"
+      data-revealed={blocked || undefined}
       data-head={head}
       data-mine={mine}
       data-pending={pending && !failed}

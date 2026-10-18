@@ -33,6 +33,7 @@ import {
   listStep,
   cssUrl,
   channelSlug,
+  blockedRows,
 } from "./logic";
 import {
   absUrl,
@@ -68,6 +69,8 @@ import {
   joinChannel,
   leaveChannel,
   peekChannel,
+  removeFromChannel,
+  setBlocked,
 } from "./store";
 import { AvatarField } from "./AvatarField";
 import { pond } from "./pond";
@@ -496,6 +499,16 @@ function Sidebar({ c }: { c: Community }) {
                             </span>
                           )}
                         </a>
+                        {sec.dm && (
+                          <button
+                            className="chan-close"
+                            aria-label={`Close conversation with ${label}`}
+                            title="Close conversation"
+                            onClick={() => removeFromChannel(c.url, ch.id, c.me!.id).catch(() => {})}
+                          >
+                            <Icon name="x" size={14} />
+                          </button>
+                        )}
                       </li>
                     );
                   })}
@@ -842,6 +855,8 @@ function Modals() {
       return <EditProfile focusPic={modal.focusPic} />;
     case "remove":
       return <RemoveMember {...modal} />;
+    case "block":
+      return <BlockMember {...modal} />;
     case "lightbox":
       return (
         <Dialog label={modal.name} className="lightbox">
@@ -1184,6 +1199,7 @@ function Settings() {
         </label>
         {denied && <p className="error small">Notifications are blocked for this site. Allow them in your browser's site settings, then turn this on.</p>}
       </section>
+      <BlockedList />
       <section>
         <h3>Keyboard</h3>
         <button className="btn small" aria-keyshortcuts={`${MOD === "⌘" ? "Meta" : "Control"}+/`} onClick={() => set({ modal: { t: "keys" } })}>
@@ -1206,6 +1222,43 @@ function Settings() {
         </button>
       </section>
     </Dialog>
+  );
+}
+
+function BlockedList() {
+  const order = useApp((s) => s.order);
+  const cs = useApp((s) => s.cs);
+  const rows = useMemo(() => blockedRows(order, cs), [order, cs]);
+  const [err, setErr] = useState("");
+  return (
+    <section>
+      <h3>
+        Blocked members <small className="scope">Per community</small>
+      </h3>
+      {rows.length ? (
+        <ul className="blocked-list">
+          {rows.map((r) => (
+            <li key={`${r.url} ${r.id}`}>
+              <Avatar m={cs[r.url]?.members[r.id]} size={28} />
+              <span className="truncate">
+                <b>{r.name}</b>
+                <small>{r.community}</small>
+              </span>
+              <button className="btn small" onClick={() => (setErr(""), setBlocked(r.url, r.id, false).catch((e) => setErr(errorText(e))))}>
+                Unblock
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted small">You haven't blocked anyone. Block someone from their profile.</p>
+      )}
+      {err && (
+        <p className="error small" role="alert">
+          {err}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -1669,6 +1722,40 @@ function DeleteConfirm({ id }: { id: string }) {
   );
 }
 
+function BlockMember({ url, memberId }: { url: string; memberId: string }) {
+  const m = useApp((s) => s.cs[url]?.members[memberId]);
+  const [err, setErr] = useState("");
+  if (!m) return null;
+  const name = m.displayName || m.username;
+  const go = () =>
+    setBlocked(url, memberId, true).then(
+      () => set({ modal: null }),
+      (e) => setErr(errorText(e)),
+    );
+  return (
+    <Dialog label={`Block ${name}`} className="confirm">
+      <h2>Block {name}?</h2>
+      <p className="muted">
+        Neither of you can send the other direct messages, and their messages in channels show collapsed for you. They are not told. Unblock them any time
+        from their profile or in Settings.
+      </p>
+      {err && (
+        <p className="error" role="alert">
+          {err}
+        </p>
+      )}
+      <div className="row-end">
+        <button className="btn ghost" autoFocus onClick={() => set({ modal: null })}>
+          Cancel
+        </button>
+        <button className="btn danger" onClick={go}>
+          Block
+        </button>
+      </div>
+    </Dialog>
+  );
+}
+
 function RemoveMember({ url, memberId, ban }: { url: string; memberId: string; ban: boolean }) {
   const c = useApp((s) => s.cs[url]);
   const m = c?.members[memberId];
@@ -1714,6 +1801,7 @@ function ProfilePopover() {
   const m = useApp((s) => (s.popover ? s.cs[s.popover.url]?.members[s.popover.memberId] : undefined));
   const me = useApp((s) => (s.popover ? s.cs[s.popover.url]?.me : undefined));
   const roleCount = useApp((s) => (s.popover ? s.cs[s.popover.url]?.roles.length ?? 0 : 0));
+  const blocked = useApp((s) => !!s.popover && !!s.cs[s.popover.url]?.blocked.includes(s.popover.memberId));
   const admin = (me?.role ?? 0) >= MemberRole.ADMIN;
   const [err, setErr] = useState("");
   const mod = m ? modActions(me, m) : { remove: false, roles: [] };
@@ -1772,6 +1860,13 @@ function ProfilePopover() {
               <button className="btn wide" onClick={() => set({ popover: null, modal: { t: "profile" } })}>
                 Edit profile and status
               </button>
+            ) : blocked ? (
+              <>
+                <p className="muted small">You blocked this member. Their messages show collapsed, and neither of you can send direct messages.</p>
+                <button className="btn wide" onClick={() => (setErr(""), setBlocked(p.url, m.id, false).catch((e) => setErr(errorText(e))))}>
+                  Unblock
+                </button>
+              </>
             ) : (
               <button className="btn primary wide" onClick={() => openDM(p.url, m.id).catch((e) => setErr(errorText(e)))}>
                 Message
@@ -1793,9 +1888,14 @@ function ProfilePopover() {
                 </select>
               </label>
             )}
-            {mod.remove && (
+            {(mod.remove || (m.id !== me?.id && !blocked)) && (
               <div className="row-end profile-mod">
-                {[false, true].map((ban) => (
+                {m.id !== me?.id && !blocked && (
+                  <button className="btn danger-ghost small" onClick={() => set({ popover: null, modal: { t: "block", url: p.url, memberId: m.id } })}>
+                    Block
+                  </button>
+                )}
+                {mod.remove && [false, true].map((ban) => (
                   <button
                     key={String(ban)}
                     className="btn danger-ghost small"

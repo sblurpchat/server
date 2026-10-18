@@ -1231,6 +1231,44 @@ kbd {
   width: 20px;
   opacity: 0.85;
 }
+/* Close a DM (1118): shows on hover or focus, over the mention badge. */
+.side-sec li {
+  position: relative;
+}
+.chan-close {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--graphite);
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 150ms ease-out;
+}
+.chan-close:hover {
+  background: var(--line);
+  color: var(--text);
+}
+.side-sec li:hover .chan-close,
+.chan-close:focus-visible {
+  opacity: 1;
+}
+.side-sec li:hover .chan .badge,
+.side-sec li:focus-within .chan .badge {
+  visibility: hidden;
+}
+@media (hover: none) {
+  .chan-close {
+    opacity: 1;
+  }
+  .side-sec li:has(.chan-close) .chan {
+    padding-right: 36px;
+  }
+}
 
 .mebar {
   display: flex;
@@ -1898,6 +1936,27 @@ kbd {
 }
 .toggle-row {
   cursor: pointer;
+}
+.blocked-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.blocked-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.blocked-list li > .truncate {
+  display: grid;
+  flex: 1;
+  line-height: 1.35;
+}
+.blocked-list small {
+  color: var(--graphite);
+  font-size: 0.8125rem;
 }
 .settings .danger-ghost {
   margin-top: 18px;
@@ -2732,6 +2791,29 @@ li.sw-empty {
 }
 .msg[data-fresh="true"] {
   animation: fade-in 120ms ease-out;
+}
+/* A blocked member's message (1118): one quiet line until clicked. */
+.blocked-btn {
+  padding: 2px 0;
+  color: var(--graphite);
+  font-size: 0.875rem;
+  font-style: italic;
+  text-align: left;
+}
+.blocked-btn span {
+  margin-left: 6px;
+  color: var(--raspberry);
+  font-style: normal;
+  font-weight: 600;
+}
+.blocked-btn:hover span {
+  text-decoration: underline;
+}
+.msg.blocked .avatar-ghost {
+  opacity: 0.6;
+}
+.msg[data-revealed="true"] {
+  animation: fade-in 150ms ease-out;
 }
 @keyframes fade-in {
   from {
