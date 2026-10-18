@@ -4,7 +4,7 @@ import { Code, ConnectError, createClient, type Client, type Interceptor } from 
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { useSyncExternalStore } from "react";
 import type { SettingsTab } from "./Admin";
-import { AUTH_URL, fetchAppearance, fetchProfile, finishLogin, saveAppearance, getToken, hasSession, SignedOutError, signOut as authSignOut, startLogin, type Profile } from "./auth";
+import { AUTH_URL, fetchAppearance, fetchCommunities, fetchProfile, finishLogin, saveAppearance, saveCommunities, getToken, hasSession, SignedOutError, signOut as authSignOut, startLogin, type Profile } from "./auth";
 import { loadEmoji } from "./CustomEmoji";
 import { fakeTransport, fakeUpload, FAKE_URLS, startSimulation } from "./fake";
 import {
@@ -54,6 +54,7 @@ import {
   toHex,
   parseAppearance,
   appearanceSync,
+  communitiesSync,
   type Appearance,
   sentence,
   joinHashInput,
@@ -109,6 +110,7 @@ export type Modal =
   | { t: "keys" }
   | { t: "profile"; focusPic?: boolean }
   | { t: "remove"; url: string; memberId: string; ban: boolean }
+  | { t: "block"; url: string; memberId: string }
   | { t: "lightbox"; src: string; name: string; video?: boolean };
 
 export interface State {
@@ -707,6 +709,13 @@ export async function removeFromChannel(url: string, channelId: string, memberId
   else if (r.channel) local(url, { case: "channelUpdated", value: r.channel });
 }
 
+/** Block or unblock a member (1118). Applied at once; the server's event to my other devices is a no-op here. */
+export async function setBlocked(url: string, memberId: string, on: boolean) {
+  if (on) await api(url).server.blockMember({ memberId });
+  else await api(url).server.unblockMember({ memberId });
+  local(url, on ? { case: "memberBlocked", value: memberId } : { case: "memberUnblocked", value: memberId });
+}
+
 export async function search(url: string, q: string) {
   return (await api(url).chat.search({ query: q, limit: 30 })).messages;
 }
@@ -735,7 +744,7 @@ export async function join(
     cs: { ...s.cs, [base]: { ...(s.cs[base] ?? emptyCommunity(base)), info: toInfo(info), status: "connecting" } },
     modal: null,
   }));
-  save("order", state.order);
+  saveOrder();
   void connect(base);
   selectCommunity(base);
 }
@@ -836,7 +845,7 @@ export function joinAgain(url: string) {
   patchC(url, (c) => ({ ...c, status: "join" }));
 }
 
-// Drops a community from this browser only.
+// Drops a community from the list, on every device once it syncs.
 export function leave(url: string) {
   conns.get(url)?.ctl.abort();
   conns.delete(url);
@@ -845,13 +854,53 @@ export function leave(url: string) {
     const order = s.order.filter((u) => u !== url);
     return { cs, order, modal: null, url: s.url === url ? order[0] ?? "" : s.url, channelId: s.url === url ? "" : s.channelId };
   });
-  save("order", state.order);
+  saveOrder();
   if (state.url) selectCommunity(state.url);
 }
 
 export function reorder(order: string[]) {
   set({ order });
-  save("order", order);
+  saveOrder();
+}
+
+// The community list follows the account across devices like appearance does (1225).
+let orderTimer: ReturnType<typeof setTimeout> | undefined;
+function saveOrder() {
+  save("order", state.order);
+  save("orderAt", Date.now());
+  clearTimeout(orderTimer);
+  orderTimer = setTimeout(pushOrder, 1000);
+}
+function pushOrder() {
+  if (!FAKE) saveCommunities(load<string[]>("order", []), load("orderAt", 0)).catch(() => {});
+}
+async function syncCommunities() {
+  const remote = await fetchCommunities().catch(() => undefined);
+  if (remote === undefined) return;
+  const r = communitiesSync(load<string[] | null>("order", null), load("orderAt", 0), remote, Date.now());
+  if (r.order) {
+    save("order", r.order);
+    save("orderAt", r.at);
+    applyOrder(r.order);
+  }
+  if (r.push) pushOrder();
+}
+/** Shows exactly these communities: connects the new ones and drops the rest from this browser. */
+function applyOrder(order: string[]) {
+  const infos = load<Record<string, Info>>("info", {});
+  const added = order.filter((u) => !state.cs[u]);
+  for (const u of state.order.filter((u) => !order.includes(u))) {
+    conns.get(u)?.ctl.abort();
+    conns.delete(u);
+  }
+  const gone = !order.includes(state.url);
+  set((s) => ({
+    order,
+    cs: Object.fromEntries(order.map((u) => [u, s.cs[u] ?? emptyCommunity(u, infos[u])])),
+    ...(gone && { url: order[0] ?? "", channelId: "" }),
+  }));
+  added.forEach((u) => void connect(u));
+  if (gone && state.url) selectCommunity(state.url);
 }
 
 // ---------------------------------------------------------------------------
@@ -948,6 +997,10 @@ export function signOut() {
   // The next person on this device must not see this one's drafts or cached private previews.
   clearTimeout(draftTimer);
   save("drafts", {});
+  // The community list is the account's now; the next account starts from its own.
+  clearTimeout(orderTimer);
+  save("order", null);
+  save("orderAt", 0);
   unfurled.clear();
   unfurling.clear();
   sentRead.clear();
@@ -966,7 +1019,7 @@ export const isText = (ch: Channel) => ch.kind !== ChannelKind.DM;
 
 function start() {
   const infos = load<Record<string, Info>>("info", {});
-  const order = load<string[]>("order", FAKE ? FAKE_URLS : DEFAULT_COMMUNITIES);
+  const order = load<string[] | null>("order", null) ?? (FAKE ? FAKE_URLS : DEFAULT_COMMUNITIES);
   set({
     auth: "in",
     order,
@@ -977,6 +1030,7 @@ function start() {
   });
   if (!FAKE) fetchProfile().then((profile) => set({ profile })).catch((e) => e instanceof SignedOutError && set({ auth: "out" }));
   if (!FAKE) void syncLook();
+  if (!FAKE) void syncCommunities();
   order.forEach((u) => void connect(u));
   const fromHash = parseHash(location.hash);
   const url = order.find((u) => hostOf(u) === fromHash?.host) ?? order[0] ?? "";

@@ -35,6 +35,7 @@ import {
   themeString,
   parseAppearance,
   appearanceSync,
+  communitiesSync,
   timeLabel,
   acQuery,
   listStep,
@@ -963,6 +964,26 @@ describe("appearanceSync", () => {
     expect(appearanceSync(7, 7)).toBe("keep");
     expect(appearanceSync(7, null)).toBe("push"); // nothing on the server yet
     expect(appearanceSync(0, null)).toBe("keep"); // nothing anywhere
+  });
+});
+
+describe("communitiesSync", () => {
+  const A = "https://a.example", B = "https://b.example", C = "https://c.example";
+  it("unions on the first sign-in of a browser that has its own list", () => {
+    expect(communitiesSync([C, A], 0, { urls: [A, B], updatedAt: 5 }, 99)).toEqual({ order: [A, B, C], at: 99, push: true });
+  });
+  it("takes the account's list on a fresh browser", () => {
+    expect(communitiesSync(null, 0, { urls: [B, A], updatedAt: 5 }, 99)).toEqual({ order: [B, A], at: 5, push: false });
+  });
+  it("lets the newer list win whole once synced, so removals stick", () => {
+    expect(communitiesSync([A, B], 5, { urls: [B], updatedAt: 9 }, 99)).toEqual({ order: [B], at: 9, push: false });
+    expect(communitiesSync([A], 9, { urls: [A, B], updatedAt: 5 }, 99)).toEqual({ order: [A], at: 9, push: true });
+    expect(communitiesSync([A], 9, { urls: [A], updatedAt: 9 }, 99)).toEqual({ order: [A], at: 9, push: false });
+  });
+  it("seeds the account from this browser, but not with the defaults", () => {
+    expect(communitiesSync([A], 0, null, 99)).toEqual({ order: [A], at: 99, push: true });
+    expect(communitiesSync([A], 7, null, 99)).toEqual({ order: [A], at: 7, push: true });
+    expect(communitiesSync(null, 0, null, 99)).toEqual({ order: null, at: 0, push: false });
   });
 });
 

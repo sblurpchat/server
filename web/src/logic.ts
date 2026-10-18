@@ -68,6 +68,8 @@ export interface Community {
   failed: Record<string, true>;
   /** Bumped by a plugins_changed event, so the admin plugin list reloads (1090). */
   pluginsRev?: number;
+  /** Members I blocked (1118): their messages show collapsed. */
+  blocked: string[];
 }
 
 export const emptyCommunity = (url: string, info?: Info): Community => ({
@@ -83,6 +85,7 @@ export const emptyCommunity = (url: string, info?: Info): Community => ({
   lists: {},
   typing: {},
   failed: {},
+  blocked: [],
 });
 
 export const listKey = (channelId: string, rootId = "") => (rootId ? `t:${rootId}` : channelId);
@@ -101,6 +104,7 @@ export function applySnapshot(c: Community, s: GetStateResponse): Community {
     mode: s.channelMode || ChannelMode.ROLES,
     reads: Object.fromEntries(s.readStates.map((r) => [r.channelId, r])),
     seq: s.seq,
+    blocked: s.blockedMemberIds,
     // Lists may have missed events; the open view reloads them.
     lists: {},
     typing: {},
@@ -268,6 +272,12 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
       }
       return next;
     }
+    case "memberBlocked":
+      if (!c.blocked.includes(k.value)) next.blocked = [...c.blocked, k.value];
+      return next;
+    case "memberUnblocked":
+      next.blocked = c.blocked.filter((id) => id !== k.value);
+      return next;
     case "pluginsChanged":
       next.pluginsRev = (c.pluginsRev ?? 0) + 1;
       return next;
@@ -434,6 +444,26 @@ export function parseAppearance(v: unknown): Appearance {
 export function appearanceSync(localAt: number, serverAt: number | null): "pull" | "push" | "keep" {
   if (serverAt === null) return localAt ? "push" : "keep";
   return serverAt > localAt ? "pull" : serverAt < localAt ? "push" : "keep";
+}
+
+/**
+ * Merges this browser's community list with the account's (1225). `local` is null when this
+ * browser never chose any (it shows the defaults); `localAt` is 0 when it chose some but never
+ * synced, so a first sign-in keeps both: server order, then local extras. After that the newer
+ * list wins whole, so removing a community on one device removes it everywhere.
+ */
+export function communitiesSync(
+  local: string[] | null,
+  localAt: number,
+  server: { urls: string[]; updatedAt: number } | null,
+  now: number,
+): { order: string[] | null; at: number; push: boolean } {
+  if (!server) return local ? { order: local, at: localAt || now, push: true } : { order: null, at: 0, push: false };
+  const pull = { order: server.urls, at: server.updatedAt, push: false };
+  if (!local) return pull;
+  if (!localAt) return { order: [...server.urls, ...local.filter((u) => !server.urls.includes(u))], at: now, push: true };
+  if (server.updatedAt > localAt) return pull;
+  return { order: local, at: localAt, push: server.updatedAt < localAt };
 }
 
 /** "#rrggbb" or "rgb(r, g, b)" (what getComputedStyle returns) to [r, g, b]. */
@@ -1162,5 +1192,16 @@ export function skeletonRows(n: number): { head: boolean; name: number; lines: n
   return Array.from({ length: n }, (_, i) => {
     const r = (i * 37 + 11) % 41; // 0-40, scattered
     return { head: i % 3 !== 2, name: 14 + (r % 4) * 5, lines: r % 2 ? [48 + r] : [70 + (r % 25), 24 + r] };
+  });
+}
+
+/** Everyone I blocked, in every community I am in, for the Settings list (1118). Left members show as "Former member". */
+export function blockedRows(order: string[], cs: Record<string, Community>): { url: string; id: string; name: string; community: string }[] {
+  return order.flatMap((url) => {
+    const c = cs[url];
+    return (c?.blocked ?? []).map((id) => {
+      const m = c!.members[id];
+      return { url, id, name: m ? m.displayName || m.username : "Former member", community: c!.info?.name ?? hostOf(url) };
+    });
   });
 }

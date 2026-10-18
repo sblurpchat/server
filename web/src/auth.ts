@@ -172,6 +172,24 @@ export async function saveAppearance(data: unknown, updatedAt: number) {
   if (!res.ok) throw new Error(`sblurp.chat returned ${res.status}`);
 }
 
+/** The account's synced community list (base URLs in rail order) and its edit time, or null if none. */
+export async function fetchCommunities(): Promise<{ urls: string[]; updatedAt: number } | null> {
+  const res = await fetch(`${AUTH_URL}/api/communities`, { headers: { Authorization: `Bearer ${await getToken(AUTH_URL)}` } });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`sblurp.chat returned ${res.status}`);
+  const j = await res.json();
+  return { urls: Array.isArray(j.urls) ? j.urls.filter((u: unknown) => typeof u === "string") : [], updatedAt: Number(j.updated_at) || 0 };
+}
+
+export async function saveCommunities(urls: string[], updatedAt: number) {
+  const res = await fetch(`${AUTH_URL}/api/communities`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await getToken(AUTH_URL)}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ urls, updated_at: updatedAt }),
+  });
+  if (!res.ok) throw new Error(`sblurp.chat returned ${res.status}`);
+}
+
 export function signOut() {
   const rt = localStorage.getItem(RT_KEY);
   localStorage.removeItem(RT_KEY);
