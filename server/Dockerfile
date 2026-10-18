@@ -3,7 +3,7 @@
 #   docker buildx build --platform linux/amd64,linux/arm64 -t sblurp-server .
 #
 # Without R2 keys it just runs the server. With AWS_ACCESS_KEY_ID,
-# AWS_SECRET_ACCESS_KEY, R2_ENDPOINT, R2_BUCKET and RESTIC_PASSWORD set (for
+# AWS_SECRET_ACCESS_KEY, R2_ENDPOINT, R2_BUCKET and BACKUP_PASSWORD set (for
 # example with `fly secrets set`), it backs up to Cloudflare R2:
 #   - sblurp.db: Litestream, every change within 10 s.
 #   - file-key and files/: restic, encrypted, every hour.
@@ -65,6 +65,16 @@ dbs:
       path: ${BACKUP_NAME}/sblurp.db
 EOF
 
+COPY --chmod=755 <<'EOF' /usr/bin/sblurp-backup
+#!/bin/sh
+# Runs restic (the file backup tool) on this app's R2 backup, for example
+# `sblurp-backup snapshots`, `sblurp-backup check` or `sblurp-backup restore latest --target /`.
+# BACKUP_PASSWORD is the user-facing name; RESTIC_PASSWORD still works.
+export RESTIC_PASSWORD="${BACKUP_PASSWORD:-${RESTIC_PASSWORD:-}}"
+export RESTIC_REPOSITORY="s3:$R2_ENDPOINT/$R2_BUCKET/$BACKUP_NAME/restic"
+exec restic "$@"
+EOF
+
 COPY --chmod=755 <<'EOF' /entrypoint.sh
 #!/bin/sh
 set -eu
@@ -76,20 +86,19 @@ if [ "$(id -u)" = 0 ]; then
 	exec su-exec 65532:65532 "$0" "$@"
 fi
 [ -n "${AWS_ACCESS_KEY_ID:-}" ] || exec sblurp-server
-export RESTIC_REPOSITORY="s3:$R2_ENDPOINT/$R2_BUCKET/$BACKUP_NAME/restic"
-restic cat config >/dev/null 2>&1 || restic init
+sblurp-backup cat config >/dev/null 2>&1 || sblurp-backup init
 # A fresh volume: get the file key and uploads back before the server makes a new key.
-if [ ! -e /data/file-key ] && [ "$(restic snapshots --json --latest 1)" != "[]" ]; then
-	restic restore latest --target /
+if [ ! -e /data/file-key ] && [ "$(sblurp-backup snapshots --json --latest 1)" != "[]" ]; then
+	sblurp-backup restore latest --target /
 fi
 litestream restore -if-db-not-exists -if-replica-exists /data/sblurp.db
 # ponytail: hourly restic loop, so up to an hour of uploads can be lost; Fly's daily volume snapshots also cover them.
 (
 	sleep 60
 	while :; do
-		restic unlock -q
-		restic backup -q /data/file-key /data/files || echo "restic backup failed"
-		restic forget -q --prune --keep-hourly 24 --keep-daily 7 --keep-weekly 4 --keep-monthly 12 || echo "restic forget failed"
+		sblurp-backup unlock -q
+		sblurp-backup backup -q /data/file-key /data/files || echo "restic backup failed"
+		sblurp-backup forget -q --prune --keep-hourly 24 --keep-daily 7 --keep-weekly 4 --keep-monthly 12 || echo "restic forget failed"
 		sleep 3600
 	done
 ) &

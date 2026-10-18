@@ -355,7 +355,7 @@ The first person to join becomes the owner. Back up `/var/lib/sblurp`
 Sblurp's own Fly setup is `server/fly.toml` plus `server/Dockerfile`,
 described in `deploy/fly/README.md`. Litestream and restic back up to R2
 when `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `R2_ENDPOINT` and
-`RESTIC_PASSWORD` are set; without them the image runs with no backups.
+`BACKUP_PASSWORD` are set; without them the image runs with no backups.
 
 SQLite means one machine. Do not scale past 1.
 
