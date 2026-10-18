@@ -61,6 +61,18 @@ const views = {
     await p.getByRole("dialog").getByRole("button", { name: "Block" }).click();
     await p.locator(".channel .msg.blocked").first().waitFor();
   },
+  report: async (p) => {
+    const m = p.locator(".channel .msg[data-head='true']:not([data-mine='true'])").last();
+    await m.hover();
+    await m.getByRole("button", { name: "More actions" }).click();
+    await p.getByRole("menuitem", { name: "Report message" }).click();
+    await p.getByRole("dialog", { name: "Report message" }).waitFor();
+  },
+  reports: async (p) => {
+    await drawer(p);
+    await open(p, "Reports");
+    await p.locator(".report-list li").first().waitFor();
+  },
   editprofile: async (p) => {
     await drawer(p);
     await p.locator(".me-btn").click();

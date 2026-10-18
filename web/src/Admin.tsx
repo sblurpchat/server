@@ -1,7 +1,7 @@
 // Admin screens: create and edit channels, and community settings (members, invites, bots).
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Ban, type Channel, type GetMeResponse, type Invite, type Member, type Plugin, type Role } from "./gen/sblurp/v1/sblurp_pb";
-import { BANNER_TYPES, bannerFileError, banDetail, channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, pluginFormError, pluginNameFromFile, pluginStatus, tokenBots, reorderChannel, sidebarSections, squareCrop, unsavedBlock } from "./logic";
+import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Ban, type Channel, type GetMeResponse, type Invite, type Member, type Message, type Plugin, type Report, type Role } from "./gen/sblurp/v1/sblurp_pb";
+import { BANNER_TYPES, bannerFileError, banDetail, channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, pluginFormError, pluginNameFromFile, pluginStatus, reportDetail, reportPlace, tokenBots, reorderChannel, sidebarSections, squareCrop, unsavedBlock } from "./logic";
 import {
   absUrl,
   setCommunityProfile,
@@ -23,8 +23,12 @@ import {
   listPlugins,
   setPluginEnabled,
   getMe,
+  jumpTo,
   listBans,
   listBots,
+  listReports,
+  reportMessage,
+  resolveReport,
   listInvites,
   revokeInvite,
   rotateBotToken,
@@ -688,6 +692,152 @@ function BansTab({ url }: { url: string }) {
         </ul>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Reports (1119)
+// ---------------------------------------------------------------------------
+
+export function ReportDialog({ url, message: m }: { url: string; message: Message }) {
+  const c = useApp((s) => s.cs[url]);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [err, setErr] = useState("");
+  if (!c) return null;
+  const author = c.members[m.authorId];
+  const dm = c.channels[m.channelId]?.kind === ChannelKind.DM;
+  const send = (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr("");
+    reportMessage(url, m.id, note.trim()).then(
+      () => setSent(true),
+      (x) => (setErr(errorText(x, c.info?.name)), setBusy(false)),
+    );
+  };
+  if (sent)
+    return (
+      <Dialog label="Report sent" className="confirm report-dialog">
+        <h2>Report sent</h2>
+        <p className="muted" role="status">
+          Thank you. The moderators of {c.info?.name ?? hostOf(url)} can now see it. You will not see what they do, and the author is not told who reported it.
+        </p>
+        <div className="row-end">
+          <button className="btn primary" autoFocus onClick={() => set({ modal: null })}>
+            Done
+          </button>
+        </div>
+      </Dialog>
+    );
+  return (
+    <Dialog label="Report message" className="confirm report-dialog">
+      <form onSubmit={send}>
+        <h2>Report this message?</h2>
+        <blockquote className="delete-preview">
+          <b>{author ? author.displayName || author.username : "Former member"}</b> {m.text || "(attachment)"}
+        </blockquote>
+        <p className="muted">
+          {dm
+            ? "This is a direct message. Moderators cannot read your direct messages, so a report shares this one message with them, and nothing else from the conversation."
+            : "Moderators and admins see the message, your name and your note."}{" "}
+          The author is not told who reported it.
+        </p>
+        <label className="field">
+          <span>Note for moderators (optional)</span>
+          <textarea className="input" rows={3} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What is wrong with this message?" />
+        </label>
+        {err && (
+          <p className="error" role="alert">
+            {err}
+          </p>
+        )}
+        <div className="row-end">
+          <button type="button" className="btn ghost" autoFocus onClick={() => set({ modal: null })}>
+            Cancel
+          </button>
+          <button className="btn danger" disabled={busy}>
+            Report
+          </button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+export function ReportsDialog() {
+  const c = useApp((s) => s.cs[s.url]);
+  const [reports, setReports] = useState<Report[] | null>(null);
+  const [gone, setGone] = useState("");
+  const [err, setErr] = useState("");
+  const url = c?.url ?? "";
+  const fail = (e: unknown) => setErr(errorText(e));
+  const load = () => listReports(url).then(setReports, fail);
+  useEffect(() => void load(), [url]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!c) return null;
+  const resolve = (id: string) => {
+    setErr("");
+    resolveReport(url, id).then(() => (setGone(id), setTimeout(() => load().then(() => setGone("")), FADE)), fail);
+  };
+  const now = Date.now();
+  return (
+    <Dialog label="Reports" className="reports-dialog">
+      <Head title="Reports" />
+      <div className="stack" aria-busy={!reports && !err}>
+        <p className="muted small">
+          Members report messages here. You see reports about members with a lower permission than yours. Resolve a report when you have dealt with it. A
+          report of a direct message holds only that message.
+        </p>
+        {err && (
+          <p className="error" role="alert">
+            {err}
+          </p>
+        )}
+        {!reports && !err && <Skeleton rows={3} avatar={32} lines={2} className="skel-admin" />}
+        {reports && !reports.length && <p className="muted small">No open reports.</p>}
+        {!!reports?.length && (
+          <ul className="admin-list report-list" aria-label="Open reports" style={{ animation: `fade-in ${FADE}ms ease-out` }}>
+            {reports.map((r) => {
+              const a = r.author;
+              const name = a ? a.displayName || a.username : "Former member";
+              const place = reportPlace(r, c.channels);
+              const mod = a ? modActions(c.me, c.members[a.id] ?? a) : { remove: false };
+              return (
+                <li key={r.id} style={{ opacity: gone === r.id ? 0 : 1, transition: `opacity ${FADE}ms ease-out` }}>
+                  <Avatar m={a} size={32} />
+                  <div className="report-body">
+                    <span className="report-head">
+                      <b>{name}</b>
+                      <small className="muted">
+                        {place.label} · {reportDetail(Number(r.reportedAtMs), r.reporter, now)}
+                      </small>
+                    </span>
+                    <blockquote className="delete-preview">{r.message?.text || "(attachment)"}</blockquote>
+                    {r.note && <p className="report-note">“{r.note}”</p>}
+                    <span className="row">
+                      {place.open && (
+                        <button className="btn small" onClick={() => (set({ modal: null }), jumpTo(url, r.message!, true))}>
+                          <Icon name="external" size={14} /> Go to message
+                        </button>
+                      )}
+                      {mod.remove && a && (
+                        <button className="btn danger-ghost small" aria-label={`Kick ${name}`} onClick={() => set({ modal: { t: "remove", url, memberId: a.id, ban: false } })}>
+                          Kick
+                        </button>
+                      )}
+                      <button className="btn small" aria-label={`Resolve report about ${name}`} disabled={gone === r.id} onClick={() => resolve(r.id)}>
+                        <Icon name="check" size={14} /> Resolve
+                      </button>
+                    </span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </Dialog>
   );
 }
 

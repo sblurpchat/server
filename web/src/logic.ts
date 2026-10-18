@@ -808,6 +808,19 @@ export function banDetail(atMs: number, by: Member | undefined, now: number): st
   return `Banned ${when}${by ? ` by ${by.displayName || by.username}` : ""}`;
 }
 
+/** Where a reported message lives (1119), and whether this moderator can open it. */
+export function reportPlace(r: { dm: boolean; message?: { channelId: string } }, channels: Record<string, Channel>): { label: string; open: boolean } {
+  if (r.dm) return { label: "Direct message", open: false };
+  const ch = channels[r.message?.channelId ?? ""];
+  return ch ? { label: `#${ch.name}`, open: true } : { label: "A channel you cannot see", open: false };
+}
+
+export function reportDetail(atMs: number, by: Member | undefined, now: number): string {
+  const d = dayLabel(atMs, now);
+  const when = d === "Today" || d === "Yesterday" ? d.toLowerCase() : `on ${d}`;
+  return `Reported ${when} by ${by ? by.displayName || by.username : "a former member"}`;
+}
+
 export const hostOf = (url: string) => new URL(url).host;
 
 /** #/c/<host>[/<channel>[/<message>[/<thread root>]]][?<pane>] */

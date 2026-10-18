@@ -673,7 +673,12 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
           <button role="menuitem" onClick={() => navigator.clipboard.writeText(location.origin + location.pathname + location.search + messageHash(url, m))}>
             <Icon name="link" size={18} /> Copy link
           </button>
-          {mine && (
+          {!mine && (
+            <button role="menuitem" onClick={() => set({ modal: { t: "report", url, message: m } })}>
+              <Icon name="flag" size={18} /> Report message
+            </button>
+          )}
+          {(mine || (c.me?.role ?? 0) >= MemberRole.MODERATOR) && (
             <button role="menuitem" className="danger" onClick={() => set({ modal: { t: "delete", id: m.id } })}>
               <Icon name="trash" size={18} /> Delete message
             </button>

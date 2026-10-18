@@ -4180,6 +4180,42 @@ li.sw-empty {
     margin-left: 44px;
   }
 }
+/* Reports queue (1119) */
+.reports-dialog {
+  width: min(600px, calc(100vw - 32px));
+}
+.reports-dialog .stack {
+  margin-top: 12px;
+}
+.report-list li {
+  align-items: flex-start;
+}
+.report-body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+.report-head {
+  display: grid;
+}
+.report-body .delete-preview {
+  margin: 0;
+}
+.report-note {
+  margin: 0;
+  font-size: 14px;
+}
+.report-body .row {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.report-dialog .field {
+  margin-top: 14px;
+}
+.report-dialog textarea {
+  resize: vertical;
+}
 .token-once {
   display: grid;
   gap: 8px;

@@ -1,6 +1,6 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent } from "react";
-import { ChannelDialog, CommunitySettings, Invites, PERMISSION, RoleChips } from "./Admin";
+import { ChannelDialog, CommunitySettings, Invites, PERMISSION, RoleChips, ReportDialog, ReportsDialog } from "./Admin";
 import { ChannelView, openProfile, PeoplePicker, RightPane } from "./Chat";
 import { create } from "@bufbuild/protobuf";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, MemberSchema, type Channel, type GetServerInfoResponse, type Member } from "./gen/sblurp/v1/sblurp_pb";
@@ -413,6 +413,11 @@ function Sidebar({ c }: { c: Community }) {
                 <Icon name="gear" size={18} /> Community settings
               </button>
             </>
+          )}
+          {(c.me?.role ?? 0) >= MemberRole.MODERATOR && (
+            <button role="menuitem" onClick={() => set({ modal: { t: "reports" } })}>
+              <Icon name="flag" size={18} /> Reports
+            </button>
           )}
           <button role="menuitem" onClick={() => markAllRead(c.url)}>
             <Icon name="check" size={18} /> Mark all as read
@@ -857,6 +862,10 @@ function Modals() {
       return <RemoveMember {...modal} />;
     case "block":
       return <BlockMember {...modal} />;
+    case "report":
+      return <ReportDialog {...modal} />;
+    case "reports":
+      return <ReportsDialog />;
     case "lightbox":
       return (
         <Dialog label={modal.name} className="lightbox">

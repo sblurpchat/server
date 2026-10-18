@@ -152,6 +152,29 @@ try {
   await dmRow.getByRole("button", { name: /Close conversation/ }).click();
   await dmRow.waitFor({ state: "detached" });
 
+  // Report (1119): report someone's message with a note, see it in the moderator queue, resolve it, jump to another.
+  await jumpTo(page, "general");
+  await page.locator(".channel .composer-input[placeholder='Message #general']").waitFor();
+  const reported = page.locator(".channel .msg[data-head='true']:not([data-mine='true'])").last();
+  const reportedText = (await reported.locator(".msg-text").first().textContent()).trim().slice(0, 30);
+  await reported.hover();
+  await reported.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Report message" }).click();
+  const reportDialog = page.getByRole("dialog", { name: "Report message" });
+  await reportDialog.getByLabel("Note for moderators (optional)").fill("e2e note");
+  await reportDialog.getByRole("button", { name: "Report" }).click();
+  await page.getByRole("dialog", { name: "Report sent" }).getByRole("button", { name: "Done" }).click();
+  await page.locator(".side-head").click();
+  await page.getByRole("menuitem", { name: "Reports" }).click();
+  const mine = page.locator(".report-list li", { hasText: "e2e note" });
+  await mine.waitFor();
+  if (!(await mine.textContent()).includes(reportedText)) throw new Error("report row lacks the message text");
+  await mine.getByRole("button", { name: /^Resolve report/ }).click();
+  await mine.waitFor({ state: "detached" });
+  const seeded = page.locator(".report-list li").first();
+  await seeded.getByRole("button", { name: "Go to message" }).click();
+  await page.getByRole("dialog", { name: "Reports" }).waitFor({ state: "detached" });
+
   // Appearance: theme, density and text size apply at once and survive a reload.
   const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   const before = await bg();
@@ -355,7 +378,7 @@ try {
   await phone.close();
 
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, block and unblock, close a DM, light, dark and midnight themes, custom theme, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, block and unblock, close a DM, report and resolve, light, dark and midnight themes, custom theme, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message, errors.join("; "));

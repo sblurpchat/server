@@ -111,6 +111,8 @@ export type Modal =
   | { t: "profile"; focusPic?: boolean }
   | { t: "remove"; url: string; memberId: string; ban: boolean }
   | { t: "block"; url: string; memberId: string }
+  | { t: "report"; url: string; message: Message }
+  | { t: "reports" }
   | { t: "lightbox"; src: string; name: string; video?: boolean };
 
 export interface State {
@@ -769,6 +771,10 @@ export const removeMember = (url: string, memberId: string, ban: boolean) =>
 
 export const listBans = async (url: string) => (await api(url).server.listBans({})).bans;
 export const unbanMember = (url: string, memberId: string) => api(url).server.unbanMember({ memberId });
+
+export const reportMessage = (url: string, messageId: string, note: string) => api(url).server.reportMessage({ messageId, note });
+export const listReports = async (url: string) => (await api(url).server.listReports({})).reports;
+export const resolveReport = (url: string, reportId: string) => api(url).server.resolveReport({ reportId });
 
 export const createInvite = (url: string, expiresInSeconds: number, maxUses: number) =>
   api(url).server.createInvite({ expiresInSeconds: BigInt(expiresInSeconds), maxUses });

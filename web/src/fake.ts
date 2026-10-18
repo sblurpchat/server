@@ -18,6 +18,7 @@ import {
   MemberSchema,
   MessageSchema,
   PluginSchema,
+  ReportSchema,
   type Plugin,
   Presence,
   ReactionSchema,
@@ -33,6 +34,7 @@ import {
   type Member,
   type Message,
   type ReadState,
+  type Report,
   type Role,
 } from "./gen/sblurp/v1/sblurp_pb";
 import { BANNER_TYPES, encodeMentions, mentionsMe, messageHash } from "./logic";
@@ -359,6 +361,7 @@ interface Fake {
   bans: Ban[];
   plugins: Plugin[];
   blocked: Set<string>; // members I blocked (1118)
+  reports: Report[]; // open reports, newest first (1119)
   hidden: Set<string>; // DMs I left; a new message brings one back
 }
 
@@ -400,6 +403,7 @@ function seed(s: Seed, now: number): Fake {
     roles: [],
     notIn: new Set(),
     blocked: new Set(),
+    reports: [],
     hidden: new Set(),
     bans: [],
     plugins: [
@@ -538,6 +542,20 @@ function seed(s: Seed, now: number): Fake {
       }),
     );
   }
+  // One open report for the moderator queue: someone else's message, reported by a third member.
+  const target = f.messages.find((m) => m.authorId !== f.meId && !m.threadRootId && f.channels.get(m.channelId)?.kind === ChannelKind.TEXT && m.text);
+  const reporter = all.find((m) => m.id !== f.meId && m.id !== target?.authorId && m.kind === MemberKind.HUMAN);
+  if (target && reporter)
+    f.reports.push(
+      create(ReportSchema, {
+        id: id("r"),
+        message: create(MessageSchema, { id: target.id, channelId: target.channelId, authorId: target.authorId, text: target.text, createdAtMs: target.createdAtMs }),
+        author: f.members.get(target.authorId),
+        reporter,
+        note: "This keeps happening in this channel. Please take a look.",
+        reportedAtMs: BigInt(now - 40 * 60_000),
+      }),
+    );
   f.logStart = f.seq;
   return f;
 }
@@ -710,6 +728,36 @@ function service(f: Fake) {
         mod();
         if (!f.bans.some((b) => b.member?.id === req.memberId)) throw new ConnectError("that member is not banned", Code.NotFound);
         f.bans = f.bans.filter((b) => b.member?.id !== req.memberId);
+        return {};
+      },
+      reportMessage(req: { messageId: string; note: string }) {
+        need();
+        const m = f.messages.find((x) => x.id === req.messageId && !x.deleted);
+        if (!m || !canSee(f, f.channels.get(m.channelId))) throw new ConnectError("message not found", Code.NotFound);
+        if (m.authorId === f.meId) throw new ConnectError("you cannot report your own message", Code.InvalidArgument);
+        f.reports = f.reports.filter((r) => !(r.message?.id === m.id && r.reporter?.id === f.meId));
+        f.reports.unshift(
+          create(ReportSchema, {
+            id: id("r"),
+            message: create(MessageSchema, { id: m.id, channelId: m.channelId, authorId: m.authorId, text: m.text, createdAtMs: m.createdAtMs }),
+            dm: f.channels.get(m.channelId)!.kind === ChannelKind.DM,
+            author: f.members.get(m.authorId),
+            reporter: me(),
+            note: req.note,
+            reportedAtMs: BigInt(Date.now()),
+          }),
+        );
+        return {};
+      },
+      listReports() {
+        mod();
+        return { reports: f.reports.filter((r) => me().role === MemberRole.OWNER || me().role > (r.author?.role ?? 0)) };
+      },
+      resolveReport(req: { reportId: string }) {
+        mod();
+        const r = f.reports.find((x) => x.id === req.reportId);
+        if (!r) throw new ConnectError("report not found", Code.NotFound);
+        f.reports = f.reports.filter((x) => x.message?.id !== r.message?.id);
         return {};
       },
       createInvite(req: { expiresInSeconds: bigint; maxUses: number }) {
