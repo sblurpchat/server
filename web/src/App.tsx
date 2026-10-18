@@ -1821,9 +1821,9 @@ function ProfilePopover() {
           <div className="profile-band" style={{ background: "color-mix(in srgb, var(--raspberry) 18%, var(--paper))" }} />
           <div className="profile-body">
             {m.id === me?.id ? (
-              <button className="avatar-edit" aria-label="Change avatar" title="Change avatar" onClick={() => set({ popover: null, modal: { t: "profile", focusPic: true } })}>
+              <button className="avatar-edit" aria-label="Edit profile" title="Edit profile" onClick={() => set({ popover: null, modal: { t: "profile", focusPic: true } })}>
                 <Avatar m={m} size={72} presence />
-                <AvatarEditOverlay />
+                <AvatarEditOverlay icon="edit" />
               </button>
             ) : (
               <Avatar m={m} size={72} presence />

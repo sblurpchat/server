@@ -123,10 +123,11 @@ export function Skeleton({ rows, avatar = 0, lines = 1, chat = false, className 
   );
 }
 
-/** The dim-and-camera layer over your own picture (1200, 1201); goes inside a button.avatar-edit. */
-export const AvatarEditOverlay = () => (
+/** The dim-and-icon layer over your own picture (1200, 1201); goes inside a button.avatar-edit.
+ *  A camera where clicking picks a photo, a pencil where it opens the profile editor (1272). */
+export const AvatarEditOverlay = ({ icon = "camera" }: { icon?: "camera" | "edit" }) => (
   <span className="avatar-edit-overlay" aria-hidden="true">
-    <Icon name="camera" size={22} />
+    <Icon name={icon} size={22} />
   </span>
 );
 
