@@ -24,18 +24,18 @@ const states = {
     await drawer(p);
     await p.locator(".chan", { hasText: "design" }).first().click();
   },
+  thread: (p) => p.locator(".thread-link").first().click(),
+  search: async (p) => {
+    const s = p.locator(".chan-search input");
+    await s.fill("kiln");
+    await s.press("Enter");
+  },
   older: async (p) => {
     await drawer(p);
     await p.locator(".chan", { hasText: "show-and-tell" }).first().click();
     await p.locator(".channel .msg").first().waitFor();
     await p.waitForTimeout(300);
     await p.locator(".channel .scroller").evaluate((el) => (el.scrollTop = -el.scrollHeight));
-  },
-  thread: (p) => p.locator(".thread-link").first().click(),
-  search: async (p) => {
-    const s = p.locator(".chan-search input");
-    await s.fill("kiln");
-    await s.press("Enter");
   },
 };
 for (const [w, h] of [[1280, 860], [390, 844]])
