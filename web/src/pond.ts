@@ -9,7 +9,8 @@ const EN = ["hey that's cool", "how are you?", "i really like this", "good morni
   "pizza tonight?", "count me in", "aww thank you", "big mood", "how was the trip?", "looks amazing", "can't wait", "no worries", "you got this", "hi everyone!",
   "great call", "ok that's funny", "let's do it", "back in 5", "happy birthday!", "sounds good", "good luck today", "proud of you", "oh nice", "i'm in",
   "show us!", "what a day", "ty!", "agreed", "yesss", "hello friends", "long time no see", "first time here", "cute dog!", "love this server", "it works!", "cheers!",
-  "glhf", "gg wp", "one more game?", "clutch!", "afk 2 min", "rematch?", "pog", "queue up?", "lfg"];
+  "glhf", "gg wp", "one more game?", "clutch!", "afk 2 min", "rematch?", "pog", "queue up?", "lfg",
+  "nice", "sick", "sweet", "lololol", "haha", "heck yeah", "not bad!", "whoa"];
 const INTL = ["¿cómo estás?", "¡hola a todos!", "ça va ?", "merci !", "wie geht's?", "danke!", "que legal!", "obrigado!", "che bello!", "ciao a tutti", "hej hej", "kumusta?", "cześć!", "привіт усім!"];
 const CJK = ["你好！", "哈哈哈", "太好了", "加油！", "謝謝！", "晚安～", "こんにちは！", "ありがとう！", "すごい！", "안녕하세요!", "고마워요", "ㅋㅋㅋ"];
 // Same tuning as the home page: new messages per second, glow px, text px, row spacing, typed chars per second.
