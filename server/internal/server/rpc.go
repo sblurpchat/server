@@ -466,7 +466,12 @@ func (s *Server) GetServerInfo(ctx context.Context, _ *connect.Request[v1.GetSer
 	if err != nil {
 		return nil, err
 	}
+	var setup bool
+	if err := s.db.r.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM settings WHERE key = 'needs_setup')").Scan(&setup); err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&v1.GetServerInfoResponse{
+		NeedsSetup:      setup,
 		Name:            s.cfg.Name,
 		Description:     desc,
 		Banner:          banner,
@@ -599,6 +604,10 @@ func (s *Server) Join(ctx context.Context, req *connect.Request[v1.JoinRequest])
 		}
 		if role == v1.MemberRole_MEMBER_ROLE_OWNER && none {
 			if _, err := s.createChannel(t, v1.ChannelKind_CHANNEL_KIND_TEXT, "general", "", "", "", []string{mid}); err != nil {
+				return err
+			}
+			// The client offers the owner a setup wizard until this is cleared (UpdateServerSettings.setup_done).
+			if _, err := t.ExecContext(ctx, "INSERT OR REPLACE INTO settings(key, value) VALUES ('needs_setup', '1')"); err != nil {
 				return err
 			}
 		}
@@ -2279,6 +2288,12 @@ func (s *Server) UpdateServerSettings(ctx context.Context, req *connect.Request[
 		}
 		if r.RetentionDays != nil {
 			if _, err := t.ExecContext(ctx, "INSERT INTO settings(key, value) VALUES ('retention_days', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", *r.RetentionDays); err != nil {
+				return err
+			}
+			changed = true
+		}
+		if r.SetupDone {
+			if _, err := t.ExecContext(ctx, "DELETE FROM settings WHERE key = 'needs_setup'"); err != nil {
 				return err
 			}
 			changed = true

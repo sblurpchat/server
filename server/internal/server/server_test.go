@@ -1627,6 +1627,35 @@ func must2[T any](v T, err error) T {
 	return v
 }
 
+// A brand-new community needs setup until an admin says it is done (1286).
+func TestNeedsSetup(t *testing.T) {
+	e := newEnv(t)
+	needs := func() bool {
+		return must(e.client("").srv.GetServerInfo(ctx(), connect.NewRequest(&v1.GetServerInfoRequest{}))).NeedsSetup
+	}
+	if needs() {
+		t.Fatal("an unclaimed community must not need setup yet")
+	}
+	ana, bob := e.join("ana"), e.join("bob")
+	if !needs() {
+		t.Fatal("a community whose owner just joined must need setup")
+	}
+	done := &v1.UpdateServerSettingsRequest{SetupDone: true}
+	_, err := bob.srv.UpdateServerSettings(ctx(), connect.NewRequest(done))
+	wantCode(t, err, connect.CodePermissionDenied)
+	if !needs() {
+		t.Fatal("a member must not clear setup")
+	}
+	must(ana.srv.UpdateServerSettings(ctx(), connect.NewRequest(done)))
+	if needs() {
+		t.Fatal("setup_done must clear needs_setup")
+	}
+	e.join("cy")
+	if needs() {
+		t.Fatal("a later join must not bring setup back")
+	}
+}
+
 // Invite-only communities need a usable invite code to Join (0103).
 func TestInvites(t *testing.T) {
 	e := newEnv(t)

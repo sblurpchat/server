@@ -67,6 +67,7 @@ interface Seed {
   banner?: string; // community banner image (1026)
   headers?: Record<string, string>; // channel name -> header image (1027)
   questions?: string[]; // join questions; a blank or very short answer is refused, like a plugin would
+  fresh?: boolean; // needs setup (1286)
 }
 
 const { OWNER, ADMIN, MODERATOR, MEMBER } = MemberRole;
@@ -339,6 +340,23 @@ const SEEDS: Seed[] = [
     chatter: [],
   },
 ];
+// ?fake=1&setup=1: a brand-new community I own, with only #general, for the setup wizard (1286).
+if (new URLSearchParams(location.search).has("setup"))
+  SEEDS.push({
+    url: "https://saturday.climbers.club",
+    name: "Saturday Climbers",
+    description: "",
+    accent: "#2F8F5B",
+    icon: "",
+    joined: true,
+    fresh: true,
+    members: [["ian", "Ian Langworth", OWNER, ONLINE, ""]],
+    channels: [["", "general", ""]],
+    dms: [],
+    unread: {},
+    messages: {},
+    chatter: [],
+  });
 
 interface Fake {
   info: GetServerInfoResponse;
@@ -385,6 +403,7 @@ function seed(s: Seed, now: number): Fake {
       inviteOnly: !!s.invite,
       joinQuestions: s.questions ?? [],
       banner: s.banner ? fakeImage(s.banner, 1200, 400) : undefined,
+      needsSetup: !!s.fresh,
     }),
     invites: s.invite ? [create(InviteSchema, { code: s.invite, createdAtMs: BigInt(now - D * 60_000) })] : [],
     joined: s.joined,
@@ -783,14 +802,15 @@ function service(f: Fake) {
         f.invites = f.invites.filter((i) => i.code !== req.code);
         return {};
       },
-      updateServerSettings(req: { inviteOnly?: boolean; channelMode: ChannelMode; description?: string; bannerId?: string; iconId?: string; retentionDays?: number }) {
+      updateServerSettings(req: { inviteOnly?: boolean; channelMode: ChannelMode; description?: string; bannerId?: string; iconId?: string; retentionDays?: number; setupDone: boolean }) {
         if (req.retentionDays !== undefined) f.info.retentionDays = req.retentionDays;
         admin();
+        if (req.setupDone) f.info.needsSetup = false;
         if (req.inviteOnly !== undefined) f.info.inviteOnly = req.inviteOnly;
         if (req.description !== undefined) f.info.description = req.description.trim();
         if (req.bannerId !== undefined) f.info.banner = req.bannerId ? image(req.bannerId) : undefined;
         if (req.iconId !== undefined) f.info.iconUrl = req.iconId ? image(req.iconId).url : "";
-        if (req.description !== undefined || req.bannerId !== undefined || req.iconId !== undefined) emit(f, { case: "serverUpdated", value: true });
+        if (req.description !== undefined || req.bannerId !== undefined || req.iconId !== undefined || req.setupDone) emit(f, { case: "serverUpdated", value: true });
         if (req.channelMode && req.channelMode !== f.mode) {
           f.mode = req.channelMode;
           // OPT_IN to ROLES puts everyone in everything they can see.

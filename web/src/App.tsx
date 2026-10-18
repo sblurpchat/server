@@ -2,6 +2,7 @@ import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent } from "react";
 import { ChannelDialog, CommunitySettings, Invites, PERMISSION, RoleChips, ReportDialog, ReportsDialog } from "./Admin";
 import { ChannelView, openProfile, PeoplePicker, RightPane } from "./Chat";
+import { SetupWizard, useSetupPrompt } from "./Setup";
 import { create } from "@bufbuild/protobuf";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, MemberSchema, type Channel, type GetServerInfoResponse, type Member } from "./gen/sblurp/v1/sblurp_pb";
 import {
@@ -159,6 +160,7 @@ const onNarrow = (f: () => void) => (NARROW.addEventListener("change", f), () =>
 
 /** Skip past the rail and sidebar: to the message box, else the message list, else the main area. */
 function Shell() {
+  useSetupPrompt();
   const url = useApp((s) => s.url);
   const c = useApp((s) => s.cs[s.url]);
   const pane = useApp((s) => s.pane);
@@ -406,6 +408,11 @@ function Sidebar({ c }: { c: Community }) {
           </button>
           {admin && (
             <>
+              {c.info?.needsSetup && (
+                <button role="menuitem" onClick={() => set({ modal: { t: "setup" } })}>
+                  <Icon name="sliders" size={18} /> Set up community
+                </button>
+              )}
               <button role="menuitem" onClick={() => set({ modal: { t: "channel" } })}>
                 <Icon name="plus" size={18} /> Create channel
               </button>
@@ -866,6 +873,8 @@ function Modals() {
       return <ReportDialog {...modal} />;
     case "reports":
       return <ReportsDialog />;
+    case "setup":
+      return <SetupWizard />;
     case "lightbox":
       return (
         <Dialog label={modal.name} className="lightbox">

@@ -6,6 +6,7 @@ import { useSyncExternalStore } from "react";
 import type { SettingsTab } from "./Admin";
 import { AUTH_URL, fetchAppearance, fetchCommunities, fetchProfile, finishLogin, saveAppearance, saveCommunities, getToken, hasSession, SignedOutError, signOut as authSignOut, startLogin, type Profile } from "./auth";
 import { loadEmoji } from "./CustomEmoji";
+import { templateChannels, type Template } from "./templates";
 import { fakeTransport, fakeUpload, FAKE_URLS, startSimulation } from "./fake";
 import {
   AttachmentSchema,
@@ -113,6 +114,7 @@ export type Modal =
   | { t: "block"; url: string; memberId: string }
   | { t: "report"; url: string; message: Message }
   | { t: "reports" }
+  | { t: "setup" }
   | { t: "lightbox"; src: string; name: string; video?: boolean };
 
 export interface State {
@@ -252,6 +254,7 @@ const toInfo = (i: GetServerInfoResponse): Info => ({
   inviteOnly: i.inviteOnly,
   bannerUrl: i.banner?.url,
   retentionDays: i.retentionDays,
+  needsSetup: i.needsSetup,
 });
 
 /** Resolve an attachment or icon URL relative to its server. */
@@ -795,6 +798,40 @@ export async function setInviteOnly(url: string, inviteOnly: boolean) {
 export async function setCommunityProfile(url: string, req: { description?: string; bannerId?: string; iconId?: string }) {
   const r = await api(url).server.updateServerSettings(req);
   patchC(url, (c) => ({ ...c, info: c.info && { ...c.info, description: r.description, bannerUrl: r.banner?.url, iconUrl: r.iconUrl } }));
+}
+
+// ---------------------------------------------------------------------------
+// Setup wizard (1286). Applied with the ordinary admin calls, so a failure leaves what was
+// made and a retry skips channels that already exist.
+// ---------------------------------------------------------------------------
+
+export async function finishSetup(url: string) {
+  await api(url).server.updateServerSettings({ setupDone: true });
+  patchC(url, (c) => ({ ...c, info: c.info && { ...c.info, needsSetup: false } }));
+}
+
+export async function applyTemplate(url: string, t: Template, opts: { description: string; inviteOnly: boolean; message: string }) {
+  const { chat } = api(url);
+  const name = state.cs[url]?.info?.name ?? "";
+  await setCommunityProfile(url, { description: opts.description });
+  await setInviteOnly(url, opts.inviteOnly);
+  const mode = t.optIn ? ChannelMode.OPT_IN : ChannelMode.ROLES;
+  if (state.cs[url]?.mode !== mode) await setChannelMode(url, mode);
+  // Positions are one sequence across sections, so sections show in template order.
+  let welcome = "";
+  for (const [i, tc] of templateChannels(t).entries()) {
+    let ch = Object.values(state.cs[url]?.channels ?? {}).find((c) => !isDM(c) && c.name === tc.name);
+    if (!ch) {
+      ch = (await chat.createChannel({ name: tc.name, kind: tc.private ? ChannelKind.PRIVATE : ChannelKind.TEXT, topic: tc.topic, category: tc.category })).channel!;
+      local(url, { case: "channelCreated", value: ch });
+    }
+    if (ch.position !== i || ch.category !== tc.category || (tc.topic && ch.topic !== tc.topic)) await updateChannel(url, { channelId: ch.id, topic: tc.topic || undefined, category: tc.category, position: i });
+    if (tc.default && !ch.isDefault) await setChannelAccess(url, ch.id, [], true);
+    if (tc.name === t.welcome) welcome = ch.id;
+  }
+  if (opts.message.trim() && welcome) await chat.sendMessage({ channelId: welcome, text: opts.message.trim().replaceAll("{name}", name), threadRootId: "", clientId: crypto.randomUUID(), attachmentIds: [] });
+  await finishSetup(url);
+  if (welcome) selectChannel(url, welcome);
 }
 
 // ---------------------------------------------------------------------------

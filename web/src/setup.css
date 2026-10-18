@@ -1,0 +1,196 @@
+/* Setup wizard (1286). Tokens from app.css. */
+.dialog.setup {
+  width: min(780px, calc(100vw - 32px));
+  padding: 0;
+}
+.setup-step {
+  padding: 24px;
+  animation: setup-in 160ms ease-out;
+}
+@keyframes setup-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.setup-step > p.muted {
+  margin-top: 4px;
+}
+.tpl-grid {
+  border: 0;
+  padding: 0;
+  margin: 18px 0 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.tpl {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease-out,
+    box-shadow 120ms ease-out,
+    background-color 120ms ease-out;
+}
+.tpl:hover {
+  border-color: color-mix(in srgb, var(--raspberry) 45%, var(--line));
+}
+.tpl:has(:checked) {
+  border-color: var(--raspberry);
+  box-shadow: inset 0 0 0 1px var(--raspberry);
+  background: color-mix(in srgb, var(--selected) 45%, var(--paper));
+}
+.tpl:has(:focus-visible) {
+  outline: 2px solid var(--raspberry);
+  outline-offset: 2px;
+}
+/* The real radio covers the card, so clicks, arrow keys and screen readers all reach it. */
+.tpl input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.tpl-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+}
+.tpl-head .icon {
+  color: var(--raspberry);
+}
+.tpl-blurb {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--graphite);
+}
+/* A tiny sidebar: what the channel list will look like. */
+.tpl-preview {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  height: 116px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--frost);
+  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+  align-content: start;
+}
+.tpl-sec {
+  display: grid;
+  gap: 1px;
+}
+.tpl-cat {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--graphite);
+}
+.tpl-chan {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+.tpl-chan .icon {
+  color: var(--graphite);
+}
+.setup-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 20px;
+}
+/* The template list can be taller than the screen: keep Skip and Continue in reach. */
+.tpl-grid + .setup-foot,
+.tpl-grid + .error + .setup-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 8px -24px -24px;
+  padding: 12px 24px 24px;
+  background: var(--raised);
+}
+@media (max-width: 520px) {
+  .tpl-grid + .setup-foot,
+  .tpl-grid + .error + .setup-foot {
+    margin: 8px -16px -20px;
+    padding: 12px 16px 20px;
+  }
+}
+.setup-step.stack .setup-foot {
+  margin-top: 4px;
+}
+.next-steps {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.next-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  text-align: left;
+  transition: background-color 120ms ease-out;
+}
+.next-step:hover {
+  background: var(--hover);
+}
+.next-step > .icon {
+  rotate: -90deg;
+  color: var(--graphite);
+}
+.next-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--selected);
+  color: var(--raspberry);
+  flex: none;
+}
+.next-text {
+  display: grid;
+  flex: 1;
+  line-height: 1.35;
+}
+.next-text small {
+  font-size: 0.8125rem;
+  color: var(--graphite);
+}
+/* Phones: one column, and only the chosen card shows its channel list. */
+@media (max-width: 520px) {
+  .setup-step {
+    padding: 20px 16px;
+  }
+  .tpl-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .tpl:not(:has(:checked)) .tpl-preview {
+    display: none;
+  }
+}

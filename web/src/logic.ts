@@ -32,6 +32,8 @@ export interface Info {
   bannerUrl?: string;
   /** Delete messages after this many days; 0 or unset keeps them forever (1072). */
   retentionDays?: number;
+  /** A brand-new community: its owner gets the setup wizard (1286). */
+  needsSetup?: boolean;
 }
 
 export interface MsgList {

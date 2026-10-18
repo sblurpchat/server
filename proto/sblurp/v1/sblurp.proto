@@ -158,6 +158,9 @@ message GetServerInfoResponse {
   // many days, and ListMessages stops returning them. Clients hide loaded
   // messages older than now minus this many days; no per-message events.
   int32 retention_days = 12;
+  // A brand-new community whose owner has not finished or skipped the setup
+  // wizard yet. Clients show the owner the wizard; others ignore it.
+  bool needs_setup = 13;
 }
 
 // ---------------------------------------------------------------------------
@@ -565,6 +568,7 @@ message UpdateServerSettingsRequest {
   optional string banner_id = 4;      // an uploaded image's id (POST /upload); "" removes it
   optional string icon_id = 5;        // rail icon, an uploaded image's id; "" falls back to -icon-url
   optional int32 retention_days = 6;  // 0 = keep forever, else 1 to 3650
+  bool setup_done = 7;                // true clears GetServerInfoResponse.needs_setup
 }
 message UpdateServerSettingsResponse {
   bool invite_only = 1;

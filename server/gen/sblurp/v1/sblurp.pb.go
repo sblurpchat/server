@@ -1109,6 +1109,9 @@ type GetServerInfoResponse struct {
 	// many days, and ListMessages stops returning them. Clients hide loaded
 	// messages older than now minus this many days; no per-message events.
 	RetentionDays int32 `protobuf:"varint,12,opt,name=retention_days,json=retentionDays,proto3" json:"retention_days,omitempty"`
+	// A brand-new community whose owner has not finished or skipped the setup
+	// wizard yet. Clients show the owner the wizard; others ignore it.
+	NeedsSetup    bool `protobuf:"varint,13,opt,name=needs_setup,json=needsSetup,proto3" json:"needs_setup,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1225,6 +1228,13 @@ func (x *GetServerInfoResponse) GetRetentionDays() int32 {
 		return x.RetentionDays
 	}
 	return 0
+}
+
+func (x *GetServerInfoResponse) GetNeedsSetup() bool {
+	if x != nil {
+		return x.NeedsSetup
+	}
+	return false
 }
 
 type JoinRequest struct {
@@ -5683,6 +5693,7 @@ type UpdateServerSettingsRequest struct {
 	BannerId      *string                `protobuf:"bytes,4,opt,name=banner_id,json=bannerId,proto3,oneof" json:"banner_id,omitempty"`                                // an uploaded image's id (POST /upload); "" removes it
 	IconId        *string                `protobuf:"bytes,5,opt,name=icon_id,json=iconId,proto3,oneof" json:"icon_id,omitempty"`                                      // rail icon, an uploaded image's id; "" falls back to -icon-url
 	RetentionDays *int32                 `protobuf:"varint,6,opt,name=retention_days,json=retentionDays,proto3,oneof" json:"retention_days,omitempty"`                // 0 = keep forever, else 1 to 3650
+	SetupDone     bool                   `protobuf:"varint,7,opt,name=setup_done,json=setupDone,proto3" json:"setup_done,omitempty"`                                  // true clears GetServerInfoResponse.needs_setup
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5757,6 +5768,13 @@ func (x *UpdateServerSettingsRequest) GetRetentionDays() int32 {
 		return *x.RetentionDays
 	}
 	return 0
+}
+
+func (x *UpdateServerSettingsRequest) GetSetupDone() bool {
+	if x != nil {
+		return x.SetupDone
+	}
+	return false
 }
 
 type UpdateServerSettingsResponse struct {
@@ -7410,7 +7428,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\rlast_read_seq\x18\x02 \x01(\x03R\vlastReadSeq\x12!\n" +
 	"\funread_count\x18\x03 \x01(\x05R\vunreadCount\x12#\n" +
 	"\rmention_count\x18\x04 \x01(\x05R\fmentionCount\"\x16\n" +
-	"\x14GetServerInfoRequest\"\xbb\x03\n" +
+	"\x14GetServerInfoRequest\"\xdc\x03\n" +
 	"\x15GetServerInfoResponse\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x19\n" +
@@ -7425,7 +7443,9 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x0ejoin_questions\x18\n" +
 	" \x03(\tR\rjoinQuestions\x12-\n" +
 	"\x06banner\x18\v \x01(\v2\x15.sblurp.v1.AttachmentR\x06banner\x12%\n" +
-	"\x0eretention_days\x18\f \x01(\x05R\rretentionDays\"\x9c\x01\n" +
+	"\x0eretention_days\x18\f \x01(\x05R\rretentionDays\x12\x1f\n" +
+	"\vneeds_setup\x18\r \x01(\bR\n" +
+	"needsSetup\"\x9c\x01\n" +
 	"\vJoinRequest\x12!\n" +
 	"\fdisplay_name\x18\x01 \x01(\tR\vdisplayName\x12\x1d\n" +
 	"\n" +
@@ -7706,7 +7726,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\ainvites\x18\x01 \x03(\v2\x11.sblurp.v1.InviteR\ainvites\")\n" +
 	"\x13RevokeInviteRequest\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\"\x16\n" +
-	"\x14RevokeInviteResponse\"\xde\x02\n" +
+	"\x14RevokeInviteResponse\"\xfd\x02\n" +
 	"\x1bUpdateServerSettingsRequest\x12$\n" +
 	"\vinvite_only\x18\x01 \x01(\bH\x00R\n" +
 	"inviteOnly\x88\x01\x01\x129\n" +
@@ -7714,7 +7734,9 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\vdescription\x18\x03 \x01(\tH\x01R\vdescription\x88\x01\x01\x12 \n" +
 	"\tbanner_id\x18\x04 \x01(\tH\x02R\bbannerId\x88\x01\x01\x12\x1c\n" +
 	"\aicon_id\x18\x05 \x01(\tH\x03R\x06iconId\x88\x01\x01\x12*\n" +
-	"\x0eretention_days\x18\x06 \x01(\x05H\x04R\rretentionDays\x88\x01\x01B\x0e\n" +
+	"\x0eretention_days\x18\x06 \x01(\x05H\x04R\rretentionDays\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"setup_done\x18\a \x01(\bR\tsetupDoneB\x0e\n" +
 	"\f_invite_onlyB\x0e\n" +
 	"\f_descriptionB\f\n" +
 	"\n" +
