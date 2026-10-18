@@ -99,7 +99,8 @@ export function pond(hero: HTMLElement, logo: HTMLElement, copy: HTMLElement[]):
     for (const r of rows) r.off = (r.off + r.v * dt + r.w) % r.w;
     if ((spotAt -= dt) <= 0) {
       spotAt = rand(0.5, 1.5) / RATE;
-      const r = pick(rows), [i, p, pw] = pick(r.starts);
+      // Highlights stay in the middle 66% so none flash at the very top or bottom (1251).
+      const r = pick(rows.filter((r) => r.y > H * 0.17 && r.y < H * 0.83)), [i, p, pw] = pick(r.starts);
       spots.push({ r, i, p, pw, age: 0 });
     }
     spots = spots.filter((s) => (s.age += dt) < 3.4);
