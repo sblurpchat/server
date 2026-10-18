@@ -157,7 +157,7 @@
   color-scheme: light;
 }
 
-/* Cocoa (1191): warm brown terminal, cream text, amber signals, monospace by default. */
+/* Cocoa (1191): warm brown terminal, cream text, amber signals. Themes set colors only, never the font (1267). */
 [data-theme="cocoa"] {
   --ink: #f0e4d0;
   --rail: #171310;
@@ -182,7 +182,6 @@
   --away: #e8b06a;
   --code-bg: #1f1a16;
   --tip: #120f0c;
-  --sans: "Iosevka", var(--mono);
   color-scheme: dark;
 }
 /* Colorblind safe: blue and orange signals (Okabe-Ito), never red against green. */
@@ -372,7 +371,7 @@
   font-weight: 700;
   font-display: swap;
 }
-/* A picked font beats the theme's own (Cocoa is monospace by default). */
+/* The picked font (1267: themes no longer set one). */
 :root[data-font="schibsted"] {
   --sans: "Schibsted Grotesk", system-ui, sans-serif;
 }
@@ -4785,4 +4784,24 @@ label:has(> input.visually-hidden:focus-visible) {
   .emoji-bar .btn {
     margin-left: auto;
   }
+}
+
+/* Local dev marker (main.tsx adds it only under the Vite dev server). */
+.devline {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 3px;
+  background: #f97316;
+  z-index: 2147483647;
+  pointer-events: none;
+}
+.devline span {
+  position: absolute;
+  top: 3px;
+  right: 12px;
+  padding: 0 5px 1px;
+  border-radius: 0 0 4px 4px;
+  background: #f97316;
+  color: #1c0a00;
+  font: 600 10px/14px system-ui, sans-serif;
 }

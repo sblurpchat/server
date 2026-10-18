@@ -404,7 +404,7 @@ export function browseDetail(ch: Channel): string {
 export const THEMES = ["system", "light", "dark", "midnight", "contrast", "cvd", "cola", "mint", "cocoa", "fjord", "sand", "grape", "black", "custom"] as const;
 export type Theme = (typeof THEMES)[number];
 const DENSITIES = ["cozy", "compact", "irc"] as const;
-/** "default" is the theme's own font (Schibsted Grotesk, or Iosevka in Cocoa). */
+/** "default" is Schibsted Grotesk. */
 export const FONTS = ["default", "schibsted", "system", "inter", "serif", "pt-mono", "iosevka"] as const;
 export interface Appearance {
   theme: Theme;

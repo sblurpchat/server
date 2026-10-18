@@ -903,7 +903,7 @@ const THEME_NAMES: Record<Theme, string> = {
   custom: "Custom",
 };
 const FONT_NAMES: Record<Look["font"], string> = {
-  default: "Theme default",
+  default: "Default",
   schibsted: "Schibsted Grotesk",
   system: "System",
   inter: "Inter",
