@@ -3293,6 +3293,171 @@ li.sw-empty {
   color: var(--graphite);
   font-size: 0.78125rem;
 }
+/* Text snippets (1269): a code card collapsed to its first lines. */
+.snippet {
+  width: min(720px, 100%);
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--code-bg);
+  overflow: hidden;
+}
+.snippet-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 4px 6px 4px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  font-size: 0.8125rem;
+  color: var(--graphite);
+}
+.snippet-head > svg {
+  flex: none;
+  color: var(--raspberry);
+}
+.snippet-head b {
+  color: var(--text);
+  font-size: 0.875rem;
+}
+.snippet-head .muted {
+  white-space: nowrap;
+}
+.snippet-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.snippet-tools .btn {
+  height: 28px;
+  padding: 0 8px;
+  font-size: 0.8125rem;
+}
+.snippet-seg {
+  display: flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 8px;
+  background: var(--frost);
+  border: 1px solid var(--line);
+}
+.snippet-seg button {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.78125rem;
+  font-weight: 600;
+  color: var(--graphite);
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.snippet-seg button[aria-pressed="true"] {
+  background: var(--raised);
+  color: var(--ink);
+  box-shadow: 0 1px 2px var(--shadow-c);
+}
+.snippet-body {
+  max-height: 13.5em;
+  overflow: hidden;
+  transition: max-height 180ms ease-out;
+}
+.snippet[data-open="true"] .snippet-body {
+  max-height: 70vh;
+  overflow: auto;
+}
+.snippet:not([data-open="true"]) .snippet-body {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 2.5em), transparent);
+}
+.snippet-body pre {
+  margin: 0;
+  padding: 10px 12px;
+  font: 0.8125rem/1.55 var(--mono);
+  tab-size: 4;
+}
+.snippet:not([data-open="true"]) .snippet-body pre {
+  overflow-x: hidden;
+}
+.snippet[data-open="true"] .snippet-body pre {
+  width: max-content;
+  min-width: 100%;
+}
+.snippet-body > .skel-set,
+.snippet-body > p {
+  padding: 10px 12px;
+}
+.snippet-md {
+  padding: 12px 16px;
+  background: var(--paper);
+  font-size: 0.9375rem;
+}
+.snippet-md p {
+  white-space: normal;
+}
+.snippet-md :is(p, ul, ol, blockquote, pre, hr, .md-h) + :is(p, ul, ol, blockquote, pre, hr, .md-h) {
+  margin-top: 8px;
+}
+.snippet-md ul,
+.snippet-md ol {
+  padding-left: 22px;
+}
+.snippet-md hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.md-h {
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ink);
+}
+.md-h1 { font-size: 1.375rem; letter-spacing: -0.01em; }
+.md-h2 { font-size: 1.1875rem; }
+.md-h3 { font-size: 1.0625rem; }
+.snippet-md .md-h1,
+.snippet-md .md-h2 {
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+.snippet-md * + .md-h {
+  margin-top: 16px;
+}
+.snippet-more {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--raspberry);
+}
+.snippet-more:hover {
+  background: var(--hover);
+}
+.snippet-more svg {
+  transition: transform 150ms ease-out;
+}
+.snippet-more[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+@media (max-width: 767px) {
+  .snippet-head .muted,
+  .snippet-tools .btn > span { display: none; }
+}
+.composer-hint {
+  padding: 0 12px 6px;
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--graphite);
+  animation: hint-in 150ms ease-out;
+}
+.composer-hint kbd {
+  font-size: 0.6875rem;
+}
+@keyframes hint-in {
+  from { opacity: 0; }
+}
 .send-failed {
   display: flex;
   align-items: center;

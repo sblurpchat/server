@@ -567,6 +567,8 @@ export type Block =
   | { t: "p"; c: Inline[] }
   | { t: "quote"; c: Inline[] }
   | { t: "pre"; lang: string; v: string }
+  | { t: "h"; level: number; c: Inline[] }
+  | { t: "hr" }
   | { t: "ul"; items: Inline[][] }
   | { t: "ol"; start: number; items: Inline[][] };
 
@@ -592,7 +594,8 @@ export function parseInline(s: string): Inline[] {
   return out;
 }
 
-export function parseMarkdown(text: string): Block[] {
+/** `doc` adds headings and rules, for Markdown files (1269); chat messages keep `#` as text. */
+export function parseMarkdown(text: string, doc = false): Block[] {
   const blocks: Block[] = [];
   const lines = text.split("\n");
   let para: string[] = [];
@@ -618,6 +621,12 @@ export function parseMarkdown(text: string): Block[] {
         i = end;
         continue;
       }
+    }
+    const h = doc && /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
+    if (h || (doc && /^\s*([-*_])(\s*\1){2,}\s*$/.test(line))) {
+      flush();
+      blocks.push(h ? { t: "h", level: h[1].length, c: parseInline(h[2]) } : { t: "hr" });
+      continue;
     }
     const li = /^\s*(?:([-*•])|(\d{1,9})[.)])\s+(.*)$/.exec(line);
     if (li) {

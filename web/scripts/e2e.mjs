@@ -35,6 +35,15 @@ try {
   await sent.waitFor();
   if ((await composer.inputValue()) !== "") throw new Error("composer not cleared after send");
 
+  // Shift+Enter is still a new line; Cmd/Ctrl+Shift+Enter posts the box as a highlighted snippet (1269).
+  await composer.fill("def kiln(temp):");
+  await composer.press("Shift+Enter");
+  await composer.pressSequentially("    return temp > 1200");
+  if (!(await composer.inputValue()).includes("\n")) throw new Error("Shift+Enter did not add a new line");
+  await composer.press("ControlOrMeta+Shift+Enter");
+  await page.locator(".channel .snippet", { hasText: "snippet.py" }).locator(".hljs-keyword").first().waitFor();
+  if ((await composer.inputValue()) !== "") throw new Error("composer not cleared after snippet");
+
   // Open a thread on it and reply.
   await sent.hover();
   await sent.getByRole("button", { name: "Reply in thread" }).click();

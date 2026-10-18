@@ -30,6 +30,7 @@ const ICONS = {
   menu: "M4 12L20 12M4 6L20 6M4 18L20 18",
   trash: "M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11L10 17M14 11L14 17",
   file: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7ZM14 2v4a2 2 0 0 0 2 2h4",
+  fileCode: "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7ZM14 2v4a2 2 0 0 0 2 2h4M10 12.5 8 15l2 2.5M14 12.5l2 2.5-2 2.5",
   back: "M12 19l-7-7 7-7M19 12H5",
   copy: "M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-10a2 2 0 0 1 2 -2zM4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2",
   link: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71",
@@ -516,15 +517,14 @@ function renderInline(nodes: Inline[], members: Record<string, Member>, meId: st
   });
 }
 
-/** A fenced block. With a language, the highlighter loads on first use and colors it in place. */
+/** A fenced block. The highlighter loads on first use, guesses the language when none is given, and colors it in place. */
 function CodeBlock({ lang, code }: { lang: string; code: string }) {
   const key = `${lang}\n${code}`;
   const [hl, setHl] = useState({ key: "", html: null as string | null });
   useEffect(() => {
-    if (!lang) return;
     let live = true;
     import("./highlight").then(
-      (m) => live && setHl({ key, html: m.highlight(code, lang) }),
+      (m) => live && setHl({ key, html: m.highlight(code, lang || m.detectLang(code)) }),
       () => {},
     );
     return () => {
@@ -540,17 +540,26 @@ export function Markdown({
   members,
   meId,
   onMention,
+  doc = false,
 }: {
   text: string;
   members: Record<string, Member>;
   meId?: string;
   onMention: (id: string, el: HTMLElement) => void;
+  doc?: boolean;
 }) {
   return (
     <>
-      {parseMarkdown(text).map((b, i) =>
+      {parseMarkdown(text, doc).map((b, i) =>
         b.t === "pre" ? (
           <CodeBlock key={i} lang={b.lang} code={b.v} />
+        ) : b.t === "hr" ? (
+          <hr key={i} />
+        ) : b.t === "h" ? (
+          // File headings sit inside a message, so they start below the page's own levels.
+          <p key={i} className={`md-h md-h${b.level}`} role="heading" aria-level={Math.min(6, b.level + 2)}>
+            {renderInline(b.c, members, meId, onMention)}
+          </p>
         ) : b.t === "ul" || b.t === "ol" ? (
           (() => {
             const L = b.t;

@@ -1448,7 +1448,7 @@ function CommunityDialog({ kind }: { kind: "info" | "invite" | "leave" }) {
   );
 }
 
-const MOD = /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl";
+export const MOD = /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl";
 const KEYS: [keys: string[][], what: string][] = [
   [[[MOD, "K"]], "Jump to a channel or person"],
   [[[MOD, "/"]], "Show keyboard shortcuts"],
@@ -1458,6 +1458,7 @@ const KEYS: [keys: string[][], what: string][] = [
   [[["Esc"]], "Cancel an edit, close the side panel or menu"],
   [[["Enter"]], "Send a message"],
   [[["Shift", "Enter"]], "New line in a message"],
+  [[[MOD, "Shift", "Enter"]], "Post the message box as a snippet, for long code or text"],
   [[["Shift", "Drop"]], "Send dropped files right away, without the message box"],
   [[["↑"]], "Edit your last message, from an empty message box"],
   [[["Tab"]], "Move to the message list; Tab again reaches a message's actions"],

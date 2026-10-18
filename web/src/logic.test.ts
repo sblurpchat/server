@@ -212,6 +212,19 @@ describe("markdown", () => {
     expect(parseMarkdown("-not a list")).toEqual([{ t: "p", c: t("-not a list") }]);
   });
 
+  it("parses headings and rules only in Markdown files, never raw HTML", () => {
+    const t = (v: string) => [{ t: "text", v }];
+    expect(parseMarkdown("# Title ##\nbody\n---\n###### six\n####### seven\n<script>x</script>", true)).toEqual([
+      { t: "h", level: 1, c: t("Title") },
+      { t: "p", c: t("body") },
+      { t: "hr" },
+      { t: "h", level: 6, c: t("six") },
+      { t: "p", c: t("####### seven\n<script>x</script>") },
+    ]);
+    expect(parseMarkdown("# not a heading in chat")).toEqual([{ t: "p", c: t("# not a heading in chat") }]);
+    expect(parseMarkdown("[x](javascript:alert(1))", true)).toEqual([{ t: "p", c: t("[x](javascript:alert(1))") }]);
+  });
+
   it("treats an unclosed fence as text", () => {
     expect(parseMarkdown("```\nno end")).toEqual([{ t: "p", c: [{ t: "text", v: "```\nno end" }] }]);
   });

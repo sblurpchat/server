@@ -1,5 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type FormEvent, type KeyboardEvent } from "react";
-import { useCountdown } from "./App";
+import { MOD, useCountdown } from "./App";
 import { Glyph, useCustomMatches } from "./CustomEmoji";
 import { LinkPreviews } from "./LinkPreview";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
@@ -66,7 +66,7 @@ import {
   unfurled,
   unfurlKey,
 } from "./store";
-import { Avatar, Dialog, Editable, EMOJI, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, Resizer, Skeleton, useClamped } from "./ui";
+import { Avatar, CopyButton, Dialog, Editable, EMOJI, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, Resizer, Skeleton, useClamped } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
 export const openProfile = (url: string, memberId: string, el: HTMLElement) =>
@@ -759,6 +759,8 @@ function AttachmentView({ url, a, m }: { url: string; a: Attachment; m: Message 
       </div>
     );
   }
+  // ponytail: 1 MB cap on inline text; bigger files stay a download card.
+  if (a.contentType.startsWith("text/") && Number(a.size) <= 1 << 20) return <Snippet url={url} a={a} m={m} src={src} />;
   return (
     <a className="att-file" href={src} download={a.name} target="_blank" rel="noopener noreferrer">
       <span className="att-icon">
@@ -769,6 +771,78 @@ function AttachmentView({ url, a, m }: { url: string; a: Attachment; m: Message 
         <small>{formatBytes(Number(a.size))}</small>
       </span>
     </a>
+  );
+}
+
+/** A text file shown inline, like Slack's snippets (1269): highlighted, collapsed to its first lines,
+ * and rendered when it is Markdown. The file is fetched as text and never runs as HTML. */
+function Snippet({ url, a, m, src }: { url: string; a: Attachment; m: Message; src: string }) {
+  const c = useC();
+  const [code, setCode] = useState<string | null>(null);
+  const [hl, setHl] = useState<{ html: string | null; label: string }>({ html: null, label: "" });
+  const [open, setOpen] = useState(false);
+  const [raw, setRaw] = useState(false);
+  const body = useRef<HTMLDivElement>(null);
+  const ext = (a.name.includes(".") ? a.name.split(".").pop()! : a.name).toLowerCase();
+  const md = ext === "md" || ext === "markdown";
+  useEffect(() => {
+    let live = true;
+    fetch(src)
+      .then((r) => (r.ok ? r.text() : Promise.reject(r.status === 403 && refreshMessage(url, m))))
+      .then(async (t) => {
+        const h = await import("./highlight");
+        const lang = ext !== "txt" && h.langLabel(ext) !== "Plain text" ? ext : h.detectLang(t);
+        if (live) (setCode(t), setHl({ html: h.highlight(t, lang), label: h.langLabel(lang) }));
+      })
+      .catch(() => live && setCode(""));
+    return () => {
+      live = false;
+    };
+  }, [src]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cut = useClamped(body, `${code} ${raw}`);
+  const lines = code ? code.split("\n").length : 0;
+  return (
+    <figure className="snippet" data-open={open} aria-busy={code === null}>
+      <figcaption className="snippet-head">
+        <Icon name="fileCode" size={16} />
+        <b className="truncate">{a.name}</b>
+        <span className="muted">{[hl.label, lines ? count(lines, "line", "lines") : formatBytes(Number(a.size))].filter(Boolean).join(" · ")}</span>
+        <span className="snippet-tools">
+          {md && code && (
+            <span className="snippet-seg" role="group" aria-label="Show as">
+              <button type="button" aria-pressed={!raw} onClick={() => setRaw(false)}>
+                Rendered
+              </button>
+              <button type="button" aria-pressed={raw} onClick={() => setRaw(true)}>
+                Raw
+              </button>
+            </span>
+          )}
+          {!!code && <CopyButton text={code} label={`Copy ${a.name}`} />}
+          <a className="icon-btn" href={src} download={a.name} aria-label={`Download ${a.name}`} title="Download">
+            <Icon name="download" size={16} />
+          </a>
+        </span>
+      </figcaption>
+      <div className="snippet-body" ref={body} id={`snip-${a.id}`}>
+        {code === null ? (
+          <Skeleton rows={3} />
+        ) : code === "" ? (
+          <p className="muted small">Couldn't load this file. Download it instead.</p>
+        ) : md && !raw ? (
+          <div className="snippet-md msg-text">
+            <Markdown doc text={code} members={c.members} meId={c.me?.id} onMention={(id, el) => openProfile(url, id, el)} />
+          </div>
+        ) : (
+          <pre>{hl.html === null ? <code>{code}</code> : <code dangerouslySetInnerHTML={{ __html: hl.html }} />}</pre>
+        )}
+      </div>
+      {(cut || open) && (
+        <button type="button" className="snippet-more" aria-expanded={open} aria-controls={`snip-${a.id}`} onClick={() => setOpen(!open)}>
+          <Icon name="chevron" size={16} /> {open ? "Collapse" : lines > 1 ? `Show all ${lines} lines` : "Show all"}
+        </button>
+      )}
+    </figure>
   );
 }
 
@@ -910,6 +984,25 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
     files.forEach(revoke);
     setFiles([]);
   };
+
+  // Cmd/Ctrl+Shift+Enter posts the box as a text file named for its language, like Slack's snippets (1269).
+  const postSnippet = async () => {
+    const code = text.replace(/^\s*\n|\s+$/g, "");
+    if (uploading || !code) return;
+    const { detectLang, snippetName } = await import("./highlight");
+    const file = new File([code], snippetName(detectLang(code)), { type: "text/plain" });
+    setDraft(key, "");
+    files.forEach(revoke);
+    setFiles([]);
+    try {
+      await send(url, channelId, rootId, "", [...ready, await upload(url, file)]);
+    } catch (e) {
+      // Nothing is lost: the text and files come back with the error on a chip.
+      setDraft(key, text);
+      setFiles([...files, { id: crypto.randomUUID(), name: file.name, error: errorText(e, c.info?.name) }]);
+    }
+  };
+  const longText = text.length > 600 || text.split("\n").length > 6;
 
   // Fade the chip out, then drop it; with motion reduced there is no transition, so drop at once.
   const remove = (f: Pending, el: HTMLElement) => {
@@ -1072,6 +1165,11 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
             }}
             onKeyDown={(e) => {
               if (e.nativeEvent.isComposing) return;
+              if (e.key === "Enter" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                void postSnippet();
+                return;
+              }
               if (options.length) {
                 const d = listStep(e);
                 if (d) {
@@ -1104,10 +1202,15 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
               }
             }}
           />
-          <button className="send" aria-label="Send" disabled={uploading || (!text.trim() && !ready.length)}>
+          <button className="send" aria-label="Send" title={`Send (Enter). ${MOD} Shift Enter sends it as a snippet.`} disabled={uploading || (!text.trim() && !ready.length)}>
             <Icon name="send" size={18} />
           </button>
         </div>
+        {longText && (
+          <p className="composer-hint">
+            Long text? <kbd>{MOD}</kbd> <kbd>Shift</kbd> <kbd>Enter</kbd> posts it as a snippet.
+          </p>
+        )}
       </div>
       {rootId && <TypingLine c={c} k={listKey(channelId, rootId)} />}
     </form>
