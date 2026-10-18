@@ -2783,6 +2783,11 @@ li.sw-empty {
   content-visibility: auto;
   contain-intrinsic-size: auto 64px;
 }
+/* That also clips paint to the row, which cut off the toolbar above it (1289). */
+.channel .msg:hover,
+.channel .msg:focus-within {
+  content-visibility: visible;
+}
 .msg[data-head="true"] {
   margin-top: 14px;
   padding-top: 3px;
