@@ -15,8 +15,8 @@ import (
 var splashLogo []byte
 
 // splash is the page a browser sees at the server's root: what this is,
-// and the quickest way in. Invite-only servers say so; the QR code opens
-// the web client's join screen for this server.
+// and the quickest way in: a QR code and a button that both open the web
+// client's join screen for this server. Invite-only servers say so once.
 func (s *Server) splash(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var members int
@@ -86,45 +86,37 @@ var splashPage = template.Must(template.New("splash").Parse(`<!doctype html>
 <title>{{.Name}} on Sblurp</title>
 <meta name="description" content="{{.Name}} is a Sblurp chat community. Add {{.Host}} in Sblurp to join.">
 <style>
-:root { color-scheme: light dark; --bg: #F2FAF2; --surface: #fff; --ink: #0B2412; --muted: #4F6B57; --line: #CFE6D2; --green: #31C843; --btn-ink: #04210B; }
-@media (prefers-color-scheme: dark) { :root { --bg: #061209; --surface: #0C1F12; --ink: #E3F6E5; --muted: #8BAA93; --line: #1B3623; } }
+:root { color-scheme: light dark; --bg: #F2FAF2; --ink: #0B2412; --muted: #4F6B57; --line: #CFE6D2; --green: #31C843; --btn-ink: #04210B; }
+@media (prefers-color-scheme: dark) { :root { --bg: #061209; --ink: #E3F6E5; --muted: #8BAA93; --line: #1B3623; } }
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-main { width: 100%; max-width: 420px; text-align: center; }
-.brand { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 600; }
-.brand img { width: 24px; height: 24px; }
-.brand:hover { color: var(--ink); }
-.card { margin-top: 20px; padding: 28px 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; }
-.icon { width: 64px; height: 64px; border-radius: 16px; object-fit: cover; }
-h1 { margin: 12px 0 4px; font-size: 26px; line-height: 1.2; letter-spacing: -0.02em; overflow-wrap: anywhere; }
-.meta { margin: 0; color: var(--muted); font-size: 14px; }
+body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 32px 16px; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { width: 100%; max-width: 360px; text-align: center; }
+.icon { display: block; width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 14px; object-fit: cover; }
+h1 { margin: 0; font-size: 28px; line-height: 1.15; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.meta { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
 .desc { margin: 12px 0 0; }
-.qr { display: block; width: 200px; height: 200px; margin: 24px auto 0; border-radius: 12px; }
-.how { margin: 20px 0 0; }
-code { font: 600 15px/1.4 ui-monospace, "SF Mono", Menlo, monospace; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; overflow-wrap: anywhere; }
-.btn { display: inline-block; margin-top: 20px; padding: 12px 22px; border-radius: 12px; background: var(--green); color: var(--btn-ink); font-weight: 700; text-decoration: none; transition: filter 150ms ease-out; }
+.qr { display: block; width: 100%; max-width: 232px; height: auto; margin: 28px auto 0; border-radius: 16px; }
+.btn { display: block; margin: 28px auto 0; max-width: 232px; padding: 13px 20px; border-radius: 12px; background: var(--green); color: var(--btn-ink); font-weight: 700; text-decoration: none; transition: filter 150ms ease-out; }
 .btn:hover { filter: brightness(1.06); }
-.note { margin: 16px 0 0; color: var(--muted); font-size: 14px; }
+.alt { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+code { font: 600 14px/1.4 ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink); overflow-wrap: anywhere; }
 a:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 6px; }
-footer { margin-top: 20px; color: var(--muted); font-size: 14px; }
-footer a { color: inherit; }
+.brand { display: inline-flex; align-items: center; gap: 6px; margin-top: 48px; color: var(--muted); font-size: 13px; text-decoration: none; }
+.brand img { width: 18px; height: 18px; }
+.brand:hover { color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
 </style>
 </head>
 <body>
 <main>
-  <a class="brand" href="https://sblurp.chat"><img src="/sblurp-logo.png" width="24" height="24" alt="">Sblurp chat server</a>
-  <div class="card">
-    {{if .Icon}}<img class="icon" src="{{.Icon}}" width="64" height="64" alt="">{{end}}
-    <h1>{{.Name}}</h1>
-    <p class="meta">{{.Members}} member{{if ne .Members 1}}s{{end}}{{if .InviteOnly}}, invite only{{end}}</p>
-    {{if .Description}}<p class="desc">{{.Description}}</p>{{end}}
-    {{.QR}}
-    <p class="how">Scan the code, or add <code>{{.Host}}</code> in Sblurp to join.</p>
-    <a class="btn" href="{{.Join}}">Join in your browser</a>
-    {{if .InviteOnly}}<p class="note">This community is invite only. You need an invite link or code from a member.</p>{{end}}
-  </div>
-  <footer>Sblurp is chat where each community runs its own server. <a href="https://sblurp.chat">Learn more at sblurp.chat</a></footer>
+  {{if .Icon}}<img class="icon" src="{{.Icon}}" width="56" height="56" alt="">{{end}}
+  <h1>{{.Name}}</h1>
+  <p class="meta">{{.Members}} member{{if ne .Members 1}}s{{end}}{{if .InviteOnly}}, invite only{{end}}</p>
+  {{if .Description}}<p class="desc">{{.Description}}</p>{{end}}
+  {{.QR}}
+  <a class="btn" href="{{.Join}}">Join in your browser</a>
+  <p class="alt">Or add <code>{{.Host}}</code> in the Sblurp app.</p>
+  <a class="brand" href="https://sblurp.chat"><img src="/sblurp-logo.png" width="18" height="18" alt="">Runs on Sblurp</a>
 </main>
 </body>
 </html>

@@ -1866,8 +1866,13 @@ func TestSplashPage(t *testing.T) {
 	if _, err := ana.srv.UpdateServerSettings(ctx(), connect.NewRequest(&v1.UpdateServerSettingsRequest{InviteOnly: &on})); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(page(), "invite only") {
-		t.Fatal("invite-only community must say so")
+	if n := strings.Count(page(), "invite only"); n != 1 {
+		t.Fatalf("invite-only community must say so once, said it %d times", n)
+	}
+	if res, err := http.Get(e.url + "/"); err != nil || !strings.Contains(res.Header.Get("Content-Security-Policy"), "default-src 'none'") {
+		t.Fatalf("splash CSP: %v %v", err, res)
+	} else {
+		res.Body.Close()
 	}
 	res, err := http.Get(e.url + "/sblurp-logo.png")
 	if err != nil || res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "image/png" {
