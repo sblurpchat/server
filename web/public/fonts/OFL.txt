@@ -6,6 +6,7 @@ jetbrains-mono.woff2     JetBrains Mono. Copyright 2020 The JetBrains Mono Proje
 inter.woff2              Inter. Copyright 2020 The Inter Project Authors.
 source-serif-4.woff2     Source Serif 4. Copyright 2014-2021 Adobe, with Reserved Font Name 'Source'.
 pt-mono.woff2            PT Mono. Copyright 2011 The PT Mono Project Authors, ParaType Inc.
+geist-mono.woff2         Geist Mono. Copyright 2024 The Geist Project Authors.
 iosevka-400/700.woff2    Iosevka. Copyright 2015-2023 Renzhi Li (Belleve Invis).
 
 SIL Open Font License v1.1

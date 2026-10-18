@@ -70,6 +70,7 @@ import {
   peekChannel,
 } from "./store";
 import { AvatarField } from "./AvatarField";
+import { pond } from "./pond";
 import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped } from "./ui";
 
 export function App() {
@@ -540,11 +541,20 @@ function MeBar({ c }: { c: Community }) {
 
 function SignIn() {
   const err = useApp((s) => s.authError);
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = root.current!;
+    return pond(el, el.querySelector(".holo")!, [...el.querySelectorAll<HTMLElement>(".signin-lede, .signin-actions, .fine")]);
+  }, []);
   return (
-    <div className="signin">
+    <div className="signin" ref={root}>
       <div className="signin-body">
         <h1 className="wordmark">
-          <img src="/logo.png" alt="" />
+          <span className="holo">
+            <span className="holo-card">
+              <img src="/logo.png" alt="" draggable={false} />
+            </span>
+          </span>
           Sblurp
         </h1>
         <p className="signin-lede">Every community you belong to, in one window. Each runs its own server; your sign-in works in all of them.</p>
