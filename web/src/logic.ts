@@ -788,6 +788,25 @@ export function joinHashInput(hash: string): string | null {
   return invite ? inviteLink(n.url, invite) : n.url;
 }
 
+/** The route for a sblurp:// link, which the desktop and mobile apps hand over as
+ *  "#/open?<link>" (apps/README.md). sblurp://<host>/invite/<code> gives a #/join route;
+ *  sblurp://<host>[/<channel>[/<message>[/<thread root>]]] gives the same #/c route. */
+export function deepLinkHash(hash: string): string | null {
+  if (!hash.startsWith("#/open?")) return null;
+  let u: URL;
+  try {
+    u = new URL(hash.slice("#/open?".length));
+  } catch {
+    return null;
+  }
+  const n = u.protocol === "sblurp:" ? normalizeCommunityUrl(u.host) : null;
+  if (!n) return null;
+  const path = u.pathname.replace(/\/+$/, "");
+  const inv = /^\/(?:invite|i)\/([\w-]+)$/.exec(path);
+  if (inv) return `#/join?${new URLSearchParams({ url: n.url, invite: inv[1] })}`;
+  return `#/c/${encodeURIComponent(hostOf(n.url))}${path}`;
+}
+
 /** Image types a server takes for a banner or channel header (it refuses the rest). */
 export const BANNER_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"];
 const MAX_BANNER = 8 << 20;

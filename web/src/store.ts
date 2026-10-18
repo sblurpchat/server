@@ -59,6 +59,7 @@ import {
   type Appearance,
   sentence,
   joinHashInput,
+  deepLinkHash,
   readDelay,
   isExpired,
   type Permalink,
@@ -1089,7 +1090,20 @@ function start() {
   } catch {
     // storage blocked: the invite link is lost, Add a community still works by hand
   }
+  // A link to a community this account has not added (a shared link, sblurp://<host>) offers to add it.
+  if (!join && fromHash && !order.some((u) => hostOf(u) === fromHash.host)) join = fromHash.host;
   if (join) set({ modal: { t: "add", input: join } });
+}
+
+// A sblurp:// link opened while the app runs arrives as "#/open?<link>" (see deepLinkHash).
+function openDeepLink() {
+  const to = deepLinkHash(location.hash);
+  if (!to) return;
+  const r = parseHash(to);
+  const joined = !!r && state.order.some((u) => hostOf(u) === r.host);
+  history.replaceState(null, "", joined ? to : location.pathname + location.search);
+  if (joined) applyHash();
+  else set({ modal: { t: "add", input: joinHashInput(to) ?? r?.host } });
 }
 
 // An invite link opened in a browser lands on #/join (see joinHashInput). It waits in
@@ -1100,9 +1114,12 @@ export async function boot() {
   applyLook();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyLook);
   addEventListener("popstate", applyHash);
+  addEventListener("hashchange", openDeepLink);
   addEventListener("blur", flushReads);
   addEventListener("pagehide", flushReads);
   document.addEventListener("visibilitychange", () => document.hidden && flushReads());
+  const link = deepLinkHash(location.hash); // the app was opened by a sblurp:// link
+  if (link) history.replaceState(null, "", link);
   const join = joinHashInput(location.hash);
   if (join) {
     try {

@@ -61,6 +61,7 @@ import {
   inviteState,
   normalizeCommunityUrl,
   joinHashInput,
+  deepLinkHash,
   channelSlug,
   reorderChannel,
   parseHash,
@@ -399,6 +400,22 @@ describe("community URLs", () => {
     expect(joinHashInput("#/join?url=http%3A%2F%2Fcommunity.sblurp.localhost%3A1355%2F")).toBe("http://community.sblurp.localhost:1355");
     expect(joinHashInput("#/join?url=javascript%3Aalert(1)&invite=X")).toBeNull();
     expect(joinHashInput("#/c/owls.test/general")).toBeNull();
+  });
+  it("turns sblurp:// links from the apps into routes", () => {
+    const d = (link: string) => deepLinkHash(`#/open?${link}`);
+    expect(d("sblurp://owls.test")).toBe("#/c/owls.test");
+    expect(d("sblurp://Owls.Test/")).toBe("#/c/owls.test");
+    expect(d("sblurp://localhost:8082/ch-1")).toBe("#/c/localhost%3A8082/ch-1");
+    expect(d("sblurp://owls.test/c1/m2/m1")).toBe("#/c/owls.test/c1/m2/m1");
+    expect(d("sblurp://owls.test/invite/ABCD234567")).toBe("#/join?url=https%3A%2F%2Fowls.test&invite=ABCD234567");
+    expect(d("sblurp://localhost:8082/i/AbC-12/")).toBe("#/join?url=http%3A%2F%2Flocalhost%3A8082&invite=AbC-12");
+    expect(joinHashInput(d("sblurp://owls.test/invite/ABCD234567")!)).toBe("https://owls.test/invite/ABCD234567");
+    expect(parseHash(d("sblurp://owls.test/c1/m2")!)).toEqual({ host: "owls.test", channelId: "c1", messageId: "m2", rootId: "" });
+    expect(d("sblurp://auth/callback?code=c")).toBeNull();
+    expect(d("https://owls.test/c1")).toBeNull();
+    expect(d("javascript:alert(1)")).toBeNull();
+    expect(d("not a url")).toBeNull();
+    expect(deepLinkHash("#/c/owls.test")).toBeNull();
   });
   it("rejects junk and other schemes", () => {
     expect(normalizeCommunityUrl("")).toBeNull();
