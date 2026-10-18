@@ -917,7 +917,10 @@ export function setLook(patch: Partial<Appearance>) {
   set({ look: parseAppearance({ ...state.look, ...patch }) });
   save("appearance", state.look);
   save("appearanceAt", Date.now());
-  applyLook();
+  // A quick crossfade between the old and new look (1268), unless motion is reduced.
+  const still = state.look.motion === "reduce" || (state.look.motion !== "full" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  if (still || !document.startViewTransition) applyLook();
+  else document.startViewTransition(applyLook);
   clearTimeout(lookTimer);
   lookTimer = setTimeout(pushLook, 1000);
 }

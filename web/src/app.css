@@ -3909,6 +3909,12 @@ li.sw-empty {
   }
 }
 
+/* Switching an appearance option crossfades (1268; store.ts skips it when motion is reduced). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+}
+
 /* Reduce motion: follows the system unless Settings says on or off. */
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-motion="full"]) :is(*, *::before, *::after) {
