@@ -684,11 +684,25 @@ export function decodeMentions(text: string, members: Record<string, Member>): s
 
 /** The token being typed at the caret, for `@` and `:` autocomplete. */
 export function acQuery(text: string, caret: number): { kind: "@" | ":"; start: number; q: string } | null {
+  if (caret < 0) return null; // Escape closed the list
   const before = text.slice(0, caret);
   const m = /(?:^|\s)([@:])([\w.+-]*)$/.exec(before);
   if (!m) return null;
   if (m[1] === ":" && m[2].length < 2) return null;
   return { kind: m[1] as "@" | ":", start: caret - m[2].length - 1, q: m[2].toLowerCase() };
+}
+
+/** `:` autocomplete rows: standard names that start with q, then names that contain it, one row per
+ * character (aliases like "+1" find 👍 once); community emoji fill the rest, at most half when both match. */
+export function emojiMatches(q: string, standard: [string, string][], custom: string[], max = 8): { name: string; ch?: string }[] {
+  const starts: [string, string][] = [];
+  const has: [string, string][] = [];
+  for (const e of standard) (e[0].startsWith(q) ? starts : e[0].includes(q) ? has : null)?.push(e);
+  const seen = new Set<string>();
+  const std = [...starts, ...has].filter(([, ch]) => !seen.has(ch) && !!seen.add(ch)).map(([name, ch]) => ({ name, ch }));
+  const own = custom.filter((n) => n.startsWith(q)).concat(custom.filter((n) => !n.startsWith(q) && n.includes(q)));
+  const keep = own.length ? Math.max(max - own.length, max / 2) : max;
+  return [...std.slice(0, keep), ...own.map((name) => ({ name }))].slice(0, max);
 }
 
 /** List step for a picker's key: ArrowDown/Ctrl+N is 1, ArrowUp/Ctrl+P is -1, anything else 0. */

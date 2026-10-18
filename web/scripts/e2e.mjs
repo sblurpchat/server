@@ -44,6 +44,17 @@ try {
   await page.locator(".channel .snippet", { hasText: "snippet.py" }).locator(".hljs-keyword").first().waitFor();
   if ((await composer.inputValue()) !== "") throw new Error("composer not cleared after snippet");
 
+  // `:` plus two letters opens the named emoji list; Enter inserts the character, a time does not trigger it (1265).
+  await composer.pressSequentially("at 10:30 nice :+1");
+  await page.getByRole("option", { name: ":+1:" }).waitFor();
+  await composer.press("Enter");
+  if ((await composer.inputValue()) !== "at 10:30 nice 👍 ") throw new Error(`emoji autocomplete gave ${JSON.stringify(await composer.inputValue())}`);
+  await composer.pressSequentially(":thu");
+  await page.locator(".channel .ac").waitFor();
+  await composer.press("Escape");
+  if (await page.locator(".channel .ac").count()) throw new Error("Escape did not close the emoji list");
+  await composer.fill("");
+
   // Open a thread on it and reply.
   await sent.hover();
   await sent.getByRole("button", { name: "Reply in thread" }).click();

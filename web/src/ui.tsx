@@ -305,7 +305,7 @@ export function CopyButton({ text, label }: { text: string; label?: string }) {
 type Group = { id: string; label: string; icon: IconName; items: [string, string][] };
 const GROUPS: Group[] = [
   { id: "people", label: "Smileys & people", icon: "smile", items: [
-    ["thumbsup", "👍"], ["joy", "😂"], ["smile", "😄"], ["grin", "😁"], ["sweat_smile", "😅"], ["wink", "😉"], ["blush", "😊"],
+    ["thumbsup", "👍"], ["joy", "😂"], ["smile", "😄"], ["grin", "😁"], ["grinning", "😀"], ["laughing", "😆"], ["slightly_smiling_face", "🙂"], ["neutral_face", "😐"], ["sweat_smile", "😅"], ["wink", "😉"], ["blush", "😊"],
     ["heart_eyes", "😍"], ["star_struck", "🤩"], ["party", "🥳"], ["cool", "😎"], ["nerd", "🤓"], ["hug", "🤗"], ["thinking", "🤔"],
     ["salute", "🫡"], ["upside_down", "🙃"], ["melting", "🫠"], ["open_mouth", "😮"], ["mind_blown", "🤯"], ["cry", "😢"], ["sob", "😭"],
     ["rage", "😡"], ["sleeping", "😴"], ["skull", "💀"], ["ghost", "👻"], ["robot", "🤖"], ["see_no_evil", "🙈"], ["eyes", "👀"],
@@ -329,7 +329,16 @@ const GROUPS: Group[] = [
   ] },
 ];
 export const EMOJI: [string, string][] = GROUPS.flatMap((g) => g.items);
-const BY_NAME = new Map(EMOJI);
+// Slack and Discord names for the same characters, so `:+1` and `:sunglasses` find them in the `:` autocomplete.
+const ALIASES: [string, string][] = [
+  ["+1", "👍"], ["-1", "👎"], ["satisfied", "😆"], ["slightly_smiling", "🙂"], ["sunglasses", "😎"], ["partying_face", "🥳"],
+  ["nerd_face", "🤓"], ["hugging_face", "🤗"], ["thinking_face", "🤔"], ["saluting_face", "🫡"], ["upside_down_face", "🙃"],
+  ["melting_face", "🫠"], ["exploding_head", "🤯"], ["face_palm", "🤦"], ["seedling", "🌱"], ["sunny", "☀️"], ["iphone", "📱"],
+  ["white_check_mark", "✅"],
+];
+/** Every name the `:` autocomplete and `:shortcode:` lookups know: the picker's names, then aliases. */
+export const EMOJI_NAMES = EMOJI.concat(ALIASES);
+const BY_NAME = new Map(EMOJI_NAMES);
 /** Reactions may use ":shortcode:"; show the character when we know it. */
 export const emojiChar = (e: string) => (/^:[\w+-]+:$/.test(e) ? BY_NAME.get(e.slice(1, -1)) ?? e : e);
 

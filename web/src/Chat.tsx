@@ -11,6 +11,7 @@ import {
   channelLabel,
   dayLabel,
   decodeMentions,
+  emojiMatches,
   encodeMentions,
   formatBytes,
   hostOf,
@@ -66,7 +67,7 @@ import {
   unfurled,
   unfurlKey,
 } from "./store";
-import { Avatar, CopyButton, Dialog, Editable, EMOJI, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, Resizer, Skeleton, useClamped } from "./ui";
+import { Avatar, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, Resizer, Skeleton, useClamped } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
 export const openProfile = (url: string, memberId: string, el: HTMLElement) =>
@@ -956,12 +957,11 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
   const options = useMemo(() => {
     if (!ac) return [];
     if (ac.kind === ":")
-      return [
-        ...EMOJI.filter(([n]) => n.includes(ac.q))
-          .slice(0, custom.length ? 4 : 8)
-          .map(([n, ch]) => ({ id: n, label: `:${n}:`, insert: `${ch} `, m: undefined })),
-        ...custom.map((e) => ({ id: `c:${e.name}`, label: `:${e.name}:`, insert: `:${e.name}: `, m: undefined })),
-      ].slice(0, 8);
+      return emojiMatches(
+        ac.q,
+        EMOJI_NAMES,
+        custom.map((e) => e.name),
+      ).map((e) => ({ id: e.ch ? e.name : `c:${e.name}`, label: `:${e.name}:`, insert: `${e.ch ?? `:${e.name}:`} `, m: undefined }));
     return Object.values(c.members)
       .map((m) => ({ m, s: Math.max(matchScore(ac.q, m.username), matchScore(ac.q, m.displayName)) }))
       .filter((x) => x.s >= 0)

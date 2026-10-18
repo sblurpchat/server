@@ -38,6 +38,7 @@ import {
   communitiesSync,
   timeLabel,
   acQuery,
+  emojiMatches,
   listStep,
   applyEvent,
   pluginNameFromFile,
@@ -247,6 +248,20 @@ describe("mentions", () => {
     expect(acQuery("nice :ta", 8)).toEqual({ kind: ":", start: 5, q: "ta" });
     expect(acQuery("time 10:3", 9)).toBeNull();
     expect(acQuery("a@b", 3)).toBeNull();
+    expect(acQuery("see http://x.io/:path", 21)).toBeNull();
+    expect(acQuery("nice :tad", -1)).toBeNull(); // Escape
+  });
+  it("ranks : autocomplete emoji like Slack", () => {
+    const std: [string, string][] = [["heart_eyes", "😍"], ["smile", "😄"], ["thumbsup", "👍"], ["heart", "❤️"], ["+1", "👍"], ["red_heart", "❤️"]];
+    const names = (q: string, custom: string[] = [], max = 8) => emojiMatches(q, std, custom, max).map((e) => e.name);
+    expect(names("thu")).toEqual(["thumbsup"]);
+    expect(names("+1")).toEqual(["+1"]);
+    expect(names("hea")).toEqual(["heart_eyes", "heart"]); // prefix hits first, red_heart is the same ❤️
+    expect(names("art")).toEqual(["heart_eyes", "heart"]);
+    expect(emojiMatches("+1", std, [])[0].ch).toBe("👍");
+    expect(names("zzz")).toEqual([]);
+    expect(names("hea", ["blobheart", "heart_party"])).toEqual(["heart_eyes", "heart", "heart_party", "blobheart"]);
+    expect(names("hea", ["heart_a", "heart_b", "heart_c"], 4)).toEqual(["heart_eyes", "heart", "heart_a", "heart_b"]);
   });
 });
 

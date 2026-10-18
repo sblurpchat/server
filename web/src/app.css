@@ -3666,6 +3666,7 @@ li.sw-empty {
   background: var(--raised);
   box-shadow: var(--shadow);
   z-index: 3;
+  animation: hint-in 150ms ease-out;
 }
 .ac li {
   display: flex;
