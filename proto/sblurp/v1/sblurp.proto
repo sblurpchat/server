@@ -491,6 +491,43 @@ message UnblockMemberRequest { string member_id = 1; }
 message UnblockMemberResponse {}
 
 // ---------------------------------------------------------------------------
+// Reports (1119)
+// ---------------------------------------------------------------------------
+
+// Any member, about a message they can see that someone else wrote, with an
+// optional note (up to 1,000 characters). The server keeps a copy of the
+// text, so the report outlives an edit or a delete. A report of a DM
+// message shares that one message with moderators and nothing else from the
+// DM. Reporting the same message again replaces the note. People may send
+// 5 reports, then 1 every 10 minutes (RESOURCE_EXHAUSTED). Nobody is told
+// who reported, and the reporter cannot list reports.
+message ReportMessageRequest {
+  string message_id = 1;
+  string note = 2;
+}
+message ReportMessageResponse {}
+
+message Report {
+  string id = 1;
+  Message message = 2;        // copy at report time: id, channel_id, author_id, text, created_at_ms, thread_root_id
+  bool dm = 3;                // the message is in a DM; moderators cannot open it
+  Member author = 4;          // who wrote the message (may have left)
+  Member reporter = 5;
+  string note = 6;
+  int64 reported_at_ms = 7;
+}
+
+// Moderator or higher. Open reports, newest first, about members the caller
+// outranks (the owner sees reports about everyone, the owner included).
+message ListReportsRequest {}
+message ListReportsResponse { repeated Report reports = 1; }
+
+// Moderator or higher, for a report ListReports shows them. Resolving
+// deletes every open report of that message, copies included.
+message ResolveReportRequest { string report_id = 1; }
+message ResolveReportResponse {}
+
+// ---------------------------------------------------------------------------
 // Invites and settings (admin or owner)
 //
 // An open community lets anyone with a valid login Join. An invite-only one
@@ -700,6 +737,9 @@ service ServerService {
   rpc DeleteEmoji(DeleteEmojiRequest) returns (DeleteEmojiResponse) {}
   rpc BlockMember(BlockMemberRequest) returns (BlockMemberResponse) {}
   rpc UnblockMember(UnblockMemberRequest) returns (UnblockMemberResponse) {}
+  rpc ReportMessage(ReportMessageRequest) returns (ReportMessageResponse) {}
+  rpc ListReports(ListReportsRequest) returns (ListReportsResponse) {}
+  rpc ResolveReport(ResolveReportRequest) returns (ResolveReportResponse) {}
 }
 
 service ChatService {

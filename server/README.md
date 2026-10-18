@@ -245,6 +245,13 @@ client. There is no separate apps system. The bot is ~150 lines in
   on the server; `GetState.blocked_member_ids` and the blocker-only events
   `member_blocked` / `member_unblocked` let clients collapse the blocked
   member's messages.
+- **Reports** (1119). `ReportMessage` (any member, about a message they can
+  see that someone else wrote, optional note) stores a copy of the text, so a
+  report outlives an edit or delete. A DM report shares that one message and
+  nothing else. 5 reports, then 1 per 10 minutes. `ListReports` (moderator
+  or higher) returns open reports about members the caller outranks; the
+  owner sees all. `ResolveReport` deletes every report of that message.
+  There is no event; moderators fetch the list.
 - Errors use Connect codes with plain messages: `invalid_argument`,
   `permission_denied`, `not_found` (also for channels you may not see),
   `already_exists`, `resource_exhausted`, `unauthenticated`.

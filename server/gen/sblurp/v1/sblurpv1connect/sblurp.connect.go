@@ -108,6 +108,15 @@ const (
 	// ServerServiceUnblockMemberProcedure is the fully-qualified name of the ServerService's
 	// UnblockMember RPC.
 	ServerServiceUnblockMemberProcedure = "/sblurp.v1.ServerService/UnblockMember"
+	// ServerServiceReportMessageProcedure is the fully-qualified name of the ServerService's
+	// ReportMessage RPC.
+	ServerServiceReportMessageProcedure = "/sblurp.v1.ServerService/ReportMessage"
+	// ServerServiceListReportsProcedure is the fully-qualified name of the ServerService's ListReports
+	// RPC.
+	ServerServiceListReportsProcedure = "/sblurp.v1.ServerService/ListReports"
+	// ServerServiceResolveReportProcedure is the fully-qualified name of the ServerService's
+	// ResolveReport RPC.
+	ServerServiceResolveReportProcedure = "/sblurp.v1.ServerService/ResolveReport"
 	// ChatServiceCreateChannelProcedure is the fully-qualified name of the ChatService's CreateChannel
 	// RPC.
 	ChatServiceCreateChannelProcedure = "/sblurp.v1.ChatService/CreateChannel"
@@ -202,6 +211,9 @@ type ServerServiceClient interface {
 	DeleteEmoji(context.Context, *connect.Request[v1.DeleteEmojiRequest]) (*connect.Response[v1.DeleteEmojiResponse], error)
 	BlockMember(context.Context, *connect.Request[v1.BlockMemberRequest]) (*connect.Response[v1.BlockMemberResponse], error)
 	UnblockMember(context.Context, *connect.Request[v1.UnblockMemberRequest]) (*connect.Response[v1.UnblockMemberResponse], error)
+	ReportMessage(context.Context, *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error)
+	ListReports(context.Context, *connect.Request[v1.ListReportsRequest]) (*connect.Response[v1.ListReportsResponse], error)
+	ResolveReport(context.Context, *connect.Request[v1.ResolveReportRequest]) (*connect.Response[v1.ResolveReportResponse], error)
 }
 
 // NewServerServiceClient constructs a client for the sblurp.v1.ServerService service. By default,
@@ -353,6 +365,24 @@ func NewServerServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(serverServiceMethods.ByName("UnblockMember")),
 			connect.WithClientOptions(opts...),
 		),
+		reportMessage: connect.NewClient[v1.ReportMessageRequest, v1.ReportMessageResponse](
+			httpClient,
+			baseURL+ServerServiceReportMessageProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("ReportMessage")),
+			connect.WithClientOptions(opts...),
+		),
+		listReports: connect.NewClient[v1.ListReportsRequest, v1.ListReportsResponse](
+			httpClient,
+			baseURL+ServerServiceListReportsProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("ListReports")),
+			connect.WithClientOptions(opts...),
+		),
+		resolveReport: connect.NewClient[v1.ResolveReportRequest, v1.ResolveReportResponse](
+			httpClient,
+			baseURL+ServerServiceResolveReportProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("ResolveReport")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -381,6 +411,9 @@ type serverServiceClient struct {
 	deleteEmoji          *connect.Client[v1.DeleteEmojiRequest, v1.DeleteEmojiResponse]
 	blockMember          *connect.Client[v1.BlockMemberRequest, v1.BlockMemberResponse]
 	unblockMember        *connect.Client[v1.UnblockMemberRequest, v1.UnblockMemberResponse]
+	reportMessage        *connect.Client[v1.ReportMessageRequest, v1.ReportMessageResponse]
+	listReports          *connect.Client[v1.ListReportsRequest, v1.ListReportsResponse]
+	resolveReport        *connect.Client[v1.ResolveReportRequest, v1.ResolveReportResponse]
 }
 
 // GetServerInfo calls sblurp.v1.ServerService.GetServerInfo.
@@ -498,6 +531,21 @@ func (c *serverServiceClient) UnblockMember(ctx context.Context, req *connect.Re
 	return c.unblockMember.CallUnary(ctx, req)
 }
 
+// ReportMessage calls sblurp.v1.ServerService.ReportMessage.
+func (c *serverServiceClient) ReportMessage(ctx context.Context, req *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error) {
+	return c.reportMessage.CallUnary(ctx, req)
+}
+
+// ListReports calls sblurp.v1.ServerService.ListReports.
+func (c *serverServiceClient) ListReports(ctx context.Context, req *connect.Request[v1.ListReportsRequest]) (*connect.Response[v1.ListReportsResponse], error) {
+	return c.listReports.CallUnary(ctx, req)
+}
+
+// ResolveReport calls sblurp.v1.ServerService.ResolveReport.
+func (c *serverServiceClient) ResolveReport(ctx context.Context, req *connect.Request[v1.ResolveReportRequest]) (*connect.Response[v1.ResolveReportResponse], error) {
+	return c.resolveReport.CallUnary(ctx, req)
+}
+
 // ServerServiceHandler is an implementation of the sblurp.v1.ServerService service.
 type ServerServiceHandler interface {
 	GetServerInfo(context.Context, *connect.Request[v1.GetServerInfoRequest]) (*connect.Response[v1.GetServerInfoResponse], error)
@@ -525,6 +573,9 @@ type ServerServiceHandler interface {
 	DeleteEmoji(context.Context, *connect.Request[v1.DeleteEmojiRequest]) (*connect.Response[v1.DeleteEmojiResponse], error)
 	BlockMember(context.Context, *connect.Request[v1.BlockMemberRequest]) (*connect.Response[v1.BlockMemberResponse], error)
 	UnblockMember(context.Context, *connect.Request[v1.UnblockMemberRequest]) (*connect.Response[v1.UnblockMemberResponse], error)
+	ReportMessage(context.Context, *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error)
+	ListReports(context.Context, *connect.Request[v1.ListReportsRequest]) (*connect.Response[v1.ListReportsResponse], error)
+	ResolveReport(context.Context, *connect.Request[v1.ResolveReportRequest]) (*connect.Response[v1.ResolveReportResponse], error)
 }
 
 // NewServerServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -672,6 +723,24 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(serverServiceMethods.ByName("UnblockMember")),
 		connect.WithHandlerOptions(opts...),
 	)
+	serverServiceReportMessageHandler := connect.NewUnaryHandler(
+		ServerServiceReportMessageProcedure,
+		svc.ReportMessage,
+		connect.WithSchema(serverServiceMethods.ByName("ReportMessage")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceListReportsHandler := connect.NewUnaryHandler(
+		ServerServiceListReportsProcedure,
+		svc.ListReports,
+		connect.WithSchema(serverServiceMethods.ByName("ListReports")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceResolveReportHandler := connect.NewUnaryHandler(
+		ServerServiceResolveReportProcedure,
+		svc.ResolveReport,
+		connect.WithSchema(serverServiceMethods.ByName("ResolveReport")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/sblurp.v1.ServerService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ServerServiceGetServerInfoProcedure:
@@ -720,6 +789,12 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 			serverServiceBlockMemberHandler.ServeHTTP(w, r)
 		case ServerServiceUnblockMemberProcedure:
 			serverServiceUnblockMemberHandler.ServeHTTP(w, r)
+		case ServerServiceReportMessageProcedure:
+			serverServiceReportMessageHandler.ServeHTTP(w, r)
+		case ServerServiceListReportsProcedure:
+			serverServiceListReportsHandler.ServeHTTP(w, r)
+		case ServerServiceResolveReportProcedure:
+			serverServiceResolveReportHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -819,6 +894,18 @@ func (UnimplementedServerServiceHandler) BlockMember(context.Context, *connect.R
 
 func (UnimplementedServerServiceHandler) UnblockMember(context.Context, *connect.Request[v1.UnblockMemberRequest]) (*connect.Response[v1.UnblockMemberResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.UnblockMember is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) ReportMessage(context.Context, *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.ReportMessage is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) ListReports(context.Context, *connect.Request[v1.ListReportsRequest]) (*connect.Response[v1.ListReportsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.ListReports is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) ResolveReport(context.Context, *connect.Request[v1.ResolveReportRequest]) (*connect.Response[v1.ResolveReportResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.ResolveReport is not implemented"))
 }
 
 // ChatServiceClient is a client for the sblurp.v1.ChatService service.
