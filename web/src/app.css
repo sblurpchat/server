@@ -815,6 +815,10 @@ kbd {
   letter-spacing: -0.01em;
   line-height: 1;
 }
+/* Holds the square while the picture loads. */
+.avatar > img {
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+}
 .presence {
   position: absolute;
   right: -3px;
@@ -1221,20 +1225,6 @@ kbd {
   width: 20px;
   opacity: 0.85;
 }
-.side-skel {
-  display: grid;
-  gap: 14px;
-  padding: 14px 10px;
-}
-.side-skel b,
-.skel-head,
-.skel-row i,
-.skel-row b {
-  display: block;
-  height: 12px;
-  border-radius: 6px;
-  background: var(--hover);
-}
 
 .mebar {
   display: flex;
@@ -1292,30 +1282,129 @@ kbd {
 .empty .btn {
   margin-top: 8px;
 }
-.loading-main {
-  padding: 18px 20px;
+/* ------------------------------------------------------------ skeletons */
+
+/* Placeholder shapes while content loads (<Skeleton> in ui.tsx). Tinted from the text color, so they
+   sit right on every surface and theme. One sweep of light crosses all of them at once (the background
+   is fixed to the viewport); reduced motion stops it and leaves the still shapes. */
+.skel {
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  --skel-base: color-mix(in srgb, var(--text) 9%, transparent);
+  --skel-hi: color-mix(in srgb, var(--text) 4%, transparent);
+  background: linear-gradient(100deg, var(--skel-base) 40%, var(--skel-hi) 50%, var(--skel-base) 60%) 0 0 / 200vw 100% fixed;
+  animation: skel-sweep 1.6s linear infinite;
+}
+@keyframes skel-sweep {
+  from {
+    background-position-x: -120vw;
+  }
+  to {
+    background-position-x: 20vw;
+  }
+}
+/* Hidden for the first 200ms (the component decides), then a quick fade. */
+.skel-set {
   display: grid;
-  gap: 22px;
-  align-content: start;
+  gap: 16px;
+  opacity: 0;
+  transition: opacity 160ms ease-out;
 }
-.skel-head {
-  width: 180px;
-  height: 18px;
-  margin-bottom: 14px;
+.skel-set[data-shown="true"] {
+  opacity: 1;
 }
-.skel-row {
-  display: grid;
-  grid-template-columns: 36px 1fr;
-  gap: 14px;
+.skel-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
-.skel-row i {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+.skel-item > i,
+.skel-gap {
+  flex: none;
+  width: var(--av);
+  height: var(--av);
+  border-radius: calc(var(--av) * 0.22);
 }
-.skel-row span {
+.skel-lines {
+  flex: 1;
+  min-width: 0;
   display: grid;
   gap: 8px;
+}
+.skel-lines > .skel:first-child:not(.skel-text) {
+  height: 12px;
+}
+/* Content that replaces a skeleton fades in. */
+.loaded,
+.msgs[data-loaded="true"] {
+  animation: fade-in 160ms ease-out;
+}
+
+/* Messages: the same 52px gutter and grouping as .msg. */
+.skel-chat {
+  gap: 0;
+  padding-bottom: 6px;
+}
+.skel-chat .skel-item {
+  align-items: start;
+  gap: 16px;
+  padding: 0 20px 0 16px;
+  margin-top: 18px;
+}
+.skel-chat .skel-item[data-head="false"] {
+  margin-top: 8px;
+}
+.skel-chat .skel-lines {
+  padding-top: 3px;
+}
+:root:is([data-density="compact"], [data-density="irc"]) .skel-chat {
+  --av: 0px !important;
+}
+/* Older pages: stays on top as they load above, like the list note it replaced. */
+.skel-more {
+  overflow-anchor: none;
+  padding-block: 6px 18px;
+}
+.loading-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.loading-main .skel-chat {
+  margin-top: auto;
+}
+.skel-composer {
+  height: 88px;
+  margin-bottom: 26px;
+}
+.side-skel {
+  gap: 0;
+  padding: 10px 8px;
+}
+.side-skel .skel-item {
+  height: 32px;
+  padding: 0 8px;
+  gap: 8px;
+}
+.side-skel .skel-item:first-child {
+  --av: 0px;
+  margin-bottom: 4px;
+}
+.side-skel .skel-item:first-child .skel {
+  max-width: 40%;
+}
+.skel-results {
+  padding: 12px 16px;
+  gap: 22px;
+}
+.skel-browse {
+  padding: 8px 4px;
+  gap: 22px;
+}
+.skel-admin {
+  padding: 6px 0;
 }
 
 /* --------------------------------------------------------------- dialogs */

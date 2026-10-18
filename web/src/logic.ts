@@ -1144,3 +1144,23 @@ export function arrivalText(items: Message[], since: number, meId: string | unde
   const who = members[m.authorId];
   return `${who?.displayName || who?.username || "Someone"}: ${plainText(m.text, members) || count(m.attachments.length, "attachment", "attachments")}`;
 }
+
+/** How long a load may take before its skeleton shows, so a fast load never flashes one. */
+export const SKELETON_DELAY_MS = 200;
+
+/** What the top of a message list shows: a skeleton before the first page, an error,
+ * placeholder rows while older pages remain, or the start of the channel. */
+export function listPhase(l: MsgList | undefined): "skeleton" | "error" | "more" | "start" {
+  if (l?.error) return "error";
+  if (!l || (l.loading && !l.items.length)) return "skeleton";
+  return l.hasMore ? "more" : "start";
+}
+
+/** Shapes for n placeholder rows, widths in percent. Fixed, so a skeleton never jitters between renders.
+ * In chat, every third row continues the one above: no avatar or name, like a grouped message. */
+export function skeletonRows(n: number): { head: boolean; name: number; lines: number[] }[] {
+  return Array.from({ length: n }, (_, i) => {
+    const r = (i * 37 + 11) % 41; // 0-40, scattered
+    return { head: i % 3 !== 2, name: 14 + (r % 4) * 5, lines: r % 2 ? [48 + r] : [70 + (r % 25), 24 + r] };
+  });
+}

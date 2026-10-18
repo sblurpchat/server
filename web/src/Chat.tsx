@@ -34,6 +34,7 @@ import {
   permalinks,
   type Permalink,
   toolsInside,
+  listPhase,
 } from "./logic";
 import {
   absUrl,
@@ -65,7 +66,7 @@ import {
   unfurled,
   unfurlKey,
 } from "./store";
-import { Avatar, Dialog, Editable, EMOJI, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, Resizer, useClamped } from "./ui";
+import { Avatar, Dialog, Editable, EMOJI, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, Resizer, Skeleton, useClamped } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
 export const openProfile = (url: string, memberId: string, el: HTMLElement) =>
@@ -303,6 +304,9 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
   useEffect(() => flushReads, [url, channelId]);
 
   const empty = list && !list.loading && !list.hasMore && !items.length;
+  const phase = listPhase(list);
+  // Content that replaces a skeleton fades in; a list already in memory just shows.
+  const [cold] = useState(phase === "skeleton");
   return (
     <div className="msg-wrap">
       {newAbove && (
@@ -319,19 +323,20 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
         onFocus={placeTools}
         tabIndex={0}
         aria-label="Message list. Arrow keys move between messages."
+        aria-busy={phase === "skeleton" || !!list?.loading}
       >
-        <div className="msgs">
-          {list?.error ? (
+        <div className="msgs" key={phase === "skeleton" ? "skel" : "list"} data-loaded={cold && phase !== "skeleton"}>
+          {phase === "skeleton" && !rootId ? (
+            <Skeleton rows={9} avatar={36} chat className="skel-chat" />
+          ) : list?.error ? (
             <div className="list-note">
               <p className="error">{list.error}</p>
               <button className="btn small" onClick={() => loadList(url, channelId, rootId, list.items.length ? "older" : "")}>
                 Try again
               </button>
             </div>
-          ) : list?.hasMore !== false && !rootId ? (
-            <div className="list-note muted" aria-busy="true">
-              Loading earlier messages…
-            </div>
+          ) : phase === "more" && !rootId ? (
+            <Skeleton rows={3} avatar={36} chat className="skel-chat skel-more" />
           ) : !rootId && ch ? (
             <div className="chan-start" data-empty={!!empty}>
               {empty && (
@@ -364,6 +369,7 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
               </div>
             </>
           )}
+          {rootId && phase === "skeleton" && <Skeleton rows={Math.min(Number(root?.replyCount ?? 3), 6)} avatar={36} chat className="skel-chat" />}
           {rows.map((r) =>
             r.t === "day" ? (
               <div className="day" key={r.key} role="separator">
@@ -1339,10 +1345,18 @@ function SearchResults({ c, q }: { c: Community; q: string }) {
         {err}
       </p>
     );
-  if (!res) return <p className="muted pane-note" role="status">Searching…</p>;
+  if (!res)
+    return (
+      <div className="pane-scroll" aria-busy="true">
+        <p className="visually-hidden" role="status">
+          Searching…
+        </p>
+        <Skeleton rows={5} lines={2} className="skel-results" />
+      </div>
+    );
   if (!res.length) return <p className="muted pane-note" role="status">No messages match “{q}”. Try fewer words.</p>;
   return (
-    <ul className="pane-scroll results">
+    <ul className="pane-scroll results loaded">
       {res.map((m) => {
         const ch = c.channels[m.channelId];
         const a = c.members[m.authorId];

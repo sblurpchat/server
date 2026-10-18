@@ -16,6 +16,9 @@ import {
   type Event,
 } from "./gen/sblurp/v1/sblurp_pb";
 import {
+  SKELETON_DELAY_MS,
+  listPhase,
+  skeletonRows,
   THEMES,
   banDetail,
   readDelay,
@@ -1045,5 +1048,32 @@ describe("keyboard and screen readers (1188)", () => {
     expect(arrivalText([msg("ana", 200), msg("ana", 50)], 100, "me", members)).toBe(""); // only the newest counts
     expect(arrivalText([msg("gone", 200, "")], 100, "me", members)).toBe("Someone: 0 attachments");
     expect(arrivalText([], 100, "me", members)).toBe("");
+  });
+});
+
+describe("loading skeletons", () => {
+  const m = create(MessageSchema, { id: "m1" });
+  it("waits long enough that fast loads skip it, short enough to feel instant", () => {
+    expect(SKELETON_DELAY_MS).toBeGreaterThanOrEqual(150);
+    expect(SKELETON_DELAY_MS).toBeLessThanOrEqual(300);
+  });
+  it("picks what the top of a list shows", () => {
+    expect(listPhase(undefined)).toBe("skeleton");
+    expect(listPhase({ items: [], hasMore: true, loading: true })).toBe("skeleton");
+    expect(listPhase({ items: [m], hasMore: true, loading: true })).toBe("more");
+    expect(listPhase({ items: [m], hasMore: true })).toBe("more");
+    expect(listPhase({ items: [], hasMore: false })).toBe("start");
+    expect(listPhase({ items: [], hasMore: true, loading: true, error: "Can't reach it" })).toBe("error");
+  });
+  it("shapes rows that look like chat and stay the same", () => {
+    const rows = skeletonRows(9);
+    expect(rows).toEqual(skeletonRows(9));
+    expect(rows[0].head).toBe(true);
+    expect(rows.filter((r) => !r.head)).toHaveLength(3);
+    for (const r of rows) {
+      expect(r.lines.length).toBeGreaterThan(0);
+      for (const w of [r.name, ...r.lines]) expect(w).toBeGreaterThan(10), expect(w).toBeLessThanOrEqual(100);
+    }
+    expect(new Set(rows.map((r) => r.lines[0])).size).toBeGreaterThan(4);
   });
 });

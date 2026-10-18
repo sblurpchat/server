@@ -1,7 +1,7 @@
 // Shared UI primitives: icons, avatars, dialogs, popovers, the emoji picker and the markdown renderer.
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MemberRole, Presence, type Member } from "./gen/sblurp/v1/sblurp_pb";
-import { PANELS, clampWidth, gridMove, initials, keyWidth, listMove, onBackdrop, onWhite, parseMarkdown, swatch, type Inline } from "./logic";
+import { PANELS, SKELETON_DELAY_MS, clampWidth, gridMove, initials, keyWidth, listMove, onBackdrop, onWhite, parseMarkdown, skeletonRows, swatch, type Inline } from "./logic";
 import { Img, Shortcodes, useEmojiSet, useMore } from "./CustomEmoji";
 import { bumpRecent, pickerSections, type PickItem } from "./emoji";
 import { absUrl, set, useApp } from "./store";
@@ -89,6 +89,36 @@ export function Avatar({ m, size = 36, presence = false }: { m?: Member; size?: 
         />
       )}
     </span>
+  );
+}
+
+/** Placeholder rows shaped like what is loading. It shows only after SKELETON_DELAY_MS, then fades in.
+ * Hidden from screen readers: the region around it sets aria-busy. avatar is the picture size (0 for none),
+ * lines the text lines under each name, and chat groups some rows under the one above like messages. */
+export function Skeleton({ rows, avatar = 0, lines = 1, chat = false, className = "" }: { rows: number; avatar?: number; lines?: number; chat?: boolean; className?: string }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShown(true), SKELETON_DELAY_MS);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div className={`skel-set ${className}`} data-shown={shown} aria-hidden="true" style={{ ["--av" as string]: `${avatar}px` }}>
+      {/* A name-only row (lines 0, like a channel) takes a text line's longer width. */}
+      {skeletonRows(rows).map((r, i) => {
+        const head = !chat || r.head;
+        return (
+          <div className="skel-item" data-head={head} key={i}>
+            {avatar > 0 && (head ? <i className="skel" /> : <span className="skel-gap" />)}
+            <span className="skel-lines">
+              {head && <b className="skel" style={{ width: `${lines || chat ? r.name : r.lines[0]}%` }} />}
+              {(chat ? r.lines : r.lines.slice(0, lines)).map((w, j) => (
+                <b className="skel skel-text" key={j} style={{ width: `${w}%` }} />
+              ))}
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

@@ -70,7 +70,7 @@ import {
   peekChannel,
 } from "./store";
 import { AvatarField } from "./AvatarField";
-import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, presenceLabel, Resizer, useClamped } from "./ui";
+import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped } from "./ui";
 
 export function App() {
   const auth = useApp((s) => s.auth);
@@ -207,17 +207,14 @@ function Shell() {
           c.error ? (
             <Unreachable c={c} />
           ) : (
-            <div className="loading-main" aria-busy="true" aria-label="Loading">
-              <div className="skel-head" />
-              {[0, 1, 2, 3].map((i) => (
-                <div className="skel-row" key={i}>
-                  <i />
-                  <span>
-                    <b style={{ width: `${18 + i * 7}%` }} />
-                    <b style={{ width: `${70 - i * 9}%` }} />
-                  </span>
-                </div>
-              ))}
+            <div className="loading-main" aria-busy="true">
+              <div className="chan-head">
+                <h1 className="visually-hidden">Loading {c.info?.name ?? hostOf(url)}</h1>
+              </div>
+              <Skeleton rows={8} avatar={36} chat className="skel-chat" />
+              <div className="composer" aria-hidden="true">
+                <div className="composer-box skel-composer" />
+              </div>
             </div>
           )
         ) : (
@@ -422,7 +419,7 @@ function Sidebar({ c }: { c: Community }) {
           </button>
         </div>
       </Pop>
-      <nav className="side-scroll" aria-label="Channels">
+      <nav className="side-scroll" aria-label="Channels" aria-busy={!c.me && !c.error}>
         {c.me && c.mode === ChannelMode.OPT_IN && (
           <button className="chan browse-btn" onClick={() => set({ modal: { t: "browse" } })}>
             <span className="chan-icon">
@@ -505,12 +502,8 @@ function Sidebar({ c }: { c: Community }) {
               </section>
             );
           })
-        ) : c.status === "join" || c.status === "removed" ? null : (
-          <div className="side-skel" aria-hidden="true">
-            {[60, 45, 70, 50, 38].map((w, i) => (
-              <b key={i} style={{ width: `${w}%` }} />
-            ))}
-          </div>
+        ) : c.status === "join" || c.status === "removed" || c.error ? null : (
+          <Skeleton rows={7} avatar={16} lines={0} className="side-skel" />
         )}
       </nav>
       <MeBar c={c} />
@@ -1473,7 +1466,7 @@ function BrowseChannels() {
           {err}
         </p>
       )}
-      {!all && !err && <p className="fine">Loading channels…</p>}
+      {!all && !err && <Skeleton rows={5} className="skel-browse" />}
       {all && !rows.length && (
         <p className="fine">
           {q ? `No channel matches "${q}".` : "There are no channels you can join yet."}{" "}
@@ -1484,7 +1477,7 @@ function BrowseChannels() {
           )}
         </p>
       )}
-      <ul className="browse-list">
+      <ul className="browse-list" aria-busy={!all && !err}>
         {rows.map(({ ch, joined }) => (
           <li key={ch.id}>
             <button

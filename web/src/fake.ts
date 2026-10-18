@@ -1112,12 +1112,18 @@ export function fakeTransport(url: string): Transport | null {
   const f = fakes.get(url);
   if (!f) return null;
   const s = service(f);
-  return createRouterTransport((router) => {
-    router.service(ServerService, s.server as never);
-    router.service(ChatService, s.chat as never);
-    router.service(BotService, s.bot as never);
-  });
+  return createRouterTransport(
+    (router) => {
+      router.service(ServerService, s.server as never);
+      router.service(ChatService, s.chat as never);
+      router.service(BotService, s.bot as never);
+    },
+    { transport: { interceptors: LAG ? [(next) => (req) => new Promise((r) => setTimeout(r, LAG)).then(() => next(req))] : [] } },
+  );
 }
+
+// ?fake=1&lag=1500 answers every call that many ms late, to see loading states.
+const LAG = Number(new URLSearchParams(location.search).get("lag")) || 0;
 
 export async function fakeUpload(url: string, file: File): Promise<Attachment> {
   const f = fakes.get(url)!;

@@ -37,7 +37,7 @@ import {
   useApp,
 } from "./store";
 import { EmojiTab } from "./CustomEmoji";
-import { Avatar, CopyButton, Dialog, Icon } from "./ui";
+import { Avatar, CopyButton, Dialog, Icon, Skeleton } from "./ui";
 
 /** The old rank. The UI calls it "Permission"; "Roles" are the custom tags from ticket 1011. */
 export const PERMISSION: Record<number, string> = {
@@ -658,14 +658,14 @@ function BansTab({ url }: { url: string }) {
   };
   const now = Date.now();
   return (
-    <div className="stack">
+    <div className="stack" aria-busy={!bans && !err}>
       <p className="muted small">A banned account can't join again. Unban it and the person may join with the same profile, as a plain member.</p>
       {err && (
         <p className="error" role="alert">
           {err}
         </p>
       )}
-      {!bans && !err && <p className="muted small">Loading bans…</p>}
+      {!bans && !err && <Skeleton rows={2} avatar={32} className="skel-admin" />}
       {bans && !bans.length && <p className="muted small">Nobody is banned.</p>}
       {!!bans?.length && (
         <ul className="admin-list" aria-label="Banned members" style={{ animation: `fade-in ${FADE}ms ease-out` }}>
@@ -732,19 +732,20 @@ function BotsTab({ url }: { url: string }) {
     }
   };
   return (
-    <div className="stack">
+    <div className="stack" aria-busy={!bots && !err}>
       {err && (
         <p className="error" role="alert">
           {err}
         </p>
       )}
-      {plugins && <Plugins url={url} plugins={plugins} reload={load} />}
+      {plugins ? <Plugins url={url} plugins={plugins} reload={load} /> : !err && <Skeleton rows={2} avatar={32} className="skel-admin" />}
       <h3>Token bots</h3>
       <p className="muted small">
         A token bot runs on your own computer and posts with a token, using the same API as this app. Run one with the example in the server
         README.
       </p>
       {token && <TokenOnce {...token} onDone={() => setToken(null)} />}
+      {!bots && !err && <Skeleton rows={2} avatar={32} className="skel-admin" />}
       {bots && !bots.length && <p className="muted small">No token bots yet.</p>}
       {!!bots?.length && (
         <ul className="admin-list" aria-label="Token bots">
@@ -1028,7 +1029,7 @@ export function Invites({ url, inviteOnly }: { url: string; inviteOnly: boolean 
   };
   const now = Date.now();
   return (
-    <div className="invites">
+    <div className="invites" aria-busy={!list && !err}>
       <label className="invite-only">
         <span>
           <b>Invite only</b>
@@ -1070,6 +1071,7 @@ export function Invites({ url, inviteOnly }: { url: string; inviteOnly: boolean 
           {err}
         </p>
       )}
+      {!list && !err && <Skeleton rows={3} className="skel-admin" />}
       {list && !list.length && <p className="muted small">No invite links yet.</p>}
       {!!list?.length && (
         <ul className="invite-list" aria-label="Invite links">
@@ -1296,8 +1298,8 @@ function ChannelsTab({ url }: { url: string }) {
         </p>
       )}
       <h3>Who can see each channel</h3>
-      {!chans && !err && <p className="muted small">Loading channels…</p>}
-      <ul className="access-list" aria-label="Channel access">
+      {!chans && !err && <Skeleton rows={4} className="skel-admin" />}
+      <ul className="access-list" aria-label="Channel access" aria-busy={!chans && !err}>
         {text.map((ch) => {
           const who = c.roles.filter((r) => ch.roleIds.includes(r.id)).map((r) => r.name);
           return (
