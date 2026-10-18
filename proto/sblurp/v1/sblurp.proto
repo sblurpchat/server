@@ -219,6 +219,7 @@ message GetStateResponse {
   int64 seq = 5;                      // server seq at snapshot time; Subscribe from here
   repeated Role roles = 6;            // sorted by position
   ChannelMode channel_mode = 7;
+  repeated string blocked_member_ids = 8; // members I blocked, see BlockMember
 }
 
 message SubscribeRequest {
@@ -272,6 +273,8 @@ message Event {
     bool emoji_changed = 28;        // custom emoji added or deleted; refetch GET /emoji
     PresenceBatch presence_batch = 29; // ephemeral; apply each change like presence
     bool plugins_changed = 30;      // a plugin was installed, enabled, disabled or deleted; admins call ListPlugins
+    string member_blocked = 31;     // member id; I blocked them (from any of my devices)
+    string member_unblocked = 32;   // member id; I unblocked them
   }
 }
 
@@ -320,7 +323,9 @@ message LeaveChannelRequest { string channel_id = 1; }
 message LeaveChannelResponse {}
 
 // Any member, with 1 to 8 others. Returns the existing DM when one has
-// exactly these members.
+// exactly these members, and puts the caller back in it if they left it.
+// PERMISSION_DENIED when the caller and one of the others blocked each other
+// (either way).
 message OpenDMRequest {
   repeated string member_ids = 1; // the others; the caller is added
 }
@@ -342,7 +347,9 @@ message ListMessagesResponse {
 }
 
 // Any member who can see the channel. Text up to 8,000 characters, at most
-// 10 attachments. People may send 5 messages per second (burst 10); bots
+// 10 attachments. In a DM, PERMISSION_DENIED when the sender and another
+// member blocked each other (either way). A DM message puts members who left
+// that DM back in it (they get channel_updated). People may send 5 messages per second (burst 10); bots
 // follow the server's -bot-rate and -bot-burst.
 message SendMessageRequest {
   string channel_id = 1;
@@ -420,7 +427,8 @@ message AddChannelMembersRequest {
 }
 message AddChannelMembersResponse { Channel channel = 1; }
 
-// Removes a member from a private channel. Your own id leaves the channel;
+// Removes a member from a private channel. Your own id leaves the channel,
+// and in a DM (your own id only) hides it until someone writes there again;
 // anyone else needs moderator or higher and a higher rank than theirs. The
 // removed member gets channel_deleted (the channel is gone for them); the
 // rest get channel_updated.
@@ -468,6 +476,19 @@ message ListBansResponse { repeated Ban bans = 1; }
 // community is invite-only) and comes back with the same member id.
 message UnbanMemberRequest { string member_id = 1; }
 message UnbanMemberResponse {}
+
+// ---------------------------------------------------------------------------
+// Blocking
+// ---------------------------------------------------------------------------
+
+// Any member, for themselves only. Blocking hides nothing on the server
+// except DMs: the two cannot open a DM with each other or send in a shared
+// DM. Clients collapse a blocked member's messages. The blocker's devices get
+// Event.member_blocked or member_unblocked. Blocking twice is fine.
+message BlockMemberRequest { string member_id = 1; }
+message BlockMemberResponse {}
+message UnblockMemberRequest { string member_id = 1; }
+message UnblockMemberResponse {}
 
 // ---------------------------------------------------------------------------
 // Invites and settings (admin or owner)
@@ -677,6 +698,8 @@ service ServerService {
   rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse) {}
   rpc SetMemberRoles(SetMemberRolesRequest) returns (SetMemberRolesResponse) {}
   rpc DeleteEmoji(DeleteEmojiRequest) returns (DeleteEmojiResponse) {}
+  rpc BlockMember(BlockMemberRequest) returns (BlockMemberResponse) {}
+  rpc UnblockMember(UnblockMemberRequest) returns (UnblockMemberResponse) {}
 }
 
 service ChatService {

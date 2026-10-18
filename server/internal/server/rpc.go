@@ -794,6 +794,9 @@ func (s *Server) GetState(ctx context.Context, _ *connect.Request[v1.GetStateReq
 	if out.Members, err = s.listMembers(ctx, tx, "deleted = 0"); err != nil {
 		return nil, err
 	}
+	if out.BlockedMemberIds, err = blockedBy(ctx, tx, m.Id); err != nil {
+		return nil, err
+	}
 	for _, c := range out.Channels {
 		rs, err := readState(ctx, tx, m, c)
 		if err != nil {
@@ -1141,13 +1144,16 @@ func (s *Server) OpenDM(ctx context.Context, req *connect.Request[v1.OpenDMReque
 	key := strings.Join(ids, ",")
 	var c *v1.Channel
 	err := s.writeTx(ctx, func(t *wtx) error {
+		if err := checkDMBlocks(ctx, t, m.Id, ids); err != nil {
+			return err
+		}
 		existing, err := queryChannels(ctx, t, "dm_key = ?", key)
 		if err != nil {
 			return err
 		}
 		if len(existing) > 0 {
-			c = existing[0]
-			return nil
+			c, err = rejoinDM(t, existing[0], ids)
+			return err
 		}
 		for _, id := range ids {
 			var ok bool
@@ -1165,6 +1171,28 @@ func (s *Server) OpenDM(ctx context.Context, req *connect.Request[v1.OpenDMReque
 		return nil, err
 	}
 	return connect.NewResponse(&v1.OpenDMResponse{Channel: c}), nil
+}
+
+// rejoinDM puts members of the DM who left it (RemoveChannelMember) back in,
+// and returns c as it is now.
+func rejoinDM(t *wtx, c *v1.Channel, members []string) (*v1.Channel, error) {
+	added := false
+	for _, id := range members {
+		if slices.Contains(c.MemberIds, id) {
+			continue
+		}
+		// A member who left the community stays out.
+		res, err := t.ExecContext(t.ctx, "INSERT OR IGNORE INTO channel_members(channel_id, member_id) SELECT ?, id FROM members WHERE id = ? AND deleted = 0", c.Id, id)
+		if err != nil {
+			return nil, err
+		}
+		n, _ := res.RowsAffected()
+		added = added || n > 0
+	}
+	if !added {
+		return c, nil
+	}
+	return emitChannelUpdated(t, c.Id)
 }
 
 func (s *Server) ListMessages(ctx context.Context, req *connect.Request[v1.ListMessagesRequest]) (*connect.Response[v1.ListMessagesResponse], error) {
@@ -1292,6 +1320,19 @@ func (s *Server) sendMessage(t *wtx, author string, r *v1.SendMessageRequest, at
 	c, err := channelFor(ctx, t, r.ChannelId, author)
 	if err != nil {
 		return nil, err
+	}
+	if c.Kind == v1.ChannelKind_CHANNEL_KIND_DM {
+		var key string
+		if err := t.QueryRowContext(ctx, "SELECT dm_key FROM channels WHERE id = ?", c.Id).Scan(&key); err != nil {
+			return nil, err
+		}
+		all := strings.Split(key, ",")
+		if err := checkDMBlocks(ctx, t, author, all); err != nil {
+			return nil, err
+		}
+		if c, err = rejoinDM(t, c, all); err != nil {
+			return nil, err
+		}
 	}
 	var root *v1.Message
 	if r.ThreadRootId != "" {
@@ -1754,8 +1795,11 @@ func (s *Server) RemoveChannelMember(ctx context.Context, req *connect.Request[v
 	var c *v1.Channel
 	err := s.writeTx(ctx, func(t *wtx) error {
 		var err error
-		if c, err = privateChannelFor(ctx, t, r.ChannelId, m.Id); err != nil {
+		if c, err = channelFor(ctx, t, r.ChannelId, m.Id); err != nil {
 			return err
+		}
+		if !canRemoveFrom(c.Kind, r.MemberId == m.Id) {
+			return errf(connect.CodeInvalidArgument, "you can leave a DM, and remove members from private channels only")
 		}
 		if !slices.Contains(c.MemberIds, r.MemberId) {
 			return errf(connect.CodeNotFound, "member %s is not in this channel", r.MemberId)
@@ -1783,6 +1827,12 @@ func (s *Server) RemoveChannelMember(ctx context.Context, req *connect.Request[v
 		return nil, err
 	}
 	return connect.NewResponse(&v1.RemoveChannelMemberResponse{Channel: c}), nil
+}
+
+// canRemoveFrom: anyone in a private channel (rank checks follow), and only
+// yourself in a DM, which hides it until the next message there.
+func canRemoveFrom(kind v1.ChannelKind, self bool) bool {
+	return kind == v1.ChannelKind_CHANNEL_KIND_PRIVATE || kind == v1.ChannelKind_CHANNEL_KIND_DM && self
 }
 
 // removeFromChannel deletes the membership and tells the removed member the

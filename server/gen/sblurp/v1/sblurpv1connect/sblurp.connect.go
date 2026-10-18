@@ -102,6 +102,12 @@ const (
 	// ServerServiceDeleteEmojiProcedure is the fully-qualified name of the ServerService's DeleteEmoji
 	// RPC.
 	ServerServiceDeleteEmojiProcedure = "/sblurp.v1.ServerService/DeleteEmoji"
+	// ServerServiceBlockMemberProcedure is the fully-qualified name of the ServerService's BlockMember
+	// RPC.
+	ServerServiceBlockMemberProcedure = "/sblurp.v1.ServerService/BlockMember"
+	// ServerServiceUnblockMemberProcedure is the fully-qualified name of the ServerService's
+	// UnblockMember RPC.
+	ServerServiceUnblockMemberProcedure = "/sblurp.v1.ServerService/UnblockMember"
 	// ChatServiceCreateChannelProcedure is the fully-qualified name of the ChatService's CreateChannel
 	// RPC.
 	ChatServiceCreateChannelProcedure = "/sblurp.v1.ChatService/CreateChannel"
@@ -194,6 +200,8 @@ type ServerServiceClient interface {
 	DeleteRole(context.Context, *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error)
 	SetMemberRoles(context.Context, *connect.Request[v1.SetMemberRolesRequest]) (*connect.Response[v1.SetMemberRolesResponse], error)
 	DeleteEmoji(context.Context, *connect.Request[v1.DeleteEmojiRequest]) (*connect.Response[v1.DeleteEmojiResponse], error)
+	BlockMember(context.Context, *connect.Request[v1.BlockMemberRequest]) (*connect.Response[v1.BlockMemberResponse], error)
+	UnblockMember(context.Context, *connect.Request[v1.UnblockMemberRequest]) (*connect.Response[v1.UnblockMemberResponse], error)
 }
 
 // NewServerServiceClient constructs a client for the sblurp.v1.ServerService service. By default,
@@ -333,6 +341,18 @@ func NewServerServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(serverServiceMethods.ByName("DeleteEmoji")),
 			connect.WithClientOptions(opts...),
 		),
+		blockMember: connect.NewClient[v1.BlockMemberRequest, v1.BlockMemberResponse](
+			httpClient,
+			baseURL+ServerServiceBlockMemberProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("BlockMember")),
+			connect.WithClientOptions(opts...),
+		),
+		unblockMember: connect.NewClient[v1.UnblockMemberRequest, v1.UnblockMemberResponse](
+			httpClient,
+			baseURL+ServerServiceUnblockMemberProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("UnblockMember")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -359,6 +379,8 @@ type serverServiceClient struct {
 	deleteRole           *connect.Client[v1.DeleteRoleRequest, v1.DeleteRoleResponse]
 	setMemberRoles       *connect.Client[v1.SetMemberRolesRequest, v1.SetMemberRolesResponse]
 	deleteEmoji          *connect.Client[v1.DeleteEmojiRequest, v1.DeleteEmojiResponse]
+	blockMember          *connect.Client[v1.BlockMemberRequest, v1.BlockMemberResponse]
+	unblockMember        *connect.Client[v1.UnblockMemberRequest, v1.UnblockMemberResponse]
 }
 
 // GetServerInfo calls sblurp.v1.ServerService.GetServerInfo.
@@ -466,6 +488,16 @@ func (c *serverServiceClient) DeleteEmoji(ctx context.Context, req *connect.Requ
 	return c.deleteEmoji.CallUnary(ctx, req)
 }
 
+// BlockMember calls sblurp.v1.ServerService.BlockMember.
+func (c *serverServiceClient) BlockMember(ctx context.Context, req *connect.Request[v1.BlockMemberRequest]) (*connect.Response[v1.BlockMemberResponse], error) {
+	return c.blockMember.CallUnary(ctx, req)
+}
+
+// UnblockMember calls sblurp.v1.ServerService.UnblockMember.
+func (c *serverServiceClient) UnblockMember(ctx context.Context, req *connect.Request[v1.UnblockMemberRequest]) (*connect.Response[v1.UnblockMemberResponse], error) {
+	return c.unblockMember.CallUnary(ctx, req)
+}
+
 // ServerServiceHandler is an implementation of the sblurp.v1.ServerService service.
 type ServerServiceHandler interface {
 	GetServerInfo(context.Context, *connect.Request[v1.GetServerInfoRequest]) (*connect.Response[v1.GetServerInfoResponse], error)
@@ -491,6 +523,8 @@ type ServerServiceHandler interface {
 	DeleteRole(context.Context, *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error)
 	SetMemberRoles(context.Context, *connect.Request[v1.SetMemberRolesRequest]) (*connect.Response[v1.SetMemberRolesResponse], error)
 	DeleteEmoji(context.Context, *connect.Request[v1.DeleteEmojiRequest]) (*connect.Response[v1.DeleteEmojiResponse], error)
+	BlockMember(context.Context, *connect.Request[v1.BlockMemberRequest]) (*connect.Response[v1.BlockMemberResponse], error)
+	UnblockMember(context.Context, *connect.Request[v1.UnblockMemberRequest]) (*connect.Response[v1.UnblockMemberResponse], error)
 }
 
 // NewServerServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -626,6 +660,18 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(serverServiceMethods.ByName("DeleteEmoji")),
 		connect.WithHandlerOptions(opts...),
 	)
+	serverServiceBlockMemberHandler := connect.NewUnaryHandler(
+		ServerServiceBlockMemberProcedure,
+		svc.BlockMember,
+		connect.WithSchema(serverServiceMethods.ByName("BlockMember")),
+		connect.WithHandlerOptions(opts...),
+	)
+	serverServiceUnblockMemberHandler := connect.NewUnaryHandler(
+		ServerServiceUnblockMemberProcedure,
+		svc.UnblockMember,
+		connect.WithSchema(serverServiceMethods.ByName("UnblockMember")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/sblurp.v1.ServerService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ServerServiceGetServerInfoProcedure:
@@ -670,6 +716,10 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 			serverServiceSetMemberRolesHandler.ServeHTTP(w, r)
 		case ServerServiceDeleteEmojiProcedure:
 			serverServiceDeleteEmojiHandler.ServeHTTP(w, r)
+		case ServerServiceBlockMemberProcedure:
+			serverServiceBlockMemberHandler.ServeHTTP(w, r)
+		case ServerServiceUnblockMemberProcedure:
+			serverServiceUnblockMemberHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -761,6 +811,14 @@ func (UnimplementedServerServiceHandler) SetMemberRoles(context.Context, *connec
 
 func (UnimplementedServerServiceHandler) DeleteEmoji(context.Context, *connect.Request[v1.DeleteEmojiRequest]) (*connect.Response[v1.DeleteEmojiResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.DeleteEmoji is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) BlockMember(context.Context, *connect.Request[v1.BlockMemberRequest]) (*connect.Response[v1.BlockMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.BlockMember is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) UnblockMember(context.Context, *connect.Request[v1.UnblockMemberRequest]) (*connect.Response[v1.UnblockMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.UnblockMember is not implemented"))
 }
 
 // ChatServiceClient is a client for the sblurp.v1.ChatService service.
