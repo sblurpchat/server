@@ -20,6 +20,7 @@ import (
 	"connectrpc.com/connect"
 
 	"sblurp.chat/server/gen/sblurp/v1/sblurpv1connect"
+	"sblurp.chat/server/internal/mcp"
 )
 
 // Config holds everything the server needs. Zero values get defaults.
@@ -209,6 +210,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /{$}", s.splash)
 	mux.HandleFunc("GET /sblurp-logo.png", s.splashLogo)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte("ok\n")) })
+	mcp.New(s.cfg.BaseURL, s.cfg.TrustedIssuers, s.cfg.Version, mux).Mount(mux)
 	return cors(mux)
 }
 
@@ -225,10 +227,10 @@ func cors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
 		h.Set("Access-Control-Allow-Origin", "*")
-		h.Set("Access-Control-Expose-Headers", "Grpc-Status, Grpc-Message, Grpc-Status-Details-Bin")
+		h.Set("Access-Control-Expose-Headers", "Grpc-Status, Grpc-Message, Grpc-Status-Details-Bin, WWW-Authenticate")
 		if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
 			h.Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			h.Set("Access-Control-Allow-Headers", "Connect-Protocol-Version, Connect-Timeout-Ms, Content-Type, Authorization, Grpc-Timeout, X-Grpc-Web, X-User-Agent")
+			h.Set("Access-Control-Allow-Headers", "Connect-Protocol-Version, Connect-Timeout-Ms, Content-Type, Authorization, Grpc-Timeout, X-Grpc-Web, X-User-Agent, Mcp-Protocol-Version")
 			h.Set("Access-Control-Max-Age", "7200")
 			w.WriteHeader(http.StatusNoContent)
 			return
