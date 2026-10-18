@@ -414,6 +414,11 @@ func (s *Server) linkPreview(raw string) *v1.LinkPreview {
 			<-wait
 			continue // the leader has stored it
 		}
+		// A leader may have stored it and left between the check above and the lock.
+		if p, fresh := s.cachedPreview(key); fresh {
+			u.mu.Unlock()
+			return p
+		}
 		if u.inflight == nil {
 			u.inflight = map[string]chan struct{}{}
 		}
