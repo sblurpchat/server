@@ -62,20 +62,7 @@ var (
 
 // listRel lists the members that member blocked or muted.
 func listRel(ctx context.Context, q queryer, r relation, member string) ([]string, error) {
-	rows, err := q.QueryContext(ctx, "SELECT "+r.target+" FROM "+r.table+" WHERE "+r.by+" = ? ORDER BY at_ms", member)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		out = append(out, id)
-	}
-	return out, rows.Err()
+	return scanIDs(q.QueryContext(ctx, "SELECT "+r.target+" FROM "+r.table+" WHERE "+r.by+" = ? ORDER BY at_ms", member))
 }
 
 func (s *Server) BlockMember(ctx context.Context, req *connect.Request[v1.BlockMemberRequest]) (*connect.Response[v1.BlockMemberResponse], error) {

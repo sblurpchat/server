@@ -2053,22 +2053,9 @@ func (s *Server) kick(ctx context.Context, memberID string, ban bool) error {
 // bring them back. DMs are kept.
 func (s *Server) removeMember(t *wtx, id string) error {
 	ctx := t.ctx
-	rows, err := t.QueryContext(ctx, `SELECT channel_id FROM channel_members WHERE member_id = ?
-		AND channel_id IN (SELECT id FROM channels WHERE kind = ?)`, id, v1.ChannelKind_CHANNEL_KIND_PRIVATE)
+	channels, err := scanIDs(t.QueryContext(ctx, `SELECT channel_id FROM channel_members WHERE member_id = ?
+		AND channel_id IN (SELECT id FROM channels WHERE kind = ?)`, id, v1.ChannelKind_CHANNEL_KIND_PRIVATE))
 	if err != nil {
-		return err
-	}
-	var channels []string
-	for rows.Next() {
-		var c string
-		if err := rows.Scan(&c); err != nil {
-			rows.Close()
-			return err
-		}
-		channels = append(channels, c)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
 		return err
 	}
 	for _, c := range channels {

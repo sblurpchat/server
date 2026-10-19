@@ -195,7 +195,11 @@ func (t *wtx) emit(ev *v1.Event, scopeChannel, scopeMember string) error {
 }
 
 func channelMemberIDs(ctx context.Context, q queryer, channelID string) ([]string, error) {
-	rows, err := q.QueryContext(ctx, "SELECT member_id FROM channel_members WHERE channel_id = ? ORDER BY member_id", channelID)
+	return scanIDs(q.QueryContext(ctx, "SELECT member_id FROM channel_members WHERE channel_id = ? ORDER BY member_id", channelID))
+}
+
+// scanIDs reads a one-column string result and closes rows.
+func scanIDs(rows *sql.Rows, err error) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -222,21 +226,11 @@ func (s *Server) prune(ctx context.Context) error {
 		if _, err := t.ExecContext(ctx, "DELETE FROM events WHERE seq <= (SELECT MAX(seq) FROM events) - ? AND at_ms < ?", s.cfg.KeepEvents, cutoff); err != nil {
 			return err
 		}
-		rows, err := t.QueryContext(ctx, `DELETE FROM attachments WHERE message_id IS NULL AND created_at_ms < ?
+		var err error
+		orphans, err = scanIDs(t.QueryContext(ctx, `DELETE FROM attachments WHERE message_id IS NULL AND created_at_ms < ?
 			AND id NOT IN (SELECT value FROM settings WHERE key IN ('banner', 'icon')) AND id NOT IN (SELECT header_image_id FROM channels)
-			AND id NOT IN (SELECT substr(avatar_url, 8, instr(substr(avatar_url, 8), '/') - 1) FROM members WHERE avatar_url LIKE '/files/%') RETURNING id`, now.Add(-orphanAfter).UnixMilli())
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var id string
-			if err := rows.Scan(&id); err != nil {
-				return err
-			}
-			orphans = append(orphans, id)
-		}
-		return rows.Err()
+			AND id NOT IN (SELECT substr(avatar_url, 8, instr(substr(avatar_url, 8), '/') - 1) FROM members WHERE avatar_url LIKE '/files/%') RETURNING id`, now.Add(-orphanAfter).UnixMilli()))
+		return err
 	})
 	if err != nil {
 		return err
@@ -302,20 +296,8 @@ func (s *Server) pruneMessages(ctx context.Context) error {
 			if _, err := t.ExecContext(ctx, "DELETE FROM reactions WHERE message_id IN (SELECT value FROM json_each(?))", ids); err != nil {
 				return err
 			}
-			rows, err := t.QueryContext(ctx, "DELETE FROM attachments WHERE message_id IN (SELECT value FROM json_each(?)) RETURNING id", ids)
+			files, err = scanIDs(t.QueryContext(ctx, "DELETE FROM attachments WHERE message_id IN (SELECT value FROM json_each(?)) RETURNING id", ids))
 			if err != nil {
-				return err
-			}
-			for rows.Next() {
-				var id string
-				if err := rows.Scan(&id); err != nil {
-					rows.Close()
-					return err
-				}
-				files = append(files, id)
-			}
-			rows.Close()
-			if err := rows.Err(); err != nil {
 				return err
 			}
 			res, err := t.ExecContext(ctx, "DELETE FROM messages WHERE id IN (SELECT value FROM json_each(?))", ids)
