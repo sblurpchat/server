@@ -35,6 +35,23 @@ func canSeeText(ctx context.Context, q queryer, channelID, memberID string) (boo
 	return ok, err
 }
 
+// requireJoined: in OPT_IN mode, posting, reacting and typing in a text
+// channel need membership, as in Slack. Reading a preview does not. Call it
+// after channelFor, so a channel the member cannot see stays NOT_FOUND.
+func requireJoined(ctx context.Context, q queryer, c *v1.Channel, member string) error {
+	if c.Kind != v1.ChannelKind_CHANNEL_KIND_TEXT {
+		return nil
+	}
+	var in bool
+	err := q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM channel_members WHERE channel_id = ? AND member_id = ?)
+		OR COALESCE((SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'channel_mode'), ?) != ?`,
+		c.Id, member, v1.ChannelMode_CHANNEL_MODE_ROLES, v1.ChannelMode_CHANNEL_MODE_OPT_IN).Scan(&in)
+	if err == nil && !in {
+		err = errf(connect.CodeFailedPrecondition, "join #%s first", c.Name)
+	}
+	return err
+}
+
 func channelMode(ctx context.Context, q queryer) (v1.ChannelMode, error) {
 	var mode v1.ChannelMode
 	err := q.QueryRowContext(ctx, "SELECT COALESCE((SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'channel_mode'), ?)",

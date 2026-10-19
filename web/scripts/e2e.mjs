@@ -285,8 +285,12 @@ try {
   await page.locator(".join-bar", { hasText: "previewing #reading-room" }).waitFor();
   await page.locator(".channel .msg", { hasText: "Chapter 2" }).waitFor();
   if (await side.locator(".chan", { hasText: "reading-room" }).count()) throw new Error("a previewed channel is in the sidebar");
+  // Writes need a join (1124): no reacting from a preview.
+  const previewMsg = page.locator(".channel .msg", { hasText: "Chapter 2" }).first();
+  if (await previewMsg.locator("button[aria-label=\"Add reaction\"]").count()) throw new Error("a preview offers Add reaction");
   await page.getByRole("button", { name: "Join channel" }).click();
   await page.locator(".channel .composer").waitFor();
+  await previewMsg.locator("button[aria-label=\"Add reaction\"]").first().waitFor({ state: "attached" });
   await side.locator(".chan", { hasText: "reading-room" }).waitFor();
   await page.getByRole("button", { name: "#reading-room options" }).click();
   await page.getByRole("menuitem", { name: "Leave channel" }).click();

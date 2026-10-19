@@ -468,6 +468,8 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
     roles: useApp((s) => s.cs[s.url]!.roles),
     failed: useApp((s) => s.cs[s.url]!.failed),
   };
+  // A preview (OPT_IN, not joined) is read-only: the server refuses reactions there (1124).
+  const joined = useApp((s) => !!s.cs[s.url]!.channels[m.channelId]);
   const editing = useApp((s) => s.editing === m.id);
   const blocked = useApp((s) => s.cs[s.url]!.blocked.includes(m.authorId));
   const muted = useApp((s) => s.cs[s.url]!.muted.includes(m.authorId));
@@ -650,25 +652,29 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
                   }}
                   onClick={() => {
                     if (press.current.long) press.current.long = false;
-                    else void react(url, m, r.emoji);
+                    else if (joined) void react(url, m, r.emoji);
                   }}
                 >
                   <Glyph e={r.emoji} /> {r.memberIds.length}
                 </button>
               );
             })}
-            <button className="reaction add" aria-label="Add reaction" aria-haspopup="dialog" onClick={(e) => setPick(e.currentTarget.getBoundingClientRect())}>
-              <Icon name="smile" size={16} />
-            </button>
+            {joined && (
+              <button className="reaction add" aria-label="Add reaction" aria-haspopup="dialog" onClick={(e) => setPick(e.currentTarget.getBoundingClientRect())}>
+                <Icon name="smile" size={16} />
+              </button>
+            )}
           </div>
         )}
         {!inThread && m.replyCount > 0 && <ThreadLink m={m} />}
       </div>
       {!pending && !editing && (
         <div className="toolbar" role="group" aria-label="Message actions">
-          <button aria-label="Add reaction" title="Add reaction" aria-haspopup="dialog" aria-expanded={!!pick} onClick={(e) => setPick(e.currentTarget.getBoundingClientRect())}>
-            <Icon name="smile" size={18} />
-          </button>
+          {joined && (
+            <button aria-label="Add reaction" title="Add reaction" aria-haspopup="dialog" aria-expanded={!!pick} onClick={(e) => setPick(e.currentTarget.getBoundingClientRect())}>
+              <Icon name="smile" size={18} />
+            </button>
+          )}
           {!inThread && (
             <button aria-label="Reply in thread" title="Reply in thread" onClick={() => set({ pane: { t: "thread", rootId: m.id } })}>
               <Icon name="thread" size={18} />
@@ -1304,7 +1310,11 @@ export function RightPane() {
       {pane.t === "thread" ? (
         <>
           <MessageList key={pane.rootId} url={c.url} channelId={channelId} rootId={pane.rootId} />
-          <Composer key={`c${pane.rootId}`} url={c.url} channelId={channelId} rootId={pane.rootId} placeholder="Reply in thread" />
+          {ch ? (
+            <Composer key={`c${pane.rootId}`} url={c.url} channelId={channelId} rootId={pane.rootId} placeholder="Reply in thread" />
+          ) : (
+            <p className="composer-note">Join the channel to reply.</p>
+          )}
         </>
       ) : pane.t === "members" ? (
         <Members c={c} />

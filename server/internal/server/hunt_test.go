@@ -95,3 +95,43 @@ func TestSearchHidesExpired(t *testing.T) {
 		}
 	}
 }
+
+// In OPT_IN mode a member may preview a text channel they have not joined,
+// but posting, reacting and typing there need a join first, as in Slack.
+func TestOptInWritesNeedJoin(t *testing.T) {
+	e := newEnv(t)
+	ana := e.join("ana")
+	bob := e.join("bob")
+	ana.setMode(v1.ChannelMode_CHANNEL_MODE_OPT_IN)
+	film := ana.channel("film", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	msg := ana.send(film.Id, "hello")
+
+	if _, err := bob.chat.ListMessages(ctx(), connect.NewRequest(&v1.ListMessagesRequest{ChannelId: film.Id})); err != nil {
+		t.Fatalf("preview: %v", err)
+	}
+	notJoined := func(what string, err error) {
+		t.Helper()
+		if connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Errorf("%s before joining: %v, want failed_precondition", what, err)
+		}
+	}
+	_, err := bob.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: film.Id, Text: "hi"}))
+	notJoined("send", err)
+	_, err = bob.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: film.Id, Text: "hi", ThreadRootId: msg.Id}))
+	notJoined("thread reply", err)
+	_, err = bob.chat.React(ctx(), connect.NewRequest(&v1.ReactRequest{MessageId: msg.Id, Emoji: "👍"}))
+	notJoined("react", err)
+	_, err = bob.chat.SetTyping(ctx(), connect.NewRequest(&v1.SetTypingRequest{ChannelId: film.Id}))
+	notJoined("typing", err)
+
+	if err := bob.joinChannel(film.Id); err != nil {
+		t.Fatal(err)
+	}
+	bob.send(film.Id, "hi")
+	must(bob.chat.React(ctx(), connect.NewRequest(&v1.ReactRequest{MessageId: msg.Id, Emoji: "👍"})))
+	if err := bob.leaveChannel(film.Id); err != nil {
+		t.Fatal(err)
+	}
+	_, err = bob.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: film.Id, Text: "bye"}))
+	notJoined("send after leaving", err)
+}

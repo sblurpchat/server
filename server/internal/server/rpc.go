@@ -1301,7 +1301,13 @@ func (s *Server) SendMessage(ctx context.Context, req *connect.Request[v1.SendMe
 	}
 	var out *v1.Message
 	err := s.writeTx(ctx, func(t *wtx) error {
-		var err error
+		c, err := channelFor(ctx, t, r.ChannelId, m.Id)
+		if err != nil {
+			return err
+		}
+		if err := requireJoined(ctx, t, c, m.Id); err != nil {
+			return err
+		}
 		out, err = s.sendMessage(t, m.Id, r, s.now())
 		return err
 	})
@@ -1561,6 +1567,9 @@ func (s *Server) React(ctx context.Context, req *connect.Request[v1.ReactRequest
 		if msg.Deleted {
 			return errf(connect.CodeNotFound, "message not found")
 		}
+		if err := requireJoined(ctx, t, c, m.Id); err != nil {
+			return err
+		}
 		var res sql.Result
 		if r.Remove {
 			res, err = t.ExecContext(ctx, "DELETE FROM reactions WHERE message_id = ? AND emoji = ? AND member_id = ?", msg.Id, r.Emoji, m.Id)
@@ -1643,6 +1652,9 @@ func (s *Server) SetTyping(ctx context.Context, req *connect.Request[v1.SetTypin
 	}
 	c, err := channelFor(ctx, s.db.r, r.ChannelId, m.Id)
 	if err != nil {
+		return nil, err
+	}
+	if err := requireJoined(ctx, s.db.r, c, m.Id); err != nil {
 		return nil, err
 	}
 	ids, err := channelMemberIDs(ctx, s.db.r, c.Id)

@@ -213,7 +213,9 @@ client. There is no separate apps system. The bot is ~150 lines in
     are in `GetState`, have read states, get events and are searched by a
     `Search` without `channel_id`. A visible channel I have not joined can
     still be read with `ListMessages` or searched with its `channel_id`
-    (preview). New members join the channels with `is_default`.
+    (preview), but `SendMessage`, `React` and `SetTyping` there are
+    `failed_precondition` until I join. New members join the channels with
+    `is_default`.
     Switching ROLES to OPT_IN keeps everyone in what they are in (which is
     everything they can see); OPT_IN to ROLES puts everyone in everything.
   - Roles: `Role{id, name, color, position}`. Admins `CreateRole`,

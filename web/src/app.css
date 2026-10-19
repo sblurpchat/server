@@ -3523,6 +3523,22 @@ li.sw-empty {
   padding: 4px 20px 0;
   flex: none;
 }
+/* In place of the composer where you may read but not post (1124, 1290). */
+.composer-note {
+  flex: none;
+  margin: 4px 20px 16px;
+  padding: 10px 14px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  color: var(--graphite);
+  font-size: 0.875rem;
+  animation: fade-in 160ms ease-out;
+}
+@media (max-width: 520px) {
+  .composer-note {
+    margin: 4px 12px 12px;
+  }
+}
 .composer-box {
   border: 1px solid var(--line);
   border-radius: 10px;

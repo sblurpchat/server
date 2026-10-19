@@ -604,6 +604,12 @@ function canSee(f: Fake, ch: Channel | undefined) {
 function inside(f: Fake, ch: Channel | undefined) {
   return canSee(f, ch) && !f.hidden.has(ch!.id) && !(ch!.kind === ChannelKind.TEXT && f.mode === ChannelMode.OPT_IN && f.notIn.has(ch!.id));
 }
+/** Like the real server (1124): a channel I can see but have not joined (OPT_IN) is read-only. */
+function mustBeIn(f: Fake, id: string) {
+  const ch = f.channels.get(id);
+  if (!canSee(f, ch)) throw new ConnectError("channel not found", Code.NotFound);
+  if (ch!.kind === ChannelKind.TEXT && f.mode === ChannelMode.OPT_IN && f.notIn.has(id)) throw new ConnectError(`join #${ch!.name} first`, Code.FailedPrecondition);
+}
 /** Events about channels outside my sidebar never reach me, like on the real server. */
 function delivered(f: Fake, e: Event) {
   const k = e.kind;
@@ -1027,6 +1033,7 @@ function service(f: Fake) {
       },
       sendMessage(req: { channelId: string; text: string; threadRootId: string; clientId: string; attachmentIds: string[] }) {
         need();
+        mustBeIn(f, req.channelId);
         if (!inside(f, f.channels.get(req.channelId))) throw new ConnectError("channel not found", Code.NotFound);
         const target = f.channels.get(req.channelId)!;
         if (target.kind === ChannelKind.DM) checkBlocks(f, target.memberIds);
@@ -1066,6 +1073,7 @@ function service(f: Fake) {
       react(req: { messageId: string; emoji: string; remove: boolean }) {
         need();
         const m = msg(req.messageId);
+        mustBeIn(f, m.channelId);
         let r = m.reactions.find((x) => x.emoji === req.emoji);
         if (!r && !req.remove) m.reactions.push((r = create(ReactionSchema, { emoji: req.emoji })));
         if (r) {
