@@ -62,6 +62,25 @@ describe("searchEmoji", () => {
     expect(searchEmoji(list, ":cat").map((e) => e.name)).toEqual(["cat", "catjam", "blobcat"]);
     expect(searchEmoji(list, " ")).toBe(list);
   });
+  it("also matches the Unicode name of a Slack-named emoji", () => {
+    const list = [{ name: "thumbsup", alt: "thumbs_up" }, { name: "heart_eyes", alt: "smiling_face_with_heart_eyes" }, { name: "smiley" }];
+    expect(searchEmoji(list, "smiling").map((e) => e.name)).toEqual(["heart_eyes"]);
+    expect(searchEmoji(list, "smil").map((e) => e.name)).toEqual(["smiley", "heart_eyes"]);
+    expect(searchEmoji(list, "heart").map((e) => e.name)).toEqual(["heart_eyes"]);
+  });
+});
+
+describe("emoji-data", () => {
+  it("has the full Unicode set with unique names and no skin tones", async () => {
+    const { EMOJI_DATA } = await import("./emoji-data");
+    const all = EMOJI_DATA.flatMap(([, d]) => d.split(" ").filter((_, i) => i % 2 === 0));
+    expect(all.length).toBeGreaterThan(1800);
+    expect(new Set(all).size).toBe(all.length);
+    expect(all).toContain("flag_japan");
+    expect(all).toContain("keycap_hash");
+    expect(all.every((n) => /^[a-z0-9_+-]+$/.test(n))).toBe(true);
+    expect(EMOJI_DATA.flatMap(([, d]) => d.split(" ")).join("")).not.toMatch(/[\u{1F3FB}-\u{1F3FF}]/u);
+  });
 });
 
 describe("pickerSections", () => {

@@ -1072,10 +1072,10 @@ export function matchScore(query: string, text: string): number {
   return j === q.length ? 100 - t.length : -1;
 }
 
-/** The items matching q by matchScore, best first; ties keep list order. */
-export function fuzzyFilter<T>(list: T[], q: string, key: (x: T) => string): T[] {
+/** The items matching q by matchScore (the best of several keys), best first; ties keep list order. */
+export function fuzzyFilter<T>(list: T[], q: string, key: (x: T) => string | string[]): T[] {
   return list
-    .map((x) => [x, matchScore(q, key(x))] as const)
+    .map((x) => [x, Math.max(...[key(x)].flat().map((k) => matchScore(q, k)))] as const)
     .filter(([, s]) => s >= 0)
     .sort((a, b) => b[1] - a[1])
     .map(([x]) => x);

@@ -90,7 +90,7 @@ export function useMore(step = 160) {
     io.observe(el);
     return () => io.disconnect();
   }, [limit, step]);
-  return [limit, ref] as const;
+  return [limit, ref, setLimit] as const;
 }
 
 /** Custom emoji matching an autocomplete query, for the composer's ":" list. */

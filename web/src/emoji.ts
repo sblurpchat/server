@@ -103,10 +103,10 @@ export function tally(results: UploadResult[]): Record<UploadStatus, number> {
   return t;
 }
 
-/** Search: fuzzy by name, best first ("canof" finds can-of-worms); a leading or trailing colon is ignored. */
-export function searchEmoji<T extends { name: string }>(list: T[], q: string): T[] {
+/** Search: fuzzy by name or Unicode name (alt), best first ("canof" finds can-of-worms); a leading or trailing colon is ignored. */
+export function searchEmoji<T extends { name: string; alt?: string }>(list: T[], q: string): T[] {
   q = q.trim().replace(/^:|:$/g, "");
-  return q ? fuzzyFilter(list, q, (e) => e.name) : list;
+  return q ? fuzzyFilter(list, q, (e) => (e.alt ? [e.name, e.alt] : e.name)) : list;
 }
 
 /** One cell in the picker: a standard emoji has `ch`, a community one has `src`. */
@@ -114,6 +114,7 @@ export interface PickItem {
   name: string;
   ch?: string;
   src?: string;
+  alt?: string; // the Unicode name when name is a Slack one
 }
 interface PickSection {
   id: string;
