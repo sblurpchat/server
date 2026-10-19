@@ -28,6 +28,7 @@ import {
   applyEvent,
   applySnapshot,
   backoffMs,
+  denied,
   STABLE_MS,
   emptyCommunity,
   formatHash,
@@ -332,12 +333,12 @@ async function connect(url: string) {
         set({ auth: "out" });
         return;
       }
-      // permission_denied means not a member: never joined, or kicked or banned (the server ends
-      // the stream with resource_exhausted, and the reconnect is then denied). Stop either way.
-      if (ConnectError.from(e).code === Code.PermissionDenied && (snapshot || state.cs[url]?.me)) {
-        patchC(url, (c) => (c.me ? { ...emptyCommunity(url), info: c.info, status: "removed" } : { ...c, status: "join" }));
-        return;
-      }
+      // A kick or ban ends the stream with resource_exhausted, and the reconnect is denied. A saved
+      // community that is not a default was joined, so a cold start drops it too (1318).
+      const ce = ConnectError.from(e);
+      const was = denied(ce.code, ce.rawMessage, !!state.cs[url]?.me || !DEFAULT_COMMUNITIES.includes(url));
+      if (was === "drop") return leave(url);
+      if (was === "join") return patchC(url, (c) => ({ ...c, status: "join" }));
       patchC(url, (c) => ({ ...c, error: errorText(e, c.info?.name) }));
     }
     if (liveAt && Date.now() - liveAt > STABLE_MS) attempt = 0;
@@ -892,21 +893,19 @@ export async function setMemberRoles(url: string, memberId: string, roleIds: str
   if (r.member) local(url, { case: "memberUpdated", value: r.member });
 }
 
-export function joinAgain(url: string) {
-  patchC(url, (c) => ({ ...c, status: "join" }));
-}
-
 // Drops a community from the list, on every device once it syncs.
 export function leave(url: string) {
   conns.get(url)?.ctl.abort();
   conns.delete(url);
+  const viewing = state.url === url;
   set((s) => {
     const { [url]: _, ...cs } = s.cs;
     const order = s.order.filter((u) => u !== url);
-    return { cs, order, modal: null, url: s.url === url ? order[0] ?? "" : s.url, channelId: s.url === url ? "" : s.channelId };
+    // A community dropped in the background (a kick, 1318) leaves the open view and dialog alone.
+    return viewing ? { cs, order, modal: null, url: order[0] ?? "", channelId: "" } : { cs, order };
   });
   saveOrder();
-  if (state.url) selectCommunity(state.url);
+  if (viewing && state.url) selectCommunity(state.url);
 }
 
 export function reorder(order: string[]) {

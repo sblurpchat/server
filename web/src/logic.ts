@@ -1,5 +1,6 @@
 // Pure decision logic. No DOM, no network. Everything here is covered by logic.test.ts.
 import { create } from "@bufbuild/protobuf";
+import { Code } from "@connectrpc/connect";
 import {
   ChannelKind,
   ChannelMode,
@@ -20,7 +21,7 @@ import {
 // Community state and the event reducer
 // ---------------------------------------------------------------------------
 
-export type Status = "connecting" | "live" | "reconnecting" | "join" | "removed" | "error";
+export type Status = "connecting" | "live" | "reconnecting" | "join" | "error";
 
 export interface Info {
   name: string;
@@ -750,6 +751,17 @@ export function typingLabel(names: string[]): string {
  * `rand` is in [0, 1).
  */
 export const backoffMs = (attempt: number, rand: number) => Math.round(rand * Math.min(30_000, 2000 * 2 ** attempt));
+
+/**
+ * What a failed GetState or Subscribe means for the community list (1318). Only the community's
+ * own not-a-member answer counts: a member who was kicked or banned drops it, on every device once
+ * the list syncs; someone who never joined gets the join card. Anything else (a proxy's bare 403,
+ * a sign-in problem, the kick ending the stream) is retried.
+ */
+export function denied(code: Code, message: string, member: boolean): "drop" | "join" | null {
+  if (code !== Code.PermissionDenied || !/^(join this community first|you are no longer a member)$/.test(message)) return null;
+  return member ? "drop" : "join";
+}
 
 /** A stream must stay up this long before backoff starts over, so a server that accepts and then drops does not get retried at full speed. */
 export const STABLE_MS = 30_000;

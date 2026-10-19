@@ -218,7 +218,7 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
   }
 
   // Leave Night Owls on the server; it drops off the rail. A second tab still has it open, and
-  // the server ends its stream, so that tab shows the removed state instead of reconnecting.
+  // the server ends its stream, so that tab drops it too instead of reconnecting.
   const rail = (pg) => pg.getByRole('navigation', { name: 'Communities' }).getByRole('button', { name: /^Night Owls/ });
   const owls = rail(p);
   const p3 = await ctx.newPage(); watch(p3, 'tab3');
@@ -228,9 +228,8 @@ const ok = (cond, what) => { if (!cond) throw new Error(what); console.log('ok',
   await p.locator('dialog').getByRole('button', { name: 'Leave' }).click();
   await owls.waitFor({ state: 'detached', timeout: 10000 });
   ok(true, 'leave removes the community');
-  await rail(p3).click();
-  await p3.getByRole('heading', { name: 'You were removed from Night Owls' }).waitFor({ timeout: 30000 });
-  ok(await p3.locator('.banner').count() === 0, 'the other tab shows "removed", not a reconnect loop');
+  await rail(p3).waitFor({ state: 'detached', timeout: 30000 });
+  ok(await p3.locator('.banner').count() === 0, 'the other tab drops the community, not a reconnect loop');
   await shot('removed', p3); await p3.close();
   // Calls that tab made between the server dropping it and the denied reconnect.
   errs.splice(0, errs.length, ...errs.filter(e => !/^tab3 console: Failed to load resource: (net::ERR_FAILED|.*403)/.test(e)));

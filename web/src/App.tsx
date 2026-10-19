@@ -45,7 +45,6 @@ import {
   FAKE,
   get,
   join,
-  joinAgain,
   leave,
   leaveCommunity,
   markAllRead,
@@ -197,21 +196,6 @@ function Shell() {
           />
         ) : c.status === "join" ? (
           <JoinCard url={url} />
-        ) : c.status === "removed" ? (
-          <Empty
-            title={`You were removed from ${c.info?.name ?? hostOf(url)}`}
-            body="You can't read or send messages there anymore. If you were only kicked, you can join again."
-            action={
-              <div className="row-end">
-                <button className="btn" onClick={() => leave(url)}>
-                  Remove
-                </button>
-                <button className="btn ghost" onClick={() => joinAgain(url)}>
-                  Join again
-                </button>
-              </div>
-            }
-          />
         ) : !c.me ? (
           c.error ? (
             <Unreachable c={c} />
@@ -532,7 +516,7 @@ function Sidebar({ c }: { c: Community }) {
               </section>
             );
           })
-        ) : c.status === "join" || c.status === "removed" || c.error ? null : (
+        ) : c.status === "join" || c.error ? null : (
           <Skeleton rows={7} avatar={16} lines={0} className="side-skel" />
         )}
       </nav>
@@ -554,7 +538,7 @@ function MeBar({ c }: { c: Community }) {
         <Avatar m={me} size={32} presence />
         <span className="me-text">
           <b className="truncate">{me?.displayName ?? profile?.displayName ?? "You"}</b>
-          <small className="truncate">{me?.statusText || me?.statusEmoji ? `${me.statusEmoji} ${me.statusText}`.trim() : (me ? "Online" : c.status === "join" || c.status === "removed" ? "Not a member" : "Connecting…")}</small>
+          <small className="truncate">{me?.statusText || me?.statusEmoji ? `${me.statusEmoji} ${me.statusText}`.trim() : (me ? "Online" : c.status === "join" ? "Not a member" : "Connecting…")}</small>
         </span>
       </button>
       <button className="icon-btn" aria-label="Settings" title="Settings" onClick={() => set({ modal: { t: "settings" } })}>

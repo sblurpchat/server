@@ -1,5 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
+import { Code } from "@connectrpc/connect";
 import css from "./app.css?raw";
 import { channelLabel, dmPeer } from "./logic";
 import {
@@ -17,6 +18,7 @@ import {
   type Event,
 } from "./gen/sblurp/v1/sblurp_pb";
 import {
+  denied,
   mayPost,
   posterNames,
   SKELETON_DELAY_MS,
@@ -1042,6 +1044,20 @@ describe("appearanceSync", () => {
     expect(appearanceSync(7, 7)).toBe("keep");
     expect(appearanceSync(7, null)).toBe("push"); // nothing on the server yet
     expect(appearanceSync(0, null)).toBe("keep"); // nothing anywhere
+  });
+});
+
+describe("denied", () => {
+  it("drops a community only when it says I am not a member and I was one", () => {
+    expect(denied(Code.PermissionDenied, "join this community first", true)).toBe("drop"); // kicked or banned
+    expect(denied(Code.PermissionDenied, "you are no longer a member", true)).toBe("drop"); // kicked mid-subscribe
+    expect(denied(Code.PermissionDenied, "join this community first", false)).toBe("join"); // a default I never joined
+  });
+  it("retries anything that is not that answer", () => {
+    expect(denied(Code.PermissionDenied, "HTTP 403", true)).toBeNull(); // a proxy, not the community
+    expect(denied(Code.Unauthenticated, "missing bearer token", true)).toBeNull(); // signed out or token trouble
+    expect(denied(Code.ResourceExhausted, "subscription fell behind; reconnect with your last seq", true)).toBeNull(); // the kick itself
+    expect(denied(Code.Unavailable, "", true)).toBeNull();
   });
 });
 
