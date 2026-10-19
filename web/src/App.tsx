@@ -882,7 +882,10 @@ function Modals() {
     case "lightbox":
       return (
         <Dialog label={modal.name} className="lightbox">
-          {modal.video ? <video src={modal.src} controls autoPlay playsInline aria-label={modal.name} /> : <img src={modal.src} alt={modal.name} />}
+          {/* Full screen (1312): a tap on the dark around the picture closes it, like the backdrop did. */}
+          <div className="lightbox-stage" onClick={(e) => e.target === e.currentTarget && set({ modal: null })}>
+            {modal.video ? <video src={modal.src} controls autoPlay playsInline aria-label={modal.name} /> : <img src={modal.src} alt={modal.name} />}
+          </div>
           <div className="lightbox-bar">
             <span className="truncate">{modal.name}</span>
             <a className="btn ghost small" href={modal.src} target="_blank" rel="noopener noreferrer">

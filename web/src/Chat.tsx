@@ -75,6 +75,8 @@ import {
 import { Avatar, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, ghost, Icon, Markdown, menuKeys, Pop, Resizer, Skeleton, useClamped } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
+/** Touch screens have no hover toolbar (1313): press and hold puts its actions in the menu. */
+const NO_HOVER = matchMedia("(hover: none)");
 export const openProfile = (url: string, memberId: string, el: HTMLElement) =>
   set({ popover: { url, memberId, rect: el.getBoundingClientRect() } });
 
@@ -556,9 +558,10 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
       aria-label={`${name}, ${timeLabel(Number(m.createdAtMs), h24)}`}
       onPointerDown={(e) => {
         const h = hold.current;
+        h.on = false; // a hold whose release fired no click must not swallow the next tap
         h.touch = e.pointerType !== "mouse";
         if (!h.touch || pending || editing || (e.target as Element).closest("button, input, textarea, video, .pop")) return;
-        Object.assign(h, { on: false, x: e.clientX, y: e.clientY });
+        Object.assign(h, { x: e.clientX, y: e.clientY });
         h.timer = window.setTimeout(() => ((h.on = true), setHeld(true)), 450);
       }}
       onPointerUp={() => {
@@ -726,6 +729,25 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
       </Pop>
       <Pop anchor={more} side="left" onClose={() => setMore(null)} className="menu" label="Message actions">
         <div role="menu" onClick={() => setMore(null)} onKeyDown={menuKeys}>
+          {NO_HOVER.matches && (
+            <>
+              {joined && (
+                <button role="menuitem" onClick={() => setPick(more)}>
+                  <Icon name="smile" size={18} /> Add reaction
+                </button>
+              )}
+              {!inThread && (
+                <button role="menuitem" onClick={() => set({ pane: { t: "thread", rootId: m.id } })}>
+                  <Icon name="thread" size={18} /> Reply in thread
+                </button>
+              )}
+              {mine && (
+                <button role="menuitem" onClick={() => set({ editing: m.id })}>
+                  <Icon name="edit" size={18} /> Edit message
+                </button>
+              )}
+            </>
+          )}
           <button role="menuitem" onClick={() => navigator.clipboard.writeText(decodeMentions(m.text, c.members))}>
             <Icon name="copy" size={18} /> Copy text
           </button>

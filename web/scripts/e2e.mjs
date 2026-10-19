@@ -437,10 +437,40 @@ try {
   await phone.locator(".channel .composer-input[placeholder='Message #design']").waitFor();
   await phone.waitForFunction(() => document.querySelector(".app")?.getAttribute("data-drawer") === "false");
   if (await phone.locator(".sidebar").isVisible()) throw new Error("drawer stayed open after picking a channel");
+  // No dialog scrolls sideways at phone width (1307): a few px too wide let iOS drag the whole sheet around.
+  for (const t of ["settings", "community", "channel", "profile", "invite", "info", "browse", "keys", "add", "newdm", "reports", "setup"]) {
+    await phone.evaluate(async (t) => (await import("/src/store.ts")).set({ modal: { t } }), t);
+    await phone.locator("dialog[open]").first().waitFor();
+    const extra = await phone.evaluate(() => [document.scrollingElement, document.querySelector("dialog[open]")].map((el) => el.scrollWidth - el.clientWidth));
+    if (extra.some((x) => x > 0)) throw new Error(`${t} dialog scrolls sideways at 390px (page, dialog): ${extra}`);
+    await phone.evaluate(async () => (await import("/src/store.ts")).set({ modal: null }));
+    await phone.locator("dialog[open]").waitFor({ state: "detached" });
+  }
   await phone.close();
 
+  // Touch (1313): a tap on a message, its picture or video does not bring up the hover toolbar.
+  const touchCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, reducedMotion: "reduce" });
+  const touch = await touchCtx.newPage();
+  touch.on("pageerror", (e) => errors.push(e.message));
+  await touch.route("http://localhost:8090/**", (r) => r.abort());
+  await touch.goto("http://127.0.0.1:5198/?fake=1&quiet=1", { waitUntil: "domcontentloaded" });
+  const tapped = touch.locator(".channel .msg").last();
+  await tapped.locator(".msg-text").tap();
+  await touch.waitForTimeout(200);
+  if (await tapped.locator(".toolbar").isVisible()) throw new Error("a tap on a message showed the hover toolbar on a touch screen");
+  // Press and hold opens the actions instead, with the toolbar's own ones on top.
+  const held = tapped.locator(".msg-text");
+  await held.dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true, bubbles: true });
+  await touch.waitForTimeout(600);
+  await held.dispatchEvent("pointerup", { pointerType: "touch", isPrimary: true, bubbles: true });
+  await touch.getByRole("menu").getByRole("menuitem", { name: "Reply in thread" }).waitFor();
+  // A hold whose release fired no click must not swallow the next tap, on a menu item here.
+  await touch.getByRole("menuitem", { name: "Add reaction" }).tap();
+  await touch.locator(".pop .emoji-grid").waitFor({ timeout: 3000 });
+  await touchCtx.close();
+
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, block and unblock, close a DM, DM yourself, report and resolve, light, dark and midnight themes, custom theme, appearance, browse, preview, join, leave, roles, channel access, who can post, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, block and unblock, close a DM, DM yourself, report and resolve, light, dark and midnight themes, custom theme, appearance, browse, preview, join, leave, roles, channel access, who can post, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer, phone dialogs fit, touch tap has no toolbar, hold menu reacts)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message, errors.join("; "));

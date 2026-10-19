@@ -304,8 +304,12 @@ export function Pop({
         if (!a || a === document.body || ref.current!.contains(a)) focusBack(openers.get(ref.current!) ?? null);
         onClose();
       }}
-      // Tabbing out closes it, like a click outside does.
-      onBlur={(e) => e.relatedTarget && !e.currentTarget.contains(e.relatedTarget) && e.currentTarget.matches(":popover-open") && e.currentTarget.hidePopover()}
+      // Tabbing out closes it, like a click outside does. Safari does not focus a tapped button, so
+      // focus falls back to the message around the menu: that is not leaving it (1313).
+      onBlur={(e) => {
+        const to = e.relatedTarget;
+        if (to && !e.currentTarget.contains(to) && !to.contains(e.currentTarget) && e.currentTarget.matches(":popover-open")) e.currentTarget.hidePopover();
+      }}
     >
       {(anchor || kept.current) && (anchor ? children : kept.current)}
     </div>

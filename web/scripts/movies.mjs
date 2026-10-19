@@ -132,17 +132,13 @@ const flow = [
     await p.waitForTimeout(700);
     await longPress(p, m.locator(".msg-text"));
     await p.waitForTimeout(700);
-    if (await m.getByRole("button", { name: "More actions" }).isVisible()) {
-      await m.getByRole("button", { name: "More actions" }).tap();
-      await p.waitForTimeout(700);
-      await p.keyboard.press("Escape");
-    }
+    await m.locator(".msg-text").tap(); // a tap outside closes the menu, as on a phone
   }],
   ["react", async (p) => {
     const m = p.locator(".channel .msg").last();
-    await m.locator(".msg-text").tap();
+    await longPress(p, m.locator(".msg-text"));
     await p.waitForTimeout(300);
-    await m.locator(".toolbar").getByRole("button", { name: "Add reaction" }).tap();
+    await p.getByRole("menuitem", { name: "Add reaction" }).tap();
     await p.waitForTimeout(600);
     await p.locator(".pop .emoji-grid button, .pop [role=gridcell], .pop button.emoji").first().tap();
   }],
