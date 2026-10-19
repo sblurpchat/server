@@ -41,3 +41,10 @@ describe("community templates (1286)", () => {
     for (const n of ["announcements", "support", "feature-requests", "bug-reports", "changelog"]) expect(names).toContain(n);
   });
 });
+
+describe("template announcement channels (1290)", () => {
+  it("turns on only admins post for #announcements, #welcome and #changelog, and nowhere else", () => {
+    for (const t of TEMPLATES)
+      for (const c of templateChannels(t)) expect([t.id, c.name, !!c.adminsPostOnly]).toEqual([t.id, c.name, ["announcements", "welcome", "changelog"].includes(c.name)]);
+  });
+});

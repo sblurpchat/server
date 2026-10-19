@@ -92,6 +92,9 @@ message Channel {
   bool is_default = 11;       // TEXT only: OPT_IN mode joins new members to it
   int32 member_count = 12;    // set by BrowseChannels only; 0 elsewhere
   Attachment header_image = 13; // optional image behind the channel header
+  // TEXT and PRIVATE: only admins and the owner post top-level messages.
+  // Everyone in the channel may still react and reply in threads.
+  bool admins_post_only = 14;
 }
 
 message Attachment {
@@ -306,6 +309,7 @@ message UpdateChannelRequest {
   optional int32 position = 5;
   // An uploaded image's id (POST /upload) for the header; "" removes it.
   optional string header_image_id = 6;
+  optional bool admins_post_only = 7; // see Channel.admins_post_only
 }
 message UpdateChannelResponse { Channel channel = 1; }
 

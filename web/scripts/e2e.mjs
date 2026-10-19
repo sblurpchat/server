@@ -143,6 +143,10 @@ try {
   const link = await page.evaluate(() => navigator.clipboard.readText());
   // Copy link makes a share link on the auth site (1298) whose path matches the app route.
   if (!/^\/c\/[^/]+\/[^/]+\/[^/]+$/.test(new URL(link).pathname)) throw new Error(`bad message link: ${link}`);
+  // Only admins post (1290): a member gets a quiet note in place of the composer.
+  await jumpTo(page, "kiln-schedule");
+  await page.locator(".channel .composer-note", { hasText: "Only admins post in #kiln-schedule" }).waitFor();
+  if (await page.locator(".channel .composer").count()) throw new Error("a member got a composer where only admins post");
   await jumpTo(page, "general");
   await page.evaluate((h) => (location.hash = h), "#" + new URL(link).pathname);
   await page.locator(".channel .msg[data-focus='true'] ul li", { hasText: "two" }).waitFor();
@@ -257,8 +261,15 @@ try {
   await page.getByRole("menuitem", { name: "Edit channel" }).click();
   await page.getByLabel("Topic").fill("Reading together");
   await page.getByRole("button", { name: "Move up" }).click();
+  await page.getByRole("switch", { name: /Only admins post/ }).check();
   await page.getByRole("button", { name: "Save changes" }).click();
   await page.locator(".chan-topic", { hasText: "Reading together" }).waitFor();
+  // The owner still posts where only admins post (1290), and the switch stays on.
+  await page.locator(".channel .composer").waitFor();
+  await page.getByRole("button", { name: "#book-club options" }).click();
+  await page.getByRole("menuitem", { name: "Edit channel" }).click();
+  if (!(await page.getByRole("switch", { name: /Only admins post/ }).isChecked())) throw new Error("Only admins post did not save");
+  await page.getByRole("button", { name: "Cancel" }).click();
   const names = await talk.locator(".chan").allTextContents();
   if (names.at(-2) !== "book-club") throw new Error(`Move up did not reorder: ${names}`);
 

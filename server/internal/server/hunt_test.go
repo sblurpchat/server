@@ -135,3 +135,37 @@ func TestOptInWritesNeedJoin(t *testing.T) {
 	_, err = bob.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: film.Id, Text: "bye"}))
 	notJoined("send after leaving", err)
 }
+
+// An "only admins post" channel (1290): admins post, members get
+// permission_denied for a top-level post but may still react and reply in
+// threads. Only admins may turn it on, and everyone sees the flag.
+func TestAdminsPostOnly(t *testing.T) {
+	e := newEnv(t)
+	ana := e.join("ana") // owner
+	bob := e.join("bob")
+	news := ana.channel("news", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	on := true
+	if _, err := bob.chat.UpdateChannel(ctx(), connect.NewRequest(&v1.UpdateChannelRequest{ChannelId: news.Id, AdminsPostOnly: &on})); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("member turned it on: %v", err)
+	}
+	ch := must(ana.chat.UpdateChannel(ctx(), connect.NewRequest(&v1.UpdateChannelRequest{ChannelId: news.Id, AdminsPostOnly: &on}))).Channel
+	if !ch.AdminsPostOnly {
+		t.Fatal("flag not set")
+	}
+	for _, c := range bob.state().Channels {
+		if c.Id == news.Id && !c.AdminsPostOnly {
+			t.Fatal("members do not see the flag")
+		}
+	}
+	post := ana.send(news.Id, "v2 is out")
+	_, err := bob.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: news.Id, Text: "me too"}))
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("member posted: %v", err)
+	}
+	must(bob.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: news.Id, Text: "nice", ThreadRootId: post.Id})))
+	must(bob.chat.React(ctx(), connect.NewRequest(&v1.ReactRequest{MessageId: post.Id, Emoji: "👍"})))
+
+	off := false
+	must(ana.chat.UpdateChannel(ctx(), connect.NewRequest(&v1.UpdateChannelRequest{ChannelId: news.Id, AdminsPostOnly: &off})))
+	bob.send(news.Id, "now I can")
+}

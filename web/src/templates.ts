@@ -9,7 +9,12 @@ interface TemplateChannel {
   private?: boolean;
   /** Slack-style communities only: new members join it automatically. */
   default?: boolean;
+  /** Only admins post; members react and reply in threads (1290). Set by templateChannels. */
+  adminsPostOnly?: boolean;
 }
+
+/** Channels where the team talks and members listen. */
+const ADMINS_POST = ["announcements", "welcome", "changelog"];
 
 export interface Template {
   id: string;
@@ -216,4 +221,5 @@ export const TEMPLATES: Template[] = [
 ];
 
 /** Every channel in sidebar order, with its section. */
-export const templateChannels = (t: Template) => t.sections.flatMap(([category, chans]) => chans.map((ch) => ({ ...ch, category })));
+export const templateChannels = (t: Template) =>
+  t.sections.flatMap(([category, chans]) => chans.map((ch) => ({ ...ch, category, adminsPostOnly: ADMINS_POST.includes(ch.name) })));

@@ -192,6 +192,11 @@ client. There is no separate apps system. The bot is ~150 lines in
   `Channel.header_image`, with signed URLs; a change emits `server_updated`
   (clients call `GetServerInfo` again) or `channel_updated`. Images in use
   are kept out of the orphan prune. Topics may span lines.
+- **Only admins post** (1290). `UpdateChannel{admins_post_only}` (admins,
+  text and private channels) sets `Channel.admins_post_only` and emits
+  `channel_updated`. Then a top-level `SendMessage` from a member or
+  moderator is `permission_denied`; thread replies and `React` still work.
+  Plugins post as before.
 - **Community icon** (1044). `UpdateServerSettings{icon_id}` takes an
   upload with the same rules as the banner. `GetServerInfo.icon_url` is then
   its signed URL instead of `-icon-url`; `""` falls back to the flag. A

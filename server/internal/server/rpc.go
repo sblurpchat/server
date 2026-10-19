@@ -216,7 +216,7 @@ func (s *Server) listMembers(ctx context.Context, q queryer, where string, args 
 	return out, rows.Err()
 }
 
-const channelCols = "id, kind, name, topic, category, position, created_at_ms, last_message_seq, is_default, (SELECT group_concat(role_id) FROM channel_roles WHERE channel_id = channels.id), header_image_id"
+const channelCols = "id, kind, name, topic, category, position, created_at_ms, last_message_seq, is_default, (SELECT group_concat(role_id) FROM channel_roles WHERE channel_id = channels.id), header_image_id, admins_post_only"
 
 func queryChannels(ctx context.Context, q queryer, where string, args ...any) ([]*v1.Channel, error) {
 	rows, err := q.QueryContext(ctx, "SELECT "+channelCols+" FROM channels WHERE "+where+" ORDER BY category, position, name, id", args...)
@@ -228,7 +228,7 @@ func queryChannels(ctx context.Context, q queryer, where string, args ...any) ([
 		c := &v1.Channel{}
 		var roles sql.NullString
 		var header string
-		if err := rows.Scan(&c.Id, &c.Kind, &c.Name, &c.Topic, &c.Category, &c.Position, &c.CreatedAtMs, &c.LastMessageSeq, &c.IsDefault, &roles, &header); err != nil {
+		if err := rows.Scan(&c.Id, &c.Kind, &c.Name, &c.Topic, &c.Category, &c.Position, &c.CreatedAtMs, &c.LastMessageSeq, &c.IsDefault, &roles, &header, &c.AdminsPostOnly); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -1117,6 +1117,9 @@ func (s *Server) UpdateChannel(ctx context.Context, req *connect.Request[v1.Upda
 		if r.HeaderImageId != nil && err == nil {
 			_, err = t.ExecContext(ctx, "UPDATE channels SET header_image_id = ? WHERE id = ?", *r.HeaderImageId, old.Id)
 		}
+		if r.AdminsPostOnly != nil && err == nil {
+			_, err = t.ExecContext(ctx, "UPDATE channels SET admins_post_only = ? WHERE id = ?", *r.AdminsPostOnly, old.Id)
+		}
 		if err != nil {
 			return err
 		}
@@ -1307,6 +1310,9 @@ func (s *Server) SendMessage(ctx context.Context, req *connect.Request[v1.SendMe
 		}
 		if err := requireJoined(ctx, t, c, m.Id); err != nil {
 			return err
+		}
+		if c.AdminsPostOnly && r.ThreadRootId == "" && !isAdmin(m) {
+			return errf(connect.CodePermissionDenied, "only admins post in #%s; reply in a thread", c.Name)
 		}
 		out, err = s.sendMessage(t, m.Id, r, s.now())
 		return err

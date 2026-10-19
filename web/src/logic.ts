@@ -1205,6 +1205,10 @@ export function tokenBots<B extends { username: string }>(bots: B[], plugins: { 
   return bots.filter((b) => !names.has(b.username));
 }
 
+/** Whether I may start a top-level post in a channel: "only admins post" channels (1290)
+ *  take them from admins and the owner. Thread replies and reactions stay open to all. */
+export const mayPost = (ch: Channel, me: Member | undefined) => !ch.adminsPostOnly || (me?.role ?? 0) >= MemberRole.ADMIN;
+
 /** Whether a message may have link previews worth asking its server for (1110). */
 export const mayPreview = (text: string) => /https?:\/\//i.test(text);
 

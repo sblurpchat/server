@@ -68,6 +68,7 @@ interface Seed {
   headers?: Record<string, string>; // channel name -> header image (1027)
   questions?: string[]; // join questions; a blank or very short answer is refused, like a plugin would
   fresh?: boolean; // needs setup (1286)
+  adminsPost?: string[]; // channels where only admins post (1290)
 }
 
 const { OWNER, ADMIN, MODERATOR, MEMBER } = MemberRole;
@@ -84,6 +85,7 @@ const SEEDS: Seed[] = [
     icon: "/fake/sblurp.svg",
     banner: "/fake/community-banner.svg",
     headers: { help: "/fake/help-header.svg" },
+    adminsPost: ["welcome", "announcements"],
     joined: true,
     members: [
       ["ian", "Ian Langworth", OWNER, ONLINE, "Making Sblurp. Ask me about the rail.", "Shipping the web client"],
@@ -284,6 +286,7 @@ const SEEDS: Seed[] = [
     description: "A small studio group. Thursdays at 7, Lindengracht 41.",
     accent: "#D9822B",
     icon: "",
+    adminsPost: ["kiln-schedule"],
     joined: true,
     members: [
       ["bea", "Bea Lindqvist", OWNER, ONLINE, "Runs the studio. Fires the kiln."],
@@ -471,6 +474,7 @@ function seed(s: Seed, now: number): Fake {
       memberIds: privateTo ? [f.meId, ...privateTo.map((n) => byName.get(n)!.id)] : [],
     });
     if (s.headers?.[name]) ch.headerImage = fakeImage(s.headers[name], 1600, 200);
+    ch.adminsPostOnly = !!s.adminsPost?.includes(name);
     f.channels.set(ch.id, ch);
     chanByKey.set(name, ch);
   });
@@ -955,12 +959,12 @@ function service(f: Fake) {
         emit(f, { case: "channelCreated", value: ch });
         return { channel: ch };
       },
-      updateChannel(req: { channelId: string; name?: string; topic?: string; category?: string; position?: number; headerImageId?: string }) {
+      updateChannel(req: { channelId: string; name?: string; topic?: string; category?: string; position?: number; headerImageId?: string; adminsPostOnly?: boolean }) {
         admin();
         const ch = f.channels.get(req.channelId);
         if (!ch) throw new ConnectError("channel not found", Code.NotFound);
         if (req.headerImageId !== undefined) ch.headerImage = req.headerImageId ? image(req.headerImageId) : undefined;
-        for (const k of ["name", "topic", "category", "position"] as const) {
+        for (const k of ["name", "topic", "category", "position", "adminsPostOnly"] as const) {
           if (req[k] !== undefined) (ch as Record<string, unknown>)[k] = req[k];
         }
         emit(f, { case: "channelUpdated", value: ch });
@@ -1037,6 +1041,8 @@ function service(f: Fake) {
         if (!inside(f, f.channels.get(req.channelId))) throw new ConnectError("channel not found", Code.NotFound);
         const target = f.channels.get(req.channelId)!;
         if (target.kind === ChannelKind.DM) checkBlocks(f, target.memberIds);
+        if (target.adminsPostOnly && !req.threadRootId && (f.members.get(f.meId)?.role ?? 0) < MemberRole.ADMIN)
+          throw new ConnectError(`only admins post in #${target.name}; reply in a thread`, Code.PermissionDenied);
         if (!req.text.trim() && !req.attachmentIds.length) throw new ConnectError("message is empty", Code.InvalidArgument);
         const dup = req.clientId && f.messages.find((m) => m.clientId === req.clientId);
         if (dup) return { message: dup };

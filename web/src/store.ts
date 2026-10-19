@@ -689,7 +689,7 @@ export async function createChannel(url: string, req: { name: string; kind: Chan
     selectChannel(url, r.channel.id);
   }
 }
-export async function updateChannel(url: string, req: { channelId: string; name?: string; topic?: string; category?: string; position?: number; headerImageId?: string }) {
+export async function updateChannel(url: string, req: { channelId: string; name?: string; topic?: string; category?: string; position?: number; headerImageId?: string; adminsPostOnly?: boolean }) {
   const r = await api(url).chat.updateChannel(req);
   if (r.channel) local(url, { case: "channelUpdated", value: r.channel });
 }
@@ -832,7 +832,8 @@ export async function applyTemplate(url: string, t: Template, opts: { descriptio
       ch = (await chat.createChannel({ name: tc.name, kind: tc.private ? ChannelKind.PRIVATE : ChannelKind.TEXT, topic: tc.topic, category: tc.category })).channel!;
       local(url, { case: "channelCreated", value: ch });
     }
-    if (ch.position !== i || ch.category !== tc.category || (tc.topic && ch.topic !== tc.topic)) await updateChannel(url, { channelId: ch.id, topic: tc.topic || undefined, category: tc.category, position: i });
+    if (ch.position !== i || ch.category !== tc.category || (tc.topic && ch.topic !== tc.topic) || (tc.adminsPostOnly && !ch.adminsPostOnly))
+      await updateChannel(url, { channelId: ch.id, topic: tc.topic || undefined, category: tc.category, position: i, adminsPostOnly: tc.adminsPostOnly || undefined });
     if (tc.default && !ch.isDefault) await setChannelAccess(url, ch.id, [], true);
     if (tc.name === t.welcome) welcome = ch.id;
   }

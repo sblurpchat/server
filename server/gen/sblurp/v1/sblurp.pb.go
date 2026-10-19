@@ -556,12 +556,15 @@ type Channel struct {
 	LastMessageSeq int64                  `protobuf:"varint,9,opt,name=last_message_seq,json=lastMessageSeq,proto3" json:"last_message_seq,omitempty"` // seq of the newest message, 0 if none
 	// TEXT only. Empty: every member can see the channel. Otherwise only
 	// members with one of these roles (and admins and the owner) can.
-	RoleIds       []string    `protobuf:"bytes,10,rep,name=role_ids,json=roleIds,proto3" json:"role_ids,omitempty"`
-	IsDefault     bool        `protobuf:"varint,11,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"`       // TEXT only: OPT_IN mode joins new members to it
-	MemberCount   int32       `protobuf:"varint,12,opt,name=member_count,json=memberCount,proto3" json:"member_count,omitempty"` // set by BrowseChannels only; 0 elsewhere
-	HeaderImage   *Attachment `protobuf:"bytes,13,opt,name=header_image,json=headerImage,proto3" json:"header_image,omitempty"`  // optional image behind the channel header
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RoleIds     []string    `protobuf:"bytes,10,rep,name=role_ids,json=roleIds,proto3" json:"role_ids,omitempty"`
+	IsDefault   bool        `protobuf:"varint,11,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"`       // TEXT only: OPT_IN mode joins new members to it
+	MemberCount int32       `protobuf:"varint,12,opt,name=member_count,json=memberCount,proto3" json:"member_count,omitempty"` // set by BrowseChannels only; 0 elsewhere
+	HeaderImage *Attachment `protobuf:"bytes,13,opt,name=header_image,json=headerImage,proto3" json:"header_image,omitempty"`  // optional image behind the channel header
+	// TEXT and PRIVATE: only admins and the owner post top-level messages.
+	// Everyone in the channel may still react and reply in threads.
+	AdminsPostOnly bool `protobuf:"varint,14,opt,name=admins_post_only,json=adminsPostOnly,proto3" json:"admins_post_only,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Channel) Reset() {
@@ -683,6 +686,13 @@ func (x *Channel) GetHeaderImage() *Attachment {
 		return x.HeaderImage
 	}
 	return nil
+}
+
+func (x *Channel) GetAdminsPostOnly() bool {
+	if x != nil {
+		return x.AdminsPostOnly
+	}
+	return false
 }
 
 type Attachment struct {
@@ -2531,9 +2541,10 @@ type UpdateChannelRequest struct {
 	Category  *string                `protobuf:"bytes,4,opt,name=category,proto3,oneof" json:"category,omitempty"`
 	Position  *int32                 `protobuf:"varint,5,opt,name=position,proto3,oneof" json:"position,omitempty"`
 	// An uploaded image's id (POST /upload) for the header; "" removes it.
-	HeaderImageId *string `protobuf:"bytes,6,opt,name=header_image_id,json=headerImageId,proto3,oneof" json:"header_image_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	HeaderImageId  *string `protobuf:"bytes,6,opt,name=header_image_id,json=headerImageId,proto3,oneof" json:"header_image_id,omitempty"`
+	AdminsPostOnly *bool   `protobuf:"varint,7,opt,name=admins_post_only,json=adminsPostOnly,proto3,oneof" json:"admins_post_only,omitempty"` // see Channel.admins_post_only
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *UpdateChannelRequest) Reset() {
@@ -2606,6 +2617,13 @@ func (x *UpdateChannelRequest) GetHeaderImageId() string {
 		return *x.HeaderImageId
 	}
 	return ""
+}
+
+func (x *UpdateChannelRequest) GetAdminsPostOnly() bool {
+	if x != nil && x.AdminsPostOnly != nil {
+		return *x.AdminsPostOnly
+	}
+	return false
 }
 
 type UpdateChannelResponse struct {
@@ -7576,7 +7594,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05color\x18\x03 \x01(\tR\x05color\x12\x1a\n" +
-	"\bposition\x18\x04 \x01(\x05R\bposition\"\xab\x03\n" +
+	"\bposition\x18\x04 \x01(\x05R\bposition\"\xd5\x03\n" +
 	"\aChannel\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x16.sblurp.v1.ChannelKindR\x04kind\x12\x12\n" +
@@ -7593,7 +7611,8 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\n" +
 	"is_default\x18\v \x01(\bR\tisDefault\x12!\n" +
 	"\fmember_count\x18\f \x01(\x05R\vmemberCount\x128\n" +
-	"\fheader_image\x18\r \x01(\v2\x15.sblurp.v1.AttachmentR\vheaderImage\"\xa7\x01\n" +
+	"\fheader_image\x18\r \x01(\v2\x15.sblurp.v1.AttachmentR\vheaderImage\x12(\n" +
+	"\x10admins_post_only\x18\x0e \x01(\bR\x0eadminsPostOnly\"\xa7\x01\n" +
 	"\n" +
 	"Attachment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -7747,7 +7766,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x05topic\x18\x03 \x01(\tR\x05topic\x12\x1a\n" +
 	"\bcategory\x18\x04 \x01(\tR\bcategory\"E\n" +
 	"\x15CreateChannelResponse\x12,\n" +
-	"\achannel\x18\x01 \x01(\v2\x12.sblurp.v1.ChannelR\achannel\"\x99\x02\n" +
+	"\achannel\x18\x01 \x01(\v2\x12.sblurp.v1.ChannelR\achannel\"\xdd\x02\n" +
 	"\x14UpdateChannelRequest\x12\x1d\n" +
 	"\n" +
 	"channel_id\x18\x01 \x01(\tR\tchannelId\x12\x17\n" +
@@ -7755,12 +7774,14 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x05topic\x18\x03 \x01(\tH\x01R\x05topic\x88\x01\x01\x12\x1f\n" +
 	"\bcategory\x18\x04 \x01(\tH\x02R\bcategory\x88\x01\x01\x12\x1f\n" +
 	"\bposition\x18\x05 \x01(\x05H\x03R\bposition\x88\x01\x01\x12+\n" +
-	"\x0fheader_image_id\x18\x06 \x01(\tH\x04R\rheaderImageId\x88\x01\x01B\a\n" +
+	"\x0fheader_image_id\x18\x06 \x01(\tH\x04R\rheaderImageId\x88\x01\x01\x12-\n" +
+	"\x10admins_post_only\x18\a \x01(\bH\x05R\x0eadminsPostOnly\x88\x01\x01B\a\n" +
 	"\x05_nameB\b\n" +
 	"\x06_topicB\v\n" +
 	"\t_categoryB\v\n" +
 	"\t_positionB\x12\n" +
-	"\x10_header_image_id\"E\n" +
+	"\x10_header_image_idB\x13\n" +
+	"\x11_admins_post_only\"E\n" +
 	"\x15UpdateChannelResponse\x12,\n" +
 	"\achannel\x18\x01 \x01(\v2\x12.sblurp.v1.ChannelR\achannel\"r\n" +
 	"\x17SetChannelAccessRequest\x12\x1d\n" +

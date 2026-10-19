@@ -16,6 +16,7 @@ import {
   type Event,
 } from "./gen/sblurp/v1/sblurp_pb";
 import {
+  mayPost,
   SKELETON_DELAY_MS,
   listPhase,
   skeletonRows,
@@ -1171,5 +1172,19 @@ describe("loading skeletons", () => {
       for (const w of [r.name, ...r.lines]) expect(w).toBeGreaterThan(10), expect(w).toBeLessThanOrEqual(100);
     }
     expect(new Set(rows.map((r) => r.lines[0])).size).toBeGreaterThan(4);
+  });
+});
+
+describe("only admins post (1290)", () => {
+  it("lets admins and the owner post, and everyone else only where the flag is off", () => {
+    const open = create(ChannelSchema, { id: "a", kind: ChannelKind.TEXT });
+    const news = create(ChannelSchema, { id: "b", kind: ChannelKind.TEXT, adminsPostOnly: true });
+    const as = (role: MemberRole) => create(MemberSchema, { id: "me", role });
+    expect(mayPost(open, as(MemberRole.MEMBER))).toBe(true);
+    expect(mayPost(news, as(MemberRole.MEMBER))).toBe(false);
+    expect(mayPost(news, as(MemberRole.MODERATOR))).toBe(false);
+    expect(mayPost(news, as(MemberRole.ADMIN))).toBe(true);
+    expect(mayPost(news, as(MemberRole.OWNER))).toBe(true);
+    expect(mayPost(news, undefined)).toBe(false);
   });
 });

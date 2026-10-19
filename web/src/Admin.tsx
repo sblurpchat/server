@@ -75,6 +75,7 @@ export function ChannelDialog({ id, category = "", name: initial = "", focusTopi
   const [topic, setTopic] = useState(ch?.topic ?? "");
   const [cat, setCat] = useState(ch?.category ?? category);
   const [priv, setPriv] = useState(false);
+  const [adminsOnly, setAdminsOnly] = useState(!!ch?.adminsPostOnly);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   if (!c || (id && !ch)) return null;
@@ -98,7 +99,7 @@ export function ChannelDialog({ id, category = "", name: initial = "", focusTopi
     setBusy(true);
     setErr("");
     try {
-      if (ch) await updateChannel(c.url, { channelId: ch.id, name: slug, topic: topic.trim(), category: cat.trim() });
+      if (ch) await updateChannel(c.url, { channelId: ch.id, name: slug, topic: topic.trim(), category: cat.trim(), adminsPostOnly: adminsOnly });
       else await createChannel(c.url, { name: slug, kind: priv ? ChannelKind.PRIVATE : ChannelKind.TEXT, topic: topic.trim(), category: cat.trim() });
       set({ modal: null });
     } catch (x) {
@@ -161,6 +162,15 @@ export function ChannelDialog({ id, category = "", name: initial = "", focusTopi
               <small>Only people you add can see it.</small>
             </span>
             <input type="checkbox" role="switch" className="switch" checked={priv} onChange={(e) => setPriv(e.target.checked)} />
+          </label>
+        )}
+        {ch && (
+          <label className="toggle-row">
+            <span>
+              <b>Only admins post</b>
+              <small>Members can still react and reply in threads.</small>
+            </span>
+            <input type="checkbox" role="switch" className="switch" checked={adminsOnly} onChange={(e) => setAdminsOnly(e.target.checked)} />
           </label>
         )}
         {ch && siblings.length > 1 && (
