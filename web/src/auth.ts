@@ -9,7 +9,7 @@ const RT_KEY = "sblurp.refreshToken";
 const REAUTH_KEY = "sblurp.reauth";
 // The packaged desktop and mobile apps (apps/) sign in through the system browser, which returns
 // to the app on this custom scheme (RFC 8252). The dev app loads Vite and signs in like the browser.
-const nativeApp = () => "__TAURI_INTERNALS__" in globalThis && !import.meta.env.DEV;
+export const nativeApp = () => "__TAURI_INTERNALS__" in globalThis && !import.meta.env.DEV;
 const redirectUri = () => (nativeApp() ? "sblurp://auth/callback" : `${location.origin}/auth/callback`);
 
 export class SignedOutError extends Error {

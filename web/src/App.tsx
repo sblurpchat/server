@@ -74,7 +74,8 @@ import {
   setBlocked,
   setMuted,
 } from "./store";
-import { AUTH_URL } from "./auth";
+import { AUTH_URL, nativeApp } from "./auth";
+import { appPlatform, DOWNLOADS, offered } from "./downloads";
 import { AvatarField } from "./AvatarField";
 import { pond } from "./pond";
 import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped } from "./ui";
@@ -1214,6 +1215,30 @@ function Settings() {
         <button className="btn small" aria-keyshortcuts={`${MOD === "⌘" ? "Meta" : "Control"}+/`} onClick={() => set({ modal: { t: "keys" } })}>
           Keyboard shortcuts <kbd>{MOD}</kbd> <kbd>/</kbd>
         </button>
+      </section>
+      <section>
+        <h3>Get the apps</h3>
+        <ul className="download-list">
+          {offered(DOWNLOADS, appPlatform(nativeApp(), navigator.userAgent, navigator.maxTouchPoints > 1)).map((d) => (
+            <li key={d.id}>
+              <svg className="platform-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d={d.icon} />
+              </svg>
+              <span>
+                <b>{d.name}</b>
+                {d.hint && <small>{d.hint}</small>}
+              </span>
+              {d.url ? (
+                <a className="btn small" href={d.url} target="_blank" rel="noopener noreferrer">
+                  {d.action}
+                  {d.action === "Download" && <span className="visually-hidden"> for {d.name}</span>} <Icon name="external" size={14} />
+                </a>
+              ) : (
+                <span className="soon">{d.action}</span>
+              )}
+            </li>
+          ))}
+        </ul>
       </section>
       <section>
         <h3>Account</h3>

@@ -14,6 +14,6 @@ export default defineConfig({
       ],
     },
   ],
-  server: { port: 5173 },
+  server: { port: 5173, fs: { allow: [".", "../auth/cmd/auth/static/downloads.json"] } }, // the shared download list (1325)
   test: { environment: "node", css: { include: [/app\.css/] } }, // logic.test reads the theme tokens
 });

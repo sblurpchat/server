@@ -1989,6 +1989,42 @@ kbd {
   color: var(--graphite);
   font-size: 0.8125rem;
 }
+/* Get the apps (1325): one row per platform from auth's downloads.json. */
+.download-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.download-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+.download-list li + li {
+  border-top: 1px solid var(--line);
+}
+.download-list li > span:not(.soon) {
+  display: grid;
+  flex: 1;
+  line-height: 1.35;
+}
+.download-list small,
+.download-list .soon {
+  color: var(--graphite);
+  font-size: 0.8125rem;
+}
+.download-list .soon {
+  font-weight: 600;
+  padding-inline: 12px;
+}
+.platform-icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: currentColor;
+}
 .settings .danger-ghost {
   margin-top: 18px;
 }
