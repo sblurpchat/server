@@ -21,8 +21,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -88,13 +88,12 @@ func signJWT(key ed25519.PrivateKey, header, claims map[string]any) string {
 }
 
 type env struct {
-	t      *testing.T
-	s      *Server
-	url    string
-	clock  *fakeClock
-	iss    *issuer
-	dir    string
-	cfgMod func(*Config)
+	t     *testing.T
+	s     *Server
+	url   string
+	clock *fakeClock
+	iss   *issuer
+	dir   string
 }
 
 func newEnv(t *testing.T, mods ...func(*Config)) *env {
@@ -737,8 +736,8 @@ func TestThreadsAndReactions(t *testing.T) {
 		return must(c.chat.React(ctx(), connect.NewRequest(&v1.ReactRequest{MessageId: root.Id, Emoji: emoji, Remove: remove}))).Message
 	}
 	react(ana, "🎉", false)
-	m := react(bob, "🎉", false)
-	m = react(bob, "🎉", false) // twice is a no-op
+	react(bob, "🎉", false)
+	m := react(bob, "🎉", false) // twice is a no-op
 	if len(m.Reactions) != 1 || len(m.Reactions[0].MemberIds) != 2 {
 		t.Fatalf("reactions = %v", m.Reactions)
 	}
@@ -1826,7 +1825,7 @@ func TestWriteTxFailsFastWhenBusy(t *testing.T) {
 func TestUsernameFollowsAccount(t *testing.T) {
 	e := newEnv(t)
 	ana := e.join("ana")
-	bob := e.join("bob")
+	e.join("bob")
 	cara := e.join("cara")
 	as := func(sub, name string) *client {
 		c := e.claims(sub)
@@ -1840,7 +1839,7 @@ func TestUsernameFollowsAccount(t *testing.T) {
 	name := func(c *client) string { return c.state().Me.Username }
 
 	// A plain rename, announced.
-	bob = as("bob", "robert")
+	bob := as("bob", "robert")
 	if got := name(bob); got != "robert" {
 		t.Fatalf("username %q, want robert", got)
 	}
