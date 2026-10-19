@@ -4,6 +4,9 @@ import { tokenFresh } from "./logic";
 export const AUTH_URL: string = import.meta.env.VITE_AUTH_URL ?? "http://localhost:8081";
 const CLIENT_ID = "sblurp-web";
 const RT_KEY = "sblurp.refreshToken";
+// Set by signOut until a sign-in succeeds: the next sign-in sends prompt=login, so sblurp.chat asks
+// for the password even if its browser session survived, and another account can sign in (ticket 1311).
+const REAUTH_KEY = "sblurp.reauth";
 // The packaged desktop and mobile apps (apps/) sign in through the system browser, which returns
 // to the app on this custom scheme (RFC 8252). The dev app loads Vite and signs in like the browser.
 const nativeApp = () => "__TAURI_INTERNALS__" in globalThis && !import.meta.env.DEV;
@@ -33,6 +36,7 @@ export function authorizeUrl(challenge: string, state: string, signup: boolean):
     code_challenge_method: "S256",
     state,
   });
+  if (!signup && localStorage.getItem(REAUTH_KEY)) q.set("prompt", "login");
   const path = `/oauth/authorize?${q}`;
   // Signup is a separate page that continues to the authorize step afterwards.
   return signup ? `${AUTH_URL}/signup?${new URLSearchParams({ next: path })}` : AUTH_URL + path;
@@ -95,6 +99,7 @@ export async function finishLogin(params: URLSearchParams): Promise<boolean> {
   // iss guards against a code from a different authorization server (RFC 9207).
   if (!verifier || !code || params.get("iss")?.replace(/\/+$/, "") !== AUTH_URL.replace(/\/+$/, "")) return false;
   await tokenRequest(new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: redirectUri(), code_verifier: verifier }));
+  localStorage.removeItem(REAUTH_KEY);
   return true;
 }
 
@@ -194,10 +199,13 @@ export function signOut() {
   const rt = localStorage.getItem(RT_KEY);
   localStorage.removeItem(RT_KEY);
   cache.clear();
+  localStorage.setItem(REAUTH_KEY, "1");
   if (rt) {
     fetch(`${AUTH_URL}/oauth/revoke`, {
       method: "POST",
-      body: new URLSearchParams({ token: rt, client_id: CLIENT_ID }),
+      // end_session also signs out the sblurp.chat browser session that approved this app, so the
+      // iOS sign-in sheet, which shares Safari's cookies, does not sign straight back in.
+      body: new URLSearchParams({ token: rt, client_id: CLIENT_ID, end_session: "1" }),
     }).catch(() => {});
   }
 }

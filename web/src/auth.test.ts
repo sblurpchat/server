@@ -7,7 +7,7 @@ vi.stubGlobal("localStorage", {
   removeItem: (k: string) => void store.delete(k),
 });
 
-const { pkceChallenge, getToken, SignedOutError, AUTH_URL, savePkce, takePkce, authorizeUrl } = await import("./auth");
+const { pkceChallenge, getToken, SignedOutError, AUTH_URL, savePkce, takePkce, authorizeUrl, signOut, finishLogin } = await import("./auth");
 
 describe("PKCE verifier storage", () => {
   beforeEach(() => store.clear());
@@ -121,5 +121,40 @@ describe("authorizeUrl redirect", () => {
       delete (globalThis as Record<string, unknown>).__TAURI_INTERNALS__;
       vi.unstubAllEnvs();
     }
+  });
+});
+
+describe("sign out, then sign in again (ticket 1311)", () => {
+  beforeEach(() => store.clear());
+  const prompt = (signup = false) => {
+    const u = new URL(authorizeUrl("ch", "st", signup));
+    return signup ? new URL(u.searchParams.get("next")!, AUTH_URL).searchParams.get("prompt") : u.searchParams.get("prompt");
+  };
+
+  it("ends the sblurp.chat session and asks for the password on the next sign-in only", async () => {
+    expect(prompt()).toBeNull();
+    store.set("sblurp.refreshToken", "rt1");
+    let body: URLSearchParams | undefined;
+    vi.stubGlobal("fetch", async (_u: string, init: { body: URLSearchParams }) => {
+      body = init.body;
+      return new Response("{}");
+    });
+    signOut();
+    expect(body?.get("token")).toBe("rt1");
+    expect(body?.get("end_session")).toBe("1");
+    expect(body?.get("client_id")).toBe("sblurp-web");
+    expect(prompt()).toBe("login");
+    expect(prompt(true)).toBeNull(); // a new account has nothing to re-enter
+
+    // A sign-in that fails keeps the flag.
+    vi.stubGlobal("fetch", async () => new Response('{"error":"invalid_grant"}', { status: 400 }));
+    savePkce("s1", "v1");
+    await finishLogin(new URLSearchParams({ state: "s1", code: "c", iss: AUTH_URL })).catch(() => {});
+    expect(prompt()).toBe("login");
+
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify({ access_token: "a", refresh_token: "rt2" })));
+    savePkce("s2", "v2");
+    expect(await finishLogin(new URLSearchParams({ state: "s2", code: "c", iss: AUTH_URL }))).toBe(true);
+    expect(prompt()).toBeNull();
   });
 });
