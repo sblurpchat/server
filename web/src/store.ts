@@ -29,7 +29,6 @@ import {
   applySnapshot,
   backoffMs,
   STABLE_MS,
-  channelLabel,
   emptyCommunity,
   formatHash,
   HEARTBEAT_TIMEOUT_MS,
@@ -1060,12 +1059,6 @@ export function signOut() {
   sentRead.clear();
   set({ auth: "out", cs: {}, modal: null, profile: undefined, drafts: {} });
 }
-
-/** Label for a channel: "#name" or the other people in a DM. */
-export function channelTitle(c: Community, ch: Channel) {
-  return isDM(ch) ? channelLabel(ch, c.members, c.me?.id) : ch.name;
-}
-export const isText = (ch: Channel) => ch.kind !== ChannelKind.DM;
 
 // ---------------------------------------------------------------------------
 // Startup

@@ -1300,11 +1300,3 @@ export function startSimulation() {
     emit(f, { case: "presence", value: { memberId: m.id, presence: m.presence } as never }, true);
   }, 20_000);
 }
-
-/** Lets scripts push a typing event deterministically. */
-export function fakeTyping(url: string, channelName: string, username: string) {
-  const f = fakes.get(url)!;
-  const ch = [...f.channels.values()].find((c) => c.name === channelName)!;
-  const m = [...f.members.values()].find((x) => x.username === username)!;
-  emit(f, { case: "typing", value: { channelId: ch.id, memberId: m.id, threadRootId: "" } as never }, true);
-}
