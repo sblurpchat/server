@@ -90,10 +90,6 @@ func (h *hub) takePresence(s *sub) map[string]*v1.Event {
 func (h *hub) publish(ev *v1.Event, audience map[string]bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.publishLocked(ev, audience)
-}
-
-func (h *hub) publishLocked(ev *v1.Event, audience map[string]bool) {
 	var slow []*sub
 	for s := range h.subs {
 		if audience != nil && !audience[s.member] {
@@ -135,7 +131,7 @@ func (h *hub) drop(member string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for s := range h.subs {
-		if s.member == member && h.subs[s] {
+		if s.member == member {
 			close(s.gone)
 			h.removeLocked(s)
 		}

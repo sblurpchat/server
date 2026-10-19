@@ -142,17 +142,13 @@ type emojiCache struct {
 func emojiVersion(ctx context.Context, q queryer) (int64, error) {
 	var v string
 	err := q.QueryRowContext(ctx, "SELECT value FROM settings WHERE key = 'emoji_version'").Scan(&v)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
 	if err != nil {
-		return 0, ignoreNoRows(err)
+		return 0, err
 	}
 	return strconv.ParseInt(v, 10, 64)
-}
-
-func ignoreNoRows(err error) error {
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil
-	}
-	return err
 }
 
 // currentEmoji returns the list for the current version, rebuilding it only

@@ -2176,10 +2176,7 @@ func useInvite(t *wtx, code string, nowMs int64) error {
 }
 
 func requireAdmin(ctx context.Context) error {
-	if !isAdmin(me(ctx)) {
-		return errf(connect.CodePermissionDenied, "only admins can manage invites and settings")
-	}
-	return nil
+	return requireAdminFor(ctx, "manage invites and settings")
 }
 
 const inviteCols = "code, created_by, created_at_ms, expires_at_ms, max_uses, uses"
