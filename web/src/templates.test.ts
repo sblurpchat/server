@@ -42,9 +42,11 @@ describe("community templates (1286)", () => {
   });
 });
 
-describe("template announcement channels (1290)", () => {
-  it("turns on only admins post for #announcements, #welcome and #changelog, and nowhere else", () => {
-    for (const t of TEMPLATES)
-      for (const c of templateChannels(t)) expect([t.id, c.name, !!c.adminsPostOnly]).toEqual([t.id, c.name, ["announcements", "welcome", "changelog"].includes(c.name)]);
+describe("template announcement channels (1308)", () => {
+  it("start with admins and moderators posting, set as data on the channel", () => {
+    const limited = TEMPLATES.flatMap((t) => templateChannels(t).filter((c) => c.postRoles));
+    expect(limited.length).toBe(8);
+    for (const c of limited) expect(c.postRoles).toEqual(["admin", "moderator"]);
+    for (const t of TEMPLATES) expect(templateChannels(t).find((c) => c.name === "general")?.postRoles).toBeUndefined();
   });
 });

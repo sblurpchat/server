@@ -1,7 +1,10 @@
 package server
 
 import (
+	"database/sql"
+	"io/fs"
 	"slices"
+	"sort"
 	"testing"
 	"time"
 
@@ -136,36 +139,104 @@ func TestOptInWritesNeedJoin(t *testing.T) {
 	notJoined("send after leaving", err)
 }
 
-// An "only admins post" channel (1290): admins post, members get
-// permission_denied for a top-level post but may still react and reply in
-// threads. Only admins may turn it on, and everyone sees the flag.
-func TestAdminsPostOnly(t *testing.T) {
+// Who can post (1308): a channel lists the roles that may start top-level
+// messages. Admins and the owner always may; "moderator" and custom roles let
+// others in. Everyone in the channel still reacts, replies in threads and
+// edits their own messages. Only admins change the list, and everyone sees it.
+func TestWhoCanPost(t *testing.T) {
 	e := newEnv(t)
 	ana := e.join("ana") // owner
-	bob := e.join("bob")
+	bob, mo, dee := e.join("bob"), e.join("mo"), e.join("dee")
+	must0(t, ana.setRole(mo.me.Id, v1.MemberRole_MEMBER_ROLE_MODERATOR))
+	staff := must(ana.srv.CreateRole(ctx(), connect.NewRequest(&v1.CreateRoleRequest{Name: "staff"}))).Role
+	must0(t, ana.giveRoles(dee.me.Id, staff.Id))
 	news := ana.channel("news", v1.ChannelKind_CHANNEL_KIND_TEXT)
-	on := true
-	if _, err := bob.chat.UpdateChannel(ctx(), connect.NewRequest(&v1.UpdateChannelRequest{ChannelId: news.Id, AdminsPostOnly: &on})); connect.CodeOf(err) != connect.CodePermissionDenied {
-		t.Fatalf("member turned it on: %v", err)
+	reply := bob.send(news.Id, "before")
+	limit := func(c *client, ids ...string) error {
+		_, err := c.chat.UpdateChannel(ctx(), connect.NewRequest(&v1.UpdateChannelRequest{ChannelId: news.Id, PostRoles: &v1.PostRoles{RoleIds: ids}}))
+		return err
 	}
-	ch := must(ana.chat.UpdateChannel(ctx(), connect.NewRequest(&v1.UpdateChannelRequest{ChannelId: news.Id, AdminsPostOnly: &on}))).Channel
-	if !ch.AdminsPostOnly {
-		t.Fatal("flag not set")
+	post := func(c *client, root string) error {
+		_, err := c.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: news.Id, Text: "hi", ThreadRootId: root}))
+		return err
 	}
-	for _, c := range bob.state().Channels {
-		if c.Id == news.Id && !c.AdminsPostOnly {
-			t.Fatal("members do not see the flag")
+	for _, c := range []*client{bob, mo} {
+		if err := limit(c, "admin"); connect.CodeOf(err) != connect.CodePermissionDenied {
+			t.Fatalf("%s changed who can post: %v", c.me.Username, err)
 		}
 	}
-	post := ana.send(news.Id, "v2 is out")
-	_, err := bob.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: news.Id, Text: "me too"}))
-	if connect.CodeOf(err) != connect.CodePermissionDenied {
-		t.Fatalf("member posted: %v", err)
+	if err := limit(ana, "nope"); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("unknown role: %v", err)
 	}
-	must(bob.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: news.Id, Text: "nice", ThreadRootId: post.Id})))
-	must(bob.chat.React(ctx(), connect.NewRequest(&v1.ReactRequest{MessageId: post.Id, Emoji: "👍"})))
 
-	off := false
-	must(ana.chat.UpdateChannel(ctx(), connect.NewRequest(&v1.UpdateChannelRequest{ChannelId: news.Id, AdminsPostOnly: &off})))
+	must0(t, limit(ana, "moderator", "admin", "moderator"))
+	for _, c := range bob.state().Channels {
+		if c.Id == news.Id && !slices.Equal(c.PostRoleIds, []string{"admin", "moderator"}) {
+			t.Fatalf("members see post roles %v", c.PostRoleIds)
+		}
+	}
+	root := ana.send(news.Id, "v2 is out")
+	must0(t, post(mo, ""))
+	for _, c := range []*client{bob, dee} {
+		if err := post(c, ""); connect.CodeOf(err) != connect.CodePermissionDenied {
+			t.Fatalf("%s posted: %v", c.me.Username, err)
+		}
+	}
+	r := must(bob.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: news.Id, Text: "nice", ThreadRootId: root.Id}))).Message
+	must(bob.chat.React(ctx(), connect.NewRequest(&v1.ReactRequest{MessageId: root.Id, Emoji: "👍"})))
+	must(bob.chat.EditMessage(ctx(), connect.NewRequest(&v1.EditMessageRequest{MessageId: r.Id, Text: "very nice"})))
+	must(bob.chat.EditMessage(ctx(), connect.NewRequest(&v1.EditMessageRequest{MessageId: reply.Id, Text: "before, edited"})))
+
+	// A custom role lets its members in, and then moderators are out.
+	must0(t, limit(ana, staff.Id))
+	must0(t, post(dee, ""))
+	if err := post(mo, ""); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("moderator posted in an admins-only channel: %v", err)
+	}
+	must0(t, post(ana, ""))
+	// Deleting the only post role leaves the channel to admins, not everyone.
+	must(ana.srv.DeleteRole(ctx(), connect.NewRequest(&v1.DeleteRoleRequest{RoleId: staff.Id})))
+	if err := post(dee, ""); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Fatalf("deleted role still posts: %v", err)
+	}
+	if ch := must(ana.chat.UpdateChannel(ctx(), connect.NewRequest(&v1.UpdateChannelRequest{ChannelId: news.Id}))).Channel; !slices.Equal(ch.PostRoleIds, []string{"admin"}) {
+		t.Fatalf("after delete: %v", ch.PostRoleIds)
+	}
+
+	must0(t, limit(ana))
 	bob.send(news.Id, "now I can")
+}
+
+func must0(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Migration 016 turns an "only admins post" channel (015) into a post list
+// of "admin", and leaves other channels open.
+func TestMigratePostRoles(t *testing.T) {
+	path := t.TempDir() + "/old.db"
+	old, err := sql.Open("sqlite", "file:"+path)
+	must0(t, err)
+	names, _ := fs.Glob(migrations, "migrations/*.sql")
+	sort.Strings(names)
+	for _, n := range names[:15] {
+		body, _ := migrations.ReadFile(n)
+		_, err := old.Exec(string(body))
+		must0(t, err)
+	}
+	_, err = old.Exec(`PRAGMA user_version = 15;
+		INSERT INTO channels(id, kind, name, created_at_ms, admins_post_only) VALUES ('a', 1, 'news', 0, 1), ('b', 1, 'chat', 0, 0)`)
+	must0(t, err)
+	old.Close()
+	d, err := openDB(path)
+	must0(t, err)
+	defer d.close()
+	cs, err := queryChannels(ctx(), d.r, "1")
+	must0(t, err)
+	if len(cs) != 2 || cs[0].Name != "chat" || len(cs[0].PostRoleIds) != 0 || !slices.Equal(cs[1].PostRoleIds, []string{"admin"}) {
+		t.Fatalf("after migrate: %v", cs)
+	}
 }

@@ -216,7 +216,7 @@ func (s *Server) listMembers(ctx context.Context, q queryer, where string, args 
 	return out, rows.Err()
 }
 
-const channelCols = "id, kind, name, topic, category, position, created_at_ms, last_message_seq, is_default, (SELECT group_concat(role_id) FROM channel_roles WHERE channel_id = channels.id), header_image_id, admins_post_only"
+const channelCols = "id, kind, name, topic, category, position, created_at_ms, last_message_seq, is_default, (SELECT group_concat(role_id) FROM channel_roles WHERE channel_id = channels.id), header_image_id, (SELECT group_concat(role_id) FROM channel_post_roles WHERE channel_id = channels.id)"
 
 func queryChannels(ctx context.Context, q queryer, where string, args ...any) ([]*v1.Channel, error) {
 	rows, err := q.QueryContext(ctx, "SELECT "+channelCols+" FROM channels WHERE "+where+" ORDER BY category, position, name, id", args...)
@@ -226,13 +226,14 @@ func queryChannels(ctx context.Context, q queryer, where string, args ...any) ([
 	var out []*v1.Channel
 	for rows.Next() {
 		c := &v1.Channel{}
-		var roles sql.NullString
+		var roles, posters sql.NullString
 		var header string
-		if err := rows.Scan(&c.Id, &c.Kind, &c.Name, &c.Topic, &c.Category, &c.Position, &c.CreatedAtMs, &c.LastMessageSeq, &c.IsDefault, &roles, &header, &c.AdminsPostOnly); err != nil {
+		if err := rows.Scan(&c.Id, &c.Kind, &c.Name, &c.Topic, &c.Category, &c.Position, &c.CreatedAtMs, &c.LastMessageSeq, &c.IsDefault, &roles, &header, &posters); err != nil {
 			rows.Close()
 			return nil, err
 		}
 		c.RoleIds = splitIDs(roles)
+		c.PostRoleIds = splitIDs(posters)
 		if header != "" {
 			c.HeaderImage = &v1.Attachment{Id: header}
 		}
@@ -1117,8 +1118,8 @@ func (s *Server) UpdateChannel(ctx context.Context, req *connect.Request[v1.Upda
 		if r.HeaderImageId != nil && err == nil {
 			_, err = t.ExecContext(ctx, "UPDATE channels SET header_image_id = ? WHERE id = ?", *r.HeaderImageId, old.Id)
 		}
-		if r.AdminsPostOnly != nil && err == nil {
-			_, err = t.ExecContext(ctx, "UPDATE channels SET admins_post_only = ? WHERE id = ?", *r.AdminsPostOnly, old.Id)
+		if r.PostRoles != nil && err == nil {
+			err = setPostRoles(ctx, t, old.Id, r.PostRoles.RoleIds)
 		}
 		if err != nil {
 			return err
@@ -1312,8 +1313,8 @@ func (s *Server) SendMessage(ctx context.Context, req *connect.Request[v1.SendMe
 		if err := requireJoined(ctx, t, c, m.Id); err != nil {
 			return err
 		}
-		if c.AdminsPostOnly && r.ThreadRootId == "" && !isAdmin(m) {
-			return errf(connect.CodePermissionDenied, "only admins post in #%s; reply in a thread", c.Name)
+		if r.ThreadRootId == "" && !mayPost(c, m.Member) {
+			return errf(connect.CodePermissionDenied, "your roles cannot post in #%s; reply in a thread", c.Name)
 		}
 		out, err = s.sendMessage(t, m.Id, r, s.now())
 		return err

@@ -9,12 +9,12 @@ interface TemplateChannel {
   private?: boolean;
   /** Slack-style communities only: new members join it automatically. */
   default?: boolean;
-  /** Only admins post; members react and reply in threads (1290). Set by templateChannels. */
-  adminsPostOnly?: boolean;
+  /** Channel.post_role_ids (1308): who starts posts; everyone reacts and replies in threads. */
+  postRoles?: string[];
 }
 
-/** Channels where the team talks and members listen. */
-const ADMINS_POST = ["announcements", "welcome", "changelog"];
+/** The team talks, members listen. */
+const STAFF = ["admin", "moderator"];
 
 export interface Template {
   id: string;
@@ -52,7 +52,7 @@ export const TEMPLATES: Template[] = [
         "",
         [
           general("Team-wide questions and chat", { default: true }),
-          { name: "announcements", topic: "Big news from the team. Reply in threads.", default: true },
+          { name: "announcements", topic: "Big news from the team. Reply in threads.", default: true, postRoles: STAFF },
           { name: "introductions", topic: "New here? Tell us what you work on.", default: true },
           { name: "help", topic: "Stuck on something? Ask here." },
           { name: "wins", topic: "Shipped something? Tell everyone." },
@@ -77,8 +77,8 @@ export const TEMPLATES: Template[] = [
       [
         "Start here",
         [
-          { name: "welcome", topic: "Read this first" },
-          { name: "announcements", topic: "News from the moderators" },
+          { name: "welcome", topic: "Read this first", postRoles: STAFF },
+          { name: "announcements", topic: "News from the moderators", postRoles: STAFF },
         ],
       ],
       [
@@ -115,9 +115,9 @@ export const TEMPLATES: Template[] = [
       [
         "Start here",
         [
-          { name: "welcome", topic: "Read this first" },
-          { name: "announcements", topic: "News from the team" },
-          { name: "changelog", topic: "Every release, with notes" },
+          { name: "welcome", topic: "Read this first", postRoles: STAFF },
+          { name: "announcements", topic: "News from the team", postRoles: STAFF },
+          { name: "changelog", topic: "Every release, with notes", postRoles: STAFF },
         ],
       ],
       [
@@ -160,8 +160,8 @@ export const TEMPLATES: Template[] = [
       [
         "Start here",
         [
-          { name: "welcome", topic: "Read this first" },
-          { name: "announcements", topic: "Events, patches and server news" },
+          { name: "welcome", topic: "Read this first", postRoles: STAFF },
+          { name: "announcements", topic: "Events, patches and server news", postRoles: STAFF },
         ],
       ],
       [
@@ -221,5 +221,4 @@ export const TEMPLATES: Template[] = [
 ];
 
 /** Every channel in sidebar order, with its section. */
-export const templateChannels = (t: Template) =>
-  t.sections.flatMap(([category, chans]) => chans.map((ch) => ({ ...ch, category, adminsPostOnly: ADMINS_POST.includes(ch.name) })));
+export const templateChannels = (t: Template) => t.sections.flatMap(([category, chans]) => chans.map((ch) => ({ ...ch, category })));

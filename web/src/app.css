@@ -5131,3 +5131,30 @@ label:has(> input.visually-hidden:focus-visible) {
   color: #1c0a00;
   font: 600 10px/13px system-ui, sans-serif;
 }
+
+/* Who can post (1308): channel settings, styled like channel access. */
+.post-roles legend {
+  color: inherit;
+  font-size: 0.875rem;
+}
+.post-pick {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 160ms ease-out, opacity 160ms ease-out;
+}
+.post-pick[data-open="true"] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.post-pick > div {
+  display: grid;
+  gap: 6px;
+  min-height: 0;
+  overflow: hidden;
+  padding-left: 24px;
+}
+.post-pick label:has(input:disabled) {
+  color: var(--graphite);
+  cursor: default;
+}

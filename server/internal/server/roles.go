@@ -299,7 +299,9 @@ func (s *Server) DeleteRole(ctx context.Context, req *connect.Request[v1.DeleteR
 		if err != sql.ErrNoRows {
 			return err
 		}
-		for _, q := range []string{"DELETE FROM member_roles WHERE role_id = ?", "DELETE FROM roles WHERE id = ?"} {
+		// A channel that only this role posted in stays limited, to admins.
+		for _, q := range []string{"INSERT OR IGNORE INTO channel_post_roles(channel_id, role_id) SELECT channel_id, 'admin' FROM channel_post_roles WHERE role_id = ?",
+			"DELETE FROM channel_post_roles WHERE role_id = ?", "DELETE FROM member_roles WHERE role_id = ?", "DELETE FROM roles WHERE id = ?"} {
 			if _, err := t.ExecContext(ctx, q, role.Id); err != nil {
 				return err
 			}
@@ -375,6 +377,48 @@ func (s *Server) SetMemberRoles(ctx context.Context, req *connect.Request[v1.Set
 // ---------------------------------------------------------------------------
 // Channel access and OPT_IN membership
 // ---------------------------------------------------------------------------
+
+// Who can post (1308) works like who can see: channel_post_roles lists ids,
+// and no rows means everyone. Admins and the owner always post. Besides
+// custom roles, "moderator" lets moderators in and "admin" alone limits the
+// channel to admins. Thread replies, reactions and edits are not limited.
+
+func mayPost(c *v1.Channel, m *v1.Member) bool {
+	if len(c.PostRoleIds) == 0 || m.Role >= v1.MemberRole_MEMBER_ROLE_ADMIN {
+		return true
+	}
+	for _, id := range c.PostRoleIds {
+		if id == "moderator" && m.Role >= v1.MemberRole_MEMBER_ROLE_MODERATOR || slices.Contains(m.RoleIds, id) {
+			return true
+		}
+	}
+	return false
+}
+
+// setPostRoles replaces a channel's post list after checking every id.
+func setPostRoles(ctx context.Context, t *wtx, channelID string, ids []string) error {
+	var ranks, custom []string
+	for _, id := range ids {
+		if id == "admin" || id == "moderator" {
+			ranks = append(ranks, id)
+		} else {
+			custom = append(custom, id)
+		}
+	}
+	custom, err := checkRoleIDs(ctx, t, custom)
+	if err != nil {
+		return err
+	}
+	if _, err := t.ExecContext(ctx, "DELETE FROM channel_post_roles WHERE channel_id = ?", channelID); err != nil {
+		return err
+	}
+	for _, id := range append(ranks, custom...) {
+		if _, err := t.ExecContext(ctx, "INSERT OR IGNORE INTO channel_post_roles(channel_id, role_id) VALUES (?,?)", channelID, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func (s *Server) SetChannelAccess(ctx context.Context, req *connect.Request[v1.SetChannelAccessRequest]) (*connect.Response[v1.SetChannelAccessResponse], error) {
 	if err := requireAdminFor(ctx, "change who sees a channel"); err != nil {

@@ -143,7 +143,7 @@ try {
   const link = await page.evaluate(() => navigator.clipboard.readText());
   // Copy link makes a share link on the auth site (1298) whose path matches the app route.
   if (!/^\/c\/[^/]+\/[^/]+\/[^/]+$/.test(new URL(link).pathname)) throw new Error(`bad message link: ${link}`);
-  // Only admins post (1290): a member gets a quiet note in place of the composer.
+  // Who can post (1308): a member gets a quiet note naming who can, in place of the composer.
   await jumpTo(page, "kiln-schedule");
   await page.locator(".channel .composer-note", { hasText: "Only admins post in #kiln-schedule" }).waitFor();
   if (await page.locator(".channel .composer").count()) throw new Error("a member got a composer where only admins post");
@@ -280,14 +280,15 @@ try {
   await page.getByRole("menuitem", { name: "Edit channel" }).click();
   await page.getByLabel("Topic").fill("Reading together");
   await page.getByRole("button", { name: "Move up" }).click();
-  await page.getByRole("switch", { name: /Only admins post/ }).check();
+  await page.getByRole("radio", { name: "Only these roles" }).check();
+  await page.getByRole("checkbox", { name: "Moderators" }).check();
   await page.getByRole("button", { name: "Save changes" }).click();
   await page.locator(".chan-topic", { hasText: "Reading together" }).waitFor();
-  // The owner still posts where only admins post (1290), and the switch stays on.
+  // The owner still posts where only some roles post (1308), and the choice stays.
   await page.locator(".channel .composer").waitFor();
   await page.getByRole("button", { name: "#book-club options" }).click();
   await page.getByRole("menuitem", { name: "Edit channel" }).click();
-  if (!(await page.getByRole("switch", { name: /Only admins post/ }).isChecked())) throw new Error("Only admins post did not save");
+  if (!(await page.getByRole("checkbox", { name: "Moderators" }).isChecked())) throw new Error("Who can post did not save");
   await page.getByRole("button", { name: "Cancel" }).click();
   const names = await talk.locator(".chan").allTextContents();
   if (names.at(-2) !== "book-club") throw new Error(`Move up did not reorder: ${names}`);
@@ -439,7 +440,7 @@ try {
   await phone.close();
 
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, block and unblock, close a DM, DM yourself, report and resolve, light, dark and midnight themes, custom theme, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, block and unblock, close a DM, DM yourself, report and resolve, light, dark and midnight themes, custom theme, appearance, browse, preview, join, leave, roles, channel access, who can post, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message, errors.join("; "));

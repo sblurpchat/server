@@ -39,6 +39,7 @@ import {
   toolsInside,
   listPhase,
   mayPost,
+  posterNames,
 } from "./logic";
 import {
   absUrl,
@@ -215,7 +216,7 @@ export function ChannelView() {
       <MessageList url={c.url} channelId={channelId} rootId="" />
       {joined && !mayPost(ch, c.me) ? (
         <p className="composer-note">
-          Only admins post in #{title}. You can react and reply in threads.
+          Only {posterNames(ch.postRoleIds, c.roles)} post in #{title}. You can react and reply in threads.
         </p>
       ) : joined ? (
         <Composer url={c.url} channelId={channelId} rootId="" placeholder={dm ? `Message ${title}` : `Message #${title}`} />

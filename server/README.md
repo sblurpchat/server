@@ -192,11 +192,16 @@ client. There is no separate apps system. The bot is ~150 lines in
   `Channel.header_image`, with signed URLs; a change emits `server_updated`
   (clients call `GetServerInfo` again) or `channel_updated`. Images in use
   are kept out of the orphan prune. Topics may span lines.
-- **Only admins post** (1290). `UpdateChannel{admins_post_only}` (admins,
-  text and private channels) sets `Channel.admins_post_only` and emits
-  `channel_updated`. Then a top-level `SendMessage` from a member or
-  moderator is `permission_denied`; thread replies and `React` still work.
-  Plugins post as before.
+- **Who can post** (1308, replaces 1290's admins-only flag). Admins set
+  `UpdateChannel{post_roles}` on text and private channels; it fills
+  `Channel.post_role_ids` (table `channel_post_roles`, like `channel_roles`)
+  and emits `channel_updated`. Empty means everyone. Otherwise admins and
+  the owner always post, plus `"moderator"` (moderators) and custom role
+  ids; `"admin"` alone limits it to admins. Anyone else gets
+  `permission_denied` on a top-level `SendMessage`; thread replies, `React`
+  and edits still work. Bots follow their role; plugins post as before.
+  Deleting a role takes it off post lists, and a list it was alone on
+  becomes admins-only rather than everyone.
 - **Community icon** (1044). `UpdateServerSettings{icon_id}` takes an
   upload with the same rules as the banner. `GetServerInfo.icon_url` is then
   its signed URL instead of `-icon-url`; `""` falls back to the flag. A

@@ -75,7 +75,7 @@ export function ChannelDialog({ id, category = "", name: initial = "", focusTopi
   const [topic, setTopic] = useState(ch?.topic ?? "");
   const [cat, setCat] = useState(ch?.category ?? category);
   const [priv, setPriv] = useState(false);
-  const [adminsOnly, setAdminsOnly] = useState(!!ch?.adminsPostOnly);
+  const [post, setPost] = useState(ch?.postRoleIds ?? []);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   if (!c || (id && !ch)) return null;
@@ -99,7 +99,7 @@ export function ChannelDialog({ id, category = "", name: initial = "", focusTopi
     setBusy(true);
     setErr("");
     try {
-      if (ch) await updateChannel(c.url, { channelId: ch.id, name: slug, topic: topic.trim(), category: cat.trim(), adminsPostOnly: adminsOnly });
+      if (ch) await updateChannel(c.url, { channelId: ch.id, name: slug, topic: topic.trim(), category: cat.trim(), postRoles: { roleIds: post } });
       else await createChannel(c.url, { name: slug, kind: priv ? ChannelKind.PRIVATE : ChannelKind.TEXT, topic: topic.trim(), category: cat.trim() });
       set({ modal: null });
     } catch (x) {
@@ -165,13 +165,35 @@ export function ChannelDialog({ id, category = "", name: initial = "", focusTopi
           </label>
         )}
         {ch && (
-          <label className="toggle-row">
-            <span>
-              <b>Only admins post</b>
-              <small>Members can still react and reply in threads.</small>
-            </span>
-            <input type="checkbox" role="switch" className="switch" checked={adminsOnly} onChange={(e) => setAdminsOnly(e.target.checked)} />
-          </label>
+          <fieldset className="role-checks post-roles">
+            <legend>
+              <b>Who can post</b>
+            </legend>
+            <label>
+              <input type="radio" name="post" checked={!post.length} onChange={() => setPost([])} />
+              Everyone
+            </label>
+            <label>
+              <input type="radio" name="post" checked={!!post.length} onChange={() => setPost(["admin"])} />
+              Only these roles
+            </label>
+            <div className="post-pick" data-open={!!post.length} inert={!post.length}>
+              <div>
+                <label>
+                  <input type="checkbox" checked disabled />
+                  Admins and the owner
+                </label>
+                {[{ id: "moderator", name: "Moderators", color: "" }, ...c.roles].map((r) => (
+                  <label key={r.id}>
+                    <input type="checkbox" checked={post.includes(r.id)} onChange={(e) => setPost(e.target.checked ? [...post, r.id] : post.filter((x) => x !== r.id))} />
+                    {r.id !== "moderator" && <span className="role-dot" style={{ ["--role" as string]: r.color || "var(--graphite)" }} />}
+                    {r.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <small className="muted">Owners and admins can always post. Everyone can react and reply in threads.</small>
+          </fieldset>
         )}
         {ch && siblings.length > 1 && (
           <div className="toggle-row">

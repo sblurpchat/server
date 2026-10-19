@@ -18,6 +18,7 @@ import {
 } from "./gen/sblurp/v1/sblurp_pb";
 import {
   mayPost,
+  posterNames,
   SKELETON_DELAY_MS,
   listPhase,
   skeletonRows,
@@ -1176,17 +1177,27 @@ describe("loading skeletons", () => {
   });
 });
 
-describe("only admins post (1290)", () => {
-  it("lets admins and the owner post, and everyone else only where the flag is off", () => {
-    const open = create(ChannelSchema, { id: "a", kind: ChannelKind.TEXT });
-    const news = create(ChannelSchema, { id: "b", kind: ChannelKind.TEXT, adminsPostOnly: true });
-    const as = (role: MemberRole) => create(MemberSchema, { id: "me", role });
-    expect(mayPost(open, as(MemberRole.MEMBER))).toBe(true);
-    expect(mayPost(news, as(MemberRole.MEMBER))).toBe(false);
-    expect(mayPost(news, as(MemberRole.MODERATOR))).toBe(false);
-    expect(mayPost(news, as(MemberRole.ADMIN))).toBe(true);
-    expect(mayPost(news, as(MemberRole.OWNER))).toBe(true);
-    expect(mayPost(news, undefined)).toBe(false);
+describe("who can post (1308)", () => {
+  const as = (role: MemberRole, ...roleIds: string[]) => create(MemberSchema, { id: "me", role, roleIds });
+  const chan = (...postRoleIds: string[]) => create(ChannelSchema, { id: "a", kind: ChannelKind.TEXT, postRoleIds });
+  it("lets everyone post with no list, and admins and the owner always", () => {
+    for (const r of [MemberRole.MEMBER, MemberRole.MODERATOR, MemberRole.ADMIN]) expect(mayPost(chan(), as(r))).toBe(true);
+    expect(mayPost(chan("admin"), as(MemberRole.ADMIN))).toBe(true);
+    expect(mayPost(chan("admin"), as(MemberRole.OWNER))).toBe(true);
+    expect(mayPost(chan("admin"), undefined)).toBe(false);
+  });
+  it("lets moderators in only when chosen, and custom roles by id", () => {
+    expect(mayPost(chan("admin"), as(MemberRole.MODERATOR))).toBe(false);
+    expect(mayPost(chan("admin", "moderator"), as(MemberRole.MODERATOR))).toBe(true);
+    expect(mayPost(chan("admin", "moderator"), as(MemberRole.MEMBER))).toBe(false);
+    expect(mayPost(chan("admin", "r1"), as(MemberRole.MEMBER, "r1"))).toBe(true);
+    expect(mayPost(chan("admin", "r1"), as(MemberRole.MEMBER, "r2"))).toBe(false);
+  });
+  it("names who can post, admins first, skipping deleted roles", () => {
+    const roles = [create(RoleSchema, { id: "r1", name: "Staff" }), create(RoleSchema, { id: "r2", name: "Mentors" })];
+    expect(posterNames(["admin"], roles)).toBe("admins");
+    expect(posterNames(["admin", "moderator"], roles)).toBe("admins and moderators");
+    expect(posterNames(["admin", "gone", "moderator", "r1", "r2"], roles)).toBe("admins, moderators, Staff, and Mentors");
   });
 });
 

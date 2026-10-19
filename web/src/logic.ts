@@ -1208,9 +1208,20 @@ export function tokenBots<B extends { username: string }>(bots: B[], plugins: { 
   return bots.filter((b) => !names.has(b.username));
 }
 
-/** Whether I may start a top-level post in a channel: "only admins post" channels (1290)
- *  take them from admins and the owner. Thread replies and reactions stay open to all. */
-export const mayPost = (ch: Channel, me: Member | undefined) => !ch.adminsPostOnly || (me?.role ?? 0) >= MemberRole.ADMIN;
+/** Whether I may start a top-level post in a channel (1308). No post roles: everyone.
+ *  Otherwise admins and the owner, "moderator" for moderators, or a custom role I have.
+ *  Thread replies and reactions stay open to all. Mirrors the server's mayPost. */
+export const mayPost = (ch: Channel, me: Member | undefined) =>
+  !ch.postRoleIds.length ||
+  (!!me && (me.role >= MemberRole.ADMIN || ch.postRoleIds.some((id) => (id === "moderator" && me.role >= MemberRole.MODERATOR) || me.roleIds.includes(id))));
+
+/** Who may post, for a sentence: "admins, moderators and Staff". */
+export const posterNames = (ids: string[], roles: Role[]) =>
+  new Intl.ListFormat("en", { type: "conjunction" }).format([
+    "admins",
+    ...(ids.includes("moderator") ? ["moderators"] : []),
+    ...roles.filter((r) => ids.includes(r.id)).map((r) => r.name),
+  ]);
 
 /** Whether a message may have link previews worth asking its server for (1110). */
 export const mayPreview = (text: string) => /https?:\/\//i.test(text);

@@ -92,9 +92,14 @@ message Channel {
   bool is_default = 11;       // TEXT only: OPT_IN mode joins new members to it
   int32 member_count = 12;    // set by BrowseChannels only; 0 elsewhere
   Attachment header_image = 13; // optional image behind the channel header
-  // TEXT and PRIVATE: only admins and the owner post top-level messages.
-  // Everyone in the channel may still react and reply in threads.
-  bool admins_post_only = 14;
+  reserved 14;
+  reserved "admins_post_only";
+  // TEXT and PRIVATE: who may start top-level messages. Empty: everyone in
+  // the channel. Otherwise admins and the owner always, plus members who
+  // match one id: "moderator" (moderators), or a custom Role.id. "admin"
+  // alone means admins and the owner only. Everyone in the channel may
+  // still react and reply in threads. Plugins are not limited.
+  repeated string post_role_ids = 15;
 }
 
 message Attachment {
@@ -309,8 +314,14 @@ message UpdateChannelRequest {
   optional int32 position = 5;
   // An uploaded image's id (POST /upload) for the header; "" removes it.
   optional string header_image_id = 6;
-  optional bool admins_post_only = 7; // see Channel.admins_post_only
+  reserved 7;
+  reserved "admins_post_only";
+  // Replaces Channel.post_role_ids when set. An empty list lets everyone post.
+  PostRoles post_roles = 8;
 }
+// Channel.post_role_ids as a message, so UpdateChannel can tell "unchanged"
+// (unset) from "everyone" (empty).
+message PostRoles { repeated string role_ids = 1; }
 message UpdateChannelResponse { Channel channel = 1; }
 
 // Who can see a TEXT channel, and whether OPT_IN joins new members to it.
