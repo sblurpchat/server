@@ -1966,14 +1966,21 @@ func (s *Server) UnbanMember(ctx context.Context, req *connect.Request[v1.UnbanM
 		return nil, err
 	}
 	err := s.writeTx(ctx, func(t *wtx) error {
-		res, err := t.ExecContext(ctx, "DELETE FROM bans WHERE member_id = ?", req.Msg.MemberId)
+		// A banner who has left has role MEMBER, so anyone may lift their bans.
+		var banner v1.MemberRole
+		err := t.QueryRowContext(ctx, "SELECT COALESCE(m.role, 0) FROM bans b LEFT JOIN members m ON m.id = b.by_id WHERE b.member_id = ?",
+			req.Msg.MemberId).Scan(&banner)
+		if errors.Is(err, sql.ErrNoRows) {
+			return errf(connect.CodeNotFound, "that member is not banned")
+		}
 		if err != nil {
 			return err
 		}
-		if n, _ := res.RowsAffected(); n == 0 {
-			return errf(connect.CodeNotFound, "that member is not banned")
+		if banner > me(ctx).Role {
+			return errf(connect.CodePermissionDenied, "only someone of the banner's role or higher can lift this ban")
 		}
-		return nil
+		_, err = t.ExecContext(ctx, "DELETE FROM bans WHERE member_id = ?", req.Msg.MemberId)
+		return err
 	})
 	if err != nil {
 		return nil, err

@@ -628,7 +628,7 @@ func TestLeaveKickAndBan(t *testing.T) {
 	// Ban: she cannot come back.
 	_, err = dee.srv.ListBans(ctx(), connect.NewRequest(&v1.ListBansRequest{}))
 	wantCode(t, err, connect.CodePermissionDenied) // members cannot see bans
-	if err := ban(bob, dee.me.Id); err != nil {
+	if err := ban(cy, dee.me.Id); err != nil {
 		t.Fatal(err)
 	}
 	_, err = dee.srv.Join(ctx(), connect.NewRequest(&v1.JoinRequest{DisplayName: "Dee"}))
@@ -636,7 +636,7 @@ func TestLeaveKickAndBan(t *testing.T) {
 
 	// List and lift the ban: she comes back with the same id.
 	bans := must(cy.srv.ListBans(ctx(), connect.NewRequest(&v1.ListBansRequest{}))).Bans
-	if len(bans) != 1 || bans[0].Member.GetId() != dee.me.Id || bans[0].Member.DisplayName != "Dee" || bans[0].BannedBy != bob.me.Id || bans[0].BannedAtMs == 0 {
+	if len(bans) != 1 || bans[0].Member.GetId() != dee.me.Id || bans[0].Member.DisplayName != "Dee" || bans[0].BannedBy != cy.me.Id || bans[0].BannedAtMs == 0 {
 		t.Fatalf("bans = %v", bans)
 	}
 	unban := func(id string) error {
