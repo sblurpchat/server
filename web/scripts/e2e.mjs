@@ -141,9 +141,10 @@ try {
   await listed.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Copy link" }).click();
   const link = await page.evaluate(() => navigator.clipboard.readText());
-  if (!/#\/c\/[^/]+\/[^/]+\/[^/]+$/.test(link)) throw new Error(`bad message link: ${link}`);
+  // Copy link makes a share link on the auth site (1298) whose path matches the app route.
+  if (!/^\/c\/[^/]+\/[^/]+\/[^/]+$/.test(new URL(link).pathname)) throw new Error(`bad message link: ${link}`);
   await jumpTo(page, "general");
-  await page.evaluate((h) => (location.hash = h), new URL(link).hash);
+  await page.evaluate((h) => (location.hash = h), "#" + new URL(link).pathname);
   await page.locator(".channel .msg[data-focus='true'] ul li", { hasText: "two" }).waitFor();
 
   await page.locator(".side-head").click();
@@ -161,7 +162,7 @@ try {
   const collapsed = page.locator(".channel .msg.blocked").first();
   await collapsed.waitFor();
   if (await page.locator(".channel .msg-head .name", { hasText: who }).count()) throw new Error(`${who}'s message still shows after blocking`);
-  await collapsed.getByRole("button", { name: /Message from a blocked member/ }).click();
+  await collapsed.getByRole("button", { name: /messages? from a blocked member/i }).click();
   await page.locator(".channel .msg[data-revealed='true'] .msg-head .name", { hasText: who }).first().waitFor();
   await page.getByRole("button", { name: "Settings" }).click();
   const blockedRow = page.locator(".blocked-list li", { hasText: who });
