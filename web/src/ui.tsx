@@ -190,6 +190,7 @@ export function Dialog({
     d.showModal();
     setOpen(true);
     return () => {
+      ghost(d);
       d.close();
       focusBack(back);
     };
@@ -200,14 +201,39 @@ export function Dialog({
       aria-label={label}
       className={`dialog ${className}`}
       onClose={onClose}
-      // Escape's keydown too: Chrome ignores a cancelled cancel event when Escape is pressed twice.
-      onKeyDown={(e) => e.key === "Escape" && guard?.() && e.preventDefault()}
+      // Escape and a backdrop click close through onClose while the dialog is still open, so
+      // the unmount can leave a fading ghost. Escape inside a popover closes only the popover.
+      // Its keydown too: Chrome ignores a cancelled cancel event when Escape is pressed twice.
+      onKeyDown={(e) => {
+        if (e.key !== "Escape" || e.defaultPrevented || (e.target as Element).closest("[popover]")) return;
+        e.preventDefault();
+        if (!guard?.()) onClose();
+      }}
       onCancel={(e) => guard?.() && e.preventDefault()}
-      onMouseDown={(e) => e.target === ref.current && onBackdrop(ref.current.getBoundingClientRect(), e.clientX, e.clientY) && !guard?.() && ref.current.close()}
+      onMouseDown={(e) => e.target === ref.current && onBackdrop(ref.current.getBoundingClientRect(), e.clientX, e.clientY) && !guard?.() && onClose()}
     >
       {open && children}
     </dialog>
   );
+}
+
+/** Leaves a copy of a closing overlay on screen for its exit animation (`.ghost` in app.css).
+ *  Only for overlays (fixed or top layer): a closing grid column just goes. */
+export function ghost(el: HTMLElement | null) {
+  if (!el?.isConnected || getComputedStyle(el).position !== "fixed" || !el.getClientRects().length) return;
+  const r = el.getBoundingClientRect();
+  const g = document.createElement("div");
+  g.className = `${el.className} ghost`;
+  g.append(...[...el.childNodes].map((n) => n.cloneNode(true)));
+  g.querySelectorAll("video").forEach((v) => ((v.autoplay = false), (v.muted = true)));
+  g.popover = "manual";
+  g.inert = true;
+  Object.assign(g.style, { position: "fixed", inset: "auto", margin: "0", left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, maxWidth: "none", maxHeight: "none" });
+  document.body.append(g);
+  g.showPopover();
+  const a = g.getAnimations()[0]; // none when motion is reduced
+  if (a) void a.finished.finally(() => g.remove());
+  else g.remove();
 }
 
 // ---------------------------------------------------------------------------
@@ -245,6 +271,9 @@ export function Pop({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // The last contents stay while it fades out; the next open replaces them.
+  const kept = useRef<ReactNode>(null);
+  if (anchor) kept.current = children;
   useLayoutEffect(() => {
     const el = ref.current!;
     if (anchor) {
@@ -276,7 +305,7 @@ export function Pop({
       // Tabbing out closes it, like a click outside does.
       onBlur={(e) => e.relatedTarget && !e.currentTarget.contains(e.relatedTarget) && e.currentTarget.matches(":popover-open") && e.currentTarget.hidePopover()}
     >
-      {anchor && children}
+      {(anchor || kept.current) && (anchor ? children : kept.current)}
     </div>
   );
 }

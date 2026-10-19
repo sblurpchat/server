@@ -68,7 +68,7 @@ import {
   unfurled,
   unfurlKey,
 } from "./store";
-import { Avatar, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, Resizer, Skeleton, useClamped } from "./ui";
+import { Avatar, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, ghost, Icon, Markdown, menuKeys, Pop, Resizer, Skeleton, useClamped } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
 export const openProfile = (url: string, memberId: string, el: HTMLElement) =>
@@ -484,6 +484,10 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
     press.current = { timer: 0, held: null, long: e.pointerType !== "mouse" };
     setWho({ emoji: el.dataset.emoji!, rect: el.getBoundingClientRect() });
   };
+  // Press and hold a message on touch opens its actions menu (1297). Like the reaction list,
+  // it opens on release: shown while the finger is still down, the pointerup would dismiss it.
+  const hold = useRef({ timer: 0, touch: false, on: false, x: 0, y: 0 });
+  const [held, setHeld] = useState(false);
   const whoR = who && m.reactions.find((r) => r.emoji === who.emoji);
   const author = c.members[m.authorId];
   const mine = m.authorId === c.me?.id;
@@ -535,8 +539,35 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
       data-fresh={fresh}
       data-focus={focus}
       data-editing={editing}
+      data-held={held}
       tabIndex={-1}
       aria-label={`${name}, ${timeLabel(Number(m.createdAtMs), h24)}`}
+      onPointerDown={(e) => {
+        const h = hold.current;
+        h.touch = e.pointerType !== "mouse";
+        if (!h.touch || pending || editing || (e.target as Element).closest("button, input, textarea, video, .pop")) return;
+        Object.assign(h, { on: false, x: e.clientX, y: e.clientY });
+        h.timer = window.setTimeout(() => ((h.on = true), setHeld(true)), 450);
+      }}
+      onPointerUp={() => {
+        const h = hold.current;
+        clearTimeout(h.timer);
+        if (!h.on) return;
+        setHeld(false);
+        setMore(new DOMRect(h.x, h.y, 0, 0));
+      }}
+      onPointerCancel={() => {
+        clearTimeout(hold.current.timer);
+        hold.current.on = false;
+        setHeld(false);
+      }}
+      onClickCapture={(e) => {
+        if (!hold.current.on) return;
+        hold.current.on = false; // the release's click must not follow a link
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onContextMenu={(e) => hold.current.touch && e.preventDefault()}
     >
       <div className="msg-gutter">
         {head && (
@@ -768,7 +799,7 @@ function AttachmentView({ url, a, m }: { url: string; a: Attachment; m: Message 
   if (a.contentType.startsWith("video/")) {
     // preload="metadata" plus #t=0.1 makes the browser draw the first frame as the still (1198).
     return (
-      <div className="att-video">
+      <div className="att-video" style={a.width && a.height ? ({ "--ar": `${a.width} / ${a.height}` } as CSSProperties) : undefined}>
         <video src={`${src}#t=0.1`} controls preload="metadata" playsInline aria-label={a.name} onError={() => refreshMessage(url, m)} />
         <button className="att-max icon-btn" aria-label={`Maximize ${a.name}`} onClick={() => set({ modal: { t: "lightbox", src, name: a.name, video: true } })}>
           <Icon name="maximize" size={18} />
@@ -1242,16 +1273,21 @@ export function RightPane() {
   const c = useC();
   const channelId = useApp((s) => s.channelId);
   const open = !!pane;
+  const ref = useRef<HTMLElement>(null);
   // Closing would drop focus on body (its close button is gone): send it back to the conversation.
   useLayoutEffect(() => {
-    if (open) return () => void ((document.activeElement === document.body || document.activeElement?.closest(".pane")) && focusMain());
+    if (open)
+      return () => {
+        ghost(ref.current);
+        if (document.activeElement === document.body || document.activeElement?.closest(".pane")) focusMain();
+      };
   }, [open]);
   if (!pane) return null;
   const ch = c.channels[channelId];
   const close = () => set({ pane: null });
   const title = pane.t === "thread" ? "Thread" : pane.t === "members" ? "Members" : "Search";
   return (
-    <aside className="pane" aria-label={title}>
+    <aside ref={ref} className="pane" aria-label={title}>
       <Resizer panel="pane" label="Resize side pane" />
       <header className="pane-head">
         <div>

@@ -3239,18 +3239,20 @@ li.sw-empty {
 }
 .att-video {
   position: relative;
-  width: fit-content;
-  max-width: min(100%, 420px);
+  width: min(100%, 420px);
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid var(--line);
   line-height: 0;
   background: #000;
 }
+/* The box has its size before the video loads, so the list does not jump (1297). */
 .att-video video {
   display: block;
-  max-width: 100%;
+  width: 100%;
+  aspect-ratio: var(--ar, 16 / 9);
   max-height: 300px;
+  object-fit: contain;
 }
 .att-max {
   position: absolute;
@@ -3901,13 +3903,19 @@ li.sw-empty {
   .resizer {
     display: none;
   }
+  /* The drawer slides in from the left over a fading scrim (1297). */
   .drawer {
-    display: none;
+    display: flex;
     position: fixed;
     inset: 0 auto 0 0;
     width: min(340px, 88vw);
     z-index: 20;
     box-shadow: var(--shadow);
+    translate: -100% 0;
+    visibility: hidden;
+    transition:
+      translate 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      visibility 0s 180ms;
   }
   .drawer .sidebar {
     flex: 1;
@@ -3915,14 +3923,23 @@ li.sw-empty {
     border-right: 0;
   }
   .app[data-drawer="true"] .drawer {
-    display: flex;
+    translate: 0 0;
+    visibility: visible;
+    transition: translate 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
-  .app[data-drawer="true"] .scrim {
+  .scrim {
     display: block;
     position: fixed;
     inset: 0;
     background: var(--scrim);
     z-index: 19;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease-out;
+  }
+  .app[data-drawer="true"] .scrim {
+    opacity: 1;
+    pointer-events: auto;
   }
   .only-mobile {
     display: inline-grid;
@@ -4042,6 +4059,85 @@ li.sw-empty {
   }
 }
 
+/* --------------------------------------------------- overlays move (1297) */
+
+/* On a phone the thread or member pane covers the channel: it slides in from the right,
+   and ghost() in ui.tsx slides a copy back out when it closes. */
+@media (max-width: 767px) {
+  .pane {
+    animation: pane-push 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .pane.ghost {
+    animation: pane-push 160ms ease-in reverse forwards;
+  }
+}
+@keyframes pane-push {
+  from {
+    translate: 100% 0;
+  }
+}
+@media (min-width: 768px) {
+  .pane.ghost {
+    animation: pane-in 140ms ease-in reverse forwards;
+  }
+}
+/* Dialogs and sheets rise in over a fading backdrop and fade out the same way. */
+.dialog[open],
+.ghost.dialog {
+  animation: dialog-in 160ms ease-out;
+}
+.dialog[open]::backdrop,
+.ghost.dialog::backdrop {
+  background: var(--scrim);
+  animation: fade-in 160ms ease-out;
+}
+.ghost.dialog,
+.ghost.dialog::backdrop {
+  animation-direction: reverse;
+  animation-duration: 120ms;
+  animation-fill-mode: forwards;
+  animation-timing-function: ease-in;
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+.ghost {
+  pointer-events: none;
+}
+/* Dialogs stay clear of the notch and the home bar. */
+.dialog {
+  inset-block: env(safe-area-inset-top) env(safe-area-inset-bottom);
+  max-height: calc(100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+}
+/* Menus and popovers fade in and out (they stay mounted, so CSS sees both ways). */
+.pop {
+  transition:
+    opacity 120ms ease-out,
+    transform 120ms ease-out,
+    display 120ms allow-discrete,
+    overlay 120ms allow-discrete;
+}
+.pop:not(:popover-open) {
+  opacity: 0;
+  transform: scale(0.97);
+}
+@starting-style {
+  .pop:popover-open {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+/* Pills over the message list fade in. */
+.jump {
+  transition: opacity 150ms ease-out;
+  @starting-style {
+    opacity: 0;
+  }
+}
+
 /* Touch screens (1156): 16px fields so iOS does not zoom, and fingertip-sized
    targets for the controls that are small on desktop. */
 @media (pointer: coarse) {
@@ -4054,33 +4150,59 @@ li.sw-empty {
     font-size: 16px;
   }
   .icon-btn {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
   }
   .chan {
-    height: 40px;
+    height: 44px;
   }
   .side-sec h2 button {
-    min-height: 36px;
+    min-height: 44px;
   }
   .side-sec h2 .sec-add {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
   }
   .toolbar {
-    top: -22px;
+    top: -24px;
   }
   .toolbar button {
-    width: 40px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
   }
   .reaction {
     height: 32px;
     border-radius: 16px;
   }
   .send {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
+  }
+  .jump {
+    height: 36px;
+    border-radius: 18px;
+  }
+  /* Small controls keep their look and get an invisible fingertip-sized hit area (1297). */
+  :is(.reaction, .thread-link, .edit-pencil, .avatar-btn) {
+    position: relative;
+  }
+  :is(.reaction, .jump, .thread-link, .edit-pencil, .avatar-btn)::after {
+    content: "";
+    position: absolute;
+    inset: -6px -2px;
+  }
+  .edit-pencil::after {
+    inset: -11px;
+  }
+  /* Press and hold opens the actions menu, so iOS must not start a text selection. */
+  .msg {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .msg[data-held="true"] {
+    background: var(--paper);
+    transition: background-color 150ms ease-out;
   }
   .input {
     height: 44px;

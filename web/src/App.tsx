@@ -318,7 +318,8 @@ function Rail() {
                 aria-label={`${name}${b.mentions ? `, ${b.mentions} mentions` : b.unread ? ", unread messages" : ""}`}
                 aria-current={u === current ? "page" : undefined}
                 aria-keyshortcuts="Alt+Shift+ArrowUp Alt+Shift+ArrowDown"
-                onClick={() => selectCommunity(u)}
+                // On a phone the drawer stays open on the new community's channels (1297).
+                onClick={() => (selectCommunity(u), NARROW.matches && set({ drawer: true }))}
                 onKeyDown={(e) => {
                   if (e.altKey && e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
                     e.preventDefault();
