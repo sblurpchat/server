@@ -422,6 +422,9 @@ body {
   background: var(--paper);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* HDR avatars, emoji and photos (PQ, HLG, gain maps) render SDR so they do not glare next to text (1117).
+     Inherited; the lightbox lifts it so a full-size photo keeps its HDR. */
+  dynamic-range-limit: standard;
 }
 /* Overlay-style scrollbars (Slack/Discord): thin, invisible until the area is hovered or focused.
    Only the color changes, so nothing shifts. Chromium/Firefox use scrollbar-color; Safari uses ::-webkit-scrollbar. */
@@ -2164,6 +2167,7 @@ li.sw-empty {
   box-shadow: none;
   overflow: hidden;
   touch-action: none;
+  dynamic-range-limit: no-limit;
 }
 .lightbox[open] {
   display: grid;
