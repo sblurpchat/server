@@ -1270,7 +1270,7 @@ export async function fakeUpload(url: string, file: File): Promise<Attachment> {
 }
 
 /** Someone else types for a moment and then posts. Returns false when there is nothing to say. */
-export function simulateOnce(): boolean {
+function simulateOnce(): boolean {
   init();
   const joined = [...fakes.values()].filter((f) => f.joined && f.chatter.length);
   const f = joined[Math.floor(Math.random() * joined.length)];

@@ -155,7 +155,7 @@ function mapLists(c: Community, fn: (items: Message[]) => Message[]): Record<str
 }
 
 /** Unread math for one new message in a channel. */
-export function bumpUnread(
+function bumpUnread(
   rs: ReadState | undefined,
   channelId: string,
   m: Message,
@@ -172,7 +172,7 @@ export function bumpUnread(
   return { ...base, unreadCount: base.unreadCount + 1, mentionCount: base.mentionCount + (mention ? 1 : 0) };
 }
 
-export const TYPING_TTL = 6000;
+const TYPING_TTL = 6000;
 
 /**
  * Apply one Subscribe event. `viewing` is the channel the person is looking at with the list
@@ -328,7 +328,7 @@ export type Row =
   | { t: "new"; key: string }
   | { t: "msg"; key: string; m: Message; head: boolean };
 
-export const GROUP_GAP_MS = 5 * 60 * 1000;
+const GROUP_GAP_MS = 5 * 60 * 1000;
 
 const dayOf = (ms: number) => new Date(ms).toDateString();
 
@@ -419,7 +419,7 @@ export const THEMES = ["system", "light", "dark", "midnight", "contrast", "cvd",
 export type Theme = (typeof THEMES)[number];
 const DENSITIES = ["cozy", "compact", "irc"] as const;
 /** "default" is Schibsted Grotesk. */
-export const FONTS = ["default", "schibsted", "system", "inter", "serif", "pt-mono", "iosevka"] as const;
+const FONTS = ["default", "schibsted", "system", "inter", "serif", "pt-mono", "iosevka"] as const;
 export interface Appearance {
   theme: Theme;
   /** "" keeps the theme's own accent. */
@@ -481,7 +481,7 @@ export function communitiesSync(
 }
 
 /** "#rrggbb" or "rgb(r, g, b)" (what getComputedStyle returns) to [r, g, b]. */
-export function parseColor(c: string): [number, number, number] {
+function parseColor(c: string): [number, number, number] {
   const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(c.trim());
   if (hex) return [1, 2, 3].map((i) => parseInt(hex[i], 16)) as [number, number, number];
   const n = c.match(/[\d.]+/g);
@@ -758,7 +758,7 @@ export const STABLE_MS = 30_000;
 export const HEARTBEAT_TIMEOUT_MS = 60_000;
 
 /** Access tokens are refreshed when less than this is left. */
-export const TOKEN_SKEW_MS = 60_000;
+const TOKEN_SKEW_MS = 60_000;
 export const tokenFresh = (expMs: number, now: number) => expMs - now > TOKEN_SKEW_MS;
 
 // ---------------------------------------------------------------------------
@@ -1129,7 +1129,7 @@ export const count = (n: number, one: string, many: string) => `${n.toLocaleStri
 // Resizable panels: the sidebar grows to the right, the side pane to the left
 // ---------------------------------------------------------------------------
 
-export interface Panel {
+interface Panel {
   def: number;
   min: number;
   max: number;
@@ -1159,7 +1159,7 @@ export function keyWidth(p: Panel, w: number, key: string, big = false): number 
 
 // MarkRead is a server write, so the client sends it at most once per READ_EVERY_MS per channel
 // (1040). Returns how long to wait before sending: 0 sends now.
-export const READ_EVERY_MS = 3000;
+const READ_EVERY_MS = 3000;
 export const readDelay = (lastSentMs: number | undefined, nowMs: number, everyMs = READ_EVERY_MS) =>
   lastSentMs === undefined ? 0 : Math.max(0, lastSentMs + everyMs - nowMs);
 

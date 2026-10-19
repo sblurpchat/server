@@ -2,7 +2,7 @@
 // the ordinary admin calls. Channel names follow what busy Slack workspaces and Discord servers use.
 import type { IconName } from "./ui";
 
-export interface TemplateChannel {
+interface TemplateChannel {
   name: string;
   topic: string;
   /** Invite only (staff rooms). */

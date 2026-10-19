@@ -15,10 +15,10 @@ export class SignedOutError extends Error {
   }
 }
 
-export const b64url = (bytes: Uint8Array) =>
+const b64url = (bytes: Uint8Array) =>
   btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-export const randomToken = () => b64url(crypto.getRandomValues(new Uint8Array(32)));
+const randomToken = () => b64url(crypto.getRandomValues(new Uint8Array(32)));
 
 export async function pkceChallenge(verifier: string): Promise<string> {
   return b64url(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))));

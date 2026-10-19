@@ -361,7 +361,7 @@ const GROUPS: Group[] = [
     ["heart", "❤️"], ["100", "💯"], ["sparkles", "✨"], ["check", "✅"], ["x", "❌"], ["warning", "⚠️"], ["question", "❓"], ["exclamation", "❗"],
   ] },
 ];
-export const EMOJI: [string, string][] = GROUPS.flatMap((g) => g.items);
+const EMOJI: [string, string][] = GROUPS.flatMap((g) => g.items);
 // Slack and Discord names for the same characters, so `:+1` and `:sunglasses` find them in the `:` autocomplete.
 const ALIASES: [string, string][] = [
   ["+1", "👍"], ["-1", "👎"], ["satisfied", "😆"], ["slightly_smiling", "🙂"], ["sunglasses", "😎"], ["partying_face", "🥳"],

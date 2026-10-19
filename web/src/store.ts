@@ -96,7 +96,7 @@ function save(key: string, v: unknown) {
 // Store
 // ---------------------------------------------------------------------------
 
-export type Modal =
+type Modal =
   | null
   | { t: "settings" }
   | { t: "add"; input?: string }
@@ -118,7 +118,7 @@ export type Modal =
   | { t: "setup" }
   | { t: "lightbox"; src: string; name: string; video?: boolean };
 
-export interface State {
+interface State {
   auth: "loading" | "out" | "in";
   authError?: string;
   profile?: Profile;

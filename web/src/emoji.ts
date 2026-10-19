@@ -1,7 +1,7 @@
 // Custom emoji, pure parts: shortcodes in text, names from file paths, and planning a bulk upload.
 // The server is the authority; these mirror its rules so the client can skip pointless uploads.
 
-export type Piece = string | { name: string };
+type Piece = string | { name: string };
 
 /** Split text into plain strings and known `:name:` shortcodes. Unknown names stay text. */
 export function splitShortcodes(text: string, known: (name: string) => boolean): Piece[] {
@@ -38,10 +38,10 @@ export function emojiName(path: string): string {
   return out.slice(0, 62).replace(/^[_-]+|[_-]+$/g, "");
 }
 
-export const MAX_EMOJI_BYTES = 256 * 1024;
-export const MAX_REQUEST_BYTES = 60 * 1024 * 1024; // the server takes 64 MB per request
+const MAX_EMOJI_BYTES = 256 * 1024;
+const MAX_REQUEST_BYTES = 60 * 1024 * 1024; // the server takes 64 MB per request
 
-export type UploadStatus = "added" | "exists" | "rejected";
+type UploadStatus = "added" | "exists" | "rejected";
 export interface UploadResult {
   file: string;
   name: string;
@@ -49,7 +49,7 @@ export interface UploadResult {
   error?: string;
 }
 
-export const kindOf = (path: string): "image" | "zip" | null => {
+const kindOf = (path: string): "image" | "zip" | null => {
   const ext = path.toLowerCase().split(".").pop();
   return ext === "zip" ? "zip" : ext === "png" || ext === "gif" || ext === "webp" ? "image" : null;
 };
@@ -119,7 +119,7 @@ export interface PickItem {
   ch?: string;
   src?: string;
 }
-export interface PickSection {
+interface PickSection {
   id: string;
   label: string;
   items: PickItem[];
