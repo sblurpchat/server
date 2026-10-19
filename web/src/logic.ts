@@ -848,7 +848,7 @@ export function normalizeCommunityUrl(input: string, share = ""): { url: string;
   }
   if (!s) return null;
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) {
-    s = (/^(localhost|127\.|\[::1\])/.test(s) ? "http://" : "https://") + s;
+    s = (/^(127\.|\[::1\]|([\w-]+\.)*localhost([:/?#]|$))/i.test(s) ? "http://" : "https://") + s;
   }
   let u: URL;
   try {

@@ -422,6 +422,8 @@ describe("community URLs", () => {
   it("normalizes hosts, schemes, trailing slashes and invite links", () => {
     expect(normalizeCommunityUrl("nightowls.chat")).toEqual({ url: "https://nightowls.chat", invite: "" });
     expect(normalizeCommunityUrl(" localhost:8082/ ")).toEqual({ url: "http://localhost:8082", invite: "" });
+    expect(normalizeCommunityUrl("community.sblurp.localhost:1355")).toEqual({ url: "http://community.sblurp.localhost:1355", invite: "" });
+    expect(normalizeCommunityUrl("localhost.example.com")).toEqual({ url: "https://localhost.example.com", invite: "" });
     expect(normalizeCommunityUrl("https://x.test/sub/invite/AbC-12")).toEqual({ url: "https://x.test/sub", invite: "AbC-12" });
     expect(normalizeCommunityUrl("https://x.test/?invite=Q1")).toEqual({ url: "https://x.test", invite: "Q1" });
   });
