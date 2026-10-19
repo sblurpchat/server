@@ -88,8 +88,17 @@ export function detectLang(code: string): string {
 
 const EXT: Record<string, string> = { bash: "sh", javascript: "js", typescript: "ts", python: "py", ruby: "rb", rust: "rs", markdown: "md", xml: "html", plaintext: "txt", yaml: "yaml" };
 
-/** A file name that brings the language back when the snippet is read again. */
-export const snippetName = (lang: string) => (lang === "dockerfile" ? "Dockerfile" : `snippet.${EXT[lang] ?? lang}`);
+/** A file name that brings the language back when the snippet is read again: the title the person
+ * gave (1278) with the language's extension, unless it already ends with it. */
+export function snippetName(lang: string, title = ""): string {
+  const ext = `.${EXT[lang] ?? lang}`;
+  const t = title.trim().replace(/[/\\]/g, "-");
+  if (!t) return lang === "dockerfile" ? "Dockerfile" : `snippet${ext}`;
+  return t.toLowerCase().endsWith(ext) ? t : t + ext;
+}
+
+/** Every language the snippet dialog offers, Plain text first, then by label. */
+export const snippetLangs = () => ["plaintext", ...Object.keys(LANGS).sort((a, b) => langLabel(a).localeCompare(langLabel(b)))];
 
 /** "TypeScript" for "ts"; "Plain text" for anything we do not ship. */
 export function langLabel(lang: string): string {

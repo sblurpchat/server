@@ -1080,12 +1080,20 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
     setFiles([]);
   };
 
-  // Cmd/Ctrl+Shift+Enter posts the box as a text file named for its language, like Slack's snippets (1269).
-  const postSnippet = async () => {
+  // Cmd/Ctrl+Shift+Enter opens a small dialog for a title and a language, then posts the box as a
+  // text file named for them, like Slack's snippets (1269, 1278).
+  const [snip, setSnip] = useState<{ code: string; lang: string; title: string; h: typeof import("./highlight") } | null>(null);
+  const openSnippet = async () => {
     const code = text.replace(/^\s*\n|\s+$/g, "");
     if (uploading || !code) return;
-    const { detectLang, snippetName } = await import("./highlight");
-    const file = new File([code], snippetName(detectLang(code)), { type: "text/plain" });
+    const h = await import("./highlight");
+    setSnip({ code, lang: h.detectLang(code), title: "", h });
+  };
+  const postSnippet = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!snip) return;
+    const file = new File([snip.code], snip.h.snippetName(snip.lang, snip.title), { type: "text/plain" });
+    setSnip(null);
     setDraft(key, "");
     files.forEach(revoke);
     setFiles([]);
@@ -1210,6 +1218,35 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
   }, [rootId, ref]);
 
   return (
+    <>
+    {snip && (
+      <Dialog label="Post a snippet" className="confirm" onClose={() => setSnip(null)}>
+        <form onSubmit={postSnippet} className="stack">
+          <h2>Post a snippet</h2>
+          <label className="field">
+            <span>Title (optional)</span>
+            <input className="input" autoFocus maxLength={100} value={snip.title} placeholder="snippet" onChange={(e) => setSnip({ ...snip, title: e.target.value })} />
+          </label>
+          <label className="field">
+            <span>Language</span>
+            <select className="input" value={snip.lang} onChange={(e) => setSnip({ ...snip, lang: e.target.value })}>
+              {snip.h.snippetLangs().map((l) => (
+                <option key={l} value={l}>
+                  {snip.h.langLabel(l)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="muted">Posts as {snip.h.snippetName(snip.lang, snip.title)}.</p>
+          <div className="row-end">
+            <button type="button" className="btn ghost" onClick={() => setSnip(null)}>
+              Cancel
+            </button>
+            <button className="btn primary">Post</button>
+          </div>
+        </form>
+      </Dialog>
+    )}
     <form className="composer" ref={form} onSubmit={submit}>
       {options.length > 0 && (
         <ul className="ac" role="listbox" id={`ac-${key}`} aria-label={ac?.kind === "@" ? "Members" : "Emoji"}>
@@ -1279,7 +1316,7 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
               if (e.nativeEvent.isComposing) return;
               if (e.key === "Enter" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
-                void postSnippet();
+                void openSnippet();
                 return;
               }
               if (options.length) {
@@ -1326,6 +1363,7 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
       </div>
       {rootId && <TypingLine c={c} k={listKey(channelId, rootId)} />}
     </form>
+    </>
   );
 }
 

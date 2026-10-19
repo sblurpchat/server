@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectLang, highlight, langLabel, snippetName } from "./highlight";
+import { detectLang, highlight, langLabel, snippetLangs, snippetName } from "./highlight";
 
 describe("code highlighting", () => {
   it("marks keywords and strings, follows aliases, escapes HTML and skips unknown languages", () => {
@@ -68,5 +68,11 @@ describe("language detection", () => {
     expect(snippetName("dockerfile")).toBe("Dockerfile");
     expect(snippetName("plaintext")).toBe("snippet.txt");
     expect(snippetName("markdown")).toBe("snippet.md");
+    expect(snippetName("bash", " deploy ")).toBe("deploy.sh");
+    expect(snippetName("bash", "deploy.SH")).toBe("deploy.SH");
+    expect(snippetName("markdown", "notes.txt")).toBe("notes.txt.md");
+    expect(snippetName("go", "a/b\\c")).toBe("a-b-c.go");
+    expect(snippetLangs()[0]).toBe("plaintext");
+    expect(snippetLangs()).toContain("dockerfile");
   });
 });
