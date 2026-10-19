@@ -36,6 +36,11 @@ try {
   const sent = page.locator(".channel .msg", { hasText: text });
   await sent.waitFor();
   if ((await composer.inputValue()) !== "") throw new Error("composer not cleared after send");
+  // It is still there after a round trip to another channel (1305). Pottery lands on #glaze-lab, its unread channel.
+  await jumpTo(page, "studio");
+  await page.waitForFunction(() => document.title.includes("#studio"));
+  await jumpTo(page, "glaze-lab");
+  await sent.waitFor();
 
   // Shift+Enter is still a new line; Cmd/Ctrl+Shift+Enter posts the box as a highlighted snippet (1269).
   await composer.fill("def kiln(temp):");
@@ -51,7 +56,9 @@ try {
   await page.getByRole("option", { name: ":+1:" }).waitFor();
   await composer.press("Enter");
   if ((await composer.inputValue()) !== "at 10:30 nice 👍 ") throw new Error(`emoji autocomplete gave ${JSON.stringify(await composer.inputValue())}`);
+  // Typing straight on keeps the caret at the end (1306): a late caret move used to split ":thu".
   await composer.pressSequentially(":thu");
+  if ((await composer.inputValue()) !== "at 10:30 nice 👍 :thu") throw new Error(`typing after a pick gave ${JSON.stringify(await composer.inputValue())}`);
   await page.locator(".channel .ac").waitFor();
   await composer.press("Escape");
   if (await page.locator(".channel .ac").count()) throw new Error("Escape did not close the emoji list");

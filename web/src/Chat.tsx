@@ -1116,8 +1116,10 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
     const next = text.slice(0, ac.start) + o.insert + text.slice(caret);
     setDraft(key, next);
     const pos = ac.start + o.insert.length;
+    // Skip if typing went on before the frame (1306): moving the caret back would split the new text.
     requestAnimationFrame(() => {
-      ref.current?.setSelectionRange(pos, pos);
+      if (ref.current?.value !== next) return;
+      ref.current.setSelectionRange(pos, pos);
       setCaret(pos);
     });
   };
