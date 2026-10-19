@@ -266,12 +266,13 @@ describe("mentions", () => {
     const names = (q: string, custom: string[] = [], max = 8) => emojiMatches(q, std, custom, max).map((e) => e.name);
     expect(names("thu")).toEqual(["thumbsup"]);
     expect(names("+1")).toEqual(["+1"]);
-    expect(names("hea")).toEqual(["heart_eyes", "heart"]); // prefix hits first, red_heart is the same ❤️
+    expect(names("hea")).toEqual(["heart", "heart_eyes"]); // prefix hits first, shortest first, red_heart is the same ❤️
     expect(names("art")).toEqual(["heart_eyes", "heart"]);
     expect(emojiMatches("+1", std, [])[0].ch).toBe("👍");
     expect(names("zzz")).toEqual([]);
-    expect(names("hea", ["blobheart", "heart_party"])).toEqual(["heart_eyes", "heart", "heart_party", "blobheart"]);
-    expect(names("hea", ["heart_a", "heart_b", "heart_c"], 4)).toEqual(["heart_eyes", "heart", "heart_a", "heart_b"]);
+    expect(names("hea", ["blobheart", "heart_party"])).toEqual(["heart", "heart_eyes", "heart_party", "blobheart"]);
+    expect(names("hea", ["heart_a", "heart_b", "heart_c"], 4)).toEqual(["heart", "heart_eyes", "heart_a", "heart_b"]);
+    expect(names("canof", ["can-of-worms", "cabinet_of_fun"])).toEqual(["can-of-worms", "cabinet_of_fun"]); // 1329
   });
 });
 
@@ -520,6 +521,10 @@ describe("helpers", () => {
     expect(matchScore("gen", "general")).toBeGreaterThan(matchScore("gen", "regenerate"));
     expect(matchScore("gen", "regenerate")).toBeGreaterThan(matchScore("gnl", "general"));
     expect(matchScore("xyz", "general")).toBe(-1);
+    // 1329: fuzzy, ignoring case and - _ space
+    expect(matchScore("canof", "can-of-worms")).toBeGreaterThan(matchScore("canof", "cabinet_of_fun"));
+    expect(matchScore("CanOf", "cabinet_of_fun")).toBeGreaterThanOrEqual(0);
+    expect(matchScore("ianl", "Ian Langworth")).toBeGreaterThan(200);
   });
   it("moves list items", () => {
     expect(moveItem(["a", "b", "c"], 0, 2)).toEqual(["b", "c", "a"]);

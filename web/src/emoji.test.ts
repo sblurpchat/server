@@ -59,7 +59,7 @@ describe("planUpload", () => {
 describe("searchEmoji", () => {
   it("puts prefix matches first and accepts a leading colon", () => {
     const list = [{ name: "blobcat" }, { name: "catjam" }, { name: "dog" }, { name: "cat" }];
-    expect(searchEmoji(list, ":cat").map((e) => e.name)).toEqual(["catjam", "cat", "blobcat"]);
+    expect(searchEmoji(list, ":cat").map((e) => e.name)).toEqual(["cat", "catjam", "blobcat"]);
     expect(searchEmoji(list, " ")).toBe(list);
   });
 });

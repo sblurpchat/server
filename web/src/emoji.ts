@@ -1,6 +1,8 @@
 // Custom emoji, pure parts: shortcodes in text, names from file paths, and planning a bulk upload.
 // The server is the authority; these mirror its rules so the client can skip pointless uploads.
 
+import { fuzzyFilter } from "./logic";
+
 type Piece = string | { name: string };
 
 /** Split text into plain strings and known `:name:` shortcodes. Unknown names stay text. */
@@ -101,17 +103,10 @@ export function tally(results: UploadResult[]): Record<UploadStatus, number> {
   return t;
 }
 
-/** Search: names that start with the query first, then names that contain it. */
+/** Search: fuzzy by name, best first ("canof" finds can-of-worms); a leading or trailing colon is ignored. */
 export function searchEmoji<T extends { name: string }>(list: T[], q: string): T[] {
-  q = q.trim().toLowerCase().replace(/^:|:$/g, "");
-  if (!q) return list;
-  const starts: T[] = [];
-  const has: T[] = [];
-  for (const e of list) {
-    if (e.name.startsWith(q)) starts.push(e);
-    else if (e.name.includes(q)) has.push(e);
-  }
-  return starts.concat(has);
+  q = q.trim().replace(/^:|:$/g, "");
+  return q ? fuzzyFilter(list, q, (e) => e.name) : list;
 }
 
 /** One cell in the picker: a standard emoji has `ch`, a community one has `src`. */

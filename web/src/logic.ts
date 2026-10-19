@@ -397,13 +397,13 @@ export function sentence(s: string): string {
   return t ? `${t[0].toUpperCase()}${t.slice(1)}${/[.!?]$/.test(t) ? "" : "."}` : t;
 }
 
-/** Browse channels: matching channels by name or topic, joined state attached; ones you can join first, then by name. */
+/** Browse channels: channels matching by name (fuzzy) or topic, joined state attached; ones you can join first, then by name. */
 export function browseList(all: Channel[], joined: Record<string, Channel>, q: string) {
   const s = q.trim().toLowerCase().replace(/^#/, "");
   return all
-    .filter((ch) => !s || ch.name.includes(s) || ch.topic.toLowerCase().includes(s))
-    .map((ch) => ({ ch, joined: !!joined[ch.id] }))
-    .sort((a, b) => Number(a.joined) - Number(b.joined) || a.ch.name.localeCompare(b.ch.name));
+    .map((ch) => ({ ch, joined: !!joined[ch.id], s: Math.max(matchScore(s, ch.name), ch.topic.toLowerCase().includes(s) ? 0 : -1) }))
+    .filter((x) => x.s >= 0)
+    .sort((a, b) => Number(a.joined) - Number(b.joined) || b.s - a.s || a.ch.name.localeCompare(b.ch.name));
 }
 
 /** The line under a Browse channels row: member count, then topic. Old servers send no count (0). */
@@ -706,15 +706,14 @@ export function acQuery(text: string, caret: number): { kind: "@" | ":"; start: 
   return { kind: m[1] as "@" | ":", start: caret - m[2].length - 1, q: m[2].toLowerCase() };
 }
 
-/** `:` autocomplete rows: standard names that start with q, then names that contain it, one row per
- * character (aliases like "+1" find 👍 once); community emoji fill the rest, at most half when both match. */
+/** `:` autocomplete rows: standard names ranked by fuzzy match, one row per character (aliases
+ * like "+1" find 👍 once); community emoji fill the rest, at most half when both match. */
 export function emojiMatches(q: string, standard: [string, string][], custom: string[], max = 8): { name: string; ch?: string }[] {
-  const starts: [string, string][] = [];
-  const has: [string, string][] = [];
-  for (const e of standard) (e[0].startsWith(q) ? starts : e[0].includes(q) ? has : null)?.push(e);
   const seen = new Set<string>();
-  const std = [...starts, ...has].filter(([, ch]) => !seen.has(ch) && !!seen.add(ch)).map(([name, ch]) => ({ name, ch }));
-  const own = custom.filter((n) => n.startsWith(q)).concat(custom.filter((n) => !n.startsWith(q) && n.includes(q)));
+  const std = fuzzyFilter(standard, q, (e) => e[0])
+    .filter(([, ch]) => !seen.has(ch) && !!seen.add(ch))
+    .map(([name, ch]) => ({ name, ch }));
+  const own = fuzzyFilter(custom, q, (n) => n);
   const keep = own.length ? Math.max(max - own.length, max / 2) : max;
   return [...std.slice(0, keep), ...own.map((name) => ({ name }))].slice(0, max);
 }
@@ -999,10 +998,11 @@ export function parsePane(hash: string): Pane {
 // Small helpers
 // ---------------------------------------------------------------------------
 
-/** Quick switcher ranking: prefix beats substring beats subsequence. -1 = no match. */
+/** Fuzzy search ranking for every client-side filter: prefix beats substring beats subsequence,
+ * ignoring case and the separators - _ and space ("canof" finds can-of-worms). -1 = no match. */
 export function matchScore(query: string, text: string): number {
-  const q = query.toLowerCase();
-  const t = text.toLowerCase();
+  const q = query.toLowerCase().replace(/[\s_-]+/g, "");
+  const t = text.toLowerCase().replace(/[\s_-]+/g, "");
   if (!q) return 1;
   if (t.startsWith(q)) return 300 - t.length;
   const i = t.indexOf(q);
@@ -1010,6 +1010,15 @@ export function matchScore(query: string, text: string): number {
   let j = 0;
   for (const ch of t) if (ch === q[j]) j++;
   return j === q.length ? 100 - t.length : -1;
+}
+
+/** The items matching q by matchScore, best first; ties keep list order. */
+export function fuzzyFilter<T>(list: T[], q: string, key: (x: T) => string): T[] {
+  return list
+    .map((x) => [x, matchScore(q, key(x))] as const)
+    .filter(([, s]) => s >= 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([x]) => x);
 }
 
 export function moveItem<T>(arr: T[], from: number, to: number): T[] {
