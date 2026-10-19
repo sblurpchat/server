@@ -142,6 +142,9 @@ func TestMCP(t *testing.T) {
 	if text, isErr := e.tool(tok, "send_direct_message", map[string]any{"username": "@alice", "text": "psst"}); isErr || !strings.Contains(text, "DM with @alice") {
 		t.Fatalf("dm: %s", text)
 	}
+	if text, isErr := e.tool(tok, "send_direct_message", map[string]any{"username": "@bob", "text": "memo"}); isErr || !strings.Contains(text, "DM with yourself") {
+		t.Fatalf("self dm: %s", text)
+	}
 	if text, _ := e.tool(tok, "list_members", map[string]any{"query": "ali"}); text != "@alice (Alice) owner, offline\n" {
 		t.Fatalf("list_members: %q", text)
 	}

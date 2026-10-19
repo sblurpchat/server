@@ -11,6 +11,7 @@ import {
   formatHash,
   hostOf,
   isDM,
+  dmPeer,
   matchScore,
   modActions,
   moveItem,
@@ -483,7 +484,7 @@ function Sidebar({ c }: { c: Community }) {
                   {shown.map((ch) => {
                     const rs = c.reads[ch.id];
                     const unread = (rs?.unreadCount ?? 0) > 0 && ch.id !== channelId;
-                    const other = sec.dm ? c.members[ch.memberIds.find((id) => id !== c.me?.id) ?? ""] : undefined;
+                    const other = sec.dm ? c.members[dmPeer(ch, c.me?.id)] : undefined;
                     const label = channelLabel(ch, c.members, c.me?.id);
                     return (
                       <li key={ch.id}>
@@ -498,14 +499,14 @@ function Sidebar({ c }: { c: Community }) {
                           }}
                         >
                           {sec.dm ? (
-                            <Avatar m={other} size={24} presence={ch.memberIds.length === 2} />
+                            <Avatar m={other} size={24} presence={ch.memberIds.length <= 2} />
                           ) : (
                             <span className="chan-icon">
                               <Icon name={ch.kind === 2 ? "lock" : "hash"} size={16} />
                             </span>
                           )}
                           <span className="truncate">{label}</span>
-                          {other && ch.memberIds.length === 2 && <span className="visually-hidden">, {presenceLabel(other.presence)}</span>}
+                          {other && ch.memberIds.length <= 2 && <span className="visually-hidden">, {presenceLabel(other.presence)}</span>}
                           {unread && <span className="visually-hidden">, unread</span>}
                           {(rs?.mentionCount ?? 0) > 0 && ch.id !== channelId && (
                             <span className="badge">
@@ -1344,7 +1345,7 @@ function Switcher() {
       </div>
       <ul id="switcher-list" role="listbox" ref={listRef} aria-label="Channels">
         {items.map((x, i) => {
-          const other = isDM(x.ch) ? x.c.members[x.ch.memberIds.find((id) => id !== x.c.me?.id) ?? ""] : undefined;
+          const other = isDM(x.ch) ? x.c.members[dmPeer(x.ch, x.c.me?.id)] : undefined;
           return (
             <li
               key={`${x.u} ${x.ch.id}`}
@@ -1604,7 +1605,7 @@ function NewMessage() {
     <PeoplePicker
       c={c}
       title="New message"
-      exclude={[c.me.id]}
+      exclude={[]}
       max={8}
       action={(n) => (n > 1 ? "Start group message" : "Message")}
       busyText="Opening…"
@@ -1880,9 +1881,14 @@ function ProfilePopover() {
               </p>
             )}
             {m.id === me?.id ? (
-              <button className="btn wide" onClick={() => set({ popover: null, modal: { t: "profile" } })}>
-                Edit profile and status
-              </button>
+              <>
+                <button className="btn primary wide" onClick={() => openDM(p.url, m.id).catch((e) => setErr(errorText(e)))}>
+                  Message
+                </button>
+                <button className="btn wide" onClick={() => set({ popover: null, modal: { t: "profile" } })}>
+                  Edit profile and status
+                </button>
+              </>
             ) : blocked ? (
               <>
                 <p className="muted small">You blocked this member. Their messages show collapsed and never ping you, and neither of you can send direct messages.</p>

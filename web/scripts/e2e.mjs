@@ -179,6 +179,25 @@ try {
   await dmRow.getByRole("button", { name: /Close conversation/ }).click();
   await dmRow.waitFor({ state: "detached" });
 
+  // DM yourself (1309): Message on your own profile, "(you)" in the title, Slack's notes-to-self copy,
+  // no unread for your own message, close it, then open it again from the New message picker.
+  await page.locator(".me-btn").click();
+  await page.locator(".pop.profile").getByRole("button", { name: "Message", exact: true }).click();
+  await page.locator(".chan-title", { hasText: "(you)" }).waitFor();
+  await page.locator(".chan-start", { hasText: "This is your space." }).waitFor();
+  await page.locator(".channel .composer-input").fill("note to self");
+  await page.locator(".channel .composer-input").press("Enter");
+  await page.locator(".channel .msg", { hasText: "note to self" }).waitFor();
+  const selfRow = page.locator(".sidebar li", { hasText: "(you)" });
+  if ((await selfRow.locator(".chan").getAttribute("data-unread")) !== "false") throw new Error("own message made the self DM unread");
+  await selfRow.hover();
+  await selfRow.getByRole("button", { name: /Close conversation/ }).click();
+  await selfRow.waitFor({ state: "detached" });
+  await page.getByRole("button", { name: "New message" }).click();
+  await page.locator(".pick-list label", { hasText: "(you)" }).click();
+  await page.getByRole("dialog", { name: "New message" }).getByRole("button", { name: "Message", exact: true }).click();
+  await page.locator(".channel .msg", { hasText: "note to self" }).waitFor();
+
   // Report (1119): report someone's message with a note, see it in the moderator queue, resolve it, jump to another.
   await jumpTo(page, "general");
   await page.locator(".channel .composer-input[placeholder='Message #general']").waitFor();
@@ -420,7 +439,7 @@ try {
   await phone.close();
 
   if (errors.length) throw new Error(`page errors: ${errors.join("; ")}`);
-  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, block and unblock, close a DM, report and resolve, light, dark and midnight themes, custom theme, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer)");
+  console.log("e2e: ok (load, switch community, send, thread, reply, who reacted, drop, private members, invites, admin, new message, profile, message link, mark all read, block and unblock, close a DM, DM yourself, report and resolve, light, dark and midnight themes, custom theme, appearance, browse, preview, join, leave, roles, channel access, channel mode, join questions, shortcuts sheet, message keyboard focus, quick switcher, up-arrow edit, phone drawer)");
 } catch (e) {
   failed = true;
   console.error("e2e: FAILED", e.message, errors.join("; "));

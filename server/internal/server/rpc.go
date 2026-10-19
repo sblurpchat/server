@@ -1148,8 +1148,9 @@ func (s *Server) OpenDM(ctx context.Context, req *connect.Request[v1.OpenDMReque
 			ids = append(ids, id)
 		}
 	}
-	if len(ids) < 2 || len(ids) > maxDMOthers+1 {
-		return nil, errf(connect.CodeInvalidArgument, "a DM needs 1 to %d other members", maxDMOthers)
+	// Only me is a notes-to-self DM, like Slack's (1309).
+	if len(ids) > maxDMOthers+1 {
+		return nil, errf(connect.CodeInvalidArgument, "a DM takes at most %d other members", maxDMOthers)
 	}
 	slices.Sort(ids)
 	key := strings.Join(ids, ",")

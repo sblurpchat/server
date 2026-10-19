@@ -164,3 +164,48 @@ func TestMuteSkipsUnreadAndIsPrivate(t *testing.T) {
 		}
 	}
 }
+
+// A DM with only yourself works like Slack's notes-to-self (1309): it opens,
+// reopens as the same channel, takes messages, never counts as unread or a
+// mention, and can be closed and brought back.
+func TestSelfDM(t *testing.T) {
+	e := newEnv(t)
+	ana, bob := e.join("ana"), e.join("bob")
+	open := func(ids ...string) *v1.Channel {
+		return must(ana.chat.OpenDM(ctx(), connect.NewRequest(&v1.OpenDMRequest{MemberIds: ids}))).Channel
+	}
+	self := open()
+	if self.Kind != v1.ChannelKind_CHANNEL_KIND_DM || len(self.MemberIds) != 1 || self.MemberIds[0] != ana.me.Id {
+		t.Fatalf("self DM = %v", self)
+	}
+	if again := open(ana.me.Id); again.Id != self.Id {
+		t.Fatal("reopening must return the same DM")
+	}
+	if open(bob.me.Id).Id == self.Id {
+		t.Fatal("a DM with bob is not the self DM")
+	}
+	sub := ana.subscribe(ana.state().Seq)
+	ana.send(self.Id, "note to self <@"+ana.me.Id+">")
+	sub.next(isCreated("note to self <@"+ana.me.Id+">"), nil)
+	if rs := readStateFor(ana.state(), self.Id); rs.UnreadCount != 0 || rs.MentionCount != 0 {
+		t.Fatalf("self DM counted: %v", rs)
+	}
+	if bob.inState(self.Id) {
+		t.Fatal("bob sees ana's self DM")
+	}
+
+	// Close hides it; opening again brings it back with its history.
+	must(ana.chat.RemoveChannelMember(ctx(), connect.NewRequest(&v1.RemoveChannelMemberRequest{ChannelId: self.Id, MemberId: ana.me.Id})))
+	if ana.inState(self.Id) {
+		t.Fatal("closed self DM still in state")
+	}
+	if back := open(); back.Id != self.Id || len(back.MemberIds) != 1 {
+		t.Fatalf("reopened = %v", back)
+	}
+	if msgs := must(ana.chat.ListMessages(ctx(), connect.NewRequest(&v1.ListMessagesRequest{ChannelId: self.Id}))).Messages; len(msgs) != 1 {
+		t.Fatalf("history = %d messages", len(msgs))
+	}
+	if rs := readStateFor(ana.state(), self.Id); rs.UnreadCount != 0 || rs.MentionCount != 0 {
+		t.Fatalf("reopened self DM counted: %v", rs)
+	}
+}

@@ -144,6 +144,9 @@ func label(ch *v1.Channel, st *v1.GetStateResponse, n map[string]string) string 
 			who = append(who, "@"+n[id])
 		}
 	}
+	if len(who) == 0 {
+		return "DM with yourself"
+	}
 	return "DM with " + strings.Join(who, ", ")
 }
 

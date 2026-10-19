@@ -17,6 +17,7 @@ import {
   formatBytes,
   hostOf,
   isDM,
+  dmPeer,
   listKey,
   matchScore,
   memberGroups,
@@ -143,7 +144,7 @@ export function ChannelView() {
   }
   const dm = isDM(ch);
   const title = channelLabel(ch, c.members, c.me?.id);
-  const other = dm ? c.members[ch.memberIds.find((id) => id !== c.me?.id) ?? ""] : undefined;
+  const other = dm ? c.members[dmPeer(ch, c.me?.id)] : undefined;
   const canEdit = !dm && (c.me?.role ?? 0) >= MemberRole.ADMIN;
   const headImg = absUrl(c.url, ch.headerImage?.url ?? "");
   const canLeave = joined && !dm && !ch.isDefault && ch.kind === ChannelKind.TEXT && c.mode === ChannelMode.OPT_IN;
@@ -164,7 +165,7 @@ export function ChannelView() {
         </button>
         <div className="chan-id">
           <h1 className="chan-title">
-            {dm ? <Avatar m={other} size={24} presence={ch.memberIds.length === 2} /> : <Icon name={ch.kind === 2 ? "lock" : "hash"} size={20} />}
+            {dm ? <Avatar m={other} size={24} presence={ch.memberIds.length <= 2} /> : <Icon name={ch.kind === 2 ? "lock" : "hash"} size={20} />}
             <span className="truncate">{title}</span>
           </h1>
           {ch.topic && <Topic c={c} topic={ch.topic} title={title} onEdit={canEdit ? () => set({ modal: { t: "channel", id: ch.id, focusTopic: true } }) : undefined} />}
@@ -363,7 +364,9 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
               )}
               <h2>{isDM(ch) ? channelLabel(ch, c.members, c.me?.id) : `#${ch.name}`}</h2>
               <p className="muted">
-                {empty
+                {isDM(ch) && ch.memberIds.length === 1 && ch.memberIds[0] === c.me?.id
+                  ? "This is your space. Draft messages, list your to-dos, or keep links and files handy."
+                  : empty
                   ? isDM(ch)
                     ? `This is the start of your conversation with ${channelLabel(ch, c.members, c.me?.id)}. Say hello.`
                     : `This is the start of #${ch.name}. Say hello.`
@@ -1461,7 +1464,9 @@ export function PeoplePicker({
     .filter((x) => x.s >= 0)
     .sort((a, b) => b.s - a.s || (a.m.displayName || a.m.username).localeCompare(b.m.displayName || b.m.username))
     .map((x) => x.m);
-  const full = max > 0 && picked.length >= max;
+  // You may pick yourself (a self DM, 1309); you never count toward the limit.
+  const n = picked.filter((id) => id !== c.me?.id).length;
+  const full = max > 0 && n >= max;
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!picked.length) return;
@@ -1495,7 +1500,10 @@ export function PeoplePicker({
                 <Avatar m={m} size={28} />
                 <span className="member-text">
                   <span className="member-name">
-                    <b className="truncate">{m.displayName || m.username}</b>
+                    <b className="truncate">
+                      {m.displayName || m.username}
+                      {m.id === c.me?.id && <span className="muted"> (you)</span>}
+                    </b>
                     {m.kind === MemberKind.BOT && <span className="tag">Bot</span>}
                   </span>
                   <small className="truncate">@{m.username}</small>
@@ -1516,7 +1524,7 @@ export function PeoplePicker({
             Cancel
           </button>
           <button className="btn primary" disabled={busy || !picked.length}>
-            {busy ? busyText : action(picked.length)}
+            {busy ? busyText : action(n)}
           </button>
         </div>
       </form>

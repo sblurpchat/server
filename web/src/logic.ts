@@ -1048,12 +1048,15 @@ export function swatch(seed: string): string {
 /** A fill dark enough for white initials or labels on it (4.5:1). */
 export const onWhite = (c: string) => fitContrast(c, ["#ffffff"], 4.5);
 
-/** DM label: the other people's names. */
+/** DM label: the other people's names, or "Name (you)" in a self DM (1309). */
 export function channelLabel(ch: Channel, members: Record<string, Member>, meId?: string): string {
   if (!isDM(ch)) return ch.name;
   const others = ch.memberIds.filter((id) => id !== meId).map((id) => members[id]?.displayName ?? "Unknown");
-  return others.join(", ") || "Just you";
+  return others.join(", ") || `${members[meId ?? ""]?.displayName ?? "You"} (you)`;
 }
+
+/** The DM member whose avatar stands for it: the first other member, or me in a self DM. */
+export const dmPeer = (ch: Channel, meId?: string) => ch.memberIds.find((id) => id !== meId) ?? meId ?? "";
 
 export function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;

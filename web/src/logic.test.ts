@@ -1,6 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import css from "./app.css?raw";
+import { channelLabel, dmPeer } from "./logic";
 import {
   ChannelKind,
   ChannelMode,
@@ -1186,5 +1187,25 @@ describe("only admins post (1290)", () => {
     expect(mayPost(news, as(MemberRole.ADMIN))).toBe(true);
     expect(mayPost(news, as(MemberRole.OWNER))).toBe(true);
     expect(mayPost(news, undefined)).toBe(false);
+  });
+});
+
+describe("DM titles (1309)", () => {
+  const members = {
+    me: create(MemberSchema, { id: "me", displayName: "Ian" }),
+    ana: create(MemberSchema, { id: "ana", displayName: "Ana" }),
+    ben: create(MemberSchema, { id: "ben", displayName: "Ben" }),
+  };
+  const dm = (...ids: string[]) => create(ChannelSchema, { id: "d", kind: ChannelKind.DM, memberIds: ids });
+  it("names the others, or you with (you) in a self DM", () => {
+    expect(channelLabel(dm("me", "ana"), members, "me")).toBe("Ana");
+    expect(channelLabel(dm("ana", "me", "ben"), members, "me")).toBe("Ana, Ben");
+    expect(channelLabel(dm("me"), members, "me")).toBe("Ian (you)");
+    expect(channelLabel(dm("me"), {}, "me")).toBe("You (you)");
+  });
+  it("picks the other member, or you in a self DM", () => {
+    expect(dmPeer(dm("me", "ana"), "me")).toBe("ana");
+    expect(dmPeer(dm("ana", "me"), "me")).toBe("ana");
+    expect(dmPeer(dm("me"), "me")).toBe("me");
   });
 });
