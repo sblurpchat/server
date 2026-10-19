@@ -895,7 +895,7 @@ const THEME_NAMES: Record<Theme, string> = {
   cvd: "Colorblind safe",
   cola: "Cherry cola",
   mint: "Mint",
-  cocoa: "Cocoa",
+  clementine: "Clementine",
   fjord: "Fjord",
   sand: "Sand",
   grape: "Grape",

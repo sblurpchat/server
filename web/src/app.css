@@ -157,32 +157,44 @@
   color-scheme: light;
 }
 
-/* Cocoa (1191): warm brown terminal, cream text, amber signals. Themes set colors only, never the font (1267). */
-[data-theme="cocoa"] {
-  --ink: #f0e4d0;
-  --rail: #171310;
-  --frost: #211c18;
-  --paper: #2a2420;
-  --raspberry: #e8b06a;
-  --accent-fill: #94561c;
-  --cherry: #f08a64;
-  --cherry-text: #f39a78;
-  --badge: #b0462a;
-  --graphite: #b5a693;
-  --line: #3b332d;
-  --hover: #342c26;
-  --selected: #45362a;
-  --text: #e6d9c3;
-  --msg-hover: #2f2924;
-  --mention-bg: #45351f;
-  --raised: #322a25;
+/* Clementine (1323), after Slack: burnt orange to brown rail and sidebar, charcoal messages, orange selection.
+   --frost is charcoal so cards and inputs in the message pane stay neutral; the sidebar paints the gradient, whose
+   top (#8a3a12) still gives AA for --ink, --graphite and --raspberry.
+   Themes set colors only, never the font (1267). */
+[data-theme="clementine"] {
+  --ink: #f9efe6;
+  --rail: #8a3a12;
+  --frost: #222529;
+  --paper: #1a1d21;
+  --raspberry: #8fd0f5;
+  --accent-fill: #c24e18;
+  --cherry: #ff8c5a;
+  --cherry-text: #ff8c5a;
+  --badge: #c24e18;
+  --graphite: #d4c8bd;
+  --line: #33363b;
+  --hover: rgb(255 255 255 / 0.1);
+  --selected: #5c2a14;
+  --text: #d1d2d3;
+  --msg-hover: #222529;
+  --mention-bg: #3d2618;
+  --raised: #222529;
   --shadow-c: rgb(0 0 0 / 0.45);
-  --scrim: rgb(8 6 4 / 0.7);
-  --online: #a9c46e;
-  --away: #e8b06a;
-  --code-bg: #1f1a16;
-  --tip: #120f0c;
+  --scrim: rgb(6 4 3 / 0.7);
+  --online: #2bac76;
+  --away: #e8a64a;
+  --code-bg: #121417;
+  --tip: #0f1012;
   color-scheme: dark;
+}
+/* One gradient across rail and sidebar (fixed to the viewport), and Slack's bright selected channel. */
+[data-theme="clementine"] :is(.rail, .sidebar) {
+  background: linear-gradient(#8a3a12, #3a1608) fixed;
+}
+[data-theme="clementine"] .chan[aria-current="page"],
+[data-theme="clementine"] .chan[aria-current="page"] .chan-icon {
+  background: var(--accent-fill);
+  color: var(--on-accent);
 }
 /* Colorblind safe: blue and orange signals (Okabe-Ito), never red against green. */
 [data-theme="cvd"] {

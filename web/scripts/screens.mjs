@@ -151,7 +151,7 @@ const shots = {
 
 // node scripts/screens.mjs themes: every theme in cozy, compact and IRC at desktop size.
 if (only === "themes") {
-  for (const theme of ["light", "dark", "midnight", "contrast", "cvd", "cola", "mint", "cocoa", "fjord", "sand", "grape", "black"]) {
+  for (const theme of ["light", "dark", "midnight", "contrast", "cvd", "cola", "mint", "clementine", "fjord", "sand", "grape", "black"]) {
     for (const density of ["cozy", "compact", "irc"]) {
       const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
       await ctx.route("http://localhost:8090/**", (r) => r.abort());

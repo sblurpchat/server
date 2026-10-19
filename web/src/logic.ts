@@ -416,7 +416,7 @@ export function browseDetail(ch: Channel): string {
 // Appearance: synced to the account as an opaque blob, parsed defensively because localStorage and the blob are user-editable.
 // ---------------------------------------------------------------------------
 
-export const THEMES = ["system", "light", "dark", "midnight", "contrast", "cvd", "cola", "mint", "cocoa", "fjord", "sand", "grape", "black", "custom"] as const;
+export const THEMES = ["system", "light", "dark", "midnight", "contrast", "cvd", "cola", "mint", "clementine", "fjord", "sand", "grape", "black", "custom"] as const;
 export type Theme = (typeof THEMES)[number];
 const DENSITIES = ["cozy", "compact", "irc"] as const;
 /** "default" is Schibsted Grotesk. */
@@ -443,7 +443,8 @@ export function parseAppearance(v: unknown): Appearance {
   const custom = typeof o.custom === "string" ? parseThemeString(o.custom) : null;
   const size = typeof o.fontSize === "number" && Number.isFinite(o.fontSize) ? Math.round(Math.min(20, Math.max(12, o.fontSize))) : APPEARANCE.fontSize;
   return {
-    theme: o.theme === "custom" && !custom ? APPEARANCE.theme : one(o.theme, THEMES, APPEARANCE.theme),
+    // Cocoa was replaced by Clementine (1323).
+    theme: o.theme === "custom" && !custom ? APPEARANCE.theme : o.theme === "cocoa" ? "clementine" : one(o.theme, THEMES, APPEARANCE.theme),
     accent: typeof o.accent === "string" && /^#[0-9a-f]{6}$/i.test(o.accent) ? o.accent.toLowerCase() : "",
     density: one(o.density, DENSITIES, APPEARANCE.density),
     sidebar: one(o.sidebar, ["cozy", "compact"] as const, APPEARANCE.sidebar),
