@@ -110,11 +110,7 @@ func (s *Server) setRel(ctx context.Context, r relation, target string, on bool)
 		if n, _ := res.RowsAffected(); n == 0 {
 			return nil
 		}
-		seq, err := t.nextSeq()
-		if err != nil {
-			return err
-		}
-		ev := &v1.Event{Seq: seq}
+		ev := &v1.Event{}
 		switch {
 		case r == blockRel && on:
 			ev.Kind = &v1.Event_MemberBlocked{MemberBlocked: target}

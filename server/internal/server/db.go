@@ -152,8 +152,8 @@ func (s *Server) writeTx(ctx context.Context, fn func(t *wtx) error) error {
 // nextSeq reserves the next event seq. Safe because there is one writer.
 func (t *wtx) nextSeq() (int64, error) {
 	if t.seq == 0 {
-		err := t.QueryRowContext(t.ctx, "SELECT COALESCE((SELECT seq FROM sqlite_sequence WHERE name = 'events'), 0)").Scan(&t.seq)
-		if err != nil {
+		var err error
+		if t.seq, err = currentSeq(t.ctx, t); err != nil {
 			return 0, err
 		}
 	}
@@ -161,9 +161,16 @@ func (t *wtx) nextSeq() (int64, error) {
 	return t.seq, nil
 }
 
-// emit persists ev. ev.Seq must come from nextSeq. A non-empty scopeChannel
-// limits the event to that channel's members, scopeMember to one member.
+// emit persists ev. A zero ev.Seq takes the next one; a set one must come
+// from nextSeq. A non-empty scopeChannel limits the event to that channel's
+// members, scopeMember to one member.
 func (t *wtx) emit(ev *v1.Event, scopeChannel, scopeMember string) error {
+	if ev.Seq == 0 {
+		var err error
+		if ev.Seq, err = t.nextSeq(); err != nil {
+			return err
+		}
+	}
 	if ev.AtMs == 0 {
 		ev.AtMs = t.s.nowMs()
 	}

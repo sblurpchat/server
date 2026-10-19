@@ -584,11 +584,7 @@ func (s *Server) listPlugins(ctx context.Context, only string) ([]*v1.Plugin, er
 // onePlugin is the reply for a change: the plugin as it is now.
 func (s *Server) onePlugin(ctx context.Context, name string) (*v1.Plugin, error) {
 	if err := s.writeTx(ctx, func(t *wtx) error {
-		seq, err := t.nextSeq()
-		if err != nil {
-			return err
-		}
-		return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_PluginsChanged{PluginsChanged: true}}, "", "")
+		return t.emit(&v1.Event{Kind: &v1.Event_PluginsChanged{PluginsChanged: true}}, "", "")
 	}); err != nil {
 		return nil, err
 	}

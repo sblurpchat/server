@@ -189,11 +189,7 @@ func requireAdminFor(ctx context.Context, what string) error {
 }
 
 func emitRole(t *wtx, r *v1.Role) error {
-	seq, err := t.nextSeq()
-	if err != nil {
-		return err
-	}
-	return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_RoleUpdated{RoleUpdated: r}}, "", "")
+	return t.emit(&v1.Event{Kind: &v1.Event_RoleUpdated{RoleUpdated: r}}, "", "")
 }
 
 func (s *Server) CreateRole(ctx context.Context, req *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error) {
@@ -291,12 +287,8 @@ func (s *Server) DeleteRole(ctx context.Context, req *connect.Request[v1.DeleteR
 				return err
 			}
 		}
-		seq, err := t.nextSeq()
-		if err != nil {
-			return err
-		}
 		// No role gates a channel, so nobody's channels change.
-		return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_RoleDeleted{RoleDeleted: role.Id}}, "", "")
+		return t.emit(&v1.Event{Kind: &v1.Event_RoleDeleted{RoleDeleted: role.Id}}, "", "")
 	})
 	if err != nil {
 		return nil, err
@@ -351,11 +343,7 @@ func (s *Server) SetMemberRoles(ctx context.Context, req *connect.Request[v1.Set
 		if out, err = s.loadMember(ctx, t, "id = ?", target.Id); err != nil {
 			return err
 		}
-		seq, err := t.nextSeq()
-		if err != nil {
-			return err
-		}
-		if err := t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberUpdated{MemberUpdated: out.Member}}, "", ""); err != nil {
+		if err := t.emit(&v1.Event{Kind: &v1.Event_MemberUpdated{MemberUpdated: out.Member}}, "", ""); err != nil {
 			return err
 		}
 		return s.syncAccess(t, "")
@@ -495,11 +483,7 @@ func (s *Server) setChannelMode(t *wtx, mode v1.ChannelMode) error {
 		int32(mode)); err != nil {
 		return err
 	}
-	seq, err := t.nextSeq()
-	if err != nil {
-		return err
-	}
-	if err := t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_ChannelModeChanged{ChannelModeChanged: mode}}, "", ""); err != nil {
+	if err := t.emit(&v1.Event{Kind: &v1.Event_ChannelModeChanged{ChannelModeChanged: mode}}, "", ""); err != nil {
 		return err
 	}
 	return s.syncAccess(t, "")

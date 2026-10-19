@@ -229,11 +229,7 @@ func (s *Server) seedAvatars(ctx context.Context, c seed.Community) error {
 			if err != nil {
 				return err
 			}
-			seq, err := t.nextSeq()
-			if err != nil {
-				return err
-			}
-			if err := t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberUpdated{MemberUpdated: out.Member}}, "", ""); err != nil {
+			if err := t.emit(&v1.Event{Kind: &v1.Event_MemberUpdated{MemberUpdated: out.Member}}, "", ""); err != nil {
 				return err
 			}
 			n++

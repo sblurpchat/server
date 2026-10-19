@@ -708,11 +708,7 @@ func (s *Server) setUsername(t *wtx, id, name string, announce bool) error {
 	if err != nil {
 		return err
 	}
-	seq, err := t.nextSeq()
-	if err != nil {
-		return err
-	}
-	return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberUpdated{MemberUpdated: m.Member}}, "", "")
+	return t.emit(&v1.Event{Kind: &v1.Event_MemberUpdated{MemberUpdated: m.Member}}, "", "")
 }
 
 func (s *Server) GetMe(ctx context.Context, _ *connect.Request[v1.GetMeRequest]) (*connect.Response[v1.GetMeResponse], error) {
@@ -775,11 +771,7 @@ func (s *Server) UpdateProfile(ctx context.Context, req *connect.Request[v1.Upda
 		if out, err = s.loadMember(ctx, t, "id = ?", m.Id); err != nil {
 			return err
 		}
-		seq, err := t.nextSeq()
-		if err != nil {
-			return err
-		}
-		return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberUpdated{MemberUpdated: out.Member}}, "", "")
+		return t.emit(&v1.Event{Kind: &v1.Event_MemberUpdated{MemberUpdated: out.Member}}, "", "")
 	})
 	if err != nil {
 		return nil, err
@@ -1062,11 +1054,7 @@ func (s *Server) createChannel(t *wtx, kind v1.ChannelKind, name, topic, categor
 	if err != nil {
 		return nil, err
 	}
-	seq, err := t.nextSeq()
-	if err != nil {
-		return nil, err
-	}
-	if err := t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_ChannelCreated{ChannelCreated: cs[0]}}, id, ""); err != nil {
+	if err := t.emit(&v1.Event{Kind: &v1.Event_ChannelCreated{ChannelCreated: cs[0]}}, id, ""); err != nil {
 		return nil, err
 	}
 	// In ROLES mode everyone who can see a new text channel is in it.
@@ -1135,11 +1123,7 @@ func (s *Server) UpdateChannel(ctx context.Context, req *connect.Request[v1.Upda
 		if c, err = channelFor(ctx, t, old.Id, m.Id); err != nil {
 			return err
 		}
-		seq, err := t.nextSeq()
-		if err != nil {
-			return err
-		}
-		return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_ChannelUpdated{ChannelUpdated: c}}, c.Id, "")
+		return t.emit(&v1.Event{Kind: &v1.Event_ChannelUpdated{ChannelUpdated: c}}, c.Id, "")
 	})
 	if isUnique(err) {
 		return nil, errf(connect.CodeAlreadyExists, "a channel with that name already exists")
@@ -1643,11 +1627,7 @@ func (s *Server) MarkRead(ctx context.Context, req *connect.Request[v1.MarkReadR
 		if rs, err = readState(ctx, t, m, c); err != nil {
 			return err
 		}
-		evSeq, err := t.nextSeq()
-		if err != nil {
-			return err
-		}
-		return t.emit(&v1.Event{Seq: evSeq, Kind: &v1.Event_ReadState{ReadState: rs}}, "", m.Id)
+		return t.emit(&v1.Event{Kind: &v1.Event_ReadState{ReadState: rs}}, "", m.Id)
 	})
 	if err != nil {
 		return nil, err
@@ -1755,11 +1735,7 @@ func emitChannelUpdated(t *wtx, id string) (*v1.Channel, error) {
 	if err != nil {
 		return nil, err
 	}
-	seq, err := t.nextSeq()
-	if err != nil {
-		return nil, err
-	}
-	return cs[0], t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_ChannelUpdated{ChannelUpdated: cs[0]}}, id, "")
+	return cs[0], t.emit(&v1.Event{Kind: &v1.Event_ChannelUpdated{ChannelUpdated: cs[0]}}, id, "")
 }
 
 func (s *Server) AddChannelMembers(ctx context.Context, req *connect.Request[v1.AddChannelMembersRequest]) (*connect.Response[v1.AddChannelMembersResponse], error) {
@@ -1865,11 +1841,7 @@ func removeFromChannel(t *wtx, channel, member string) error {
 	if _, err := t.ExecContext(t.ctx, "DELETE FROM channel_members WHERE channel_id = ? AND member_id = ?", channel, member); err != nil {
 		return err
 	}
-	seq, err := t.nextSeq()
-	if err != nil {
-		return err
-	}
-	return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_ChannelDeleted{ChannelDeleted: channel}}, "", member)
+	return t.emit(&v1.Event{Kind: &v1.Event_ChannelDeleted{ChannelDeleted: channel}}, "", member)
 }
 
 func (s *Server) SetMemberRole(ctx context.Context, req *connect.Request[v1.SetMemberRoleRequest]) (*connect.Response[v1.SetMemberRoleResponse], error) {
@@ -1901,11 +1873,7 @@ func (s *Server) SetMemberRole(ctx context.Context, req *connect.Request[v1.SetM
 		if out, err = s.loadMember(ctx, t, "id = ?", target.Id); err != nil {
 			return err
 		}
-		seq, err := t.nextSeq()
-		if err != nil {
-			return err
-		}
-		if err := t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberUpdated{MemberUpdated: out.Member}}, "", ""); err != nil {
+		if err := t.emit(&v1.Event{Kind: &v1.Event_MemberUpdated{MemberUpdated: out.Member}}, "", ""); err != nil {
 			return err
 		}
 		return s.syncAccess(t, "")
@@ -2077,11 +2045,7 @@ func (s *Server) removeMember(t *wtx, id string) error {
 	if _, err := t.ExecContext(ctx, "DELETE FROM member_roles WHERE member_id = ?", id); err != nil {
 		return err
 	}
-	seq, err := t.nextSeq()
-	if err != nil {
-		return err
-	}
-	return t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_MemberLeft{MemberLeft: id}}, "", "")
+	return t.emit(&v1.Event{Kind: &v1.Event_MemberLeft{MemberLeft: id}}, "", "")
 }
 
 // ---------------------------------------------------------------------------
@@ -2291,11 +2255,7 @@ func (s *Server) UpdateServerSettings(ctx context.Context, req *connect.Request[
 			changed = true
 		}
 		if changed {
-			seq, err := t.nextSeq()
-			if err != nil {
-				return err
-			}
-			if err := t.emit(&v1.Event{Seq: seq, Kind: &v1.Event_ServerUpdated{ServerUpdated: true}}, "", ""); err != nil {
+			if err := t.emit(&v1.Event{Kind: &v1.Event_ServerUpdated{ServerUpdated: true}}, "", ""); err != nil {
 				return err
 			}
 		}
