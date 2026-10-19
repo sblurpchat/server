@@ -37,7 +37,7 @@ Every flag can also come from an environment variable.
 | `-base-url` | `SBLURP_BASE_URL` | required | Public URL. Also the JWT audience. |
 | `-trusted-issuer` | `SBLURP_TRUSTED_ISSUERS` (comma separated) | `https://sblurp.chat` | Login issuers to accept. Repeat the flag for more. |
 | `-seed` | `SBLURP_SEED` | | `community` or `owls`. Fills an empty database with demo data. Ignored when the database has members. |
-| `-bot-rate` | `SBLURP_BOT_RATE` | `0` (no limit) | SendMessage per second for bots. |
+| `-bot-rate` | `SBLURP_BOT_RATE` | `0` (no limit) | Writes per second for bots. |
 | `-bot-burst` | `SBLURP_BOT_BURST` | `20` | Burst for bots. |
 | | `SBLURP_TRACK` | set at build (`stable`, `beta`, `nightly`; `head` for a build from source) | Release track for the update check. |
 | | `SBLURP_UPDATE_URL` | set at build | Release manifest (`releases.json`). Empty in local builds. |
@@ -48,7 +48,8 @@ data. When its track has a newer version, `GetMe` tells admins and the owner
 in `update_available`. The server never updates itself; see
 `deploy/README.md`.
 
-People are limited to 5 messages per second, burst 10.
+People are limited to 5 writes per second, burst 10. Typing, search and
+uploads have their own budgets; see `rateLimit` in `internal/server/server.go`.
 
 ## Run the example bot
 

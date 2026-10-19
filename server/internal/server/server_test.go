@@ -96,6 +96,11 @@ type env struct {
 	dir   string
 }
 
+// realLimits makes the rate limiter follow the test clock, with full buckets.
+func (e *env) realLimits() {
+	e.s.limiter.now, e.s.limiter.buckets = e.clock.Now, map[string]*bucket{}
+}
+
 func newEnv(t *testing.T, mods ...func(*Config)) *env {
 	t.Helper()
 	e := &env{t: t, clock: &fakeClock{t: time.Now().Truncate(time.Second)}, iss: newIssuer(t), dir: t.TempDir()}
@@ -115,6 +120,10 @@ func newEnv(t *testing.T, mods ...func(*Config)) *env {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Each rate limit check sees the clock one second later, so tests can
+	// call freely. Rate limit tests call e.realLimits.
+	var step time.Duration
+	e.s.limiter.now = func() time.Time { step += time.Second; return e.clock.Now().Add(step) } // runs under limiter.mu
 	// New communities are invite only; most tests want an open one.
 	if _, err := e.s.db.w.Exec("INSERT INTO settings(key, value) VALUES ('invite_only', '0')"); err != nil {
 		t.Fatal(err)
@@ -868,6 +877,7 @@ func TestBots(t *testing.T) {
 
 func TestSendValidationIdempotencyAndRateLimit(t *testing.T) {
 	e := newEnv(t)
+	e.realLimits()
 	ana := e.join("ana")
 	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
 	req := &v1.SendMessageRequest{ChannelId: gen.Id, Text: "once", ClientId: "c-1"}
@@ -913,6 +923,36 @@ func TestSendValidationIdempotencyAndRateLimit(t *testing.T) {
 	}
 	_, err = ana.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: gen.Id, Text: "one too many"}))
 	wantCode(t, err, connect.CodeResourceExhausted)
+}
+
+// Every write shares the sender's bucket; typing has its own, uploads too.
+func TestRateLimitBeyondSend(t *testing.T) {
+	e := newEnv(t)
+	ana := e.join("ana")
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	msg := ana.send(gen.Id, "hi")
+	e.realLimits()
+	var err error
+	for range 11 {
+		if _, err = ana.chat.React(ctx(), connect.NewRequest(&v1.ReactRequest{MessageId: msg.Id, Emoji: "👍"})); err != nil {
+			break
+		}
+	}
+	wantCode(t, err, connect.CodeResourceExhausted)
+	_, err = ana.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: gen.Id, Text: "shared bucket"}))
+	wantCode(t, err, connect.CodeResourceExhausted)
+	must(ana.chat.SetTyping(ctx(), connect.NewRequest(&v1.SetTypingRequest{ChannelId: gen.Id})))
+	must(ana.chat.ListMessages(ctx(), connect.NewRequest(&v1.ListMessagesRequest{ChannelId: gen.Id})))
+	for i := range uploadBurst {
+		if res, _ := ana.upload("a.txt", []byte("x")); res.StatusCode != http.StatusOK {
+			t.Fatalf("upload %d: %d", i, res.StatusCode)
+		}
+	}
+	if res, _ := ana.upload("a.txt", []byte("x")); res.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("upload past burst: %d", res.StatusCode)
+	}
+	e.clock.Advance(time.Second)
+	must(ana.chat.React(ctx(), connect.NewRequest(&v1.ReactRequest{MessageId: msg.Id, Emoji: "🎉"})))
 }
 
 func TestListMessagesAroundAndAfter(t *testing.T) {

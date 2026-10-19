@@ -19,6 +19,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	v1 "sblurp.chat/server/gen/sblurp/v1"
 	"sblurp.chat/server/gen/sblurp/v1/sblurpv1connect"
 	"sblurp.chat/server/internal/mcp"
 )
@@ -34,7 +35,7 @@ type Config struct {
 	TrustedIssuers []string
 	DataDir        string
 	Seed           string  // "community", "owls" or ""; only used on an empty database
-	BotRate        float64 // SendMessage per second for bots; 0 = no limit
+	BotRate        float64 // writes per second for bots; 0 = no limit
 	BotBurst       int
 	PluginMemory   int           // bytes per plugin; default 32 MB
 	PluginTimeout  time.Duration // per hook call; default 1s
@@ -257,7 +258,7 @@ func batchFlushes(next http.Handler) http.Handler {
 	})
 }
 
-// limiter is a token bucket per member for SendMessage.
+// limiter is a set of token buckets keyed by member (and class, see rateLimit).
 type limiter struct {
 	now     func() time.Time
 	mu      sync.Mutex
@@ -290,6 +291,47 @@ func (l *limiter) allow(member string, rate float64, burst int) bool {
 	b.tokens--
 	b.full = now.Add(time.Duration((float64(burst) - b.tokens) / rate * float64(time.Second)))
 	return true
+}
+
+// unlimited procedures are cheap reads. Every other call spends a token.
+var unlimited = map[string]bool{}
+
+func init() {
+	for _, p := range []string{
+		sblurpv1connect.ServerServiceGetServerInfoProcedure, sblurpv1connect.ServerServiceJoinProcedure,
+		sblurpv1connect.ServerServiceGetMeProcedure, sblurpv1connect.ServerServiceGetStateProcedure,
+		sblurpv1connect.ServerServiceSubscribeProcedure, sblurpv1connect.ServerServiceListBansProcedure,
+		sblurpv1connect.ServerServiceListInvitesProcedure, sblurpv1connect.ServerServiceListReportsProcedure,
+		sblurpv1connect.ChatServiceListMessagesProcedure, sblurpv1connect.ChatServiceBrowseChannelsProcedure,
+		sblurpv1connect.BotServiceListBotsProcedure, sblurpv1connect.BotServiceListPluginsProcedure,
+	} {
+		unlimited[p] = true
+	}
+}
+
+// rateLimit spends one token for a call. Writes share the member's bucket
+// (bots use the configured bot budget). Typing and read markers fire often
+// and get their own larger bucket; search and link previews (which fetch
+// remote pages) get another.
+func (s *Server) rateLimit(procedure string, m *memberRow) error {
+	if unlimited[procedure] {
+		return nil
+	}
+	key, rate, burst := m.Id, float64(humanRate), humanBurst
+	switch procedure {
+	case sblurpv1connect.ChatServiceSetTypingProcedure, sblurpv1connect.ChatServiceMarkReadProcedure:
+		key, rate, burst = "ambient "+m.Id, ambientRate, ambientBurst
+	case sblurpv1connect.ChatServiceSearchProcedure, sblurpv1connect.ChatServiceGetLinkPreviewsProcedure:
+		key, rate, burst = "read "+m.Id, readRate, readBurst
+	default:
+		if m.Kind == v1.MemberKind_MEMBER_KIND_BOT {
+			rate, burst = s.cfg.BotRate, s.cfg.BotBurst
+		}
+	}
+	if !s.limiter.allow(key, rate, burst) {
+		return errf(connect.CodeResourceExhausted, "too many requests; slow down and try again in a moment")
+	}
+	return nil
 }
 
 // sweep drops buckets that have refilled. A fresh bucket starts full, so

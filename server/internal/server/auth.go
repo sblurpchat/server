@@ -309,6 +309,11 @@ func (i interceptor) check(ctx context.Context, procedure string, h http.Header)
 	if err := authorize(procedure, id); err != nil {
 		return ctx, err
 	}
+	if id != nil && id.member != nil {
+		if err := i.s.rateLimit(procedure, id.member); err != nil {
+			return ctx, err
+		}
+	}
 	return context.WithValue(ctx, ctxKey{}, id), nil
 }
 

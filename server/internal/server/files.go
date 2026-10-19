@@ -230,6 +230,10 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusForbidden, "join this community first")
 		return
 	}
+	if !s.limiter.allow("upload "+id.member.Id, uploadRate, uploadBurst) {
+		httpError(w, http.StatusTooManyRequests, "too many uploads; try again in a moment")
+		return
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxUpload+1<<20) // room for multipart framing
 	mr, err := r.MultipartReader()
 	if err != nil {

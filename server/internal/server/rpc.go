@@ -37,8 +37,14 @@ const (
 	maxAttachments      = 10
 	maxDMOthers         = 8
 	maxEmojiPerMsg      = 50
-	humanRate           = 5
+	humanRate           = 5 // writes per second, see rateLimit
 	humanBurst          = 10
+	ambientRate         = 5 // typing and read markers
+	ambientBurst        = 30
+	readRate            = 5 // search and link previews
+	readBurst           = 50
+	uploadRate          = 1
+	uploadBurst         = 2 * maxAttachments
 )
 
 var (
@@ -1304,13 +1310,6 @@ func (s *Server) SendMessage(ctx context.Context, req *connect.Request[v1.SendMe
 	}
 	if len(r.AttachmentIds) > maxAttachments {
 		return nil, errf(connect.CodeInvalidArgument, "at most %d attachments per message", maxAttachments)
-	}
-	rate, burst := float64(humanRate), humanBurst
-	if m.Kind == v1.MemberKind_MEMBER_KIND_BOT {
-		rate, burst = s.cfg.BotRate, s.cfg.BotBurst
-	}
-	if !s.limiter.allow(m.Id, rate, burst) {
-		return nil, errf(connect.CodeResourceExhausted, "you are sending messages too fast")
 	}
 	var out *v1.Message
 	err := s.writeTx(ctx, func(t *wtx) error {
