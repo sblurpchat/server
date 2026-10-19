@@ -227,6 +227,7 @@ export function ghost(el: HTMLElement | null) {
   g.className = `${el.className} leaving`;
   g.append(...[...el.childNodes].map((n) => n.cloneNode(true)));
   g.querySelectorAll("video").forEach((v) => ((v.autoplay = false), (v.muted = true)));
+  g.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
   g.popover = "manual";
   g.inert = true;
   Object.assign(g.style, { position: "fixed", inset: "auto", margin: "0", left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, maxWidth: "none", maxHeight: "none" });

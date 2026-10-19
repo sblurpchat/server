@@ -4067,7 +4067,7 @@ li.sw-empty {
   .pane {
     animation: pane-push 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
-  .pane.ghost {
+  .pane.leaving {
     animation: pane-push 160ms ease-in reverse forwards;
   }
 }
@@ -4077,22 +4077,22 @@ li.sw-empty {
   }
 }
 @media (min-width: 768px) {
-  .pane.ghost {
+  .pane.leaving {
     animation: pane-in 140ms ease-in reverse forwards;
   }
 }
 /* Dialogs and sheets rise in over a fading backdrop and fade out the same way. */
 .dialog[open],
-.ghost.dialog {
+.leaving.dialog {
   animation: dialog-in 160ms ease-out;
 }
 .dialog[open]::backdrop,
-.ghost.dialog::backdrop {
+.leaving.dialog::backdrop {
   background: var(--scrim);
   animation: fade-in 160ms ease-out;
 }
-.ghost.dialog,
-.ghost.dialog::backdrop {
+.leaving.dialog,
+.leaving.dialog::backdrop {
   animation-direction: reverse;
   animation-duration: 120ms;
   animation-fill-mode: forwards;
@@ -4104,7 +4104,7 @@ li.sw-empty {
     transform: translateY(8px) scale(0.98);
   }
 }
-.ghost {
+.leaving {
   pointer-events: none;
 }
 /* Dialogs stay clear of the notch and the home bar. */

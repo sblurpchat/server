@@ -12,7 +12,9 @@ const jumpTo = async (page, q) => {
   await page.getByPlaceholder("Jump to a channel or person").fill(q);
   await page.keyboard.press("Enter");
 };
-const page = await (await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"] })).newPage();
+// Reduced motion: a closing dialog or pane leaves a fading copy for 120-160 ms (1297), and
+// the steps act faster than that.
+const page = await (await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"], reducedMotion: "reduce" })).newPage();
 const errors = [];
 try {
   await page.route("http://localhost:8090/**", (r) => r.abort());
@@ -388,7 +390,7 @@ try {
   await page.locator(".side-head", { hasText: "Letterpress Club" }).waitFor();
 
   // Phone width: the drawer opens from the header, picking a channel closes it and shows that channel.
-  const phone = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
   phone.on("pageerror", (e) => errors.push(e.message));
   await phone.route("http://localhost:8090/**", (r) => r.abort());
   await phone.goto("http://127.0.0.1:5198/?fake=1&quiet=1", { waitUntil: "domcontentloaded" });
