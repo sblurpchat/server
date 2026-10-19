@@ -819,6 +819,9 @@ func (s *Server) GetState(ctx context.Context, _ *connect.Request[v1.GetStateReq
 	if out.MutedMemberIds, err = listRel(ctx, tx, muteRel, m.Id); err != nil {
 		return nil, err
 	}
+	if out.OpenReports, err = s.openReports(ctx, tx, m.Role); err != nil {
+		return nil, err
+	}
 	for _, c := range out.Channels {
 		rs, err := readState(ctx, tx, m, c)
 		if err != nil {
@@ -1501,7 +1504,7 @@ func (s *Server) DeleteMessage(ctx context.Context, req *connect.Request[v1.Dele
 		if _, err := t.ExecContext(ctx, "DELETE FROM reactions WHERE message_id = ?", msg.Id); err != nil {
 			return err
 		}
-		if files, err = scanIDs(t.QueryContext(ctx, deleteAttachments, fmt.Sprintf("[%q]", msg.Id))); err != nil {
+		if files, err = deleteAttachments(t, fmt.Sprintf("[%q]", msg.Id)); err != nil {
 			return err
 		}
 		if err := scrubMessageEvents(t, msg.ChannelId, msg.Id, msg.CreatedSeq, nil); err != nil {

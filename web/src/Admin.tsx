@@ -805,12 +805,13 @@ export function ReportDialog({ url, message: m }: { url: string; message: Messag
 export function ReportsDialog() {
   const c = useApp((s) => s.cs[s.url]);
   const [reports, setReports] = useState<Report[] | null>(null);
+  const [resolved, setResolved] = useState(false);
   const [gone, setGone] = useState("");
   const [err, setErr] = useState("");
   const url = c?.url ?? "";
   const fail = (e: unknown) => setErr(errorText(e));
-  const load = () => listReports(url).then(setReports, fail);
-  useEffect(() => void load(), [url]);
+  const load = () => listReports(url, resolved).then(setReports, fail);
+  useEffect(() => (setReports(null), void load()), [url, resolved]);
   if (!c) return null;
   const resolve = (id: string) => {
     setErr("");
@@ -823,17 +824,25 @@ export function ReportsDialog() {
       <div className="stack" aria-busy={!reports && !err}>
         <p className="muted small">
           Members report messages here. You see reports about members with a lower permission than yours. Resolve a report when you have dealt with it. A
-          report of a direct message holds only that message.
+          report of a direct message holds only that message. Resolved reports stay for 90 days.
         </p>
+        <div className="seg" role="radiogroup" aria-label="Show">
+          {[false, true].map((v) => (
+            <label key={String(v)}>
+              <input type="radio" name="reports-show" checked={resolved === v} onChange={() => setResolved(v)} />
+              {v ? "Resolved" : "Open"}
+            </label>
+          ))}
+        </div>
         {err && (
           <p className="error" role="alert">
             {err}
           </p>
         )}
         {!reports && !err && <Skeleton rows={3} avatar={32} lines={2} className="skel-admin" />}
-        {reports && !reports.length && <p className="muted small">No open reports.</p>}
+        {reports && !reports.length && <p className="muted small">{resolved ? "No resolved reports." : "No open reports."}</p>}
         {!!reports?.length && (
-          <ul className="admin-list report-list" aria-label="Open reports" style={{ animation: `fade-in ${FADE}ms ease-out` }}>
+          <ul className="admin-list report-list" aria-label={resolved ? "Resolved reports" : "Open reports"} style={{ animation: `fade-in ${FADE}ms ease-out` }}>
             {reports.map((r) => {
               const a = r.author;
               const name = a ? a.displayName || a.username : "Former member";
@@ -850,7 +859,20 @@ export function ReportsDialog() {
                       </small>
                     </span>
                     <blockquote className="delete-preview">{r.message?.text || "(attachment)"}</blockquote>
+                    {r.message?.attachments.map((f) => (
+                      <a key={f.id} href={absUrl(url, f.url)} target="_blank" rel="noreferrer" className="small">
+                        {f.contentType.startsWith("image/") ? (
+                          <img src={absUrl(url, f.url)} alt={f.name} style={{ display: "block", maxWidth: 240, maxHeight: 160, borderRadius: 6 }} />
+                        ) : (
+                          <>
+                            <Icon name="file" size={14} /> {f.name}
+                          </>
+                        )}
+                      </a>
+                    ))}
                     {r.note && <p className="report-note">“{r.note}”</p>}
+                    {r.resolvedAtMs > 0n && <small className="muted">{reportDetail(Number(r.resolvedAtMs), r.resolvedBy, now, "Resolved")}</small>}
+                    {!resolved && (
                     <span className="row">
                       {place.open && (
                         <button className="btn small" onClick={() => (set({ modal: null }), jumpTo(url, r.message!, true))}>
@@ -866,6 +888,7 @@ export function ReportsDialog() {
                         <Icon name="check" size={14} /> Resolve
                       </button>
                     </span>
+                    )}
                   </div>
                 </li>
               );

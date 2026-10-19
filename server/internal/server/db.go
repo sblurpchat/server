@@ -222,14 +222,26 @@ func scanIDs(rows *sql.Rows, err error) ([]string, error) {
 	return ids, rows.Err()
 }
 
-// deleteAttachments deletes the uploads of the messages in the JSON array ?1
-// and their video posters, returning the ids of the files to remove.
-const deleteAttachments = `DELETE FROM attachments WHERE message_id IN (SELECT value FROM json_each(?1))
-	OR id IN (SELECT poster_id FROM attachments WHERE poster_id != '' AND message_id IN (SELECT value FROM json_each(?1))) RETURNING id`
+// reportedFiles are the uploads an open report keeps (1256).
+const reportedFiles = `SELECT j.value FROM reports r, json_each(r.attachment_ids) j WHERE r.resolved_at_ms = 0`
+
+// deleteAttachments deletes the uploads of the messages in the JSON array ids
+// and their video posters, returning the ids of the files to remove. Uploads
+// an open report keeps are only unlinked; prune deletes them once no open
+// report keeps them.
+func deleteAttachments(t *wtx, ids string) ([]string, error) {
+	if _, err := t.ExecContext(t.ctx, `UPDATE attachments SET message_id = NULL WHERE message_id IN (SELECT value FROM json_each(?))
+		AND id IN (`+reportedFiles+`)`, ids); err != nil {
+		return nil, err
+	}
+	return scanIDs(t.QueryContext(t.ctx, `DELETE FROM attachments WHERE message_id IN (SELECT value FROM json_each(?1))
+	OR id IN (SELECT poster_id FROM attachments WHERE poster_id != '' AND message_id IN (SELECT value FROM json_each(?1))) RETURNING id`, ids))
+}
 
 // prune drops old events: those outside both the newest keepEvents and the
 // last keepFor. Subscribers behind the oldest kept seq get resync. It also
-// deletes uploads that were never attached to a message within orphanAfter.
+// deletes uploads that were never attached to a message within orphanAfter,
+// and reports resolved more than keepResolvedReports ago.
 func (s *Server) prune(ctx context.Context) error {
 	now := s.now()
 	cutoff := now.Add(-s.cfg.KeepFor).UnixMilli()
@@ -238,9 +250,13 @@ func (s *Server) prune(ctx context.Context) error {
 		if _, err := t.ExecContext(ctx, "DELETE FROM events WHERE seq <= (SELECT MAX(seq) FROM events) - ? AND at_ms < ?", s.cfg.KeepEvents, cutoff); err != nil {
 			return err
 		}
+		if _, err := t.ExecContext(ctx, "DELETE FROM reports WHERE resolved_at_ms != 0 AND resolved_at_ms < ?", now.Add(-keepResolvedReports).UnixMilli()); err != nil {
+			return err
+		}
 		var err error
 		orphans, err = scanIDs(t.QueryContext(ctx, `DELETE FROM attachments WHERE message_id IS NULL AND created_at_ms < ?
 			AND id NOT IN (SELECT value FROM settings WHERE key IN ('banner', 'icon')) AND id NOT IN (SELECT header_image_id FROM channels)
+			AND id NOT IN (`+reportedFiles+`)
 			AND id NOT IN (SELECT poster_id FROM attachments WHERE poster_id != '')
 			AND id NOT IN (SELECT substr(avatar_url, 8, instr(substr(avatar_url, 8), '/') - 1) FROM members WHERE avatar_url LIKE '/files/%') RETURNING id`, now.Add(-orphanAfter).UnixMilli()))
 		return err
@@ -255,6 +271,10 @@ func (s *Server) prune(ctx context.Context) error {
 }
 
 const orphanAfter = 24 * time.Hour
+
+// keepResolvedReports bounds the moderation log (1257); reports of DMs hold
+// DM text, so they should not stay forever.
+const keepResolvedReports = 90 * 24 * time.Hour
 
 // maxRetentionDays caps the retention setting at about ten years.
 const maxRetentionDays = 3650
@@ -309,7 +329,7 @@ func (s *Server) pruneMessages(ctx context.Context) error {
 			if _, err := t.ExecContext(ctx, "DELETE FROM reactions WHERE message_id IN (SELECT value FROM json_each(?))", ids); err != nil {
 				return err
 			}
-			files, err = scanIDs(t.QueryContext(ctx, deleteAttachments, ids))
+			files, err = deleteAttachments(t, ids)
 			if err != nil {
 				return err
 			}

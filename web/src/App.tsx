@@ -384,6 +384,12 @@ function Sidebar({ c }: { c: Community }) {
         onClick={(e) => setMenu(e.currentTarget.getBoundingClientRect())}
       >
         <span className="truncate">{name}</span>
+        {!!c.openReports && (
+          <span className="badge" style={{ animation: "fade-in 150ms ease-out" }}>
+            {c.openReports}
+            <span className="visually-hidden"> open {c.openReports === 1 ? "report" : "reports"}</span>
+          </span>
+        )}
         <Icon name="chevron" size={18} />
       </button>
       {c.info?.description && <SideAbout c={c} text={c.info.description} admin={admin} />}
@@ -413,6 +419,12 @@ function Sidebar({ c }: { c: Community }) {
           {(c.me?.role ?? 0) >= MemberRole.MODERATOR && (
             <button role="menuitem" onClick={() => set({ modal: { t: "reports" } })}>
               <Icon name="flag" size={18} /> Reports
+              {!!c.openReports && (
+                <span className="badge">
+                  {c.openReports}
+                  <span className="visually-hidden"> open</span>
+                </span>
+              )}
             </button>
           )}
           <button role="menuitem" onClick={() => markAllRead(c.url)}>

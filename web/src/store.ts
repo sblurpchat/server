@@ -799,7 +799,7 @@ export const listBans = async (url: string) => (await api(url).server.listBans({
 export const unbanMember = (url: string, memberId: string) => api(url).server.unbanMember({ memberId });
 
 export const reportMessage = (url: string, messageId: string, note: string) => api(url).server.reportMessage({ messageId, note });
-export const listReports = async (url: string) => (await api(url).server.listReports({})).reports;
+export const listReports = async (url: string, resolved = false) => (await api(url).server.listReports({ resolved })).reports;
 export const resolveReport = (url: string, reportId: string) => api(url).server.resolveReport({ reportId });
 
 export const createInvite = (url: string, expiresInSeconds: number, maxUses: number) =>

@@ -791,15 +791,21 @@ function service(f: Fake) {
         );
         return {};
       },
-      listReports() {
+      listReports(req: { resolved: boolean }) {
         mod();
-        return { reports: f.reports.filter((r) => me().role === MemberRole.OWNER || me().role > (r.author?.role ?? 0)) };
+        return {
+          reports: f.reports.filter((r) => !!r.resolvedAtMs === req.resolved && (me().role === MemberRole.OWNER || me().role > (r.author?.role ?? 0))),
+        };
       },
       resolveReport(req: { reportId: string }) {
         mod();
         const r = f.reports.find((x) => x.id === req.reportId);
         if (!r) throw new ConnectError("report not found", Code.NotFound);
-        f.reports = f.reports.filter((x) => x.message?.id !== r.message?.id);
+        for (const x of f.reports)
+          if (x.message?.id === r.message?.id && !x.resolvedAtMs) {
+            x.resolvedAtMs = BigInt(Date.now());
+            x.resolvedBy = me();
+          }
         return {};
       },
       createInvite(req: { expiresInSeconds: bigint; maxUses: number }) {
@@ -907,6 +913,7 @@ function service(f: Fake) {
           channelMode: f.mode,
           blockedMemberIds: [...f.blocked],
           mutedMemberIds: [...f.muted],
+          openReports: me().role >= MemberRole.MODERATOR ? f.reports.filter((r) => !r.resolvedAtMs).length : 0,
           seq: f.seq,
         };
       },

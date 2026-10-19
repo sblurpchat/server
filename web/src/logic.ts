@@ -75,6 +75,8 @@ export interface Community {
   blocked: string[];
   /** Members I muted (1293): collapsed too, but DMs stay open. */
   muted: string[];
+  /** Moderators: open reports I can see (1255). */
+  openReports?: number;
 }
 
 export const emptyCommunity = (url: string, info?: Info): Community => ({
@@ -115,6 +117,7 @@ export function applySnapshot(c: Community, s: GetStateResponse): Community {
     seq: s.seq,
     blocked: s.blockedMemberIds,
     muted: s.mutedMemberIds,
+    openReports: s.openReports,
     // Lists may have missed events; the open view reloads them.
     lists: {},
     typing: {},
@@ -295,6 +298,9 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
       return next;
     case "pluginsChanged":
       next.pluginsRev = (c.pluginsRev ?? 0) + 1;
+      return next;
+    case "openReports":
+      next.openReports = k.value;
       return next;
     default:
       return next; // heartbeat; resync is handled by the connection loop
@@ -966,10 +972,10 @@ export function reportPlace(r: { dm: boolean; message?: { channelId: string } },
   return ch ? { label: `#${ch.name}`, open: true } : { label: "A channel you cannot see", open: false };
 }
 
-export function reportDetail(atMs: number, by: Member | undefined, now: number): string {
+export function reportDetail(atMs: number, by: Member | undefined, now: number, verb = "Reported"): string {
   const d = dayLabel(atMs, now);
   const when = d === "Today" || d === "Yesterday" ? d.toLowerCase() : `on ${d}`;
-  return `Reported ${when} by ${by ? by.displayName || by.username : "a former member"}`;
+  return `${verb} ${when} by ${by ? by.displayName || by.username : "a former member"}`;
 }
 
 export const hostOf = (url: string) => new URL(url).host;

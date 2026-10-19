@@ -1,6 +1,8 @@
 package server
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -123,4 +125,84 @@ func TestReportMessage(t *testing.T) {
 	e.clock.Advance(10 * time.Minute)
 	ok(report(dan, more.Id, ""))
 	wantCode(t, report(dan, more.Id, ""), connect.CodeResourceExhausted)
+}
+
+// 1255, 1256, 1257: counts for moderators, files kept while open, a log of resolved reports.
+func TestReportLog(t *testing.T) {
+	e := newEnv(t)
+	ana, bob, cat, dan := e.join("ana"), e.join("bob"), e.join("cat"), e.join("dan")
+	must0(t, ana.setRole(cat.me.Id, v1.MemberRole_MEMBER_ROLE_MODERATOR))
+	catID := cat.me.Id
+	report := func(c *client, msg string) {
+		t.Helper()
+		must(c.srv.ReportMessage(ctx(), connect.NewRequest(&v1.ReportMessageRequest{MessageId: msg})))
+	}
+	list := func(c *client, resolved bool) []*v1.Report {
+		return must(c.srv.ListReports(ctx(), connect.NewRequest(&v1.ListReportsRequest{Resolved: resolved}))).Reports
+	}
+	fileExists := func(id string) bool {
+		_, err := os.Stat(filepath.Join(e.dir, "files", id))
+		return err == nil
+	}
+	count := func(s *subscription) int32 {
+		t.Helper()
+		return s.next(func(ev *v1.Event) bool { _, ok := ev.Kind.(*v1.Event_OpenReports); return ok }, nil).GetOpenReports()
+	}
+
+	dm := must(bob.chat.OpenDM(ctx(), connect.NewRequest(&v1.OpenDMRequest{MemberIds: []string{dan.me.Id}}))).Channel
+	_, f := bob.upload("note.txt", []byte("threat"))
+	msg := must(bob.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: dm.Id, Text: "see file", AttachmentIds: []string{f.Id}}))).Message
+	sub := cat.subscribe(cat.state().Seq)
+	report(dan, msg.Id)
+	if n := count(sub); n != 1 {
+		t.Fatalf("event count %d", n)
+	}
+	if cat.state().OpenReports != 1 || ana.state().OpenReports != 1 || dan.state().OpenReports != 0 {
+		t.Fatal("GetState open_reports")
+	}
+
+	// The file outlives a delete and the orphan prune while the report is open.
+	must(bob.chat.DeleteMessage(ctx(), connect.NewRequest(&v1.DeleteMessageRequest{MessageId: msg.Id})))
+	e.clock.Advance(25 * time.Hour)
+	must0(t, e.s.prune(ctx()))
+	cat, dan = e.client(e.token("cat")), e.client(e.token("dan")) // old tokens expired
+	got := list(cat, false)
+	if len(got) != 1 || len(got[0].Message.Attachments) != 1 || got[0].Message.Attachments[0].Id != f.Id || !fileExists(f.Id) {
+		t.Fatalf("open report = %v", got)
+	}
+
+	sub = cat.subscribe(cat.state().Seq)
+	must(cat.srv.ResolveReport(ctx(), connect.NewRequest(&v1.ResolveReportRequest{ReportId: got[0].Id})))
+	if n := count(sub); n != 0 {
+		t.Fatalf("event count after resolve %d", n)
+	}
+	_, err := cat.srv.ResolveReport(ctx(), connect.NewRequest(&v1.ResolveReportRequest{ReportId: got[0].Id}))
+	wantCode(t, err, connect.CodeNotFound)
+	done := list(cat, true)
+	if len(list(cat, false)) != 0 || len(done) != 1 || done[0].ResolvedBy.GetId() != catID || done[0].ResolvedAtMs != e.clock.Now().UnixMilli() || done[0].Message.Text != "see file" {
+		t.Fatalf("resolved = %v", done)
+	}
+	must0(t, e.s.prune(ctx()))
+	if fileExists(f.Id) || len(list(cat, true)[0].Message.Attachments) != 0 {
+		t.Fatal("file kept after resolve")
+	}
+
+	// A new report of a message after a resolve is a new open report.
+	talk := e.client(e.token("ana")).channel("talk", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	bob = e.client(e.token("bob"))
+	rude := bob.send(talk.Id, "rude")
+	report(dan, rude.Id)
+	must(cat.srv.ResolveReport(ctx(), connect.NewRequest(&v1.ResolveReportRequest{ReportId: list(cat, false)[0].Id})))
+	report(dan, rude.Id)
+	if len(list(cat, false)) != 1 || len(list(cat, true)) != 2 {
+		t.Fatal("report after resolve")
+	}
+
+	// The log keeps 90 days.
+	e.clock.Advance(91 * 24 * time.Hour)
+	must0(t, e.s.prune(ctx()))
+	cat = e.client(e.token("cat"))
+	if len(list(cat, true)) != 0 || len(list(cat, false)) != 1 {
+		t.Fatal("old resolved reports stay")
+	}
 }
