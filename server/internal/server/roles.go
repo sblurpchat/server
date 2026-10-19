@@ -299,6 +299,10 @@ func (s *Server) DeleteRole(ctx context.Context, req *connect.Request[v1.DeleteR
 		if err != sql.ErrNoRows {
 			return err
 		}
+		posted, err := scanIDs(t.QueryContext(ctx, "SELECT channel_id FROM channel_post_roles WHERE role_id = ? ORDER BY channel_id", role.Id))
+		if err != nil {
+			return err
+		}
 		// A channel that only this role posted in stays limited, to admins.
 		for _, q := range []string{"INSERT OR IGNORE INTO channel_post_roles(channel_id, role_id) SELECT channel_id, 'admin' FROM channel_post_roles WHERE role_id = ?",
 			"DELETE FROM channel_post_roles WHERE role_id = ?", "DELETE FROM member_roles WHERE role_id = ?", "DELETE FROM roles WHERE id = ?"} {
@@ -306,7 +310,12 @@ func (s *Server) DeleteRole(ctx context.Context, req *connect.Request[v1.DeleteR
 				return err
 			}
 		}
-		// No role gates a channel, so nobody's channels change.
+		// Channels it posted in lose its id (1315); no role gates a channel, so nobody's channels change.
+		for _, id := range posted {
+			if _, err := emitChannelUpdated(t, id); err != nil {
+				return err
+			}
+		}
 		return t.emit(&v1.Event{Kind: &v1.Event_RoleDeleted{RoleDeleted: role.Id}}, "", "")
 	})
 	if err != nil {

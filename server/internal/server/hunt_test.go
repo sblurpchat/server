@@ -194,11 +194,16 @@ func TestWhoCanPost(t *testing.T) {
 		t.Fatalf("moderator posted in an admins-only channel: %v", err)
 	}
 	must0(t, post(ana, ""))
-	// Deleting the only post role leaves the channel to admins, not everyone.
+	// Deleting the only post role leaves the channel to admins, not everyone,
+	// and members hear about it (1315).
+	sub := bob.subscribe(0) // replays; only the delete leaves just "admin"
 	must(ana.srv.DeleteRole(ctx(), connect.NewRequest(&v1.DeleteRoleRequest{RoleId: staff.Id})))
 	if err := post(dee, ""); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("deleted role still posts: %v", err)
 	}
+	sub.next(func(ev *v1.Event) bool {
+		return ev.GetChannelUpdated().GetId() == news.Id && slices.Equal(ev.GetChannelUpdated().PostRoleIds, []string{"admin"})
+	}, nil)
 	if ch := must(ana.chat.UpdateChannel(ctx(), connect.NewRequest(&v1.UpdateChannelRequest{ChannelId: news.Id}))).Channel; !slices.Equal(ch.PostRoleIds, []string{"admin"}) {
 		t.Fatalf("after delete: %v", ch.PostRoleIds)
 	}

@@ -698,11 +698,13 @@ export function markAllRead(url: string) {
   for (const [id, rs] of Object.entries(c?.reads ?? {})) if (rs.unreadCount || rs.mentionCount) markRead(url, id);
 }
 
-export async function createChannel(url: string, req: { name: string; kind: ChannelKind; topic: string; category: string }) {
+/** postRoleIds, when set, follows as an UpdateChannel (1315). */
+export async function createChannel(url: string, req: { name: string; kind: ChannelKind; topic: string; category: string }, postRoleIds: string[] = []) {
   const r = await api(url).chat.createChannel(req);
   if (r.channel) {
     local(url, { case: "channelCreated", value: r.channel });
     selectChannel(url, r.channel.id);
+    if (postRoleIds.length) await updateChannel(url, { channelId: r.channel.id, postRoles: { roleIds: postRoleIds } });
   }
 }
 export async function updateChannel(url: string, req: { channelId: string; name?: string; topic?: string; category?: string; position?: number; headerImageId?: string; postRoles?: { roleIds: string[] } }) {
