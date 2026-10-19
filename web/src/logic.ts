@@ -585,8 +585,19 @@ export type Block =
   | { t: "pre"; lang: string; v: string }
   | { t: "h"; level: number; c: Inline[] }
   | { t: "hr" }
-  | { t: "ul"; items: Inline[][] }
-  | { t: "ol"; start: number; items: Inline[][] };
+  | { t: "ul"; items: Item[] }
+  | { t: "ol"; start: number; items: Item[] }
+  | { t: "table"; align: Align[]; head: Inline[][]; rows: Inline[][][] };
+
+/** A list item. `check` and `sub` (a nested list) only come from Markdown files (1277). */
+export type Item = { c: Inline[]; check?: boolean; sub?: Block[] };
+export type Align = "left" | "center" | "right" | undefined;
+
+const TABLE_SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+// ponytail: a `|` inside inline code still splits the cell; write \| for a literal one.
+const cells = (line: string) =>
+  line.trim().replace(/^\|/, "").replace(/(?<!\\)\|$/, "").split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, "|"));
+const indent = (l: string) => /^\s*/.exec(l)![0].length;
 
 const INLINE =
   /`([^`\n]+)`|<@([\w-]+)>|\[([^\]\n]+)\]\(((?:https?:\/\/|mailto:)[^\s)]+)\)|(https?:\/\/[^\s<]*[^\s<.,:;"')\]!?])|\*\*([^\n]+?)\*\*|~~([^\n]+?)~~|\*([^*\s](?:[^*\n]*[^*\s])?)\*|(?<!\w)_([^_\s](?:[^_\n]*[^_\s])?)_(?!\w)/g;
@@ -610,18 +621,29 @@ export function parseInline(s: string): Inline[] {
   return out;
 }
 
-/** `doc` adds headings and rules, for Markdown files (1269); chat messages keep `#` as text. */
+/** `doc` adds headings, rules, tables, task lists and nested lists, for Markdown files (1269, 1277);
+ * chat messages keep `#` as text and indented items join the list at the same level. */
 export function parseMarkdown(text: string, doc = false): Block[] {
   const blocks: Block[] = [];
   const lines = text.split("\n");
   let para: string[] = [];
   let quote: string[] = [];
-  // ponytail: flat lists only; indented items join the list at the same level.
-  let list = null as { t: "ul" | "ol"; start: number; items: string[] } | null;
+  // `sub` holds the raw lines of a nested list under the item, parsed when the list ends.
+  let list = null as { t: "ul" | "ol"; start: number; indent: number; items: { s: string; sub: string[] }[] } | null;
+  const item = ({ s, sub }: { s: string; sub: string[] }): Item => {
+    const task = doc ? /^\[([ xX])\]\s+(.*)$/s.exec(s) : null;
+    const it: Item = { c: parseInline(task ? task[2] : s) };
+    if (task) it.check = task[1] !== " ";
+    if (sub.length) {
+      const cut = Math.min(...sub.filter((l) => l.trim()).map(indent));
+      it.sub = parseMarkdown(sub.map((l) => l.slice(cut)).join("\n"), true);
+    }
+    return it;
+  };
   const flush = () => {
     if (para.length) blocks.push({ t: "p", c: parseInline(para.join("\n")) });
     if (quote.length) blocks.push({ t: "quote", c: parseInline(quote.join("\n")) });
-    if (list) blocks.push(list.t === "ul" ? { t: "ul", items: list.items.map(parseInline) } : { ...list, items: list.items.map(parseInline) } as Block);
+    if (list) blocks.push(list.t === "ul" ? { t: "ul", items: list.items.map(item) } : { t: "ol", start: list.start, items: list.items.map(item) });
     para = [];
     quote = [];
     list = null;
@@ -644,16 +666,35 @@ export function parseMarkdown(text: string, doc = false): Block[] {
       blocks.push(h ? { t: "h", level: h[1].length, c: parseInline(h[2]) } : { t: "hr" });
       continue;
     }
-    const li = /^\s*(?:([-*•])|(\d{1,9})[.)])\s+(.*)$/.exec(line);
-    if (li) {
+    if (doc && line.includes("|") && TABLE_SEP.test(lines[i + 1] ?? "") && lines[i + 1].includes("|")) {
+      flush();
+      const head = cells(line);
+      const align = cells(lines[i + 1]).map((c): Align => (c.endsWith(":") ? (c.startsWith(":") ? "center" : "right") : c.startsWith(":") ? "left" : undefined));
+      const rows: Inline[][][] = [];
+      for (i += 2; i < lines.length && lines[i].includes("|") && lines[i].trim(); i++) {
+        const r = cells(lines[i]);
+        rows.push(head.map((_, j) => parseInline(r[j] ?? "")));
+      }
+      i--;
+      blocks.push({ t: "table", align: head.map((_, j) => align[j]), head: head.map(parseInline), rows });
+      continue;
+    }
+    const li = /^\s*(?:([-*•+])|(\d{1,9})[.)])\s+(.*)$/.exec(line);
+    const last = list?.items.at(-1);
+    // ponytail: tight lists only; a blank line ends a nested list like any other.
+    if (doc && list && last && /^\s/.test(line) && indent(line) > list.indent && (li || last.sub.length)) {
+      last.sub.push(line);
+      continue;
+    }
+    if (li && (li[1] !== "+" || doc)) {
       const t = li[1] ? "ul" : "ol";
       if (list?.t !== t) flush();
-      list ??= { t, start: Number(li[2] ?? 1), items: [] };
-      list.items.push(li[3]);
+      list ??= { t, start: Number(li[2] ?? 1), indent: indent(line), items: [] };
+      list.items.push({ s: li[3], sub: [] });
       continue;
     }
     if (list && /^\s+\S/.test(line)) {
-      list.items[list.items.length - 1] += `\n${line.trim()}`;
+      list.items[list.items.length - 1].s += `\n${line.trim()}`;
       continue;
     }
     if (list) flush();

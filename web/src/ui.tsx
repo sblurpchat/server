@@ -1,7 +1,7 @@
 // Shared UI primitives: icons, avatars, dialogs, popovers, the emoji picker and the markdown renderer.
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MemberRole, Presence, type Member } from "./gen/sblurp/v1/sblurp_pb";
-import { PANELS, SKELETON_DELAY_MS, clampWidth, gridMove, initials, keyWidth, listMove, onBackdrop, onWhite, parseMarkdown, shareToDeepLink, skeletonRows, swatch, type Inline } from "./logic";
+import { PANELS, SKELETON_DELAY_MS, clampWidth, gridMove, initials, keyWidth, listMove, onBackdrop, onWhite, parseMarkdown, shareToDeepLink, skeletonRows, swatch, type Block, type Inline } from "./logic";
 import { Img, Shortcodes, useEmojiSet, useMore } from "./CustomEmoji";
 import { bumpRecent, pickerSections, type PickItem } from "./emoji";
 import { absUrl, set, useApp } from "./store";
@@ -606,37 +606,65 @@ export function Markdown({
   onMention: (id: string, el: HTMLElement) => void;
   doc?: boolean;
 }) {
-  return (
-    <>
-      {parseMarkdown(text, doc).map((b, i) =>
-        b.t === "pre" ? (
-          <CodeBlock key={i} lang={b.lang} code={b.v} />
-        ) : b.t === "hr" ? (
-          <hr key={i} />
-        ) : b.t === "h" ? (
-          // File headings sit inside a message, so they start below the page's own levels.
-          <p key={i} className={`md-h md-h${b.level}`} role="heading" aria-level={Math.min(6, b.level + 2)}>
-            {renderInline(b.c, members, meId, onMention)}
-          </p>
-        ) : b.t === "ul" || b.t === "ol" ? (
-          (() => {
-            const L = b.t;
-            return (
-              <L key={i} start={b.t === "ol" && b.start !== 1 ? b.start : undefined}>
-                {b.items.map((it, j) => (
-                  <li key={j}>{renderInline(it, members, meId, onMention)}</li>
+  const inl = (c: Inline[]) => renderInline(c, members, meId, onMention);
+  const blocks = (bs: Block[]): ReactNode[] =>
+    bs.map((b, i) =>
+      b.t === "pre" ? (
+        <CodeBlock key={i} lang={b.lang} code={b.v} />
+      ) : b.t === "hr" ? (
+        <hr key={i} />
+      ) : b.t === "h" ? (
+        // File headings sit inside a message, so they start below the page's own levels.
+        <p key={i} className={`md-h md-h${b.level}`} role="heading" aria-level={Math.min(6, b.level + 2)}>
+          {inl(b.c)}
+        </p>
+      ) : b.t === "table" ? (
+        <div key={i} className="md-table">
+          <table>
+            <thead>
+              <tr>
+                {b.head.map((c, j) => (
+                  <th key={j} style={{ textAlign: b.align[j] }}>
+                    {inl(c)}
+                  </th>
                 ))}
-              </L>
-            );
-          })()
-        ) : b.t === "quote" ? (
-          <blockquote key={i}>{renderInline(b.c, members, meId, onMention)}</blockquote>
-        ) : (
-          <p key={i}>{renderInline(b.c, members, meId, onMention)}</p>
-        ),
-      )}
-    </>
-  );
+              </tr>
+            </thead>
+            <tbody>
+              {b.rows.map((r, k) => (
+                <tr key={k}>
+                  {r.map((c, j) => (
+                    <td key={j} style={{ textAlign: b.align[j] }}>
+                      {inl(c)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : b.t === "ul" || b.t === "ol" ? (
+        (() => {
+          const L = b.t;
+          return (
+            <L key={i} start={b.t === "ol" && b.start !== 1 ? b.start : undefined}>
+              {b.items.map((it, j) => (
+                <li key={j} className={it.check === undefined ? undefined : "md-task"}>
+                  {it.check !== undefined && <input type="checkbox" checked={it.check} disabled aria-label={it.check ? "Done" : "Not done"} />}
+                  {inl(it.c)}
+                  {it.sub && blocks(it.sub)}
+                </li>
+              ))}
+            </L>
+          );
+        })()
+      ) : b.t === "quote" ? (
+        <blockquote key={i}>{inl(b.c)}</blockquote>
+      ) : (
+        <p key={i}>{inl(b.c)}</p>
+      ),
+    );
+  return <>{blocks(parseMarkdown(text, doc))}</>;
 }
 
 /** Text that someone allowed to change it can click to edit (1192, 1195): a hover tint and a pencil.

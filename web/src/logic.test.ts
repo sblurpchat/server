@@ -216,8 +216,8 @@ describe("markdown", () => {
     const t = (v: string) => [{ t: "text", v }];
     expect(parseMarkdown("todo:\n- milk\n* **eggs**\n  large ones\n3. three\n4) four\nafter")).toEqual([
       { t: "p", c: t("todo:") },
-      { t: "ul", items: [t("milk"), [{ t: "b", c: t("eggs") }, { t: "text", v: "\nlarge ones" }]] },
-      { t: "ol", start: 3, items: [t("three"), t("four")] },
+      { t: "ul", items: [{ c: t("milk") }, { c: [{ t: "b", c: t("eggs") }, { t: "text", v: "\nlarge ones" }] }] },
+      { t: "ol", start: 3, items: [{ c: t("three") }, { c: t("four") }] },
       { t: "p", c: t("after") },
     ]);
     expect(parseMarkdown("-not a list")).toEqual([{ t: "p", c: t("-not a list") }]);
@@ -234,6 +234,28 @@ describe("markdown", () => {
     ]);
     expect(parseMarkdown("# not a heading in chat")).toEqual([{ t: "p", c: t("# not a heading in chat") }]);
     expect(parseMarkdown("[x](javascript:alert(1))", true)).toEqual([{ t: "p", c: t("[x](javascript:alert(1))") }]);
+  });
+
+  it("parses tables, task lists and nested lists only in Markdown files (1277)", () => {
+    const t = (v: string) => [{ t: "text", v }];
+    expect(parseMarkdown("| a | b \\| c | d |\n|:--|:-:|--:|\n| 1 | **2** |\nafter", true)).toEqual([
+      { t: "table", align: ["left", "center", "right"], head: [t("a"), t("b | c"), t("d")], rows: [[t("1"), [{ t: "b", c: t("2") }], []]] },
+      { t: "p", c: t("after") },
+    ]);
+    expect(parseMarkdown("- [x] done\n- [ ] todo\n  1. one\n     - deep\n  2. two\n- last", true)).toEqual([
+      {
+        t: "ul",
+        items: [
+          { c: t("done"), check: true },
+          { c: t("todo"), check: false, sub: [{ t: "ol", start: 1, items: [{ c: t("one"), sub: [{ t: "ul", items: [{ c: t("deep") }] }] }, { c: t("two") }] }] },
+          { c: t("last") },
+        ],
+      },
+    ]);
+    expect(parseMarkdown("| a |\n|---|\n- [x] x\n  - y")).toEqual([
+      { t: "p", c: t("| a |\n|---|") },
+      { t: "ul", items: [{ c: t("[x] x") }, { c: t("y") }] },
+    ]);
   });
 
   it("treats an unclosed fence as text", () => {

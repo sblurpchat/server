@@ -3521,12 +3521,36 @@ li.sw-empty {
 .snippet-md p {
   white-space: normal;
 }
-.snippet-md :is(p, ul, ol, blockquote, pre, hr, .md-h) + :is(p, ul, ol, blockquote, pre, hr, .md-h) {
+.snippet-md :is(p, ul, ol, blockquote, pre, hr, .md-h, .md-table) + :is(p, ul, ol, blockquote, pre, hr, .md-h, .md-table) {
   margin-top: 8px;
 }
 .snippet-md ul,
 .snippet-md ol {
   padding-left: 22px;
+}
+.snippet-md li.md-task {
+  list-style: none;
+}
+.snippet-md li.md-task > input {
+  margin: 0 6px 0 -20px;
+  vertical-align: -2px;
+  accent-color: var(--accent-fill);
+  opacity: 1;
+}
+.md-table {
+  overflow-x: auto;
+}
+.md-table table {
+  border-collapse: collapse;
+}
+.md-table :is(th, td) {
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  text-align: left;
+}
+.md-table th {
+  font-weight: 600;
+  background: var(--code-bg);
 }
 .snippet-md hr {
   border: 0;
