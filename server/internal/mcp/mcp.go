@@ -7,7 +7,8 @@
 // Every tool calls the community's own Connect API in process with the
 // caller's bearer token. The interceptor checks the token (issuer, signature,
 // audience = this server) and every permission, block and rate limit applies
-// exactly as in the app.
+// exactly as in the app. A bot token works too: the agent then acts as that
+// bot, under the bot rate limit (TestBotRateLimit).
 package mcp
 
 import (

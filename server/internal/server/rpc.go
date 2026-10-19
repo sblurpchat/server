@@ -2405,7 +2405,11 @@ func (s *Server) createBot(t *wtx, username, display, avatar, bio string, at tim
 	if err != nil {
 		return nil, "", err
 	}
-	return bot, token, t.emit(&v1.Event{Seq: seq, AtMs: at.UnixMilli(), Kind: &v1.Event_MemberJoined{MemberJoined: bot.Member}}, "", "")
+	if err := t.emit(&v1.Event{Seq: seq, AtMs: at.UnixMilli(), Kind: &v1.Event_MemberJoined{MemberJoined: bot.Member}}, "", ""); err != nil {
+		return nil, "", err
+	}
+	// Like Join: in ROLES mode a new bot is in every text channel it can see (1295).
+	return bot, token, s.syncAccess(t, id)
 }
 
 func (s *Server) ListBots(ctx context.Context, _ *connect.Request[v1.ListBotsRequest]) (*connect.Response[v1.ListBotsResponse], error) {

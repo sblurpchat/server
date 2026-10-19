@@ -221,7 +221,8 @@ func TestGetLinkPreviews(t *testing.T) {
 	}
 	body, _ := io.ReadAll(res.Body)
 	res.Body.Close()
-	if res.Header.Get("Content-Type") != "image/png" || !bytes.Equal(body, pngBytes(2, 2)) || res.Header.Get("X-Content-Type-Options") != "nosniff" {
+	if res.Header.Get("Content-Type") != "image/png" || !bytes.Equal(body, pngBytes(2, 2)) || res.Header.Get("X-Content-Type-Options") != "nosniff" ||
+		res.Header.Get("Content-Security-Policy") != "default-src 'none'; sandbox" {
 		t.Fatalf("image: %s %q", res.Header.Get("Content-Type"), body)
 	}
 

@@ -268,7 +268,8 @@ func TestEmojiUploadListAndETag(t *testing.T) {
 
 	res, img := e.client("").get(urls["dance"])
 	if res.StatusCode != 200 || res.Header.Get("Content-Type") != "image/gif" || !bytes.Equal(img, gifBytes(32, 32)) ||
-		!strings.Contains(res.Header.Get("Cache-Control"), "immutable") {
+		!strings.Contains(res.Header.Get("Cache-Control"), "immutable") ||
+		res.Header.Get("Content-Security-Policy") != "default-src 'none'; sandbox" || res.Header.Get("X-Content-Type-Options") != "nosniff" {
 		t.Fatalf("image: %d %v", res.StatusCode, res.Header)
 	}
 
