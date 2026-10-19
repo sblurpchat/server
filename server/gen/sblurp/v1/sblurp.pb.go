@@ -699,14 +699,17 @@ func (x *Channel) GetPostRoleIds() []string {
 }
 
 type Attachment struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	ContentType   string                 `protobuf:"bytes,3,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
-	Size          int64                  `protobuf:"varint,4,opt,name=size,proto3" json:"size,omitempty"`
-	Url           string                 `protobuf:"bytes,5,opt,name=url,proto3" json:"url,omitempty"`      // relative to the server base URL
-	Width         int32                  `protobuf:"varint,6,opt,name=width,proto3" json:"width,omitempty"` // images only
-	Height        int32                  `protobuf:"varint,7,opt,name=height,proto3" json:"height,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	ContentType string                 `protobuf:"bytes,3,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
+	Size        int64                  `protobuf:"varint,4,opt,name=size,proto3" json:"size,omitempty"`
+	Url         string                 `protobuf:"bytes,5,opt,name=url,proto3" json:"url,omitempty"`      // relative to the server base URL
+	Width       int32                  `protobuf:"varint,6,opt,name=width,proto3" json:"width,omitempty"` // images only
+	Height      int32                  `protobuf:"varint,7,opt,name=height,proto3" json:"height,omitempty"`
+	// Videos only: a still image to show until the video plays, signed like
+	// url. Empty for old uploads and clients that did not send one.
+	PosterUrl     string `protobuf:"bytes,8,opt,name=poster_url,json=posterUrl,proto3" json:"poster_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -788,6 +791,13 @@ func (x *Attachment) GetHeight() int32 {
 		return x.Height
 	}
 	return 0
+}
+
+func (x *Attachment) GetPosterUrl() string {
+	if x != nil {
+		return x.PosterUrl
+	}
+	return ""
 }
 
 type Reaction struct {
@@ -7662,7 +7672,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"is_default\x18\v \x01(\bR\tisDefault\x12!\n" +
 	"\fmember_count\x18\f \x01(\x05R\vmemberCount\x128\n" +
 	"\fheader_image\x18\r \x01(\v2\x15.sblurp.v1.AttachmentR\vheaderImage\x12\"\n" +
-	"\rpost_role_ids\x18\x0f \x03(\tR\vpostRoleIdsJ\x04\b\x0e\x10\x0fR\x10admins_post_only\"\xa7\x01\n" +
+	"\rpost_role_ids\x18\x0f \x03(\tR\vpostRoleIdsJ\x04\b\x0e\x10\x0fR\x10admins_post_only\"\xc6\x01\n" +
 	"\n" +
 	"Attachment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -7671,7 +7681,9 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x04size\x18\x04 \x01(\x03R\x04size\x12\x10\n" +
 	"\x03url\x18\x05 \x01(\tR\x03url\x12\x14\n" +
 	"\x05width\x18\x06 \x01(\x05R\x05width\x12\x16\n" +
-	"\x06height\x18\a \x01(\x05R\x06height\"?\n" +
+	"\x06height\x18\a \x01(\x05R\x06height\x12\x1d\n" +
+	"\n" +
+	"poster_url\x18\b \x01(\tR\tposterUrl\"?\n" +
 	"\bReaction\x12\x14\n" +
 	"\x05emoji\x18\x01 \x01(\tR\x05emoji\x12\x1d\n" +
 	"\n" +

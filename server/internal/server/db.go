@@ -222,6 +222,11 @@ func scanIDs(rows *sql.Rows, err error) ([]string, error) {
 	return ids, rows.Err()
 }
 
+// deleteAttachments deletes the uploads of the messages in the JSON array ?1
+// and their video posters, returning the ids of the files to remove.
+const deleteAttachments = `DELETE FROM attachments WHERE message_id IN (SELECT value FROM json_each(?1))
+	OR id IN (SELECT poster_id FROM attachments WHERE poster_id != '' AND message_id IN (SELECT value FROM json_each(?1))) RETURNING id`
+
 // prune drops old events: those outside both the newest keepEvents and the
 // last keepFor. Subscribers behind the oldest kept seq get resync. It also
 // deletes uploads that were never attached to a message within orphanAfter.
@@ -236,6 +241,7 @@ func (s *Server) prune(ctx context.Context) error {
 		var err error
 		orphans, err = scanIDs(t.QueryContext(ctx, `DELETE FROM attachments WHERE message_id IS NULL AND created_at_ms < ?
 			AND id NOT IN (SELECT value FROM settings WHERE key IN ('banner', 'icon')) AND id NOT IN (SELECT header_image_id FROM channels)
+			AND id NOT IN (SELECT poster_id FROM attachments WHERE poster_id != '')
 			AND id NOT IN (SELECT substr(avatar_url, 8, instr(substr(avatar_url, 8), '/') - 1) FROM members WHERE avatar_url LIKE '/files/%') RETURNING id`, now.Add(-orphanAfter).UnixMilli()))
 		return err
 	})
@@ -303,7 +309,7 @@ func (s *Server) pruneMessages(ctx context.Context) error {
 			if _, err := t.ExecContext(ctx, "DELETE FROM reactions WHERE message_id IN (SELECT value FROM json_each(?))", ids); err != nil {
 				return err
 			}
-			files, err = scanIDs(t.QueryContext(ctx, "DELETE FROM attachments WHERE message_id IN (SELECT value FROM json_each(?)) RETURNING id", ids))
+			files, err = scanIDs(t.QueryContext(ctx, deleteAttachments, ids))
 			if err != nil {
 				return err
 			}

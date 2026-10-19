@@ -337,18 +337,23 @@ func loadReactions(ctx context.Context, q queryer, in string, ids []any, byID ma
 }
 
 func loadAttachments(ctx context.Context, q queryer, in string, ids []any, byID map[string]*v1.Message) error {
-	rows, err := q.QueryContext(ctx, "SELECT message_id, id, name, content_type, size, width, height FROM attachments WHERE message_id IN "+in+" ORDER BY created_at_ms, id", ids...)
+	rows, err := q.QueryContext(ctx, `SELECT a.message_id, a.id, a.name, a.content_type, a.size, a.width, a.height, COALESCE(p.id, ''), COALESCE(p.name, '')
+		FROM attachments a LEFT JOIN attachments p ON p.id = a.poster_id AND a.poster_id != ''
+		WHERE a.message_id IN `+in+" ORDER BY a.created_at_ms, a.id", ids...)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var msg string
+		var msg, pid, pname string
 		a := &v1.Attachment{}
-		if err := rows.Scan(&msg, &a.Id, &a.Name, &a.ContentType, &a.Size, &a.Width, &a.Height); err != nil {
+		if err := rows.Scan(&msg, &a.Id, &a.Name, &a.ContentType, &a.Size, &a.Width, &a.Height, &pid, &pname); err != nil {
 			return err
 		}
 		a.Url = fileURL(a.Id, a.Name)
+		if pid != "" {
+			a.PosterUrl = fileURL(pid, pname)
+		}
 		byID[msg].Attachments = append(byID[msg].Attachments, a)
 	}
 	return rows.Err()
@@ -1486,9 +1491,6 @@ func (s *Server) DeleteMessage(ctx context.Context, req *connect.Request[v1.Dele
 		if msg.AuthorId != m.Id && !canModerate(m) {
 			return errf(connect.CodePermissionDenied, "you can only delete your own messages")
 		}
-		for _, a := range msg.Attachments {
-			files = append(files, a.Id)
-		}
 		seq, err := t.nextSeq()
 		if err != nil {
 			return err
@@ -1499,7 +1501,7 @@ func (s *Server) DeleteMessage(ctx context.Context, req *connect.Request[v1.Dele
 		if _, err := t.ExecContext(ctx, "DELETE FROM reactions WHERE message_id = ?", msg.Id); err != nil {
 			return err
 		}
-		if _, err := t.ExecContext(ctx, "DELETE FROM attachments WHERE message_id = ?", msg.Id); err != nil {
+		if files, err = scanIDs(t.QueryContext(ctx, deleteAttachments, fmt.Sprintf("[%q]", msg.Id))); err != nil {
 			return err
 		}
 		if err := scrubMessageEvents(t, msg.ChannelId, msg.Id, msg.CreatedSeq, nil); err != nil {

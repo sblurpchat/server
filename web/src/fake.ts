@@ -37,6 +37,7 @@ import {
   type Report,
   type Role,
 } from "./gen/sblurp/v1/sblurp_pb";
+import { videoPoster } from "./avatar";
 import { BANNER_TYPES, encodeMentions, mayPost, mentionsMe, messageHash } from "./logic";
 
 type Extra = {
@@ -1271,7 +1272,9 @@ export async function fakeUpload(url: string, file: File): Promise<Attachment> {
       // not decodable; shown as a file card
     }
   }
+  const poster = file.type.startsWith("video/") ? await videoPoster(file) : null;
   const a = create(AttachmentSchema, {
+    posterUrl: poster ? URL.createObjectURL(poster) : "",
     id: id("a"),
     name: file.name,
     contentType: file.type || "application/octet-stream",

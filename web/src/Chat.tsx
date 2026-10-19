@@ -835,10 +835,20 @@ function AttachmentView({ url, a, m }: { url: string; a: Attachment; m: Message 
     );
   }
   if (a.contentType.startsWith("video/")) {
+    // With the uploader's still (1324) no video bytes load until play. Without one (old uploads, bots),
     // preload="metadata" plus #t=0.1 makes the browser draw the first frame as the still (1198).
+    const poster = a.posterUrl ? absUrl(url, a.posterUrl) : undefined;
     return (
       <div className="att-video" style={a.width && a.height ? ({ "--ar": `${a.width} / ${a.height}` } as CSSProperties) : undefined}>
-        <video src={`${src}#t=0.1`} controls preload="metadata" playsInline aria-label={a.name} onError={() => refreshMessage(url, m)} />
+        <video
+          src={poster ? src : `${src}#t=0.1`}
+          poster={poster}
+          controls
+          preload={poster ? "none" : "metadata"}
+          playsInline
+          aria-label={a.name}
+          onError={() => refreshMessage(url, m)}
+        />
         <button className="att-max icon-btn" aria-label={`Maximize ${a.name}`} onClick={() => set({ modal: { t: "lightbox", src, name: a.name, video: true } })}>
           <Icon name="maximize" size={18} />
         </button>

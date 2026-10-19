@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"net/url"
 	"strings"
 	"time"
 
@@ -43,14 +42,7 @@ func avatarPath(ctx context.Context, q queryer, id, member string) (string, erro
 // signAvatar rewrites a stored "/files/{id}/{name}" avatar as a signed
 // absolute URL. Anything else is left alone, so signing twice is harmless.
 func (s *Server) signAvatar(m *v1.Member, now time.Time) {
-	p, ok := strings.CutPrefix(m.AvatarUrl, "/files/")
-	if !ok {
-		return
+	if signed := signFilePath(s.fileKey, m.AvatarUrl, now); signed != m.AvatarUrl {
+		m.AvatarUrl = s.cfg.BaseURL + signed
 	}
-	id, esc, _ := strings.Cut(p, "/")
-	name, err := url.PathUnescape(esc)
-	if err != nil {
-		return
-	}
-	m.AvatarUrl = s.cfg.BaseURL + signedFileURL(s.fileKey, id, name, now)
 }

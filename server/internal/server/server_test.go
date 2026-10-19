@@ -972,8 +972,15 @@ func pngBytes(w, h int) []byte {
 }
 
 func (c *client) upload(name string, body []byte) (*http.Response, *v1.Attachment) {
+	return c.uploadWithPoster(name, body, "")
+}
+
+func (c *client) uploadWithPoster(name string, body []byte, poster string) (*http.Response, *v1.Attachment) {
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
+	if poster != "" {
+		mw.WriteField("poster", poster)
+	}
 	fw, _ := mw.CreateFormFile("file", name)
 	fw.Write(body)
 	mw.Close()
@@ -1055,6 +1062,93 @@ func TestUpload(t *testing.T) {
 	must(ana.chat.DeleteMessage(ctx(), connect.NewRequest(&v1.DeleteMessageRequest{MessageId: msg.Id})))
 	if res, _ := http.Get(e.url + a.Url); res.StatusCode != http.StatusNotFound {
 		t.Fatalf("file of deleted message: %d", res.StatusCode)
+	}
+}
+
+func TestPosterProblem(t *testing.T) {
+	for _, c := range []struct {
+		video, poster string
+		size          int64
+		ok            bool
+	}{
+		{"video/mp4", "image/jpeg", 90 << 10, true},
+		{"video/quicktime", "image/webp", 512 << 10, true},
+		{"video/webm", "image/png", 1, true},
+		{"video/mp4", "image/jpeg", 512<<10 + 1, false},
+		{"video/mp4", "image/gif", 1, false},
+		{"video/mp4", "text/html; charset=utf-8", 1, false},
+		{"image/png", "image/jpeg", 1, false},
+		{"text/plain; charset=utf-8", "image/jpeg", 1, false},
+	} {
+		if got := posterProblem(c.video, c.poster, c.size); (got == "") != c.ok {
+			t.Errorf("posterProblem(%q, %q, %d) = %q", c.video, c.poster, c.size, got)
+		}
+	}
+}
+
+// A video names an earlier image upload as its poster (1324). The poster is
+// not listed as its own attachment, is signed, survives the orphan prune
+// while its video does and goes when the message goes.
+func TestVideoPoster(t *testing.T) {
+	e := newEnv(t)
+	ana, bob := e.join("ana"), e.join("bob")
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	mp4 := append([]byte("\x00\x00\x00\x18ftypmp42\x00\x00\x00\x00mp42isom"), make([]byte, 100)...)
+	_, poster := ana.upload("poster.png", pngBytes(4, 3))
+	_, bobPoster := bob.upload("poster.png", pngBytes(4, 3))
+	_, gif := ana.upload("p.gif", []byte("GIF89a\x01\x00\x01\x00\x00\x00\x00;"))
+	for name, c := range map[string]struct {
+		file   string
+		body   []byte
+		poster string
+	}{
+		"someone else's poster": {"v.mp4", mp4, bobPoster.Id},
+		"missing poster":        {"v.mp4", mp4, "nope"},
+		"gif poster":            {"v.mp4", mp4, gif.Id},
+		"poster on a non-video": {"a.txt", []byte("hi"), poster.Id},
+	} {
+		if res, _ := ana.uploadWithPoster(c.file, c.body, c.poster); res.StatusCode != http.StatusBadRequest {
+			t.Errorf("%s: status %d", name, res.StatusCode)
+		}
+	}
+	_, video := ana.uploadWithPoster("clip.mp4", mp4, poster.Id)
+	if video == nil || video.ContentType != "video/mp4" || !strings.HasPrefix(video.PosterUrl, "/files/"+poster.Id+"/poster.png?exp=") {
+		t.Fatalf("video = %v", video)
+	}
+	if res, _ := ana.uploadWithPoster("again.mp4", mp4, poster.Id); res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("poster used twice: %d", res.StatusCode)
+	}
+	if _, plain := ana.upload("plain.mp4", mp4); plain.PosterUrl != "" {
+		t.Fatalf("video without poster: %q", plain.PosterUrl)
+	}
+
+	msg := must(ana.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: gen.Id, AttachmentIds: []string{video.Id}}))).Message
+	listed := must(bob.chat.ListMessages(ctx(), connect.NewRequest(&v1.ListMessagesRequest{ChannelId: gen.Id}))).Messages
+	for name, m := range map[string]*v1.Message{"send": msg, "list": listed[len(listed)-1]} {
+		if len(m.Attachments) != 1 || m.Attachments[0].Id != video.Id {
+			t.Fatalf("%s: attachments %v", name, m.Attachments)
+		}
+		if got := getStatus(t, e.url+m.Attachments[0].PosterUrl); got != http.StatusOK {
+			t.Fatalf("%s: poster %q = %d", name, m.Attachments[0].PosterUrl, got)
+		}
+	}
+
+	e.clock.Advance(25 * time.Hour)
+	if err := e.s.prune(ctx()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(e.dir, "files", poster.Id)); err != nil {
+		t.Fatalf("poster of a sent video was pruned: %v", err)
+	}
+
+	ana = e.client(e.token("ana")) // the old token expired
+	must(ana.chat.DeleteMessage(ctx(), connect.NewRequest(&v1.DeleteMessageRequest{MessageId: msg.Id})))
+	for _, id := range []string{video.Id, poster.Id} {
+		var n int
+		e.s.db.r.QueryRow("SELECT COUNT(*) FROM attachments WHERE id = ?", id).Scan(&n)
+		if _, err := os.Stat(filepath.Join(e.dir, "files", id)); n != 0 || err == nil {
+			t.Fatalf("%s left after delete: row %d, file err %v", id, n, err)
+		}
 	}
 }
 

@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"cmp"
+	"database/sql"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -16,6 +17,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -82,6 +84,9 @@ func (s *Server) signURLs(m proto.Message) {
 		if v, ok := p.Index(-1).Value.Interface().(protoreflect.Message); ok {
 			if a, ok := v.Interface().(*v1.Attachment); ok && a.Id != "" {
 				a.Url = signedFileURL(s.fileKey, a.Id, a.Name, now)
+				if a.PosterUrl != "" {
+					a.PosterUrl = signFilePath(s.fileKey, a.PosterUrl, now)
+				}
 			}
 			if m, ok := v.Interface().(*v1.Member); ok {
 				s.signAvatar(m, now)
@@ -89,6 +94,39 @@ func (s *Server) signURLs(m proto.Message) {
 		}
 		return nil
 	})
+}
+
+// signFilePath signs a stored "/files/{id}/{name}" path, dropping any old
+// signature. Anything else comes back unchanged.
+func signFilePath(key []byte, p string, now time.Time) string {
+	rest, ok := strings.CutPrefix(p, "/files/")
+	if !ok {
+		return p
+	}
+	id, esc, _ := strings.Cut(rest, "/")
+	esc, _, _ = strings.Cut(esc, "?")
+	name, err := url.PathUnescape(esc)
+	if err != nil {
+		return p
+	}
+	return signedFileURL(key, id, name, now)
+}
+
+// maxPoster caps a video's still image. The client sends about 100 KB.
+const maxPoster = 512 << 10
+
+// posterProblem says why an upload cannot be the poster of a video of type
+// videoType, or "" if it can.
+func posterProblem(videoType, posterType string, posterSize int64) string {
+	switch {
+	case !strings.HasPrefix(videoType, "video/"):
+		return "only a video can have a poster"
+	case posterType != "image/jpeg" && posterType != "image/webp" && posterType != "image/png":
+		return "the poster must be a JPEG, WebP or PNG image"
+	case posterSize > maxPoster:
+		return "the poster is larger than 512 KB"
+	}
+	return ""
 }
 
 // sniffType is http.DetectContentType plus AVIF, HEIF and QuickTime, which
@@ -180,6 +218,8 @@ func cleanFileName(name string) string {
 
 // upload stores one multipart "file" part and returns the Attachment as
 // protojson. The client passes its id in SendMessage.attachment_ids.
+// A video may name an earlier image upload of the same member in a
+// "poster" field before the file; that image then belongs to the video.
 func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 	id, err := s.authenticate(r.Context(), r.Header.Get("Authorization"))
 	if err != nil {
@@ -197,12 +237,16 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var part io.Reader
-	var name string
+	var name, posterID string
 	for {
 		p, err := mr.NextPart()
 		if err != nil {
 			httpError(w, http.StatusBadRequest, "no \"file\" part in the form")
 			return
+		}
+		if p.FormName() == "poster" {
+			b, _ := io.ReadAll(io.LimitReader(p, 100))
+			posterID = string(b)
 		}
 		if p.FormName() == "file" {
 			part, name = p, cleanFileName(p.FileName())
@@ -271,13 +315,36 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.Url = fileURL(a.Id, a.Name)
+	var bad string
+	errBad := errors.New("bad poster")
 	err = s.writeTx(r.Context(), func(t *wtx) error {
-		_, err := t.ExecContext(r.Context(), `INSERT INTO attachments(id, uploader_id, name, content_type, size, width, height, created_at_ms)
-			VALUES (?,?,?,?,?,?,?,?)`, a.Id, id.member.Id, a.Name, a.ContentType, a.Size, a.Width, a.Height, s.nowMs())
+		if posterID != "" {
+			var pname, pctype string
+			var psize int64
+			err := t.QueryRowContext(r.Context(), `SELECT name, content_type, size FROM attachments WHERE id = ?1 AND uploader_id = ?2
+				AND message_id IS NULL AND NOT EXISTS (SELECT 1 FROM attachments WHERE poster_id = ?1)`, posterID, id.member.Id).Scan(&pname, &pctype, &psize)
+			if errors.Is(err, sql.ErrNoRows) {
+				bad = "the poster is not an unused upload of yours"
+			} else if err != nil {
+				return err
+			} else {
+				bad = posterProblem(ctype, pctype, psize)
+			}
+			if bad != "" {
+				return errBad
+			}
+			a.PosterUrl = fileURL(posterID, pname)
+		}
+		_, err := t.ExecContext(r.Context(), `INSERT INTO attachments(id, uploader_id, name, content_type, size, width, height, created_at_ms, poster_id)
+			VALUES (?,?,?,?,?,?,?,?,?)`, a.Id, id.member.Id, a.Name, a.ContentType, a.Size, a.Width, a.Height, s.nowMs(), posterID)
 		return err
 	})
 	if err != nil {
 		os.Remove(filepath.Join(s.filesDir, a.Id))
+		if bad != "" {
+			httpError(w, http.StatusBadRequest, bad)
+			return
+		}
 		s.log.Error("store attachment", "err", err)
 		httpError(w, http.StatusInternalServerError, "cannot store file")
 		return

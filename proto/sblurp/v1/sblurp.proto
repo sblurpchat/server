@@ -110,6 +110,9 @@ message Attachment {
   string url = 5;             // relative to the server base URL
   int32 width = 6;            // images only
   int32 height = 7;
+  // Videos only: a still image to show until the video plays, signed like
+  // url. Empty for old uploads and clients that did not send one.
+  string poster_url = 8;
 }
 
 message Reaction {

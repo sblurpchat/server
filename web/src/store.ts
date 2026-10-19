@@ -8,6 +8,7 @@ import { AUTH_URL, fetchAppearance, fetchCommunities, fetchProfile, finishLogin,
 import { loadEmoji } from "./CustomEmoji";
 import { templateChannels, type Template } from "./templates";
 import { fakeTransport, fakeUpload, FAKE_URLS, startSimulation } from "./fake";
+import { videoPoster } from "./avatar";
 import {
   AttachmentSchema,
   BotService,
@@ -654,6 +655,12 @@ export function typing(url: string, channelId: string, rootId: string) {
 export async function upload(url: string, file: File): Promise<Attachment> {
   if (FAKE && fakeTransport(url)) return fakeUpload(url, file);
   const body = new FormData();
+  if (file.type.startsWith("video/")) {
+    // A failed still never fails the video: it just goes without a poster (1324).
+    const still = await videoPoster(file);
+    const poster = still && (await upload(url, still).catch(() => null));
+    if (poster) body.append("poster", poster.id);
+  }
   body.append("file", file);
   const res = await fetch(`${url}/upload`, { method: "POST", body, headers: { Authorization: `Bearer ${await getToken(url)}` } });
   if (res.status === 404 || res.status === 405) throw new Error("This community doesn't accept uploads.");
