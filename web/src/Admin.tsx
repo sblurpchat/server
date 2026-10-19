@@ -480,7 +480,10 @@ function ServerVersion({ url }: { url: string }) {
       <b>Server</b>
       <p className="muted">
         Version {me.serverVersion}
-        {me.serverTrack && ` on the ${me.serverTrack} track`}
+        {me.serverTrack && ` on the ${me.serverTrack} track`}.{" "}
+        <a href="https://sblurp.chat/docs/updates#tracks" target="_blank" rel="noreferrer">
+          Change track <Icon name="external" size={14} />
+        </a>
       </p>
       {me.updateAvailable && (
         <p className="update-note">

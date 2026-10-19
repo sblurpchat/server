@@ -39,7 +39,7 @@ Every flag can also come from an environment variable.
 | `-seed` | `SBLURP_SEED` | | `community` or `owls`. Fills an empty database with demo data. Ignored when the database has members. |
 | `-bot-rate` | `SBLURP_BOT_RATE` | `0` (no limit) | SendMessage per second for bots. |
 | `-bot-burst` | `SBLURP_BOT_BURST` | `20` | Burst for bots. |
-| | `SBLURP_TRACK` | set at build (`stable`, `beta`, `nightly`) | Release track for the update check. |
+| | `SBLURP_TRACK` | set at build (`stable`, `beta`, `nightly`; `head` for a build from source) | Release track for the update check. |
 | | `SBLURP_UPDATE_URL` | set at build | Release manifest (`releases.json`). Empty in local builds. |
 | | `SBLURP_UPDATE_CHECK` | `on` | `off` stops the daily update check. |
 

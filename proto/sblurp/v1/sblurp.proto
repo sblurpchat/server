@@ -204,7 +204,7 @@ message GetMeResponse {
   Member member = 1;
   // The next three are for admins and the owner only; empty for others.
   string server_version = 2;   // "1.2.3", "1.3.0-beta.1", "nightly-20261016-abc1234" or "dev"
-  string server_track = 3;     // "stable", "beta" or "nightly"
+  string server_track = 3;     // "stable", "beta", "nightly" or "head" (built from source)
   string update_available = 4; // a newer version on server_track, or ""
 }
 

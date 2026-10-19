@@ -34,7 +34,7 @@ RUN go mod init ls && go get github.com/benbjohnson/litestream/cmd/litestream@v0
 FROM go AS build
 ARG TARGETOS TARGETARCH
 # Set by the release workflow; see .github/workflows/server-release.yml.
-ARG VERSION=dev TRACK=stable UPDATE_URL=
+ARG VERSION=dev TRACK=head UPDATE_URL=
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

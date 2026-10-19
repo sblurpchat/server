@@ -39,7 +39,7 @@ type Config struct {
 	PluginMemory   int           // bytes per plugin; default 32 MB
 	PluginTimeout  time.Duration // per hook call; default 1s
 	Version        string        // build version, e.g. "1.2.3" or "nightly-20261016-abc1234"
-	Track          string        // stable, beta or nightly
+	Track          string        // stable, beta, nightly or head (built from source)
 	UpdateURL      string        // release manifest; "" turns the daily update check off
 
 	// For tests.

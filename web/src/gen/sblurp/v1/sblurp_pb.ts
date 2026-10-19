@@ -681,7 +681,7 @@ export type GetMeResponse = Message$1<"sblurp.v1.GetMeResponse"> & {
   serverVersion: string;
 
   /**
-   * "stable", "beta" or "nightly"
+   * "stable", "beta", "nightly" or "head" (built from source)
    *
    * @generated from field: string server_track = 3;
    */

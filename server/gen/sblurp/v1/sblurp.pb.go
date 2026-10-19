@@ -1430,7 +1430,7 @@ type GetMeResponse struct {
 	Member *Member                `protobuf:"bytes,1,opt,name=member,proto3" json:"member,omitempty"`
 	// The next three are for admins and the owner only; empty for others.
 	ServerVersion   string `protobuf:"bytes,2,opt,name=server_version,json=serverVersion,proto3" json:"server_version,omitempty"`       // "1.2.3", "1.3.0-beta.1", "nightly-20261016-abc1234" or "dev"
-	ServerTrack     string `protobuf:"bytes,3,opt,name=server_track,json=serverTrack,proto3" json:"server_track,omitempty"`             // "stable", "beta" or "nightly"
+	ServerTrack     string `protobuf:"bytes,3,opt,name=server_track,json=serverTrack,proto3" json:"server_track,omitempty"`             // "stable", "beta", "nightly" or "head" (built from source)
 	UpdateAvailable string `protobuf:"bytes,4,opt,name=update_available,json=updateAvailable,proto3" json:"update_available,omitempty"` // a newer version on server_track, or ""
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache

@@ -28,7 +28,7 @@ func (l *listFlag) Set(v string) error {
 // Set at build time with -ldflags "-X main.version=... -X main.track=... -X main.updateURL=...".
 var (
 	version   = "dev"
-	track     = "stable"
+	track     = "head"
 	updateURL = ""
 )
 
