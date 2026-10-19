@@ -440,8 +440,10 @@ export interface Appearance {
   /** The custom theme as a share string (see themeString), or "". */
   custom: string;
   font: (typeof FONTS)[number];
+  /** Emoji skin tone, an index into TONES in emoji.ts; 0 is the default yellow (1335). */
+  skinTone: number;
 }
-export const APPEARANCE: Appearance = { theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system", custom: "", font: "default" };
+export const APPEARANCE: Appearance = { theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system", custom: "", font: "default", skinTone: 0 };
 
 export function parseAppearance(v: unknown): Appearance {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
@@ -459,6 +461,7 @@ export function parseAppearance(v: unknown): Appearance {
     motion: one(o.motion, ["system", "reduce", "full"] as const, APPEARANCE.motion),
     custom: custom ? themeString(custom) : "",
     font: one(o.font, FONTS, APPEARANCE.font),
+    skinTone: one(o.skinTone, [0, 1, 2, 3, 4, 5], APPEARANCE.skinTone),
   };
 }
 

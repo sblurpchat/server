@@ -5313,3 +5313,53 @@ label:has(> input.visually-hidden:focus-visible) {
   color: var(--graphite);
   cursor: default;
 }
+
+/* Skin tone chooser (1335): a hand beside the search; the six tones open over its right end. */
+.emoji-top {
+  position: relative;
+  display: flex;
+  gap: 4px;
+}
+.emoji-top .input {
+  flex: 1;
+  min-width: 0;
+}
+.emoji-tone,
+.emoji-tones button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: background-color 120ms ease-out;
+}
+.emoji-tone:hover,
+.emoji-tones button:hover,
+.emoji-tones button:focus-visible {
+  background: var(--hover);
+}
+.emoji-tones {
+  position: absolute;
+  inset: 0 0 0 auto;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--raised);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+  transform-origin: right center;
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+  @starting-style {
+    opacity: 0;
+    transform: scaleX(0.6);
+  }
+}
+.emoji-tones button[aria-checked="true"] {
+  box-shadow: inset 0 0 0 2px var(--raspberry);
+}

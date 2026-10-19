@@ -138,3 +138,14 @@ export function pickerSections(groups: PickSection[], custom: PickItem[], recent
 
 /** Move a just-picked name to the front of the frequently used list. */
 export const bumpRecent = (recent: string[], name: string, max = 27) => [name, ...recent.filter((n) => n !== name)].slice(0, max);
+
+/** Skin tone modifiers (1335); index 0 is the default yellow. */
+export const TONES = ["", "\u{1F3FB}", "\u{1F3FC}", "\u{1F3FD}", "\u{1F3FE}", "\u{1F3FF}"];
+
+/**
+ * The emoji in a skin tone: the modifier after every person in it (dropping their FE0F), but
+ * not on the 🤝 inside 🧑‍🤝‍🧑. Only for emoji the data marks "~"; scripts/emoji-data.mjs checks
+ * this against every toned emoji in Unicode's list.
+ */
+export const withTone = (ch: string, tone: number) =>
+  tone ? ch.replace(/(‍\u{1F91D})|(\p{Emoji_Modifier_Base})️?/gu, (_, hands: string | undefined, base: string) => hands ?? base + TONES[tone]) : ch;

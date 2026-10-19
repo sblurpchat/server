@@ -738,10 +738,13 @@ describe("reorderChannel", () => {
 
 describe("appearance", () => {
   it("parses stored settings and drops bad values field by field", () => {
-    expect(parseAppearance(null)).toEqual({ theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system", custom: "", font: "default" });
+    expect(parseAppearance(null)).toEqual({ theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system", custom: "", font: "default", skinTone: 0 });
+    expect(parseAppearance({ skinTone: 3 }).skinTone).toBe(3);
+    expect(parseAppearance({ skinTone: 6 }).skinTone).toBe(0);
+    expect(parseAppearance({ skinTone: "3" }).skinTone).toBe(0);
     expect(parseAppearance("dark")).toMatchObject({ theme: "system" });
     const bad = parseAppearance({ theme: "neon", accent: "red", density: "COMPACT", sidebar: 1, fontSize: "18", clock: 24, motion: true });
-    expect(bad).toEqual({ theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system", custom: "", font: "default" });
+    expect(bad).toEqual({ theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system", custom: "", font: "default", skinTone: 0 });
     expect(parseAppearance({ theme: "clementine", font: "iosevka" })).toMatchObject({ theme: "clementine", font: "iosevka" });
     // A saved Cocoa appearance (removed in 1323) becomes Clementine, not the default.
     expect(parseAppearance({ theme: "cocoa", font: "iosevka" })).toMatchObject({ theme: "clementine", font: "iosevka" });

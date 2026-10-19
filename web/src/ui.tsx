@@ -3,9 +3,9 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type Reac
 import { MemberRole, Presence, type Member } from "./gen/sblurp/v1/sblurp_pb";
 import { PANELS, SKELETON_DELAY_MS, clampWidth, gridMove, initials, keyWidth, listMove, onBackdrop, onWhite, parseMarkdown, shareToDeepLink, skeletonRows, swatch, pinchView, type Block, type Inline, type View } from "./logic";
 import { Img, Shortcodes, useEmojiSet, useMore } from "./CustomEmoji";
-import { bumpRecent, pickerSections, type PickItem } from "./emoji";
+import { bumpRecent, pickerSections, TONES, withTone, type PickItem } from "./emoji";
 import { EMOJI_DATA } from "./emoji-data";
-import { absUrl, set, useApp } from "./store";
+import { absUrl, set, setLook, useApp } from "./store";
 import { AUTH_URL } from "./auth";
 
 // ---------------------------------------------------------------------------
@@ -443,15 +443,22 @@ const META: Record<string, [string, IconName]> = {
   symbols: ["Symbols", "heart"],
   flags: ["Flags", "flag"],
 };
+const TONED = new Set<string>(); // characters that take a skin tone (1335)
 const SECTIONS = EMOJI_DATA.map(([id, data]) => {
   const a = data.split(" ");
   const items: PickItem[] = [];
   for (let i = 0; i < a.length; i += 2) {
-    const name = SLACK_OF.get(a[i + 1]);
-    items.push(name ? { name, ch: a[i + 1], alt: a[i] } : { name: a[i], ch: a[i + 1] });
+    const ch = a[i + 1];
+    const uni = a[i].replace(/^~/, "");
+    if (uni !== a[i]) TONED.add(ch);
+    const name = SLACK_OF.get(ch);
+    items.push(name ? { name, ch, alt: uni } : { name: uni, ch });
   }
   return { id, label: META[id][0], items };
 });
+/** A standard emoji in the viewer's skin tone, when it takes one. */
+export const toned = (ch: string, tone: number) => (TONED.has(ch) ? withTone(ch, tone) : ch);
+const TONE_NAMES = ["Default", "Light", "Medium-light", "Medium", "Medium-dark", "Dark"];
 /** Every name the `:` autocomplete and `:shortcode:` lookups know: Slack names first, then Unicode's. */
 const TAKEN = new Set(SLACK.map(([name]) => name));
 export const EMOJI_NAMES: [string, string][] = SLACK.concat(
@@ -491,8 +498,11 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
   const [limit, more, grow] = useMore(180);
   const grid = useRef<HTMLDivElement>(null);
   const jump = useRef("");
-  const base = useMemo(() => pickerSections(SECTIONS, list, recent, ""), [list, recent]);
-  const shown = useMemo(() => (q.trim() ? pickerSections(SECTIONS, list, recent, q) : base), [base, list, recent, q]);
+  const tone = useApp((s) => s.look.skinTone);
+  const [tones, setTones] = useState(false);
+  const sections = useMemo(() => (tone ? SECTIONS.map((s) => ({ ...s, items: s.items.map((e) => (TONED.has(e.ch!) ? { ...e, ch: withTone(e.ch!, tone) } : e)) })) : SECTIONS), [tone]);
+  const base = useMemo(() => pickerSections(sections, list, recent, ""), [sections, list, recent]);
+  const shown = useMemo(() => (q.trim() ? pickerSections(sections, list, recent, q) : base), [base, sections, list, recent, q]);
   const first = shown[0]?.items[0];
 
   const go = (id: string) => {
@@ -542,18 +552,42 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
   const peek = hover ?? first;
   return (
     <div className="emoji-picker">
-      <input
-        className="input"
-        type="search"
-        placeholder="Search all emoji"
-        aria-label="Search emoji"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && first) pick(first);
-          else if (e.key === "ArrowDown" && first) (e.preventDefault(), cells()[cur]?.focus());
-        }}
-      />
+      <div className="emoji-top">
+        <input
+          className="input"
+          type="search"
+          placeholder="Search all emoji"
+          aria-label="Search emoji"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && first) pick(first);
+            else if (e.key === "ArrowDown" && first) (e.preventDefault(), cells()[cur]?.focus());
+          }}
+        />
+        {tones ? (
+          <div className="emoji-tones" role="radiogroup" aria-label="Skin tone" onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), setTones(false))}>
+            {TONES.map((_, t) => (
+              <button
+                key={t}
+                type="button"
+                role="radio"
+                aria-checked={t === tone}
+                aria-label={TONE_NAMES[t]}
+                title={TONE_NAMES[t]}
+                autoFocus={t === tone}
+                onClick={() => (setLook({ skinTone: t }), setTones(false))}
+              >
+                {withTone("\u270B", t)}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <button type="button" className="emoji-tone" aria-label={`Skin tone: ${TONE_NAMES[tone]}`} title="Skin tone" onClick={() => setTones(true)}>
+            {withTone("\u270B", tone)}
+          </button>
+        )}
+      </div>
       <nav className="emoji-tabs" aria-label="Emoji categories">
         {base.map((s) => (
           <button

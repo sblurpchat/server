@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bumpRecent, emojiName, pickerSections, planUpload, searchEmoji, splitShortcodes, tally } from "./emoji";
+import { bumpRecent, emojiName, pickerSections, planUpload, searchEmoji, splitShortcodes, tally, withTone } from "./emoji";
 
 describe("splitShortcodes", () => {
   const known = (n: string) => ["parrot", "blob-cat", "+1"].includes(n);
@@ -73,13 +73,29 @@ describe("searchEmoji", () => {
 describe("emoji-data", () => {
   it("has the full Unicode set with unique names and no skin tones", async () => {
     const { EMOJI_DATA } = await import("./emoji-data");
-    const all = EMOJI_DATA.flatMap(([, d]) => d.split(" ").filter((_, i) => i % 2 === 0));
+    const marked = EMOJI_DATA.flatMap(([, d]) => d.split(" ").filter((_, i) => i % 2 === 0));
+    const all = marked.map((n) => n.replace(/^~/, ""));
+    expect(marked).toContain("~waving_hand");
+    expect(marked).toContain("~people_holding_hands");
+    expect(marked).toContain("smiling_face"); // a face takes no tone
+    expect(marked).toContain("family"); // nor does a family, though 👪 is a modifier base
     expect(all.length).toBeGreaterThan(1800);
     expect(new Set(all).size).toBe(all.length);
     expect(all).toContain("flag_japan");
     expect(all).toContain("keycap_hash");
     expect(all.every((n) => /^[a-z0-9_+-]+$/.test(n))).toBe(true);
     expect(EMOJI_DATA.flatMap(([, d]) => d.split(" ")).join("")).not.toMatch(/[\u{1F3FB}-\u{1F3FF}]/u);
+  });
+});
+
+describe("withTone", () => {
+  it("puts the modifier after each person and drops their FE0F", () => {
+    expect(withTone("👋", 0)).toBe("👋");
+    expect(withTone("👋", 1)).toBe("\u{1F44B}\u{1F3FB}");
+    expect(withTone("☝️", 5)).toBe("\u261D\u{1F3FF}"); // the FE0F goes
+    expect(withTone("👨‍💻", 3)).toBe("\u{1F468}\u{1F3FD}\u200D\u{1F4BB}");
+    expect(withTone("🧑‍🤝‍🧑", 2)).toBe("\u{1F9D1}\u{1F3FC}\u200D\u{1F91D}\u200D\u{1F9D1}\u{1F3FC}"); // not the hands
+    expect(withTone("👩‍❤️‍💋‍👨", 4)).toBe("\u{1F469}\u{1F3FE}\u200D\u2764\uFE0F\u200D\u{1F48B}\u200D\u{1F468}\u{1F3FE}"); // the heart keeps FE0F
   });
 });
 

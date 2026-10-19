@@ -72,7 +72,7 @@ import {
   unfurled,
   unfurlKey,
 } from "./store";
-import { Avatar, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, ghost, Icon, Markdown, menuKeys, Pop, Resizer, Skeleton, useClamped } from "./ui";
+import { Avatar, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, ghost, Icon, Markdown, menuKeys, Pop, Resizer, Skeleton, toned, useClamped } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
 /** Touch screens have no hover toolbar (1313): press and hold puts its actions in the menu. */
@@ -1040,6 +1040,7 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
   const form = useRef<HTMLFormElement>(null);
   const ac = acQuery(text, caret);
   const custom = useCustomMatches(ac?.kind === ":" ? ac.q : null, 8);
+  const tone = useApp((s) => s.look.skinTone);
   const options = useMemo(() => {
     if (!ac) return [];
     if (ac.kind === ":")
@@ -1047,14 +1048,14 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
         ac.q,
         EMOJI_NAMES,
         custom.map((e) => e.name),
-      ).map((e) => ({ id: e.ch ? e.name : `c:${e.name}`, label: `:${e.name}:`, insert: `${e.ch ?? `:${e.name}:`} `, m: undefined }));
+      ).map((e) => ({ id: e.ch ? e.name : `c:${e.name}`, label: `:${e.name}:`, insert: `${e.ch ? toned(e.ch, tone) : `:${e.name}:`} `, m: undefined }));
     return Object.values(c.members)
       .map((m) => ({ m, s: Math.max(matchScore(ac.q, m.username), matchScore(ac.q, m.displayName)) }))
       .filter((x) => x.s >= 0)
       .sort((a, b) => b.s - a.s || a.m.username.localeCompare(b.m.username))
       .slice(0, 8)
       .map(({ m }) => ({ id: m.id, label: m.displayName || m.username, insert: `@${m.username} `, m: m as Member | undefined }));
-  }, [ac?.kind, ac?.q, c.members, custom]);
+  }, [ac?.kind, ac?.q, c.members, custom, tone]);
 
   const uploading = files.some((f) => !f.att && !f.error);
   const ready = files.filter((f) => f.att).map((f) => f.att!);
@@ -1262,7 +1263,7 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
               }}
               onMouseMove={() => setSel(i)}
             >
-              {o.m ? <Avatar m={o.m} size={22} /> : <Glyph e={o.label} />}
+              {o.m ? <Avatar m={o.m} size={22} /> : <Glyph e={o.insert.trim()} />}
               <b>{o.label}</b>
               {o.m && <span className="muted">@{o.m.username}</span>}
               {o.m?.kind === MemberKind.BOT && <span className="tag">Bot</span>}
