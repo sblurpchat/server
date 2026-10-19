@@ -51,6 +51,7 @@ describe("planUpload", () => {
     const files = Array.from({ length: 5 }, (_, i) => f(`e${i}.png`, 40));
     const { batches } = planUpload(files, new Set(), 100);
     expect(batches.map((b) => b.length)).toEqual([2, 2, 1]);
+    expect(planUpload(files, new Set(), 1000, 2).batches.map((b) => b.length)).toEqual([2, 2, 1]);
     expect(planUpload([f("huge.zip", 101)], new Set(), 100).done[0].status).toBe("rejected");
   });
 });

@@ -40,6 +40,7 @@ export function emojiName(path: string): string {
 
 const MAX_EMOJI_BYTES = 256 * 1024;
 const MAX_REQUEST_BYTES = 60 * 1024 * 1024; // the server takes 64 MB per request
+const MAX_REQUEST_FILES = 20; // small requests so progress moves and one failure costs little
 
 type UploadStatus = "added" | "exists" | "rejected";
 export interface UploadResult {
@@ -59,7 +60,7 @@ const kindOf = (path: string): "image" | "zip" | null => {
  * dropped silently; names already on the server (or earlier in this batch) are skipped without
  * uploading, so dropping the same pack twice costs nothing. Batches stay under one request's limit.
  */
-export function planUpload<F extends { path: string; size: number }>(files: F[], existing: Set<string>, maxBytes = MAX_REQUEST_BYTES) {
+export function planUpload<F extends { path: string; size: number }>(files: F[], existing: Set<string>, maxBytes = MAX_REQUEST_BYTES, maxFiles = MAX_REQUEST_FILES) {
   const done: UploadResult[] = [];
   const send: F[] = [];
   const seen = new Set(existing);
@@ -83,7 +84,7 @@ export function planUpload<F extends { path: string; size: number }>(files: F[],
   const batches: F[][] = [];
   let size = Infinity;
   for (const f of send) {
-    if (size + f.size > maxBytes) {
+    if (size + f.size > maxBytes || batches.at(-1)!.length >= maxFiles) {
       batches.push([]);
       size = 0;
     }

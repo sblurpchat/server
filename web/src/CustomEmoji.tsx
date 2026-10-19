@@ -165,7 +165,7 @@ export function EmojiTab({ url }: { url: string }) {
   const { list } = useEmojiSet(url);
   const [q, setQ] = useState("");
   const [results, setResults] = useState<UploadResult[] | null>(null);
-  const [busy, setBusy] = useState<{ done: number; total: number } | null>(null);
+  const [busy, setBusy] = useState<{ done: number; total: number; failed: number } | null>(null);
   const [err, setErr] = useState("");
   const [drag, setDrag] = useState(false);
   const [confirm, setConfirm] = useState("");
@@ -184,20 +184,29 @@ export function EmojiTab({ url }: { url: string }) {
     setResults(all);
     const total = batches.reduce((n, b) => n + b.length, 0);
     let sent = 0;
-    setBusy({ done: 0, total });
-    try {
-      for (const b of batches) {
-        all = [...(await postBatch(url, b)), ...all];
+    let failed = 0;
+    setBusy({ done: 0, total, failed: 0 });
+    const queue = [...batches];
+    const worker = async () => {
+      for (let b; (b = queue.shift()); ) {
+        let res: UploadResult[];
+        try {
+          res = await postBatch(url, b);
+        } catch (e) {
+          const error = e instanceof Error ? e.message : errorText(e);
+          setErr(error);
+          failed += b.length;
+          res = b.map((p) => ({ file: p.path, name: emojiName(p.path), status: "rejected", error }));
+        }
+        all = [...res, ...all];
         sent += b.length;
         setResults(all);
-        setBusy({ done: sent, total });
+        setBusy({ done: sent, total, failed });
       }
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : errorText(e));
-    } finally {
-      setBusy(null);
-      void loadEmoji(url);
-    }
+    };
+    await Promise.all(Array.from({ length: 4 }, worker));
+    setBusy(null);
+    void loadEmoji(url);
   };
 
   const onDrop = async (e: DragEvent) => {
@@ -279,6 +288,7 @@ export function EmojiTab({ url }: { url: string }) {
       {busy && (
         <p className="emoji-status" role="status">
           Uploading {busy.done.toLocaleString("en-US")} of {count(busy.total, "file", "files")}…
+          {busy.failed > 0 && <span className="bad"> {busy.failed.toLocaleString("en-US")} failed</span>}
         </p>
       )}
       {err && (
