@@ -2513,6 +2513,7 @@ li.sw-empty {
 @property --my { syntax: "<number>"; inherits: true; initial-value: 0.5; }
 .holo {
   flex: none;
+  touch-action: none; /* a finger drag tilts the logo instead of scrolling (pond.ts, 1242) */
   width: 0.78em;
   height: 0.78em;
 }

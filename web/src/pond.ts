@@ -121,7 +121,8 @@ export function pond(hero: HTMLElement, logo: HTMLElement, copy: HTMLElement[]):
     if (!reduce) raf = requestAnimationFrame(frame);
   });
 
-  // Holo logo tilt (home ticket 1028): a mouse or pen steers --mx/--my, at most once a frame.
+  // Holo logo tilt (home ticket 1028): a mouse, pen or finger steers --mx/--my, at most once a frame.
+  // On phones a finger dragged on the logo tilts it (CSS sets touch-action: none there) (1242).
   const card = logo.firstElementChild as HTMLElement;
   let ev: PointerEvent | null = null, tr = 0, t = 0;
   const clamp = (v: number) => Math.max(0, Math.min(1, v)).toFixed(3);
@@ -132,7 +133,6 @@ export function pond(hero: HTMLElement, logo: HTMLElement, copy: HTMLElement[]):
     card.style.setProperty("--my", clamp((ev!.clientY - b.top) / b.height));
   };
   const move = (e: PointerEvent) => {
-    if (e.pointerType === "touch") return;
     ev = e; clearTimeout(t);
     card.classList.remove("settle"); card.classList.add("on");
     if (!tr) tr = requestAnimationFrame(paint);
@@ -144,14 +144,14 @@ export function pond(hero: HTMLElement, logo: HTMLElement, copy: HTMLElement[]):
     card.style.removeProperty("--mx"); card.style.removeProperty("--my");
     t = window.setTimeout(() => card.classList.remove("settle"), 900);
   };
-  if (!reduce) { logo.addEventListener("pointermove", move); logo.addEventListener("pointerleave", leave); }
+  if (!reduce) { logo.addEventListener("pointermove", move); logo.addEventListener("pointerleave", leave); logo.addEventListener("pointercancel", leave); }
 
   return () => {
     alive = false;
     cancelAnimationFrame(raf); cancelAnimationFrame(tr); clearTimeout(t);
     ro.disconnect();
     darkQ.removeEventListener("change", reset);
-    logo.removeEventListener("pointermove", move); logo.removeEventListener("pointerleave", leave);
+    logo.removeEventListener("pointermove", move); logo.removeEventListener("pointerleave", leave); logo.removeEventListener("pointercancel", leave);
     canvas.remove(); top.remove();
   };
 }
