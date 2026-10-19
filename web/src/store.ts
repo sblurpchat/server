@@ -295,6 +295,7 @@ async function connect(url: string) {
   let liveAt = 0;
   let snapshot = true;
   while (!ctl.signal.aborted) {
+    let failed: unknown = null;
     try {
       if (snapshot) {
         const st = await server.getState({}, { signal: ctl.signal });
@@ -340,10 +341,17 @@ async function connect(url: string) {
       const was = denied(ce.code, ce.rawMessage, !!state.cs[url]?.me || !DEFAULT_COMMUNITIES.includes(url));
       if (was === "drop") return leave(url);
       if (was === "join") return patchC(url, (c) => ({ ...c, status: "join" }));
-      patchC(url, (c) => ({ ...c, error: errorText(e, c.info?.name) }));
+      failed = e;
     }
     if (liveAt && Date.now() - liveAt > STABLE_MS) attempt = 0;
     liveAt = 0;
+    // resource_exhausted (a kick, or a stream that fell behind) asks for a reconnect: do it at once
+    // and without the banner, so a kick drops the community right away (1322). A repeat backs off.
+    if (failed && ConnectError.from(failed).code === Code.ResourceExhausted && attempt === 0) {
+      attempt++;
+      continue;
+    }
+    if (failed) patchC(url, (c) => ({ ...c, error: errorText(failed, c.info?.name) }));
     const delay = backoffMs(attempt++, Math.random());
     patchC(url, (c) => ({ ...c, status: "reconnecting", retryAt: Date.now() + delay }));
     await new Promise<void>((r) => {
