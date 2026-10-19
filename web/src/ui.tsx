@@ -584,7 +584,7 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
     return () => {
       live = false;
     };
-  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [key]);
   const html = hl.key === key ? hl.html : null;
   return <pre data-lang={lang || undefined}>{html === null ? <code>{code}</code> : <code dangerouslySetInnerHTML={{ __html: html }} />}</pre>;
 }

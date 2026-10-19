@@ -656,7 +656,7 @@ function BansTab({ url }: { url: string }) {
   const [err, setErr] = useState("");
   const fail = (e: unknown) => setErr(errorText(e));
   const load = () => listBans(url).then(setBans, fail);
-  useEffect(() => void load(), [url]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => void load(), [url]);
   const unban = (id: string) => {
     setErr("");
     unbanMember(url, id).then(() => (setGone(id), setTimeout(() => load().then(() => setGone("")), FADE)), fail);
@@ -775,7 +775,7 @@ export function ReportsDialog() {
   const url = c?.url ?? "";
   const fail = (e: unknown) => setErr(errorText(e));
   const load = () => listReports(url).then(setReports, fail);
-  useEffect(() => void load(), [url]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => void load(), [url]);
   if (!c) return null;
   const resolve = (id: string) => {
     setErr("");

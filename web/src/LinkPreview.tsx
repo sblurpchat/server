@@ -36,7 +36,7 @@ export function LinkPreviews({ url, m }: { url: string; m: Message }) {
     return () => {
       live = false;
     };
-  }, [k, skip]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [k, skip]);
   if (skip || !ps.length) return null;
   return ps.map((p) => <Card key={p.url} base={url} p={p} />);
 }

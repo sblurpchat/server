@@ -749,7 +749,7 @@ function Unfurl({ link }: { link: Permalink }) {
     return () => {
       live = false;
     };
-  }, [u]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [u]);
   const c = useApp((s) => (u ? s.cs[u] : undefined));
   const h24 = useApp((s) => s.look.clock === "24");
   if (!u || !m || !c) return null;
@@ -847,7 +847,7 @@ function Snippet({ url, a, m, src }: { url: string; a: Attachment; m: Message; s
     return () => {
       live = false;
     };
-  }, [src]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [src]);
   const cut = useClamped(body, `${code} ${raw}`);
   const lines = code ? code.split("\n").length : 0;
   return (
@@ -1007,7 +1007,7 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
       .sort((a, b) => b.s - a.s || a.m.username.localeCompare(b.m.username))
       .slice(0, 8)
       .map(({ m }) => ({ id: m.id, label: m.displayName || m.username, insert: `@${m.username} `, m: m as Member | undefined }));
-  }, [ac?.kind, ac?.q, c.members, custom]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ac?.kind, ac?.q, c.members, custom]);
 
   const uploading = files.some((f) => !f.att && !f.error);
   const ready = files.filter((f) => f.att).map((f) => f.att!);
@@ -1515,7 +1515,7 @@ function SearchResults({ c, q }: { c: Community; q: string }) {
   const [err, setErr] = useState("");
   useEffect(() => {
     search(c.url, q).then(setRes, (e) => setErr(errorText(e, c.info?.name)));
-  }, [c.url, q]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [c.url, q]);
   if (err)
     return (
       <p className="error pane-note" role="alert">

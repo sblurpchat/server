@@ -383,7 +383,7 @@ function Sidebar({ c }: { c: Community }) {
   const collapsed = useApp((s) => s.collapsed);
   const [menu, setMenu] = useState<DOMRect | null>(null);
   const name = c.info?.name ?? hostOf(c.url);
-  const sections = useMemo(() => sidebarSections(c), [c.channels]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sections = useMemo(() => sidebarSections(c), [c.channels]);
   const admin = (c.me?.role ?? 0) >= MemberRole.ADMIN;
   const banner = absUrl(c.url, c.info?.bannerUrl ?? "");
   return (
@@ -766,7 +766,7 @@ function AddCommunity({ input: given }: { input?: string }) {
   const [err, setErr] = useState("");
   const [found, setFound] = useState<{ url: string; invite: string; info: GetServerInfoResponse } | null>(null);
   // Opened from an invite link: look it up right away and land on the consent step.
-  useEffect(() => void (given && lookUp(given)), []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => void (given && lookUp(given)), []);
   const submit = (e: FormEvent) => {
     e.preventDefault();
     lookUp(input);
@@ -1521,7 +1521,7 @@ function BrowseChannels() {
   const create = (name = "") => set({ modal: { t: "channel", name } });
   useEffect(() => {
     if (url) load();
-  }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [url]);
   if (!c) return null;
   const rows = browseList(all ?? [], c.channels, q);
   const act = (id: string, f: () => Promise<unknown>) => {
