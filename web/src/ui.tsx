@@ -1,10 +1,11 @@
 // Shared UI primitives: icons, avatars, dialogs, popovers, the emoji picker and the markdown renderer.
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MemberRole, Presence, type Member } from "./gen/sblurp/v1/sblurp_pb";
-import { PANELS, SKELETON_DELAY_MS, clampWidth, gridMove, initials, keyWidth, listMove, onBackdrop, onWhite, parseMarkdown, skeletonRows, swatch, type Inline } from "./logic";
+import { PANELS, SKELETON_DELAY_MS, clampWidth, gridMove, initials, keyWidth, listMove, onBackdrop, onWhite, parseMarkdown, shareToDeepLink, skeletonRows, swatch, type Inline } from "./logic";
 import { Img, Shortcodes, useEmojiSet, useMore } from "./CustomEmoji";
 import { bumpRecent, pickerSections, type PickItem } from "./emoji";
 import { absUrl, set, useApp } from "./store";
+import { AUTH_URL } from "./auth";
 
 // ---------------------------------------------------------------------------
 // Icons: Lucide on a 24px grid, drawn at a 1.75 stroke
@@ -217,13 +218,13 @@ export function Dialog({
   );
 }
 
-/** Leaves a copy of a closing overlay on screen for its exit animation (`.ghost` in app.css).
+/** Leaves a copy of a closing overlay on screen for its exit animation (`.leaving` in app.css).
  *  Only for overlays (fixed or top layer): a closing grid column just goes. */
 export function ghost(el: HTMLElement | null) {
   if (!el?.isConnected || getComputedStyle(el).position !== "fixed" || !el.getClientRects().length) return;
   const r = el.getBoundingClientRect();
   const g = document.createElement("div");
-  g.className = `${el.className} ghost`;
+  g.className = `${el.className} leaving`;
   g.append(...[...el.childNodes].map((n) => n.cloneNode(true)));
   g.querySelectorAll("video").forEach((v) => ((v.autoplay = false), (v.muted = true)));
   g.popover = "manual";
@@ -544,12 +545,19 @@ function renderInline(nodes: Inline[], members: Record<string, Member>, meId: st
         return <em key={i}>{renderInline(n.c, members, meId, onMention)}</em>;
       case "s":
         return <s key={i}>{renderInline(n.c, members, meId, onMention)}</s>;
-      case "link":
-        return (
+      case "link": {
+        // A share link opens in place, through the same route as a sblurp:// link (1298).
+        const d = shareToDeepLink(n.href, AUTH_URL);
+        return d ? (
+          <a key={i} href={`#/open?${d}`}>
+            {renderInline(n.c, members, meId, onMention)}
+          </a>
+        ) : (
           <a key={i} href={n.href} target="_blank" rel="noopener noreferrer">
             {renderInline(n.c, members, meId, onMention)}
           </a>
         );
+      }
       case "mention": {
         const m = members[n.id];
         return (

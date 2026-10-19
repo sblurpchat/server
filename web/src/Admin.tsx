@@ -1,7 +1,8 @@
 // Admin screens: create and edit channels, and community settings (members, invites, bots).
+import { AUTH_URL } from "./auth";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Ban, type Channel, type GetMeResponse, type Invite, type Member, type Message, type Plugin, type Report, type Role } from "./gen/sblurp/v1/sblurp_pb";
-import { BANNER_TYPES, bannerFileError, banDetail, channelSlug, count, hostOf, memberRoles, inviteLink, inviteState, matchScore, modActions, pluginFormError, pluginNameFromFile, pluginStatus, reportDetail, reportPlace, tokenBots, reorderChannel, sidebarSections, squareCrop, unsavedBlock } from "./logic";
+import { BANNER_TYPES, bannerFileError, banDetail, channelSlug, count, hostOf, memberRoles, inviteState, shareInviteLink, matchScore, modActions, pluginFormError, pluginNameFromFile, pluginStatus, reportDetail, reportPlace, tokenBots, reorderChannel, sidebarSections, squareCrop, unsavedBlock } from "./logic";
 import {
   absUrl,
   setCommunityProfile,
@@ -1165,7 +1166,7 @@ export function Invites({ url, inviteOnly }: { url: string; inviteOnly: boolean 
   const fail = (e: unknown) => setErr(errorText(e));
   const load = () => listInvites(url).then(setList, fail);
   useEffect(() => void load(), [url]);
-  const copy = (code: string) => navigator.clipboard.writeText(inviteLink(url, code)).then(() => setCopied(code));
+  const copy = (code: string) => navigator.clipboard.writeText(shareInviteLink(AUTH_URL, url, code)).then(() => setCopied(code));
   const make = async (e: FormEvent) => {
     e.preventDefault();
     setErr("");

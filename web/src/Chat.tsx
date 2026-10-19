@@ -1,6 +1,7 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type FormEvent, type KeyboardEvent } from "react";
 import { MOD, useCountdown } from "./App";
 import { Glyph, useCustomMatches } from "./CustomEmoji";
+import { AUTH_URL } from "./auth";
 import { LinkPreviews } from "./LinkPreview";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
 import {
@@ -28,7 +29,7 @@ import {
   cssUrl,
   count,
   communityBadge,
-  messageHash,
+  shareMessageLink,
   nameColor,
   listStep,
   pasteTarget,
@@ -471,7 +472,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
   const blocked = useApp((s) => s.cs[s.url]!.blocked.includes(m.authorId));
   const muted = useApp((s) => s.cs[s.url]!.muted.includes(m.authorId));
   const [reveal, setReveal] = useState(false);
-  const links = useMemo(() => permalinks(m.text, location.origin + location.pathname), [m.text]);
+  const links = useMemo(() => permalinks(m.text, location.origin + location.pathname, AUTH_URL), [m.text]);
   const [pick, setPick] = useState<DOMRect | null>(null);
   const [more, setMore] = useState<DOMRect | null>(null);
   const [who, setWho] = useState<{ emoji: string; rect: DOMRect } | null>(null);
@@ -713,7 +714,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
           <button role="menuitem" onClick={() => navigator.clipboard.writeText(decodeMentions(m.text, c.members))}>
             <Icon name="copy" size={18} /> Copy text
           </button>
-          <button role="menuitem" onClick={() => navigator.clipboard.writeText(location.origin + location.pathname + location.search + messageHash(url, m))}>
+          <button role="menuitem" onClick={() => navigator.clipboard.writeText(shareMessageLink(AUTH_URL, url, m))}>
             <Icon name="link" size={18} /> Copy link
           </button>
           {!mine && (

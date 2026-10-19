@@ -765,9 +765,15 @@ export const tokenFresh = (expMs: number, now: number) => expMs - now > TOKEN_SK
 // URLs and routing
 // ---------------------------------------------------------------------------
 
-/** Accepts "nightowls.chat", "https://x.y/", "localhost:8082" or an invite link. */
-export function normalizeCommunityUrl(input: string): { url: string; invite: string } | null {
+/** Accepts "nightowls.chat", "https://x.y/", "localhost:8082" or an invite link, also a share
+ *  link on `share` (see shareToDeepLink). */
+export function normalizeCommunityUrl(input: string, share = ""): { url: string; invite: string } | null {
   let s = input.trim();
+  const d = share ? shareToDeepLink(s, share) : null;
+  if (d) {
+    const u = new URL(d);
+    s = u.host + (u.pathname.startsWith("/invite/") ? u.pathname : "");
+  }
   if (!s) return null;
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) {
     s = (/^(localhost|127\.|\[::1\])/.test(s) ? "http://" : "https://") + s;
@@ -817,6 +823,29 @@ export function deepLinkHash(hash: string): string | null {
   const inv = /^\/(?:invite|i)\/([\w-]+)$/.exec(path);
   if (inv) return `#/join?${new URLSearchParams({ url: n.url, invite: inv[1] })}`;
   return `#/c/${encodeURIComponent(hostOf(n.url))}${path}`;
+}
+
+/** Share links on sblurp.chat (`share`, the auth origin), which open the apps (universal links,
+ *  App Links) or else the web client (auth sends the browser there), 1298. They name the same
+ *  places as sblurp:// links: <share>/c/<host>[/<channel>[/<message>[/<thread root>]]] and
+ *  <share>/i/<host>/<code>. */
+export const shareMessageLink = (share: string, url: string, m: { id: string; channelId: string; threadRootId: string }) =>
+  `${share}/c/${hostOf(url)}/${[m.channelId, m.id, m.threadRootId].filter(Boolean).map(encodeURIComponent).join("/")}`;
+export const shareInviteLink = (share: string, url: string, code: string) => `${share}/i/${hostOf(url)}/${code}`;
+
+/** The sblurp:// link for a share link on `share`, or null. deepLinkHash routes the result. */
+export function shareToDeepLink(href: string, share: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(href);
+    if (u.origin !== new URL(share).origin) return null;
+  } catch {
+    return null;
+  }
+  const c = /^\/c\/([^/]+)((?:\/[^/]+){0,3})\/?$/.exec(u.pathname);
+  if (c) return `sblurp://${c[1]}${c[2]}`;
+  const i = /^\/i\/([^/]+)\/([\w-]+)\/?$/.exec(u.pathname);
+  return i ? `sblurp://${i[1]}/invite/${i[2]}` : null;
 }
 
 /** Image types a server takes for a banner or channel header (it refuses the rest). */
@@ -896,9 +925,14 @@ export const messageHash = (url: string, m: { id: string; channelId: string; thr
 
 export type Permalink = { host: string; channelId: string; messageId: string; rootId: string };
 
-/** A message link in this app at `app` (origin and path), as Copy link makes it (1109).
- *  A channel link with ?thread=<root> and no message id points at the root. */
-export function parsePermalink(href: string, app: string): Permalink | null {
+/** A message link in this app at `app` (origin and path), as Copy link made it before 1298, or a
+ *  share link on `share`. A channel link with ?thread=<root> and no message id points at the root. */
+export function parsePermalink(href: string, app: string, share = ""): Permalink | null {
+  const d = share ? shareToDeepLink(href, share) : null;
+  if (d) {
+    const r = parseHash(deepLinkHash(`#/open?${d}`) ?? "");
+    return r?.messageId ? r : null;
+  }
   let u: URL, a: URL;
   try {
     u = new URL(href);
@@ -915,10 +949,10 @@ export function parsePermalink(href: string, app: string): Permalink | null {
 }
 
 /** The message links in a message's text to preview: each message once, at most three. */
-export function permalinks(text: string, app: string): Permalink[] {
+export function permalinks(text: string, app: string, share = ""): Permalink[] {
   const out: Permalink[] = [];
   for (const [href] of text.matchAll(/https?:\/\/[^\s<]*[^\s<.,:;"')\]!?]/g)) {
-    const l = parsePermalink(href, app);
+    const l = parsePermalink(href, app, share);
     if (l && !out.some((x) => x.host === l.host && x.messageId === l.messageId)) out.push(l);
     if (out.length === 3) break;
   }
@@ -1174,14 +1208,15 @@ export function tokenBots<B extends { username: string }>(bots: B[], plugins: { 
 /** Whether a message may have link previews worth asking its server for (1110). */
 export const mayPreview = (text: string) => /https?:\/\//i.test(text);
 
-/** The link previews to show: none for links into this app at `app` (1109 previews those), at most five. */
-export function shownPreviews<T extends { url: string }>(ps: T[], app: string): T[] {
+/** The link previews to show: none for links into this app at `app` or share links on `share`
+ *  (1109 previews those), at most five. */
+export function shownPreviews<T extends { url: string }>(ps: T[], app: string, share = ""): T[] {
   const a = new URL(app);
   return ps
     .filter((p) => {
       try {
         const u = new URL(p.url);
-        return u.origin !== a.origin || u.pathname !== a.pathname;
+        return (u.origin !== a.origin || u.pathname !== a.pathname) && !(share && shareToDeepLink(p.url, share));
       } catch {
         return false;
       }

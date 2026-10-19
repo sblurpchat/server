@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { LinkPreview, Message } from "./gen/sblurp/v1/sblurp_pb";
 import { mayPreview, shownPreviews } from "./logic";
+import { AUTH_URL } from "./auth";
 import { absUrl, api } from "./store";
 import "./link-preview.css";
 
@@ -27,11 +28,11 @@ export function LinkPreviews({ url, m }: { url: string; m: Message }) {
   const k = `${url} ${m.id} ${m.editedAtMs}`;
   const skip = m.seq === 0n || m.deleted || !mayPreview(m.text);
   const app = location.origin + location.pathname;
-  const [ps, setPs] = useState(() => shownPreviews(got.get(k) ?? [], app));
+  const [ps, setPs] = useState(() => shownPreviews(got.get(k) ?? [], app, AUTH_URL));
   useEffect(() => {
     if (skip) return setPs([]);
     let live = true;
-    void load(url, m, k).then((x) => live && setPs(shownPreviews(x, app)));
+    void load(url, m, k).then((x) => live && setPs(shownPreviews(x, app, AUTH_URL)));
     return () => {
       live = false;
     };

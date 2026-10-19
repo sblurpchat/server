@@ -74,6 +74,7 @@ import {
   setBlocked,
   setMuted,
 } from "./store";
+import { AUTH_URL } from "./auth";
 import { AvatarField } from "./AvatarField";
 import { pond } from "./pond";
 import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped } from "./ui";
@@ -771,7 +772,7 @@ function AddCommunity({ input: given }: { input?: string }) {
     lookUp(input);
   };
   const lookUp = async (input: string) => {
-    const n = normalizeCommunityUrl(input);
+    const n = normalizeCommunityUrl(input, AUTH_URL);
     if (!n) return setErr("Enter a community address, like nightowls.chat, or paste an invite link.");
     setBusy(true);
     setErr("");

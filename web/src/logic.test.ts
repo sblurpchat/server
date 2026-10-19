@@ -62,6 +62,10 @@ import {
   normalizeCommunityUrl,
   joinHashInput,
   deepLinkHash,
+  shareMessageLink,
+  shareInviteLink,
+  shareToDeepLink,
+  shownPreviews,
   channelSlug,
   reorderChannel,
   parseHash,
@@ -416,6 +420,32 @@ describe("community URLs", () => {
     expect(d("javascript:alert(1)")).toBeNull();
     expect(d("not a url")).toBeNull();
     expect(deepLinkHash("#/c/owls.test")).toBeNull();
+  });
+  it("makes share links on sblurp.chat and routes them like sblurp:// links (1298)", () => {
+    const S = "https://sblurp.chat";
+    expect(shareMessageLink(S, "https://owls.test", { id: "m2", channelId: "c1", threadRootId: "" })).toBe("https://sblurp.chat/c/owls.test/c1/m2");
+    expect(shareMessageLink(S, "http://localhost:8082", { id: "m 2", channelId: "c1", threadRootId: "r3" })).toBe("https://sblurp.chat/c/localhost:8082/c1/m%202/r3");
+    expect(shareInviteLink(S, "https://owls.test", "ABCD234567")).toBe("https://sblurp.chat/i/owls.test/ABCD234567");
+    const route = (href: string) => deepLinkHash(`#/open?${shareToDeepLink(href, S)}`);
+    expect(route("https://sblurp.chat/c/owls.test/c1/m2/r3")).toBe("#/c/owls.test/c1/m2/r3");
+    expect(route("https://sblurp.chat/c/Owls.Test/")).toBe("#/c/owls.test");
+    expect(route("https://sblurp.chat/c/localhost:8082/c1")).toBe("#/c/localhost%3A8082/c1");
+    expect(route("https://sblurp.chat/i/owls.test/ABCD234567")).toBe("#/join?url=https%3A%2F%2Fowls.test&invite=ABCD234567");
+    expect(shareToDeepLink("https://evil.test/c/owls.test/c1", S)).toBeNull();
+    expect(shareToDeepLink("http://sblurp.chat/c/owls.test", S)).toBeNull();
+    expect(shareToDeepLink("https://sblurp.chat/c/owls.test/a/b/c/d", S)).toBeNull();
+    expect(shareToDeepLink("https://sblurp.chat/i/owls.test", S)).toBeNull();
+    expect(shareToDeepLink("https://sblurp.chat/docs", S)).toBeNull();
+    expect(shareToDeepLink("not a url", S)).toBeNull();
+    // Pasted into Add a community.
+    expect(normalizeCommunityUrl("https://sblurp.chat/i/owls.test/ABCD234567", S)).toEqual({ url: "https://owls.test", invite: "ABCD234567" });
+    expect(normalizeCommunityUrl("https://sblurp.chat/c/localhost:8082/c1/m2", S)).toEqual({ url: "http://localhost:8082", invite: "" });
+    // Previewed like a permalink, not by the server.
+    const app = "https://app.sblurp.chat/";
+    expect(parsePermalink("https://sblurp.chat/c/owls.test/c1/m2/r3", app, S)).toEqual({ host: "owls.test", channelId: "c1", messageId: "m2", rootId: "r3" });
+    expect(parsePermalink("https://sblurp.chat/c/owls.test/c1", app, S)).toBeNull();
+    expect(permalinks("see https://sblurp.chat/c/owls.test/c1/m2.", app, S)).toEqual([{ host: "owls.test", channelId: "c1", messageId: "m2", rootId: "" }]);
+    expect(shownPreviews([{ url: "https://sblurp.chat/i/owls.test/AB" }, { url: "https://sblurp.chat/docs" }], app, S)).toEqual([{ url: "https://sblurp.chat/docs" }]);
   });
   it("rejects junk and other schemes", () => {
     expect(normalizeCommunityUrl("")).toBeNull();
