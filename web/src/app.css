@@ -1303,6 +1303,31 @@ kbd {
   border-top: 1px solid var(--line);
   flex: none;
 }
+.notify-nudge {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 4px 8px;
+  margin: 0 8px 8px;
+  padding: 8px 4px 10px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--frost);
+  font-size: 0.8125rem;
+  flex: none;
+  animation: rise-in 160ms ease-out;
+}
+.notify-nudge > .icon {
+  margin-top: 6px;
+  color: var(--graphite);
+}
+.notify-nudge p {
+  margin: 4px 0 0;
+}
+.notify-nudge .btn {
+  grid-column: 2;
+  justify-self: start;
+}
 .me-btn {
   display: flex;
   align-items: center;

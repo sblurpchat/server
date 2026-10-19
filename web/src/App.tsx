@@ -521,8 +521,46 @@ function Sidebar({ c }: { c: Community }) {
           <Skeleton rows={7} avatar={16} lines={0} className="side-skel" />
         )}
       </nav>
+      <NotifyNudge />
       <MeBar c={c} />
     </aside>
+  );
+}
+
+// 1330: browser users get one offer to turn on notifications; X hides it for good. The Tauri app asks on its own.
+const NUDGE_KEY = "sblurp.notifyNudgeDismissed";
+const nudgeDismissed = () => {
+  try {
+    return !!localStorage.getItem(NUDGE_KEY);
+  } catch {
+    return false;
+  }
+};
+
+function NotifyNudge() {
+  const [hidden, setHidden] = useState(
+    () => "__TAURI_INTERNALS__" in globalThis || typeof Notification === "undefined" || Notification.permission !== "default" || nudgeDismissed(),
+  );
+  if (hidden) return null;
+  const dismiss = () => {
+    try {
+      localStorage.setItem(NUDGE_KEY, "1");
+    } catch {
+      // blocked storage: hidden for this session only
+    }
+    setHidden(true);
+  };
+  return (
+    <div className="notify-nudge" role="status">
+      <Icon name="bell" size={16} />
+      <p>Get notified about mentions and direct messages.</p>
+      <button className="icon-btn" aria-label="Dismiss" onClick={dismiss}>
+        <Icon name="x" size={16} />
+      </button>
+      <button className="btn small primary" onClick={() => setNotify(true).finally(() => setHidden(true))}>
+        Turn on notifications
+      </button>
+    </div>
   );
 }
 
