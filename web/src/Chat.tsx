@@ -221,7 +221,7 @@ export function ChannelView() {
           Only {posterNames(ch.postRoleIds, c.roles)} post in #{title}. You can react and reply in threads.
         </p>
       ) : joined ? (
-        <Composer url={c.url} channelId={channelId} rootId="" placeholder={dm ? `Message ${title}` : `Message #${title}`} />
+        <Composer url={c.url} channelId={channelId} rootId="" placeholder={dm && c.me && dmPeer(ch, c.me.id) === c.me.id ? "Jot something down" : dm ? `Message ${title}` : `Message #${title}`} />
       ) : (
         <div className="join-bar">
           <p>
