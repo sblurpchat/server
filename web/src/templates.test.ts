@@ -24,6 +24,9 @@ describe("community templates (1286)", () => {
         expect(w?.private).toBeFalsy();
         expect(t.message).toContain("{name}");
       });
+      it("has a role exactly when it has staff rooms (1291)", () => {
+        expect(!!t.role).toBe(chans.some((c) => c.private));
+      });
       it("keeps topics short and defaults to Slack-style only", () => {
         for (const c of chans) expect(c.topic.length).toBeLessThanOrEqual(60);
         if (!t.optIn) expect(chans.some((c) => c.default)).toBe(false);

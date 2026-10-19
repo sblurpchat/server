@@ -103,7 +103,8 @@ export function SetupWizard() {
           <div>
             <h2>Make it yours</h2>
             <p className="muted">
-              {t.id === "scratch" ? "You'll start with #general." : `${t.name} adds ${added} channels and keeps #general.`} People see this when they join.
+              {t.id === "scratch" ? "You'll start with #general." : `${t.name} adds ${added} channels and keeps #general.`}
+              {t.role && ` Give people the ${t.role} role to let them into the staff rooms.`} People see this when they join.
             </p>
           </div>
           <div className="field">

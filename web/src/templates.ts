@@ -5,7 +5,7 @@ import type { IconName } from "./ui";
 interface TemplateChannel {
   name: string;
   topic: string;
-  /** Invite only (staff rooms). */
+  /** Staff room: only the template's role (and admins) can see it (1291). */
   private?: boolean;
   /** Slack-style communities only: new members join it automatically. */
   default?: boolean;
@@ -29,6 +29,8 @@ export interface Template {
   welcome: string;
   /** Starter message, posted as the owner. {name} becomes the community name. */
   message: string;
+  /** Role made with the template; give it to someone to let them into the staff rooms (1291). */
+  role?: string;
   /** Sidebar sections in order; "" is the plain "Channels" section. */
   sections: [category: string, channels: TemplateChannel[]][];
 }
@@ -38,6 +40,7 @@ const general = (topic: string, extra: Partial<TemplateChannel> = {}): TemplateC
 export const TEMPLATES: Template[] = [
   {
     id: "team",
+    role: "Leads",
     name: "Team workspace",
     blurb: "Slack-style. People browse channels and join the ones that fit their work.",
     icon: "briefcase",
@@ -64,6 +67,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: "community",
+    role: "Moderators",
     name: "Community",
     blurb: "Discord-style. A start-here section, open chat and a private room for moderators.",
     icon: "messages",
@@ -102,6 +106,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: "product",
+    role: "Team",
     name: "Product or service",
     blurb: "For the people who use what you make: news, support, bug reports and ideas.",
     icon: "package",
@@ -147,6 +152,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: "gaming",
+    role: "Officers",
     name: "Gaming group",
     blurb: "A crew, guild or clan. Find people to play with and plan game nights.",
     icon: "gamepad",

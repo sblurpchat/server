@@ -840,20 +840,24 @@ export async function applyTemplate(url: string, t: Template, opts: { descriptio
   await setInviteOnly(url, opts.inviteOnly);
   const mode = t.optIn ? ChannelMode.OPT_IN : ChannelMode.ROLES;
   if (state.cs[url]?.mode !== mode) await setChannelMode(url, mode);
+  // Staff rooms are text channels only the template's role (and admins) can see (1291).
+  const role = t.role && ((state.cs[url]?.roles ?? []).find((r) => r.name.toLowerCase() === t.role!.toLowerCase()) ?? (await createRole(url, t.role, "")));
   // Positions are one sequence across sections, so sections show in template order.
   let welcome = "";
   for (const [i, tc] of templateChannels(t).entries()) {
     let ch = Object.values(state.cs[url]?.channels ?? {}).find((c) => !isDM(c) && c.name === tc.name);
     if (!ch) {
-      ch = (await chat.createChannel({ name: tc.name, kind: tc.private ? ChannelKind.PRIVATE : ChannelKind.TEXT, topic: tc.topic, category: tc.category })).channel!;
+      ch = (await chat.createChannel({ name: tc.name, kind: ChannelKind.TEXT, topic: tc.topic, category: tc.category })).channel!;
       local(url, { case: "channelCreated", value: ch });
     }
     if (ch.position !== i || ch.category !== tc.category || (tc.topic && ch.topic !== tc.topic) || (tc.postRoles && !ch.postRoleIds.length))
       await updateChannel(url, { channelId: ch.id, topic: tc.topic || undefined, category: tc.category, position: i, postRoles: tc.postRoles && { roleIds: tc.postRoles } });
+    if (tc.private && role && ch.kind === ChannelKind.TEXT && !ch.roleIds.includes(role.id)) await setChannelAccess(url, ch.id, [role.id], false);
     if (tc.default && !ch.isDefault) await setChannelAccess(url, ch.id, [], true);
     if (tc.name === t.welcome) welcome = ch.id;
   }
-  if (opts.message.trim() && welcome) await chat.sendMessage({ channelId: welcome, text: opts.message.trim().replaceAll("{name}", name), threadRootId: "", clientId: crypto.randomUUID(), attachmentIds: [] });
+  // A retry after a failed finishSetup must not post the welcome twice.
+  if (opts.message.trim() && welcome && !(await chat.listMessages({ channelId: welcome, limit: 1 })).messages.length) await chat.sendMessage({ channelId: welcome, text: opts.message.trim().replaceAll("{name}", name), threadRootId: "", clientId: crypto.randomUUID(), attachmentIds: [] });
   await finishSetup(url);
   if (welcome) selectChannel(url, welcome);
 }
@@ -894,6 +898,7 @@ export async function setChannelAccess(url: string, channelId: string, roleIds: 
 export async function createRole(url: string, name: string, color: string) {
   const r = await api(url).server.createRole({ name, color });
   if (r.role) local(url, { case: "roleUpdated", value: r.role });
+  return r.role;
 }
 export async function updateRole(url: string, roleId: string, patch: { name?: string; color?: string; position?: number }) {
   const r = await api(url).server.updateRole({ roleId, ...patch });
