@@ -1892,6 +1892,9 @@ func (s *Server) SetMemberRole(ctx context.Context, req *connect.Request[v1.SetM
 		if !isAdmin(actor) || !outranks(actor.Role, target.Role) || !outranks(actor.Role, r.Role) {
 			return errf(connect.CodePermissionDenied, "only admins set roles, and only below their own")
 		}
+		if target.Kind == v1.MemberKind_MEMBER_KIND_BOT && r.Role != v1.MemberRole_MEMBER_ROLE_MEMBER {
+			return errf(connect.CodeInvalidArgument, "a bot is always a member; give it custom roles instead")
+		}
 		if _, err := t.ExecContext(ctx, "UPDATE members SET role = ? WHERE id = ?", r.Role, target.Id); err != nil {
 			return err
 		}
