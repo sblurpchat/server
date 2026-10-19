@@ -79,6 +79,7 @@ import {
   permalinks,
   parseInline,
   parseMarkdown,
+  pinchView,
   landingChannel,
   modActions,
   canRemoveFromChannel,
@@ -1263,5 +1264,15 @@ describe("DM titles (1309)", () => {
     expect(dmPeer(dm("me", "ana"), "me")).toBe("ana");
     expect(dmPeer(dm("ana", "me"), "me")).toBe("ana");
     expect(dmPeer(dm("me"), "me")).toBe("me");
+  });
+});
+
+describe("pinchView (1316)", () => {
+  const c = { x: 100, y: 100 };
+  it("keeps the point under the fingers in place and pans with one finger", () => {
+    // Spread to 2x around (150, 100): that point stays put, so the center moves left by 50.
+    expect(pinchView({ x: 0, y: 0, s: 1 }, { x: 150, y: 100 }, { x: 150, y: 100 }, 2, c)).toEqual({ s: 2, x: -50, y: 0 });
+    expect(pinchView({ x: 10, y: 0, s: 2 }, { x: 0, y: 0 }, { x: 5, y: 30 }, 1, c)).toEqual({ s: 2, x: 15, y: 30 });
+    expect(pinchView({ x: 0, y: 0, s: 5 }, c, c, 10, c).s).toBe(6);
   });
 });

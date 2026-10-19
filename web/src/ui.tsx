@@ -1,7 +1,7 @@
 // Shared UI primitives: icons, avatars, dialogs, popovers, the emoji picker and the markdown renderer.
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MemberRole, Presence, type Member } from "./gen/sblurp/v1/sblurp_pb";
-import { PANELS, SKELETON_DELAY_MS, clampWidth, gridMove, initials, keyWidth, listMove, onBackdrop, onWhite, parseMarkdown, shareToDeepLink, skeletonRows, swatch, type Block, type Inline } from "./logic";
+import { PANELS, SKELETON_DELAY_MS, clampWidth, gridMove, initials, keyWidth, listMove, onBackdrop, onWhite, parseMarkdown, shareToDeepLink, skeletonRows, swatch, pinchView, type Block, type Inline, type View } from "./logic";
 import { Img, Shortcodes, useEmojiSet, useMore } from "./CustomEmoji";
 import { bumpRecent, pickerSections, type PickItem } from "./emoji";
 import { absUrl, set, useApp } from "./store";
@@ -215,6 +215,74 @@ export function Dialog({
     >
       {open && children}
     </dialog>
+  );
+}
+
+/**
+ * The lightbox picture (1316). On touch, two fingers zoom and pan it, one finger pans it once zoomed,
+ * and at normal size it follows a swipe and closes past 120px down, fading the dark behind it.
+ * A tap on the dark closes it. Mouse and trackpad keep the plain picture.
+ */
+export function ZoomStage({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  const [v, setV] = useState<View & { live: boolean }>({ x: 0, y: 0, s: 1, live: false });
+  const pts = useRef(new Map<number, { x: number; y: number }>());
+  const from = useRef({ v: { x: 0, y: 0, s: 1 }, m: { x: 0, y: 0 }, d: 1 });
+  const moved = useRef(false);
+  const cur = useRef(v);
+  cur.current = v;
+  const spread = () => {
+    const p = [...pts.current.values()];
+    const m = { x: p.reduce((a, q) => a + q.x, 0) / p.length, y: p.reduce((a, q) => a + q.y, 0) / p.length };
+    return { m, d: p.length > 1 ? Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) : 1 };
+  };
+  // Every finger down or up starts a new gesture from the current view, so nothing jumps.
+  const begin = () => (from.current = { v: cur.current, ...spread() });
+  const fade = v.s <= 1 ? Math.max(0.3, 1 - Math.abs(v.y) / 300) : 1;
+  const stage = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => stage.current?.closest("dialog")?.style.setProperty("--fade", String(fade)), [fade]);
+  return (
+    <div
+      ref={stage}
+      className="lightbox-stage"
+      onClick={(e) => !moved.current && e.target === e.currentTarget && onClose()}
+      onPointerDown={(e) => {
+        if (e.pointerType !== "touch") return;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        if (!pts.current.size) moved.current = false;
+        pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        begin();
+      }}
+      onPointerMove={(e) => {
+        if (!pts.current.has(e.pointerId)) return;
+        pts.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        const { m, d } = spread();
+        const f = from.current;
+        const r = e.currentTarget.getBoundingClientRect();
+        const next = pinchView(f.v, f.m, m, pts.current.size > 1 ? d / f.d : 1, { x: r.left + r.width / 2, y: r.top + r.height / 2 });
+        if (Math.hypot(m.x - f.m.x, m.y - f.m.y) > 8 || pts.current.size > 1) moved.current = true;
+        setV({ ...next, live: true });
+      }}
+      onPointerUp={(e) => {
+        if (!pts.current.delete(e.pointerId)) return;
+        if (pts.current.size) return void begin();
+        const { x, y, s } = cur.current;
+        // ponytail: a zoomed picture can be panned off screen; clamp to the edges if people lose it.
+        if (s <= 1.05 && y > 120) onClose();
+        else setV(s <= 1.05 ? { x: 0, y: 0, s: 1, live: false } : { x, y, s, live: false });
+      }}
+      onPointerCancel={(e) => {
+        pts.current.delete(e.pointerId);
+        if (!pts.current.size) setV({ x: 0, y: 0, s: 1, live: false });
+      }}
+    >
+      <img
+        src={src}
+        alt={alt}
+        draggable={false}
+        data-live={v.live || undefined}
+        style={v.s !== 1 || v.x || v.y ? { transform: `translate(${v.x}px, ${v.y}px) scale(${v.s})` } : undefined}
+      />
+    </div>
   );
 }
 

@@ -2159,7 +2159,8 @@ li.sw-empty {
   margin: 0;
   border-radius: 0;
   padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(12px, env(safe-area-inset-left));
-  background: rgb(0 0 0 / 0.9);
+  /* --fade: a swipe down fades the dark as the picture follows the finger (1316). */
+  background: rgb(0 0 0 / calc(0.9 * var(--fade, 1)));
   box-shadow: none;
   overflow: hidden;
   touch-action: none;
@@ -2179,6 +2180,17 @@ li.sw-empty {
   max-width: 100%;
   max-height: 100%;
   border-radius: 10px;
+}
+.lightbox img {
+  transition: transform 180ms ease-out;
+}
+.lightbox img[data-live] {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lightbox img {
+    transition: none;
+  }
 }
 .lightbox-bar {
   display: flex;

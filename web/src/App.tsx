@@ -78,7 +78,7 @@ import { AUTH_URL, nativeApp } from "./auth";
 import { appPlatform, DOWNLOADS, offered } from "./downloads";
 import { AvatarField } from "./AvatarField";
 import { pond } from "./pond";
-import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped } from "./ui";
+import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped, ZoomStage } from "./ui";
 
 export function App() {
   const auth = useApp((s) => s.auth);
@@ -906,9 +906,13 @@ function Modals() {
       return (
         <Dialog label={modal.name} className="lightbox">
           {/* Full screen (1312): a tap on the dark around the picture closes it, like the backdrop did. */}
-          <div className="lightbox-stage" onClick={(e) => e.target === e.currentTarget && set({ modal: null })}>
-            {modal.video ? <video src={modal.src} controls autoPlay playsInline aria-label={modal.name} /> : <img src={modal.src} alt={modal.name} />}
-          </div>
+          {modal.video ? (
+            <div className="lightbox-stage" onClick={(e) => e.target === e.currentTarget && set({ modal: null })}>
+              <video src={modal.src} controls autoPlay playsInline aria-label={modal.name} />
+            </div>
+          ) : (
+            <ZoomStage src={modal.src} alt={modal.name} onClose={() => set({ modal: null })} />
+          )}
           <div className="lightbox-bar">
             <span className="truncate">{modal.name}</span>
             <a className="btn ghost small" href={modal.src} target="_blank" rel="noopener noreferrer">

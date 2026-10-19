@@ -717,6 +717,19 @@ export function plainText(text: string, members: Record<string, Member>): string
     .replace(/<@([\w-]+)>/g, (_, id) => `@${members[id]?.displayName ?? "someone"}`)
     .replace(/```[\w+-]*\n?|`|\*\*|~~|\*/g, "")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+/** A lightbox picture's pan and zoom, as `translate(x, y) scale(s)` about its center. */
+export type View = { x: number; y: number; s: number };
+/**
+ * The view while fingers move (1316). `v` and `m0` are the view and the fingers' midpoint when the
+ * gesture began, `m` is the midpoint now, `zoom` the change in finger spread (1 for one finger), and
+ * `c` the picture's untransformed center. The point that was under the fingers stays under them.
+ */
+export function pinchView(v: View, m0: { x: number; y: number }, m: { x: number; y: number }, zoom: number, c: { x: number; y: number }): View {
+  const s = Math.min(6, Math.max(0.6, v.s * zoom));
+  const k = s / v.s;
+  return { s, x: m.x - c.x - (m0.x - c.x - v.x) * k, y: m.y - c.y - (m0.y - c.y - v.y) * k };
+}
+
 }
 
 // ---------------------------------------------------------------------------
