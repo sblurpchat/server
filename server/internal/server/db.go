@@ -216,10 +216,10 @@ func channelMemberIDs(ctx context.Context, q queryer, channelID string) ([]strin
 // deletes uploads that were never attached to a message within orphanAfter.
 func (s *Server) prune(ctx context.Context) error {
 	now := s.now()
-	cutoff := now.Add(-s.keepFor).UnixMilli()
+	cutoff := now.Add(-s.cfg.KeepFor).UnixMilli()
 	var orphans []string
 	err := s.writeTx(ctx, func(t *wtx) error {
-		if _, err := t.ExecContext(ctx, "DELETE FROM events WHERE seq <= (SELECT MAX(seq) FROM events) - ? AND at_ms < ?", s.keepEvents, cutoff); err != nil {
+		if _, err := t.ExecContext(ctx, "DELETE FROM events WHERE seq <= (SELECT MAX(seq) FROM events) - ? AND at_ms < ?", s.cfg.KeepEvents, cutoff); err != nil {
 			return err
 		}
 		rows, err := t.QueryContext(ctx, `DELETE FROM attachments WHERE message_id IS NULL AND created_at_ms < ?

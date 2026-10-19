@@ -953,7 +953,7 @@ func (s *Server) Subscribe(ctx context.Context, req *connect.Request[v1.Subscrib
 		return nil
 	}
 
-	tick := time.NewTicker(s.heartbeat)
+	tick := time.NewTicker(s.cfg.Heartbeat)
 	defer tick.Stop()
 	for {
 		select {

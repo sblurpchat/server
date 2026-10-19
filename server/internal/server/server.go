@@ -59,9 +59,6 @@ type Server struct {
 	limiter         *limiter
 	log             *slog.Logger
 	now             func() time.Time
-	heartbeat       time.Duration
-	keepEvents      int
-	keepFor         time.Duration
 	filesDir        string
 	fileKey         []byte
 	pluginsMu       sync.Mutex // guards plugins and pluginErrs
@@ -69,8 +66,6 @@ type Server struct {
 	pluginErrs      map[string]string // plugin name -> why it did not load
 	pluginOps       sync.Mutex        // one admin plugin change at a time
 	pluginJobs      chan func()
-	pluginMemory    int
-	pluginTimeout   time.Duration
 	writeWait       time.Duration
 	updateAvailable atomic.Pointer[string]
 	emoji           emojiCache
@@ -124,17 +119,12 @@ func New(cfg Config) (*Server, error) {
 	}
 	s := &Server{
 		cfg: cfg, db: d, log: cfg.Logger, now: cfg.Now,
-		jwks:          &jwks{client: cfg.HTTPClient, now: cfg.Now, byIss: map[string]*issuerKeys{}},
-		limiter:       &limiter{now: cfg.Now, buckets: map[string]*bucket{}},
-		heartbeat:     cfg.Heartbeat,
-		keepEvents:    cfg.KeepEvents,
-		keepFor:       cfg.KeepFor,
-		filesDir:      filesDir,
-		fileKey:       fileKey,
-		pluginMemory:  cfg.PluginMemory,
-		pluginTimeout: cfg.PluginTimeout,
-		writeWait:     writeWait,
-		stop:          make(chan struct{}),
+		jwks:      &jwks{client: cfg.HTTPClient, now: cfg.Now, byIss: map[string]*issuerKeys{}},
+		limiter:   &limiter{now: cfg.Now, buckets: map[string]*bucket{}},
+		filesDir:  filesDir,
+		fileKey:   fileKey,
+		writeWait: writeWait,
+		stop:      make(chan struct{}),
 	}
 	s.hub = newHub(s.nowMs)
 	if cfg.Seed != "" {

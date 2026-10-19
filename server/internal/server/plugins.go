@@ -203,7 +203,7 @@ func (s *Server) startPlugin(p *plugin) error {
 		CWD:                "/dev/null",
 		Context:            ctx,
 		CloseOnContextDone: true,
-		MemoryLimit:        s.pluginMemory,
+		MemoryLimit:        s.cfg.PluginMemory,
 		Stdout:             logw,
 		Stderr:             logw,
 	})
@@ -242,7 +242,7 @@ func (s *Server) evalPlugin(p *plugin, code string, out any) (dead bool, err err
 	if p.rt == nil {
 		return true, errors.New("plugin is not running")
 	}
-	timer := time.AfterFunc(s.pluginTimeout, p.cancel)
+	timer := time.AfterFunc(s.cfg.PluginTimeout, p.cancel)
 	var res string
 	func() {
 		defer func() {
@@ -259,7 +259,7 @@ func (s *Server) evalPlugin(p *plugin, code string, out any) (dead bool, err err
 		v.Free()
 	}()
 	if !timer.Stop() {
-		dead, err = true, fmt.Errorf("took longer than %s", s.pluginTimeout)
+		dead, err = true, fmt.Errorf("took longer than %s", s.cfg.PluginTimeout)
 	}
 	if dead {
 		stopRuntime(p)
