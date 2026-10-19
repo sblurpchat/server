@@ -1184,11 +1184,26 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
       if (get().modal || document.querySelector(":popover-open")) return;
       if (pasteTarget(editable, typing, lastZone, !!document.querySelector(".pane .composer")) === mine) ref.current?.focus();
     };
+    // A click on empty space in this pane focuses its composer, like Slack and Discord (1194).
+    // Not on controls, media or the composer itself, not when the click selects text,
+    // and not on touch, where focusing would pop up the keyboard.
+    const onClick = (e: globalThis.MouseEvent) => {
+      const t = e.target instanceof Element ? e.target : null;
+      const zone = (el: Element | null | undefined) => el?.closest(".channel, .pane");
+      if (!t || !ref.current || zone(t) !== zone(ref.current)) return;
+      if (t.closest("a, button, input, textarea, select, label, summary, form, img, video, audio, canvas, iframe, [role='button'], [role='menu'], [role='menuitem'], dialog, [role='dialog'], [contenteditable]:not([contenteditable='false'])")) return;
+      if (e.detail > 1 || !getSelection()?.isCollapsed) return;
+      if ((e as PointerEvent).pointerType === "touch" || matchMedia("(hover: none)").matches) return;
+      if (get().modal || document.querySelector(":popover-open")) return;
+      ref.current.focus({ preventScroll: true });
+    };
     document.addEventListener("paste", onPaste);
     document.addEventListener("keydown", onKey);
+    document.addEventListener("click", onClick);
     return () => {
       document.removeEventListener("paste", onPaste);
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("click", onClick);
     };
   }, [rootId, ref]);
 
