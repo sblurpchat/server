@@ -390,10 +390,11 @@ func (s *Server) SetMemberRoles(ctx context.Context, req *connect.Request[v1.Set
 // Who can post (1308) works like who can see: channel_post_roles lists ids,
 // and no rows means everyone. Admins and the owner always post. Besides
 // custom roles, "moderator" lets moderators in and "admin" alone limits the
-// channel to admins. Thread replies, reactions and edits are not limited.
+// channel to admins. Bots post too: only admins make them (1290). Thread
+// replies, reactions and edits are not limited.
 
 func mayPost(c *v1.Channel, m *v1.Member) bool {
-	if len(c.PostRoleIds) == 0 || m.Role >= v1.MemberRole_MEMBER_ROLE_ADMIN {
+	if len(c.PostRoleIds) == 0 || m.Role >= v1.MemberRole_MEMBER_ROLE_ADMIN || m.Kind == v1.MemberKind_MEMBER_KIND_BOT {
 		return true
 	}
 	for _, id := range c.PostRoleIds {

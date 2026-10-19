@@ -1236,6 +1236,7 @@ describe("who can post (1308)", () => {
     expect(mayPost(chan("admin"), as(MemberRole.ADMIN))).toBe(true);
     expect(mayPost(chan("admin"), as(MemberRole.OWNER))).toBe(true);
     expect(mayPost(chan("admin"), undefined)).toBe(false);
+    expect(mayPost(chan("admin"), create(MemberSchema, { id: "bot", kind: MemberKind.BOT }))).toBe(true);
   });
   it("lets moderators in only when chosen, and custom roles by id", () => {
     expect(mayPost(chan("admin"), as(MemberRole.MODERATOR))).toBe(false);

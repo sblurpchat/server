@@ -194,6 +194,9 @@ func TestWhoCanPost(t *testing.T) {
 		t.Fatalf("moderator posted in an admins-only channel: %v", err)
 	}
 	must0(t, post(ana, ""))
+	// Bots post in limited channels without a role (1290).
+	robo := e.client(must(ana.bots.CreateBot(ctx(), connect.NewRequest(&v1.CreateBotRequest{Username: "robo"}))).Token)
+	must0(t, post(robo, ""))
 	// Deleting the only post role leaves the channel to admins, not everyone,
 	// and members hear about it (1315).
 	sub := bob.subscribe(0) // replays; only the delete leaves just "admin"

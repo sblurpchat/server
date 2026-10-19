@@ -196,7 +196,7 @@ client. There is no separate apps system. The bot is ~150 lines in
 - **Who can post** (1308, replaces 1290's admins-only flag). Admins set
   `UpdateChannel{post_roles}` on text and private channels; it fills
   `Channel.post_role_ids` (table `channel_post_roles`, like `channel_roles`)
-  and emits `channel_updated`. Empty means everyone. Otherwise admins and
+  and emits `channel_updated`. Empty means everyone. Otherwise admins, bots and
   the owner always post, plus `"moderator"` (moderators) and custom role
   ids; `"admin"` alone limits it to admins. Anyone else gets
   `permission_denied` on a top-level `SendMessage`; thread replies, `React`

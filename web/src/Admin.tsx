@@ -173,7 +173,7 @@ export function ChannelDialog({ id, category = "", name: initial = "", focusTopi
             Everyone
           </label>
           <label>
-            <input type="radio" name="post" checked={!!post.length} onChange={() => setPost(["admin"])} />
+            <input type="radio" name="post" checked={!!post.length} onChange={() => setPost(["admin", "moderator"])} />
             Only these roles
           </label>
           <div className="post-pick" data-open={!!post.length} inert={!post.length}>
@@ -191,7 +191,7 @@ export function ChannelDialog({ id, category = "", name: initial = "", focusTopi
               ))}
             </div>
           </div>
-          <small className="muted">Owners and admins can always post. Everyone can react and reply in threads.</small>
+          <small className="muted">Owners, admins and bots can always post. Everyone can react and reply in threads.</small>
         </fieldset>
         {ch && siblings.length > 1 && (
           <div className="toggle-row">

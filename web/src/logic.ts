@@ -1294,11 +1294,11 @@ export function tokenBots<B extends { username: string }>(bots: B[], plugins: { 
 }
 
 /** Whether I may start a top-level post in a channel (1308). No post roles: everyone.
- *  Otherwise admins and the owner, "moderator" for moderators, or a custom role I have.
+ *  Otherwise admins, the owner and bots, "moderator" for moderators, or a custom role I have.
  *  Thread replies and reactions stay open to all. Mirrors the server's mayPost. */
 export const mayPost = (ch: Channel, me: Member | undefined) =>
   !ch.postRoleIds.length ||
-  (!!me && (me.role >= MemberRole.ADMIN || ch.postRoleIds.some((id) => (id === "moderator" && me.role >= MemberRole.MODERATOR) || me.roleIds.includes(id))));
+  (!!me && (me.role >= MemberRole.ADMIN || me.kind === MemberKind.BOT || ch.postRoleIds.some((id) => (id === "moderator" && me.role >= MemberRole.MODERATOR) || me.roleIds.includes(id))));
 
 /** Who may post, for a sentence: "admins, moderators and Staff". */
 export const posterNames = (ids: string[], roles: Role[]) =>
