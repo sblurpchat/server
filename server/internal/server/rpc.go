@@ -842,7 +842,7 @@ func (s *Server) Subscribe(ctx context.Context, req *connect.Request[v1.Subscrib
 	}
 
 	// Nothing from before they joined: ListMessages shows that, the log
-	// also holds deleted and pre-edit text.
+	// may hold channels they could not see then.
 	last := max(req.Msg.AfterSeq, m.joinedSeq)
 	var oldest int64
 	if err := s.db.r.QueryRowContext(ctx, "SELECT COALESCE(MIN(seq), 0) FROM events").Scan(&oldest); err != nil {
@@ -1455,6 +1455,9 @@ func (s *Server) EditMessage(ctx context.Context, req *connect.Request[v1.EditMe
 		if _, err := t.ExecContext(ctx, "UPDATE messages SET text = ?, edited_at_ms = ? WHERE id = ?", r.Text, now, msg.Id); err != nil {
 			return err
 		}
+		if err := scrubMessageEvents(t, msg.ChannelId, msg.Id, msg.CreatedSeq, &v1.Message{Text: r.Text, EditedAtMs: now}); err != nil {
+			return err
+		}
 		if err := s.emitMessageUpdated(t, msg.Id, c.Id, now); err != nil {
 			return err
 		}
@@ -1497,7 +1500,7 @@ func (s *Server) DeleteMessage(ctx context.Context, req *connect.Request[v1.Dele
 		if _, err := t.ExecContext(ctx, "DELETE FROM attachments WHERE message_id = ?", msg.Id); err != nil {
 			return err
 		}
-		if err := purgeMessageEvents(t, msg.ChannelId, msg.Id, msg.CreatedSeq); err != nil {
+		if err := scrubMessageEvents(t, msg.ChannelId, msg.Id, msg.CreatedSeq, nil); err != nil {
 			return err
 		}
 		now := s.nowMs()
@@ -1524,16 +1527,19 @@ func (s *Server) DeleteMessage(ctx context.Context, req *connect.Request[v1.Dele
 	return connect.NewResponse(&v1.DeleteMessageResponse{}), nil
 }
 
-// purgeMessageEvents drops a message's earlier events, which still carry
-// its text, so a Subscribe replay cannot bring a deleted message back.
+// scrubMessageEvents fixes a message's earlier events, which still carry
+// its old text, so a Subscribe replay cannot bring it back. With edited nil
+// (a delete) they are dropped. Otherwise they keep their place, so an
+// offline client still gets message_created, but carry edited's text.
 // ponytail: decodes the channel's kept events since the message; add an
-// events.message_id column if deletes in busy channels get slow.
-func purgeMessageEvents(t *wtx, channel, id string, from int64) error {
+// events.message_id column if edits and deletes in busy channels get slow.
+func scrubMessageEvents(t *wtx, channel, id string, from int64, edited *v1.Message) error {
 	rows, err := t.QueryContext(t.ctx, "SELECT seq, payload FROM events WHERE scope_channel = ? AND seq >= ?", channel, from)
 	if err != nil {
 		return err
 	}
 	var gone []int64
+	fixed := map[int64][]byte{}
 	for rows.Next() {
 		var seq int64
 		var payload []byte
@@ -1542,9 +1548,24 @@ func purgeMessageEvents(t *wtx, channel, id string, from int64) error {
 			return err
 		}
 		ev := &v1.Event{}
-		if proto.Unmarshal(payload, ev) == nil && cmp.Or(ev.GetMessageCreated(), ev.GetMessageUpdated()).GetId() == id {
-			gone = append(gone, seq)
+		if proto.Unmarshal(payload, ev) != nil {
+			continue
 		}
+		m := cmp.Or(ev.GetMessageCreated(), ev.GetMessageUpdated())
+		if m.GetId() != id {
+			continue
+		}
+		if edited == nil {
+			gone = append(gone, seq)
+			continue
+		}
+		m.Text, m.EditedAtMs = edited.Text, edited.EditedAtMs
+		b, err := proto.Marshal(ev)
+		if err != nil {
+			rows.Close()
+			return err
+		}
+		fixed[seq] = b
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
@@ -1552,6 +1573,11 @@ func purgeMessageEvents(t *wtx, channel, id string, from int64) error {
 	}
 	for _, seq := range gone {
 		if _, err := t.ExecContext(t.ctx, "DELETE FROM events WHERE seq = ?", seq); err != nil {
+			return err
+		}
+	}
+	for seq, b := range fixed {
+		if _, err := t.ExecContext(t.ctx, "UPDATE events SET payload = ? WHERE seq = ?", b, seq); err != nil {
 			return err
 		}
 	}

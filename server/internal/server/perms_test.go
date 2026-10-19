@@ -227,3 +227,37 @@ func TestFirstJoinerRace(t *testing.T) {
 		t.Fatalf("roles = %v, want exactly one owner", roles)
 	}
 }
+
+// An edit rewrites the message's earlier events, so a replay from an old
+// seq shows the current text and never the text before the edit (1122).
+func TestReplayHasNoPreEditText(t *testing.T) {
+	e := newEnv(t)
+	ana, bob := e.join("ana"), e.join("bob")
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	oops := ana.send(gen.Id, "my password is hunter2")
+	must(ana.chat.React(ctx(), connect.NewRequest(&v1.ReactRequest{MessageId: oops.Id, Emoji: "👀"})))
+	must(ana.chat.EditMessage(ctx(), connect.NewRequest(&v1.EditMessageRequest{MessageId: oops.Id, Text: "never mind"})))
+	ana.send(gen.Id, "marker")
+
+	var seen []*v1.Event
+	bob.subscribe(0).next(isCreated("marker"), &seen)
+	created := false
+	for _, ev := range seen {
+		m := ev.GetMessageCreated()
+		if m == nil {
+			m = ev.GetMessageUpdated()
+		}
+		if m.GetText() == "my password is hunter2" {
+			t.Fatalf("replayed pre-edit text: %v", ev)
+		}
+		if ev.GetMessageCreated().GetId() == oops.Id {
+			created = true
+			if m.EditedAtMs == 0 {
+				t.Fatalf("rewritten message_created lost edited_at: %v", ev)
+			}
+		}
+	}
+	if !created {
+		t.Fatal("the edited message's message_created must still replay")
+	}
+}
