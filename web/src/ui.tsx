@@ -6,7 +6,7 @@ import { Img, Shortcodes, useEmojiSet, useMore } from "./CustomEmoji";
 import { bumpRecent, pickerSections, TONES, withTone, type PickItem } from "./emoji";
 import { EMOJI_DATA } from "./emoji-data";
 import { absUrl, set, setLook, useApp } from "./store";
-import { AUTH_URL } from "./auth";
+import { AUTH_URL, reach } from "./auth";
 
 // ---------------------------------------------------------------------------
 // Icons: Lucide on a 24px grid, drawn at a 1.75 stroke
@@ -90,7 +90,7 @@ export function Avatar({ m, size = 36, presence = false }: { m?: Member; size?: 
   return (
     <span className="avatar" aria-hidden="true" style={{ width: size, height: size, ["--r" as string]: `${Math.round(size * 0.22)}px` }}>
       {m?.avatarUrl ? (
-        <img src={m.avatarUrl} alt="" width={size} height={size} />
+        <img src={reach(m.avatarUrl)} alt="" width={size} height={size} />
       ) : (
         <span className="avatar-initials" data-i={initials(name)} style={{ background: swatch(m?.id ?? name), fontSize: Math.round(size * 0.4) }} />
       )}

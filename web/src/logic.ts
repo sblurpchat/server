@@ -1412,3 +1412,13 @@ export function blockedRows(order: string[], cs: Record<string, Community>): { u
     });
   });
 }
+
+// Dev over tailscale serve (ticket 1336): a phone cannot resolve *.localhost, so it reaches each dev
+// server at https://<tailnet host>:1<port>, the ports scripts/dev.sh uses. Ids, tokens and the issuer
+// keep the canonical URLs; only the address the browser fetches changes.
+const DEV_PORTS: Record<string, string> = { auth: "8081", community: "8082", owls: "8083", app: "5173", tickets: "8090" };
+export function tailnetUrl(url: string, tailnet: string): string {
+  const m = /^http:\/\/(?:localhost:(\d{4})|(\w+)\.sblurp\.localhost:1355)(?=[/?#]|$)/.exec(url);
+  const port = m && (m[1] ?? DEV_PORTS[m[2]]);
+  return m && port ? `https://${tailnet}:1${port}${url.slice(m[0].length)}` : url;
+}

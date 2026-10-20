@@ -1,7 +1,15 @@
 // Login against sblurp.chat (Authorization Code + PKCE) and per-community access tokens.
-import { tokenFresh } from "./logic";
+import { tailnetUrl, tokenFresh } from "./logic";
 
 export const AUTH_URL: string = import.meta.env.VITE_AUTH_URL ?? "http://localhost:8081";
+// Dev pages served over tailscale serve (the iOS dev app on a phone, ticket 1336) reach the dev
+// servers through the tailnet. Every fetch goes through here, so one patch covers them all.
+const tailnet = import.meta.env.DEV && globalThis.location?.hostname.endsWith(".ts.net") ? location.hostname : "";
+export const reach = (u: string) => (tailnet ? tailnetUrl(u, tailnet) : u);
+if (tailnet) {
+  const f = globalThis.fetch;
+  globalThis.fetch = (i, o) => f(i instanceof Request ? new Request(reach(i.url), i) : reach(String(i)), o);
+}
 const CLIENT_ID = "sblurp-web";
 const RT_KEY = "sblurp.refreshToken";
 // Set by signOut until a sign-in succeeds: the next sign-in sends prompt=login, so sblurp.chat asks
@@ -70,7 +78,7 @@ export async function startLogin(signup = false) {
   const verifier = randomToken();
   const state = randomToken();
   savePkce(state, verifier);
-  location.assign(authorizeUrl(await pkceChallenge(verifier), state, signup));
+  location.assign(reach(authorizeUrl(await pkceChallenge(verifier), state, signup)));
 }
 
 export const hasSession = () => !!localStorage.getItem(RT_KEY);

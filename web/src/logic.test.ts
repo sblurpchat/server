@@ -2,7 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { Code } from "@connectrpc/connect";
 import css from "./app.css?raw";
-import { channelLabel, dmPeer } from "./logic";
+import { channelLabel, dmPeer, tailnetUrl } from "./logic";
 import {
   ChannelKind,
   ChannelMode,
@@ -1280,5 +1280,17 @@ describe("pinchView (1316)", () => {
     expect(pinchView({ x: 0, y: 0, s: 1 }, { x: 150, y: 100 }, { x: 150, y: 100 }, 2, c)).toEqual({ s: 2, x: -50, y: 0 });
     expect(pinchView({ x: 10, y: 0, s: 2 }, { x: 0, y: 0 }, { x: 5, y: 30 }, 1, c)).toEqual({ s: 2, x: 15, y: 30 });
     expect(pinchView({ x: 0, y: 0, s: 5 }, c, c, 10, c).s).toBe(6);
+  });
+});
+
+describe("tailnetUrl", () => {
+  it("maps dev server URLs to tailscale serve ports and leaves others alone", () => {
+    const t = "box.example.ts.net";
+    expect(tailnetUrl("http://auth.sblurp.localhost:1355/oauth/token", t)).toBe("https://box.example.ts.net:18081/oauth/token");
+    expect(tailnetUrl("http://owls.sblurp.localhost:1355", t)).toBe("https://box.example.ts.net:18083");
+    expect(tailnetUrl("http://localhost:8082/files/a?sig=1", t)).toBe("https://box.example.ts.net:18082/files/a?sig=1");
+    expect(tailnetUrl("http://nope.sblurp.localhost:1355/x", t)).toBe("http://nope.sblurp.localhost:1355/x");
+    expect(tailnetUrl("http://localhost:80821/x", t)).toBe("http://localhost:80821/x");
+    expect(tailnetUrl("https://sblurp.chat/x", t)).toBe("https://sblurp.chat/x");
   });
 });

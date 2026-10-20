@@ -4,7 +4,7 @@ import { Code, ConnectError, createClient, type Client, type Interceptor } from 
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { useSyncExternalStore } from "react";
 import type { SettingsTab } from "./Admin";
-import { AUTH_URL, fetchAppearance, fetchCommunities, fetchProfile, finishLogin, saveAppearance, saveCommunities, getToken, hasSession, SignedOutError, signOut as authSignOut, startLogin, type Profile } from "./auth";
+import { AUTH_URL, reach, fetchAppearance, fetchCommunities, fetchProfile, finishLogin, saveAppearance, saveCommunities, getToken, hasSession, SignedOutError, signOut as authSignOut, startLogin, type Profile } from "./auth";
 import { loadEmoji } from "./CustomEmoji";
 import { templateChannels, type Template } from "./templates";
 import { fakeTransport, fakeUpload, FAKE_URLS, startSimulation } from "./fake";
@@ -262,7 +262,7 @@ const toInfo = (i: GetServerInfoResponse): Info => ({
 
 /** Resolve an attachment or icon URL relative to its server. */
 // Fake communities have made-up hosts; their files are served by this dev server.
-export const absUrl = (base: string, u: string) => (u ? new URL(u, FAKE ? location.href : `${base}/`).href : "");
+export const absUrl = (base: string, u: string) => (u ? reach(new URL(u, FAKE ? location.href : `${base}/`).href) : "");
 
 // ---------------------------------------------------------------------------
 // Live connection
