@@ -334,6 +334,145 @@
   color-scheme: dark;
 }
 
+/* Neon (1341): a city at 3am. Blue-black glass, cyan signage for links, magenta for anything you press. */
+[data-theme="neon"] {
+  --ink: #f4f0ff;
+  --rail: #05040d;
+  --frost: #0a0817;
+  --paper: #0e0c1f;
+  --raspberry: #3ff0ff;
+  --accent-fill: #c0168e;
+  --cherry: #ff5c8a;
+  --cherry-text: #ff6f97;
+  --badge: #d0145e;
+  --graphite: #9d96c8;
+  --line: #262048;
+  --hover: #1a1636;
+  --selected: #2b1152;
+  --text: #e9e5fb;
+  --msg-hover: #15122b;
+  --mention-bg: #2f1034;
+  --raised: #17142e;
+  --shadow-c: rgb(0 0 0 / 0.6);
+  --scrim: rgb(3 2 10 / 0.75);
+  --online: #3cffa6;
+  --away: #ffcc3f;
+  --code-bg: #08061a;
+  --tip: #05040d;
+  color-scheme: dark;
+}
+/* The open channel is lit like a tube sign; the header ends in one magenta-to-cyan line. */
+[data-theme="neon"] .chan[aria-current="page"] {
+  box-shadow: inset 3px 0 0 var(--raspberry), 0 0 18px rgb(255 40 180 / 0.3);
+}
+[data-theme="neon"] .chan-head {
+  border-image: linear-gradient(90deg, #ff2bb4, #3ff0ff) 1;
+}
+/* Phosphor (1341): an amber CRT terminal. One hue at different brightness, faint scanlines. */
+[data-theme="phosphor"] {
+  --ink: #ffc56b;
+  --rail: #070400;
+  --frost: #0d0801;
+  --paper: #120b02;
+  --raspberry: #ffe39a;
+  --accent-fill: #8f5200;
+  --cherry: #ff6a3d;
+  --cherry-text: #ff7f52;
+  --badge: #b5360f;
+  --graphite: #c08b42;
+  --line: #2f1e08;
+  --hover: #201505;
+  --selected: #3a2507;
+  --text: #ffb54a;
+  --msg-hover: #1a1103;
+  --mention-bg: #3a1a08;
+  --raised: #1b1204;
+  --shadow-c: rgb(0 0 0 / 0.6);
+  --scrim: rgb(6 3 0 / 0.75);
+  --online: #b6e05a;
+  --away: #ff9d2e;
+  --code-bg: #090500;
+  --tip: #000000;
+  --on-tip: #ffc56b;
+  color-scheme: dark;
+}
+[data-theme="phosphor"] .channel {
+  background-image: repeating-linear-gradient(transparent 0 2px, rgb(255 170 50 / 0.035) 2px 3px);
+}
+[data-theme="phosphor"] :is(.channel, .sidebar) {
+  text-shadow: 0 0 0.4em rgb(255 150 30 / 0.3);
+}
+/* Klein (1341): the whole message pane is ultramarine, with signal yellow for links and the open channel. */
+[data-theme="klein"] {
+  --ink: #ffffff;
+  --rail: #0a0f55;
+  --frost: #1520a0;
+  --paper: #1c2bb8;
+  --raspberry: #ffe14a;
+  --accent-fill: #c4126b;
+  --cherry: #ff8fb8;
+  --cherry-text: #ffa3c5;
+  --badge: #c4126b;
+  --graphite: #c9cfff;
+  --line: #3241c8;
+  --hover: #2535c4;
+  --selected: #2f40d4;
+  --text: #ffffff;
+  --msg-hover: #2333c0;
+  --mention-bg: #4a2a9e;
+  --raised: #2232c2;
+  --shadow-c: rgb(5 8 50 / 0.5);
+  --scrim: rgb(5 8 50 / 0.7);
+  --online: #5cf0a0;
+  --away: #ffb547;
+  --code-bg: #121c8a;
+  --tip: #0a0f55;
+  color-scheme: dark;
+}
+/* #0a0f55 on #ffe14a is 14:1. */
+[data-theme="klein"] .chan[aria-current="page"],
+[data-theme="klein"] .chan[aria-current="page"] .chan-icon {
+  background: var(--raspberry);
+  color: var(--rail);
+}
+/* Chrome (1341): Y2K brushed metal. Silver sidebar, gunmetal rail, electric blue, an iridescent selection. */
+[data-theme="chrome"] {
+  --ink: #0b1220;
+  --rail: #262b33;
+  --frost: #e3e7ec;
+  --paper: #f7f8fa;
+  --raspberry: #0040e0;
+  --accent-fill: #0040e0;
+  --cherry: #e0204a;
+  --cherry-text: #c8183f;
+  --badge: #c8183f;
+  --graphite: #4a5363;
+  --line: #cdd3db;
+  --hover: #d6dbe2;
+  --selected: #dcd6ff;
+  --text: #0b1220;
+  --msg-hover: #eef0f4;
+  --mention-bg: #ffe6ee;
+  --raised: #ffffff;
+  --shadow-c: rgb(11 18 32 / 0.14);
+  --scrim: rgb(11 18 32 / 0.5);
+  --online: #0e8f55;
+  --away: #b56a00;
+  --code-bg: #eceff3;
+  --tip: #0b1220;
+  color-scheme: light;
+}
+/* The darkest stop (#c8cfd8) still gives AA for --ink and --graphite. */
+[data-theme="chrome"] .sidebar {
+  background: linear-gradient(160deg, #f1f3f6, #c8cfd8) fixed;
+}
+[data-theme="chrome"] .chan-head {
+  background: linear-gradient(#ffffff, #e3e7ec);
+}
+[data-theme="chrome"] .chan[aria-current="page"] {
+  background: linear-gradient(100deg, #c6f1ff, #ddd2ff 55%, #ffd3ea);
+}
+
 /* Fonts (1197): self-hosted, latin subsets, all SIL OFL 1.1 (public/fonts/OFL.txt).
    A browser downloads a face only when text uses it, so unpicked fonts never load. */
 @font-face {

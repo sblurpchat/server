@@ -955,6 +955,10 @@ const THEME_NAMES: Record<Theme, string> = {
   sand: "Sand",
   grape: "Grape",
   black: "Black",
+  neon: "Neon",
+  phosphor: "Phosphor",
+  klein: "Klein",
+  chrome: "Chrome",
   custom: "Custom",
 };
 const FONT_NAMES: Record<Look["font"], string> = {
