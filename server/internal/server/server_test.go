@@ -1407,6 +1407,17 @@ func TestSeed(t *testing.T) {
 	if !strings.HasPrefix(got["margot"], "/files/") || got["ian"] != "" || got["yuki"] != "https://x.test/a.png" {
 		t.Fatalf("backfill = %v", got)
 	}
+	// Each start with -seed writes fresh tokens for the seeded people, and
+	// they post as those people over the normal API (the dev simulator, 1372).
+	path := filepath.Join(e.dir, "sim-tokens.json")
+	b, err := os.ReadFile(path)
+	var toks map[string]string
+	if fi, _ := os.Stat(path); err != nil || json.Unmarshal(b, &toks) != nil || fi.Mode().Perm() != 0o600 || toks["margot"] == "" {
+		t.Fatalf("sim tokens: %v %s", err, b)
+	}
+	if me := e.client(toks["margot"]).state().Me; me.Username != "margot" || me.Kind != v1.MemberKind_MEMBER_KIND_HUMAN {
+		t.Fatalf("sim token is %v", me)
+	}
 }
 
 func TestPureHelpers(t *testing.T) {

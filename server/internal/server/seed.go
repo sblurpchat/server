@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand/v2"
@@ -35,7 +36,7 @@ func (s *Server) seed(ctx context.Context, name string) error {
 		return err
 	}
 	if members > 0 {
-		return s.seedAvatars(ctx, c)
+		return s.seedExtras(ctx, c)
 	}
 	now := s.now()
 	rng := rand.New(rand.NewPCG(7, 7))
@@ -193,7 +194,42 @@ func (s *Server) seed(ctx context.Context, name string) error {
 		return err
 	}
 	s.log.Info("wrote seeded bot token", "bot", c.Bot.Username, "path", path)
-	return s.seedAvatars(ctx, c)
+	return s.seedExtras(ctx, c)
+}
+
+// seedExtras runs on every start with -seed, also on an existing database.
+func (s *Server) seedExtras(ctx context.Context, c seed.Community) error {
+	if err := s.seedAvatars(ctx, c); err != nil {
+		return err
+	}
+	return s.seedSimTokens(ctx, c)
+}
+
+// seedSimTokens gives each seeded person a fresh bot-style token and writes
+// them to <data>/sim-tokens.json (username -> token, mode 0600), so the dev
+// chat simulator (cmd/sim, ticket 1372) can post as them over the normal API.
+// Tokens rotate on every start; people who log in (iss is set) are skipped.
+func (s *Server) seedSimTokens(ctx context.Context, c seed.Community) error {
+	toks := map[string]string{}
+	err := s.writeTx(ctx, func(t *wtx) error {
+		for _, m := range c.Members {
+			tok, hash := newBotToken()
+			res, err := t.ExecContext(ctx, "UPDATE members SET token_hash = ? WHERE username = ? AND kind = ? AND iss IS NULL AND deleted = 0",
+				hash, m.Username, v1.MemberKind_MEMBER_KIND_HUMAN)
+			if err != nil {
+				return err
+			}
+			if n, _ := res.RowsAffected(); n > 0 {
+				toks[m.Username] = tok
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	b, _ := json.Marshal(toks)
+	return os.WriteFile(filepath.Join(s.cfg.DataDir, "sim-tokens.json"), b, 0o600)
 }
 
 // seedAvatars gives each seeded member (and the bot) that has no avatar its

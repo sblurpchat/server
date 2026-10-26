@@ -29,7 +29,7 @@ Every flag can also come from an environment variable.
 | Flag | Env | Default | What |
 |---|---|---|---|
 | `-addr` | `SBLURP_ADDR` | `:8082` | Listen address. HTTP/1.1 and cleartext HTTP/2 (h2c). |
-| `-data` | `SBLURP_DATA` | `data` | Data directory: `sblurp.db`, `files/`, `file-key`, `bot-token.txt`. |
+| `-data` | `SBLURP_DATA` | `data` | Data directory: `sblurp.db`, `files/`, `file-key`, `bot-token.txt`, `sim-tokens.json`. |
 | `-name` | `SBLURP_NAME` | `Sblurp Community` | Community name. |
 | `-description` | `SBLURP_DESCRIPTION` | seed's text | One line for the join screen. |
 | `-icon-url` | `SBLURP_ICON_URL` | | Rail icon, unless an admin uploads one. |
@@ -70,6 +70,24 @@ For any other bot: an admin calls `BotService.CreateBot`, keeps the token
 (shown once), and runs the bot with it. A bot uses the same API as the web
 client. There is no separate apps system. The bot is ~150 lines in
 `cmd/example-bot/main.go`; copy it.
+
+## Run the chat simulator (dev only)
+
+Every start with `-seed` also gives each seeded person a fresh token and
+writes them to `<data>/sim-tokens.json` (mode 0600). `cmd/sim` uses them to
+post as those people over the normal API. With `make dev` running, from the
+repo root:
+
+```sh
+make sim            # mentions and DMs statico; ME=yourname for another account
+```
+
+About every 5 seconds a random seeded person posts in one of the two dev
+communities. About half are plain channel posts; the rest are thread replies,
+@mentions, DMs and group DMs with you, so every unread, mention and badge
+state shows. Ctrl-C stops it. It only reaches a community you have joined
+and whose server ran with `-seed`. Tokens rotate when the server restarts;
+the simulator rereads the file each time. It is not in any release build.
 
 ## API notes for clients
 
@@ -423,6 +441,7 @@ with a JWKS, and real Connect clients, with a fake clock.
 |---|---|
 | `cmd/sblurp-server` | Flags, HTTP server, graceful shutdown. |
 | `cmd/example-bot` | The example bot. |
+| `cmd/sim` | Dev-only chat simulator (`make sim`). |
 | `internal/server/db.go` | SQLite (WAL, one writer, reader pool), embedded migrations, events, UUIDv7. |
 | `internal/server/migrations/` | `NNN_name.sql`, applied in order, tracked by `PRAGMA user_version`. |
 | `internal/server/auth.go` | EdDSA JWT check, JWKS cache, bot tokens, the auth interceptor. |
