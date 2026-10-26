@@ -31,8 +31,6 @@
   --knob: #ffffff;
   --tip: #0f1019;
   --on-tip: #ffffff;
-  --add: #7ee0a8;
-  --add-hover: #1f9d5c;
   color-scheme: dark light; /* dark when the system gives no preference (1249) */
 }
 [data-theme="light"] {
@@ -98,8 +96,6 @@
   --away: #8a5200;
   --code-bg: #ececec;
   --tip: #000000;
-  --add: #8ff0b8;
-  --add-hover: #006b2c;
   color-scheme: light;
 }
 /* Cherry cola: warm brown-red dark with a cherry fizz accent. */
@@ -221,8 +217,6 @@
   --away: #e69f00;
   --code-bg: #f0f2f6;
   --tip: #141a26;
-  --add: #56b4e9;
-  --add-hover: #0072b2;
   color-scheme: light;
 }
 /* Fjord: cool blue-gray dark, frosted cyan accent. */
@@ -1169,12 +1163,13 @@ kbd {
   outline: 2px solid var(--raspberry);
   outline-offset: 3px;
 }
+/* The rail's own foreground, and the theme's accent on hover (1412). */
 .cicon.add {
   background: color-mix(in srgb, var(--on-tip) 9%, var(--rail)) !important;
-  color: var(--add);
+  color: var(--on-tip);
 }
 .rail-add .rail-btn:hover .cicon {
-  background: var(--add-hover) !important;
+  background: var(--accent-fill) !important;
   color: var(--on-accent);
 }
 .rail-badge {
