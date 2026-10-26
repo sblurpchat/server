@@ -4050,6 +4050,12 @@ li.sw-empty {
   max-height: 40dvh;
   min-height: 36px;
 }
+/* Phones cap the draft at six lines, since dvh ignores the keyboard in WKWebView (1481). */
+@media (max-width: 767px) {
+  .composer-input {
+    max-height: calc(1.47em * 6 + 14px);
+  }
+}
 .composer-input::placeholder {
   color: var(--graphite);
 }
