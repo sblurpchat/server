@@ -1117,6 +1117,7 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
             value={code}
             onChange={(e) => setCode(e.target.value)}
             spellCheck={false}
+            autoCorrect="off"
             autoCapitalize="characters"
             placeholder="From your invite link"
             ref={errField === "invite" ? fieldRef : undefined}
@@ -1253,11 +1254,15 @@ function AddCommunity({ input: given }: { input?: string }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             aria-invalid={!!err}
+            aria-describedby={err ? "add-err" : undefined}
             spellCheck={false}
             autoCapitalize="off"
+            autoCorrect="off"
+            inputMode="url"
+            enterKeyHint="go"
           />
           {err && (
-            <p className="error" role="alert">
+            <p className="error" id="add-err" role="alert">
               {err}
             </p>
           )}
