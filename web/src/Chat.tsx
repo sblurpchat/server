@@ -14,6 +14,7 @@ import {
   channelLabel,
   dayLabel,
   decodeMentions,
+  editsInComposer,
   emojiMatches,
   encodeMentions,
   formatBytes,
@@ -761,7 +762,7 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
             {timeEl}
           </header>
         )}
-        {editing ? (
+        {editing && !NO_HOVER.matches ? (
           <EditBox url={url} m={m} />
         ) : (
           <div className="msg-text">
@@ -1290,6 +1291,33 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
   // The phone list scrolls after four rows, so the picked row stays in view (1480).
   useEffect(() => document.getElementById(`ac-${key}-${sel}`)?.scrollIntoView({ block: "nearest" }), [key, sel]);
 
+  // On a phone, Edit message moves the text into this box, like iMessage and Slack (1513).
+  // The draft is set aside and comes back on save, cancel or a channel switch.
+  const editMsg = useApp((s) => {
+    const m = s.editing ? s.cs[url]?.lists[listKey(channelId, rootId)]?.items.find((x) => x.id === s.editing) : undefined;
+    return editsInComposer(NO_HOVER.matches, m, channelId, rootId) ? m : undefined;
+  });
+  const [editErr, setEditErr] = useState("");
+  useEffect(() => {
+    if (!editMsg) return;
+    const saved = get().drafts[key] ?? "";
+    const t = decodeMentions(editMsg.text, c.members);
+    setDraft(key, t);
+    setEditErr("");
+    requestAnimationFrame(() => (ref.current?.focus(), ref.current?.setSelectionRange(t.length, t.length)));
+    return () => setDraft(key, saved);
+  }, [editMsg?.id, key]);
+  const saveEdit = async () => {
+    if (!editMsg) return;
+    if (!text.trim()) return set({ modal: { t: "delete", id: editMsg.id } });
+    try {
+      await edit(url, editMsg.id, encodeMentions(text, Object.values(c.members)));
+      set({ editing: null });
+    } catch (e) {
+      setEditErr(errorText(e, c.info?.name));
+    }
+  };
+
   const uploading = files.some((f) => !f.att && !f.error);
   const ready = files.filter((f) => f.att).map((f) => f.att!);
 
@@ -1307,6 +1335,7 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
 
   const submit = (e?: FormEvent) => {
     e?.preventDefault();
+    if (editMsg) return void saveEdit();
     if (uploading || (!text.trim() && !ready.length)) return;
     void send(url, channelId, rootId, encodeMentions(text.trim(), Object.values(c.members)), ready);
     setDraft(key, "");
@@ -1504,8 +1533,22 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
           ))}
         </ul>
       )}
+      {editMsg && (
+        <div className="edit-strip">
+          <Icon name="edit" size={16} />
+          <span>Editing message</span>
+          {editErr && (
+            <span className="error small" role="alert">
+              {editErr}
+            </span>
+          )}
+          <button type="button" className="icon-btn" aria-label="Cancel edit" onClick={() => set({ editing: null })}>
+            <Icon name="x" />
+          </button>
+        </div>
+      )}
       <div className="composer-box">
-        {files.length > 0 && (
+        {files.length > 0 && !editMsg && (
           <ul className="chips" aria-label="Attachments">
             {files.map((f) => (
               <li key={f.id} className="chip" data-error={!!f.error} aria-busy={!f.att && !f.error}>
@@ -1519,10 +1562,12 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
           </ul>
         )}
         <div className="composer-row">
-          <label className="icon-btn attach" title="Attach files">
-            <input type="file" multiple className="visually-hidden" aria-label="Attach files" onChange={(e) => (e.target.files && addFiles(e.target.files), (e.target.value = ""))} />
-            <Icon name="clip" />
-          </label>
+          {!editMsg && (
+            <label className="icon-btn attach" title="Attach files">
+              <input type="file" multiple className="visually-hidden" aria-label="Attach files" onChange={(e) => (e.target.files && addFiles(e.target.files), (e.target.value = ""))} />
+              <Icon name="clip" />
+            </label>
+          )}
           <textarea
             ref={ref}
             rows={1}
@@ -1573,6 +1618,12 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
                   return;
                 }
               }
+              if (e.key === "Escape" && editMsg) {
+                e.preventDefault();
+                e.stopPropagation();
+                set({ editing: null });
+                return;
+              }
               // On a touch keyboard Return is a newline and the send button sends, like iMessage (1448).
               if (e.key === "Enter" && !e.shiftKey && !NO_HOVER.matches) {
                 e.preventDefault();
@@ -1587,9 +1638,15 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
               }
             }}
           />
-          <button className="send" aria-label="Send" title={`Send (Enter). ${MOD} Shift Enter sends it as a snippet.`} disabled={uploading || (!text.trim() && !ready.length)}>
-            <Icon name="send" size={18} />
-          </button>
+          {editMsg ? (
+            <button className="send" aria-label="Save edit">
+              <Icon name="check" size={18} />
+            </button>
+          ) : (
+            <button className="send" aria-label="Send" title={`Send (Enter). ${MOD} Shift Enter sends it as a snippet.`} disabled={uploading || (!text.trim() && !ready.length)}>
+              <Icon name="send" size={18} />
+            </button>
+          )}
         </div>
         {/* A touch keyboard has no ⌘ Shift Enter (1482). */}
         {longText && !NO_HOVER.matches && (

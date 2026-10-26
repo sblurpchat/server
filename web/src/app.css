@@ -2242,6 +2242,21 @@ kbd {
 .toggle-row {
   cursor: pointer;
 }
+.snoozed {
+  cursor: default;
+  animation: fade-in 0.15s ease-out;
+}
+.snoozed b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.snooze-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  animation: fade-in 0.15s ease-out;
+}
 .blocked-list {
   display: grid;
   gap: 8px;
@@ -4334,6 +4349,23 @@ li.sw-empty {
   height: 44px;
   padding: 0 18px;
 }
+/* Editing in the composer on a phone (1513). */
+.edit-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  font-size: 0.875rem;
+  color: var(--graphite);
+  animation: hint-in 150ms ease-out;
+}
+.edit-strip > span:first-of-type {
+  flex: 1;
+}
+.edit-strip .icon-btn {
+  width: 44px;
+  height: 44px;
+}
 
 /* Right pane */
 .pane {
@@ -5175,6 +5207,16 @@ li.sw-empty {
 }
 .admin-list li:last-child {
   border-bottom: 0;
+}
+/* Rows fade in when they arrive and out while they are being removed (bans, reports). */
+.fade-row {
+  transition: opacity 150ms ease-out;
+  @starting-style {
+    opacity: 0;
+  }
+}
+.fade-row[data-leaving] {
+  opacity: 0;
 }
 .admin-list li > .truncate {
   flex: 1;

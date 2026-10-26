@@ -82,6 +82,8 @@ export interface Community {
   openReports?: number;
   /** My notification levels (1498), keyed by channel id; "" is the community. */
   levels: Record<string, NotifyLevel>;
+  /** No alerts or pushes before this, unix ms (1515). */
+  snoozeUntil: number;
 }
 
 export const emptyCommunity = (url: string, info?: Info): Community => ({
@@ -100,13 +102,26 @@ export const emptyCommunity = (url: string, info?: Info): Community => ({
   blocked: [],
   muted: [],
   levels: {},
+  snoozeUntil: 0,
 });
 
 /** A blocked or muted member: no unread, mentions, notifications or typing (1244, 1293). */
 export const quiet = (c: Community, id: string) => c.blocked.includes(id) || c.muted.includes(id);
 
-/** My level for a channel: its own, else the community's (DMs skip that), else ALL, as on the server (1498). */
-export const levelOf = (levels: Record<string, NotifyLevel>, ch: Channel) => levels[ch.id] || (isDM(ch) ? 0 : levels[""]) || NotifyLevel.ALL;
+/** My level for a channel: its own, else the community's, else ALL, as on the server (1498). DMs follow the community only when it is NOTHING (1515). */
+export const levelOf = (levels: Record<string, NotifyLevel>, ch: Channel) =>
+  levels[ch.id] || (isDM(ch) && levels[""] !== NotifyLevel.NOTHING ? 0 : levels[""]) || NotifyLevel.ALL;
+
+export type SnoozeChoice = "1h" | "8h" | "tomorrow";
+
+/** When a snooze picked at now ends (1515): in 1 or 8 hours, or tomorrow at 8:00 local time. */
+export function snoozeEnd(choice: SnoozeChoice, now: Date): number {
+  if (choice !== "tomorrow") return now.getTime() + (choice === "1h" ? 1 : 8) * 3600_000;
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 8).getTime();
+}
+
+/** The latest snooze still running across my communities, or 0 (1515). */
+export const snoozedUntil = (cs: Community[], now: number) => Math.max(0, ...cs.map((c) => c.snoozeUntil).filter((t) => t > now));
 
 /** MENTIONS keeps only mentions, NOTHING keeps nothing, as the server counts them (1498). */
 export const byLevel = (rs: ReadState, l: NotifyLevel): ReadState =>
@@ -131,6 +146,7 @@ export function applySnapshot(c: Community, s: GetStateResponse): Community {
     blocked: s.blockedMemberIds,
     muted: s.mutedMemberIds,
     levels: Object.fromEntries(s.notifyLevels.map((n) => [n.channelId, n.level])),
+    snoozeUntil: Number(s.snoozeUntil),
     openReports: s.openReports,
     // Lists may have missed events; the open view reloads them.
     lists: {},
@@ -321,6 +337,9 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
       next.levels = k.value.level ? { ...rest, [k.value.channelId]: k.value.level } : rest;
       return next; // fresh read_state events follow from the server
     }
+    case "snoozeUntil":
+      next.snoozeUntil = Number(k.value);
+      return next;
     case "pluginsChanged":
       next.pluginsRev = (c.pluginsRev ?? 0) + 1;
       return next;
@@ -1597,3 +1616,7 @@ const TABS = ["home", "dms", "you"] as const;
 export function swipeTab(tab: (typeof TABS)[number], dx: number): (typeof TABS)[number] | null {
   return TABS[TABS.indexOf(tab) + (dx > 0 ? -1 : 1)] ?? null;
 }
+
+/** On a phone, editing happens in the composer of the list the message is in, like iMessage and Slack (1513). */
+export const editsInComposer = (touch: boolean, m: { channelId: string; threadRootId: string } | undefined, channelId: string, rootId: string) =>
+  touch && !!m && m.channelId === channelId && m.threadRootId === rootId;

@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { Code } from "@connectrpc/connect";
-import { leavingParts, queueStep, retryable, showDown, transient } from "./logic";
+import { editsInComposer, leavingParts, queueStep, retryable, showDown, transient } from "./logic";
 import css from "./app.css?raw";
 import { allDMs, channelLabel, dmPreview, mergeNewest, rowWhen, dmPeer, settingsGroups, swipeAxis, swipeEnds, tailnetUrl } from "./logic";
 import {
@@ -1477,5 +1477,17 @@ describe("leavingParts", () => {
     expect(leavingParts("https://sblurp.chat@evil.test/", safe)).toEqual(["https://sblurp.chat@", "evil.test", "/"]);
     expect(leavingParts("https://xn--sblrp-mva.chat/", safe)?.[1]).toBe("xn--sblrp-mva.chat");
     expect(leavingParts("https://sblürp.chat/", safe)?.[1]).toBe("xn--sblrp-mva.chat");
+  });
+});
+
+describe("editsInComposer", () => {
+  const m = { channelId: "c", threadRootId: "" };
+  it("only on touch, only in the message's own composer", () => {
+    expect(editsInComposer(true, m, "c", "")).toBe(true);
+    expect(editsInComposer(false, m, "c", "")).toBe(false);
+    expect(editsInComposer(true, undefined, "c", "")).toBe(false);
+    expect(editsInComposer(true, m, "c", "r")).toBe(false);
+    expect(editsInComposer(true, { channelId: "c", threadRootId: "r" }, "c", "")).toBe(false);
+    expect(editsInComposer(true, m, "d", "")).toBe(false);
   });
 });
