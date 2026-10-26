@@ -4664,9 +4664,8 @@ li.sw-empty {
     font-size: inherit;
   }
 }
-/* IRC: monospace, names in a right-aligned column, no gaps between speakers.
-   A desktop layout: on phones it falls back to compact (1424). */
-@media (min-width: 768px) {
+/* IRC: monospace, no gaps between speakers. On phones the name sits inline as "name:", like
+   mobile IRC clients (1424); on desktop names get a right-aligned column. */
 :root[data-density="irc"] {
   .msg {
     font-family: var(--mono);
@@ -4676,6 +4675,14 @@ li.sw-empty {
     margin-top: 0;
     padding-top: 1px;
   }
+}
+@media (max-width: 767px) {
+  :root[data-density="irc"] .msg-head .name::after {
+    content: ":" / "";
+  }
+}
+@media (min-width: 768px) {
+:root[data-density="irc"] {
   .msg-body {
     display: grid;
     grid-template-columns: 9em minmax(0, 1fr);
