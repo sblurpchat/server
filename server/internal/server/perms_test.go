@@ -98,7 +98,7 @@ func TestNonMembersCannotTouchPrivateChannels(t *testing.T) {
 				_, err := eve.chat.JoinChannel(ctx(), connect.NewRequest(&v1.JoinChannelRequest{ChannelId: ch.Id}))
 				return err
 			},
-			"AddChannelMembers": func() error { return eve.addTo(ch.Id, eve.me.Id) },
+			"AddChannelMembers":   func() error { return eve.addTo(ch.Id, eve.me.Id) },
 			"RemoveChannelMember": func() error { return eve.removeFrom(ch.Id, bob.me.Id) },
 			"UpdateChannel": func() error {
 				topic := "mine now"

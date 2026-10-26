@@ -155,8 +155,7 @@ func (s *Server) markThreadRead(ctx context.Context, member, rootID string) erro
 		return err
 	}
 	return s.writeTx(ctx, func(t *wtx) error {
-		_, err := t.ExecContext(ctx, `INSERT INTO read_states(member_id, channel_id, last_read_seq) VALUES (?,?,?)
-			ON CONFLICT(member_id, channel_id) DO UPDATE SET last_read_seq = MAX(last_read_seq, excluded.last_read_seq)`, member, rootID, cur)
+		_, err := t.ExecContext(ctx, upsertReadState, member, rootID, cur)
 		return err
 	})
 }

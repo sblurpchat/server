@@ -36,6 +36,7 @@ Every flag can also come from an environment variable.
 | `-accent` | `SBLURP_ACCENT` | seed's color | `#rrggbb` for the rail icon. |
 | `-base-url` | `SBLURP_BASE_URL` | required | Public URL. Also the JWT audience. |
 | `-trusted-issuer` | `SBLURP_TRUSTED_ISSUERS` (comma separated) | `https://sblurp.chat` | Login issuers to accept. Repeat the flag for more. |
+| `-web-url` | `SBLURP_WEB_URL` | `https://app.sblurp.chat` | Web client that invite links open. |
 | `-seed` | `SBLURP_SEED` | | `community` or `owls`. Fills an empty database with demo data. Ignored when the database has members. |
 | `-bot-rate` | `SBLURP_BOT_RATE` | `0` (no limit) | Writes per second for bots. |
 | `-bot-burst` | `SBLURP_BOT_BURST` | `20` | Burst for bots. |
@@ -471,7 +472,7 @@ with a JWKS, and real Connect clients, with a fake clock.
   the ids to `{iss}/api/push/send`, plus the sender and text only when the
   token says `push_preview`. It never sees device tokens. A 410 answer
   clears the handle.
-- **Every write goes through `writeTx`** (one mutex, one connection). Events
+- **Every write goes through `writeTx`** (one writer lock, one connection). Events
   get their seq inside the transaction and are published to the hub after
   commit while the lock is still held, so live order equals seq order.
 - **Event visibility** is stored with the event: public, one channel's
@@ -479,8 +480,7 @@ with a JWKS, and real Connect clients, with a fake clock.
   and live delivery use the same rule. Text channels keep a member list
   (`channel_members`) too, so every channel event goes only to who is in
   it; `syncAccess` keeps those lists in step with roles, rank and mode
-  inside the same write. Migration 005 deleted old events, so clients
-  resync once.
+  inside the same write.
 - **Retention**: an event is pruned only when it is outside the newest
   10,000 *and* older than 7 days. Uploads never attached to a message are
   deleted after a day. Pruning runs at start and hourly.

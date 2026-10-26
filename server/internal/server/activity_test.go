@@ -55,7 +55,7 @@ func TestActivityAndThreads(t *testing.T) {
 	reply(ana, bobs.Id, "ana joins bob's thread")
 	reply(bob, bobs.Id, "bob answers")
 	react(bob, mine.Id, "👍")
-	react(ana, mine.Id, "🎉") // my own reaction is not activity
+	react(ana, mine.Id, "🎉")          // my own reaction is not activity
 	send(ana, "hey <@"+ana.me.Id+">") // nor my own mention
 	send(cat, "cat says <@"+ana.me.Id+">")
 	reply(cat, mine.Id, "cat replies")

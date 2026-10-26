@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -14,10 +16,7 @@ import (
 // release is one track's entry in the release manifest (releases.json),
 // which the release workflow publishes to GitHub Pages.
 type release struct {
-	Version  string `json:"version"`
-	Digest   string `json:"digest"`
-	Date     string `json:"date"`
-	NotesURL string `json:"notes_url"`
+	Version string `json:"version"`
 }
 
 // updateLoop fetches the manifest once at start and then daily, and keeps
@@ -82,12 +81,7 @@ func newerVersion(cur, latest string) bool {
 	if !ok1 || !ok2 {
 		return false
 	}
-	for i := range c {
-		if l[i] != c[i] {
-			return l[i] > c[i]
-		}
-	}
-	return false
+	return slices.Compare(l[:], c[:]) > 0
 }
 
 func nightlyDate(v string) (string, bool) {
@@ -118,7 +112,7 @@ func parseSemver(v string) ([4]int, bool) {
 		}
 		out[i] = x
 	}
-	out[3] = int(^uint(0) >> 1)
+	out[3] = math.MaxInt
 	if isBeta {
 		x, err := strconv.Atoi(beta)
 		if err != nil || x < 0 {

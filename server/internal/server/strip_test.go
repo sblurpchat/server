@@ -149,8 +149,12 @@ func TestUploadStripsMetadataMoreFormats(t *testing.T) {
 	exif := "\x00\x00\x00\x06Exif\x00\x00MM\x00*GPS 37.7749N"
 	xmp := "<x:xmpmeta>secret</x:xmpmeta>"
 	heif := func(brand string, mdat int) []byte {
-		infe := func(id int, typ, extra string) string { return box("infe", "\x02\x00\x00\x00", u16(id), u16(0), typ, "\x00", extra) }
-		loc := func(id, method, off, n int) string { return u16(id) + u16(method) + u16(0) + u16(1) + u32(off) + u32(n) }
+		infe := func(id int, typ, extra string) string {
+			return box("infe", "\x02\x00\x00\x00", u16(id), u16(0), typ, "\x00", extra)
+		}
+		loc := func(id, method, off, n int) string {
+			return u16(id) + u16(method) + u16(0) + u16(1) + u32(off) + u32(n)
+		}
 		meta := box("meta", "\x00\x00\x00\x00",
 			box("iinf", "\x00\x00\x00\x00", u16(3), infe(1, "hvc1", ""), infe(2, "Exif", ""), infe(3, "mime", "application/rdf+xml\x00")),
 			box("iloc", "\x01\x00\x00\x00\x44\x00", u16(3), loc(1, 0, mdat+8, 8), loc(2, 0, mdat+16, len(exif)), loc(3, 1, 0, len(xmp))),

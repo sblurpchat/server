@@ -3,10 +3,10 @@ package server
 import (
 	"bytes"
 	"cmp"
-	"database/sql"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -221,16 +221,11 @@ func cleanFileName(name string) string {
 // A video may name an earlier image upload of the same member in a
 // "poster" field before the file; that image then belongs to the video.
 func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
-	id, err := s.authenticate(r.Context(), r.Header.Get("Authorization"))
-	if err != nil {
-		httpError(w, http.StatusUnauthorized, "invalid or missing bearer token")
+	m := s.httpMember(w, r)
+	if m == nil {
 		return
 	}
-	if id.member == nil {
-		httpError(w, http.StatusForbidden, "join this community first")
-		return
-	}
-	if !s.limiter.allow("upload "+id.member.Id, uploadRate, uploadBurst) {
+	if !s.limiter.allow("upload "+m.Id, uploadRate, uploadBurst) {
 		httpError(w, http.StatusTooManyRequests, "too many uploads; try again in a moment")
 		return
 	}
@@ -326,7 +321,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 			var pname, pctype string
 			var psize int64
 			err := t.QueryRowContext(r.Context(), `SELECT name, content_type, size FROM attachments WHERE id = ?1 AND uploader_id = ?2
-				AND message_id IS NULL AND NOT EXISTS (SELECT 1 FROM attachments WHERE poster_id = ?1)`, posterID, id.member.Id).Scan(&pname, &pctype, &psize)
+				AND message_id IS NULL AND NOT EXISTS (SELECT 1 FROM attachments WHERE poster_id = ?1)`, posterID, m.Id).Scan(&pname, &pctype, &psize)
 			if errors.Is(err, sql.ErrNoRows) {
 				bad = "the poster is not an unused upload of yours"
 			} else if err != nil {
@@ -340,7 +335,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 			a.PosterUrl = fileURL(posterID, pname)
 		}
 		_, err := t.ExecContext(r.Context(), `INSERT INTO attachments(id, uploader_id, name, content_type, size, width, height, created_at_ms, poster_id)
-			VALUES (?,?,?,?,?,?,?,?,?)`, a.Id, id.member.Id, a.Name, a.ContentType, a.Size, a.Width, a.Height, s.nowMs(), posterID)
+			VALUES (?,?,?,?,?,?,?,?,?)`, a.Id, m.Id, a.Name, a.ContentType, a.Size, a.Width, a.Height, s.nowMs(), posterID)
 		return err
 	})
 	if err != nil {

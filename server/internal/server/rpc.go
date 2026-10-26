@@ -751,11 +751,9 @@ func (s *Server) UpdateProfile(ctx context.Context, req *connect.Request[v1.Upda
 			return nil, err
 		}
 	}
-	if r.StatusEmoji != nil {
-		if *r.StatusEmoji != "" {
-			if err := checkEmoji(*r.StatusEmoji); err != nil {
-				return nil, err
-			}
+	if r.StatusEmoji != nil && *r.StatusEmoji != "" {
+		if err := checkEmoji(*r.StatusEmoji); err != nil {
+			return nil, err
 		}
 	}
 	m := me(ctx)
@@ -883,7 +881,6 @@ func (s *Server) Subscribe(ctx context.Context, req *connect.Request[v1.Subscrib
 		hw = &heldWriter{}
 	}
 	for {
-		n := 0
 		rows, err := s.db.r.QueryContext(ctx, "SELECT seq, payload FROM events WHERE seq > ? AND ("+visibleEvents+") ORDER BY seq LIMIT 500", last, m.Id, m.Id)
 		if err != nil {
 			return err
@@ -901,7 +898,6 @@ func (s *Server) Subscribe(ctx context.Context, req *connect.Request[v1.Subscrib
 				return err
 			}
 			batch = append(batch, ev)
-			n++
 		}
 		rows.Close()
 		if err := rows.Err(); err != nil {
@@ -918,7 +914,7 @@ func (s *Server) Subscribe(ctx context.Context, req *connect.Request[v1.Subscrib
 		if hw.ResponseWriter != nil {
 			hw.Flush()
 		}
-		if n < 500 {
+		if len(batch) < 500 {
 			break
 		}
 	}
@@ -1231,11 +1227,7 @@ func (s *Server) ListMessages(ctx context.Context, req *connect.Request[v1.ListM
 	if _, err := channelFor(ctx, s.db.r, r.ChannelId, m.Id); err != nil {
 		return nil, err
 	}
-	limit := int(r.Limit)
-	if limit <= 0 {
-		limit = 50
-	}
-	limit = min(limit, 200)
+	limit := pageLimit(r.Limit)
 	anchor, field := "", ""
 	for _, f := range [][2]string{{"before_id", r.BeforeId}, {"after_id", r.AfterId}, {"around_id", r.AroundId}} {
 		if f[1] != "" {
@@ -1674,8 +1666,7 @@ func (s *Server) MarkRead(ctx context.Context, req *connect.Request[v1.MarkReadR
 	}
 	var rs *v1.ReadState
 	err = s.writeTx(ctx, func(t *wtx) error {
-		if _, err := t.ExecContext(ctx, `INSERT INTO read_states(member_id, channel_id, last_read_seq) VALUES (?,?,?)
-			ON CONFLICT(member_id, channel_id) DO UPDATE SET last_read_seq = MAX(last_read_seq, excluded.last_read_seq)`, m.Id, c.Id, seq); err != nil {
+		if _, err := t.ExecContext(ctx, upsertReadState, m.Id, c.Id, seq); err != nil {
 			return err
 		}
 		if rs, err = readState(ctx, t, m, c); err != nil {
@@ -1702,13 +1693,9 @@ func (s *Server) SetTyping(ctx context.Context, req *connect.Request[v1.SetTypin
 	if err := requireJoined(ctx, s.db.r, c, m.Id); err != nil {
 		return nil, err
 	}
-	ids, err := channelMemberIDs(ctx, s.db.r, c.Id)
+	aud, err := channelAudience(ctx, s.db.r, c.Id)
 	if err != nil {
 		return nil, err
-	}
-	aud := map[string]bool{}
-	for _, id := range ids {
-		aud[id] = true
 	}
 	s.hub.publish(&v1.Event{AtMs: s.nowMs(), Kind: &v1.Event_Typing{Typing: &v1.TypingEvent{
 		ChannelId: c.Id, MemberId: m.Id, ThreadRootId: r.ThreadRootId}}}, aud)
@@ -1828,8 +1815,7 @@ func (s *Server) AddChannelMembers(ctx context.Context, req *connect.Request[v1.
 			if n, _ := res.RowsAffected(); n == 1 {
 				added++
 				// Old history is not unread for a new channel member.
-				if _, err := t.ExecContext(ctx, `INSERT INTO read_states(member_id, channel_id, last_read_seq) VALUES (?,?,?)
-					ON CONFLICT(member_id, channel_id) DO UPDATE SET last_read_seq = MAX(last_read_seq, excluded.last_read_seq)`, id, c.Id, cur); err != nil {
+				if _, err := t.ExecContext(ctx, upsertReadState, id, c.Id, cur); err != nil {
 					return err
 				}
 			}

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -89,13 +90,7 @@ func verifyJWT(token string, trusted []string, aud string, now time.Time,
 		return nil, errors.New("malformed token claims")
 	}
 	iss := strings.TrimRight(c.Iss, "/")
-	ok := false
-	for _, t := range trusted {
-		if strings.TrimRight(t, "/") == iss && iss != "" {
-			ok = true
-		}
-	}
-	if !ok {
+	if iss == "" || !slices.ContainsFunc(trusted, func(t string) bool { return strings.TrimRight(t, "/") == iss }) {
 		return nil, fmt.Errorf("untrusted issuer %q", c.Iss)
 	}
 	sig, err := b64.DecodeString(parts[2])
@@ -109,13 +104,7 @@ func verifyJWT(token string, trusted []string, aud string, now time.Time,
 	if !ed25519.Verify(pub, []byte(parts[0]+"."+parts[1]), sig) {
 		return nil, errors.New("bad signature")
 	}
-	audOK := false
-	for _, a := range c.Aud {
-		if strings.TrimRight(a, "/") == strings.TrimRight(aud, "/") {
-			audOK = true
-		}
-	}
-	if !audOK {
+	if !slices.ContainsFunc(c.Aud, func(a string) bool { return strings.TrimRight(a, "/") == strings.TrimRight(aud, "/") }) {
 		return nil, errors.New("token audience is not this server")
 	}
 	switch {

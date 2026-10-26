@@ -187,13 +187,9 @@ func (t *wtx) emit(ev *v1.Event, scopeChannel, scopeMember string) error {
 	case scopeMember != "":
 		aud = map[string]bool{scopeMember: true}
 	case scopeChannel != "":
-		ids, err := channelMemberIDs(t.ctx, t, scopeChannel)
-		if err != nil {
+		var err error
+		if aud, err = channelAudience(t.ctx, t, scopeChannel); err != nil {
 			return err
-		}
-		aud = map[string]bool{}
-		for _, id := range ids {
-			aud[id] = true
 		}
 	}
 	// A copy: subscribers share it, so it must not alias anything the caller returns.
@@ -203,6 +199,16 @@ func (t *wtx) emit(ev *v1.Event, scopeChannel, scopeMember string) error {
 
 func channelMemberIDs(ctx context.Context, q queryer, channelID string) ([]string, error) {
 	return scanIDs(q.QueryContext(ctx, "SELECT member_id FROM channel_members WHERE channel_id = ? ORDER BY member_id", channelID))
+}
+
+// channelAudience is channelMemberIDs as a set, for hub.publish.
+func channelAudience(ctx context.Context, q queryer, channelID string) (map[string]bool, error) {
+	ids, err := channelMemberIDs(ctx, q, channelID)
+	aud := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		aud[id] = true
+	}
+	return aud, err
 }
 
 // scanIDs reads a one-column string result and closes rows.
@@ -374,3 +380,7 @@ func newID(now time.Time) string {
 	h := hex.EncodeToString(b[:])
 	return strings.Join([]string{h[:8], h[8:12], h[12:16], h[16:20], h[20:]}, "-")
 }
+
+// upsertReadState moves a read mark forward, never back. Args: member, channel, seq.
+const upsertReadState = `INSERT INTO read_states(member_id, channel_id, last_read_seq) VALUES (?,?,?)
+	ON CONFLICT(member_id, channel_id) DO UPDATE SET last_read_seq = MAX(last_read_seq, excluded.last_read_seq)`

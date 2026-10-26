@@ -24,7 +24,7 @@ func TestRetention(t *testing.T) {
 		ChannelId: gen.Id, Text: "ancient words", AttachmentIds: []string{file.Id}}))).Message
 	must(bob.chat.React(ctx(), connect.NewRequest(&v1.ReactRequest{MessageId: old.Id, Emoji: "👍"})))
 	e.clock.Advance(29 * 24 * time.Hour)
-	ana, bob = e.client(e.token("ana")), e.client(e.token("bob")) // the old tokens expired
+	bob = e.client(e.token("bob")) // the old token expired
 	must(bob.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: gen.Id, ThreadRootId: old.Id, Text: "late reply"})))
 	// Bulk old rows to make the prune take more than one batch.
 	tx, err := e.s.db.w.Begin()
