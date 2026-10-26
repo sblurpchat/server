@@ -332,6 +332,10 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
   }, [list?.focusId]);
   useEffect(check);
   useEffect(() => {
+    // Previews and images that load later push the New divider up without a scroll (1461).
+    const ro = new ResizeObserver(() => check());
+    const msgs = scroller.current?.querySelector(".msgs");
+    if (msgs) ro.observe(msgs);
     addEventListener("focus", check);
     addEventListener("blur", check);
     document.addEventListener("visibilitychange", check);
@@ -339,6 +343,7 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
       removeEventListener("focus", check);
       removeEventListener("blur", check);
       document.removeEventListener("visibilitychange", check);
+      ro.disconnect();
       if (!rootId) set({ viewing: null });
     };
   });

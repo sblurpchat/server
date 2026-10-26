@@ -1475,7 +1475,7 @@ kbd {
   .side-sec li[data-drag] > * {
     transition: none;
   }
-  .side-sec li:has(.chan-close) .chan {
+  .side-sec li:has(.chan-close) :is(.chan, .dm-row) {
     flex: 0 0 100%;
   }
   .side-sec li:is(:hover, :focus-within) .chan .badge {

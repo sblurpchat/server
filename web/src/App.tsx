@@ -485,13 +485,14 @@ function DMList() {
         </button>
       </header>
       {dms.length ? (
-        <ul className="tab-scroll">
+        // side-sec: the same swipe-to-Close rows as Home's DMs (1476).
+        <ul className="tab-scroll side-sec">
           {dms.map(({ url, ch, unread, mentions }) => {
             const c = cs[url];
             const other = c.members[dmPeer(ch, c.me?.id)];
             const label = channelLabel(ch, c.members, c.me?.id);
             return (
-              <li key={`${url} ${ch.id}`}>
+              <li key={`${url} ${ch.id}`} onPointerDown={rowSwipe}>
                 <a
                   href={formatHash(url, ch.id)}
                   className="dm-row"
@@ -520,6 +521,17 @@ function DMList() {
                     </span>
                   )}
                 </a>
+                <button
+                  className="chan-close"
+                  aria-label={`Close conversation with ${label}`}
+                  title="Close conversation"
+                  onClick={() => removeFromChannel(url, ch.id, c.me!.id).catch(() => {})}
+                >
+                  <Icon name="x" size={14} />
+                  <span className="chan-close-text" aria-hidden="true">
+                    Close
+                  </span>
+                </button>
               </li>
             );
           })}
