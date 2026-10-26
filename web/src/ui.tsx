@@ -437,6 +437,8 @@ export function Pop({
       ref={ref}
       popover="auto"
       role="dialog"
+      // A phone sheet dims the page and takes it over, so VoiceOver stays inside it (1463).
+      aria-modal={(sheet && PHONE.matches) || undefined}
       tabIndex={-1}
       aria-label={label}
       className={`pop ${className}`}

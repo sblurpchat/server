@@ -594,11 +594,13 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
         const t = e.target as Element;
         if (!h.touch || pending || editing || t.closest("input, textarea, select, video, .reaction, .pop")) return;
         const img = t.closest(".att-img")?.querySelector("img");
+        const row = e.currentTarget;
         Object.assign(h, { x: e.clientX, y: e.clientY });
         const id = e.pointerId;
         h.timer = window.setTimeout(() => {
           h.on = true;
           haptic();
+          row.focus({ preventScroll: true }); // the sheet hands focus back to the message, not <body> (1463)
           flushSync(() => {
             setHeldImg(img ? { src: img.src, name: img.alt } : null);
             setMore(new DOMRect(h.x, h.y, 0, 0));
@@ -859,6 +861,11 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
           {(mine || (c.me?.role ?? 0) >= MemberRole.MODERATOR) && (
             <button role="menuitem" className="danger" onClick={() => set({ modal: { t: "delete", id: m.id } })}>
               <Icon name="trash" size={18} /> Delete message
+            </button>
+          )}
+          {NO_HOVER.matches && (
+            <button role="menuitem">
+              <Icon name="x" size={18} /> Cancel
             </button>
           )}
         </div>
