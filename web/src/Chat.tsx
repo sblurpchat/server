@@ -1083,15 +1083,27 @@ function EditBox({ url, m }: { url: string; m: Message }) {
           {err}
         </p>
       )}
-      <p className="fine">
-        {!NO_HOVER.matches && "Enter to save, Esc to cancel. "}
-        <button className="link-btn" onClick={() => set({ editing: null })}>
-          Cancel
-        </button>{" "}
-        <button className="link-btn" onClick={save}>
-          Save
-        </button>
-      </p>
+      {NO_HOVER.matches ? (
+        // No Esc key on a phone, and fingertip buttons (1462).
+        <div className="edit-actions">
+          <button className="btn ghost" onClick={() => set({ editing: null })}>
+            Cancel
+          </button>
+          <button className="btn primary" onClick={save}>
+            Save
+          </button>
+        </div>
+      ) : (
+        <p className="fine">
+          Enter to save, Esc to cancel.{" "}
+          <button className="link-btn" onClick={() => set({ editing: null })}>
+            Cancel
+          </button>{" "}
+          <button className="link-btn" onClick={save}>
+            Save
+          </button>
+        </p>
+      )}
     </div>
   );
 }

@@ -4155,6 +4155,16 @@ li.sw-empty {
 .edit-box .fine .link-btn:first-of-type {
   margin-left: 4px;
 }
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+.edit-actions .btn {
+  height: 44px;
+  padding: 0 18px;
+}
 
 /* Right pane */
 .pane {
