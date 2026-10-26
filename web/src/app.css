@@ -4367,6 +4367,12 @@ li.sw-empty {
     display: inline-grid;
     margin-left: -6px;
   }
+  .pane-head {
+    padding: 0 8px 0 12px;
+  }
+  .pane-close {
+    display: none;
+  }
   .chan-head {
     padding: 0 8px 0 12px;
   }
@@ -5830,9 +5836,6 @@ label:has(> input.visually-hidden:focus-visible) {
   }
   .settings-back {
     margin: 0 -8px 0 -12px;
-  }
-  .settings-back .icon {
-    rotate: 90deg;
   }
   /* The top bar already names the page; keep only where the setting is saved. */
   .settings-page > section > h3 {

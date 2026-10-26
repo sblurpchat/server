@@ -1591,17 +1591,19 @@ function Settings({ start }: { start?: SettingsPage }) {
     <Dialog label="Settings" className="settings">
       <header className="dialog-head">
         {sub && (
-          <button className="icon-btn settings-back" aria-label="Back" onClick={() => (start ? set({ modal: null }) : setPage(null))}>
-            <Icon name="chevron" />
+          <button className="icon-btn settings-back" aria-label={start ? "Back to You" : "Back to Settings"} onClick={() => (start ? set({ modal: null }) : setPage(null))}>
+            <Icon name="back" />
           </button>
         )}
         <div>
           <h2>{sub ? PAGES[sub][0] : "Settings"}</h2>
           <p className="dialog-sub">These apply in all your communities.</p>
         </div>
-        <button className="icon-btn" aria-label="Close" onClick={() => set({ modal: null })}>
-          <Icon name="x" />
-        </button>
+        {!sub && (
+          <button className="icon-btn" aria-label="Close" onClick={() => set({ modal: null })}>
+            <Icon name="x" />
+          </button>
+        )}
       </header>
       {sub ? (
         <div className="settings-page" key={sub}>

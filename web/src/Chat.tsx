@@ -1466,10 +1466,15 @@ export function RightPane() {
   const ch = c.channels[channelId];
   const close = () => set({ pane: null });
   const title = { thread: "Thread", members: "Members", search: "Search", activity: "Activity", threads: "Threads" }[pane.t];
+  const where = ch ? (isDM(ch) ? channelLabel(ch, c.members, c.me?.id) : `#${ch.name}`) : c.info?.name;
   return (
     <aside ref={ref} className="pane" aria-label={title}>
       <Resizer panel="pane" label="Resize side pane" />
       <header className="pane-head">
+        {/* A phone pushes the pane over the channel: one leading back, like the channel header (1452). */}
+        <button className="icon-btn only-mobile" aria-label={`Back to ${where}`} onClick={close}>
+          <Icon name="back" />
+        </button>
         <div>
           <h2>{title}</h2>
           {pane.t === "thread" && ch && <p className="muted small truncate">{isDM(ch) ? channelLabel(ch, c.members, c.me?.id) : `#${ch.name}`}</p>}
@@ -1477,7 +1482,7 @@ export function RightPane() {
           {pane.t === "members" && ch?.kind === ChannelKind.PRIVATE && <p className="muted small truncate">#{ch.name}</p>}
           {(pane.t === "activity" || pane.t === "threads") && <p className="muted small truncate">{c.info?.name}</p>}
         </div>
-        <button className="icon-btn" aria-label={`Close ${title.toLowerCase()}`} onClick={close}>
+        <button className="icon-btn pane-close" aria-label={`Close ${title.toLowerCase()}`} onClick={close}>
           <Icon name="x" />
         </button>
       </header>
