@@ -644,7 +644,8 @@ function You({ c }: { c?: Community }) {
         {link(`${AUTH_URL}/privacy`, "lock", "Privacy policy")}
         {link(`${AUTH_URL}/terms`, "file", "Terms of service")}
       </div>
-      <p className="you-version">Sblurp {import.meta.env.VITE_APP_VERSION}</p>
+      {/* Set by apps/scripts/build-web.mjs, so only the apps show a version. */}
+      {import.meta.env.VITE_APP_VERSION && <p className="you-version">Sblurp {import.meta.env.VITE_APP_VERSION}</p>}
     </section>
   );
 }
