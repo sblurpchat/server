@@ -541,6 +541,7 @@ function DMList() {
                   <span className="dm-text">
                     <span className="dm-top">
                       <b className="truncate">{label}</b>
+                      {other && ch.memberIds.length <= 2 && <span className="visually-hidden">, {presenceLabel(other.presence)}</span>}
                       {ch.lastMessage && <time>{rowWhen(Number(ch.lastMessage.createdAtMs), Date.now(), h24)}</time>}
                     </span>
                     <small className="truncate">
@@ -580,7 +581,8 @@ function DMList() {
 function You({ c }: { c?: Community }) {
   const profile = useApp((s) => s.profile);
   const me = c?.me;
-  const status = me?.statusText || me?.statusEmoji ? `${me.statusEmoji} ${me.statusText}`.trim() : me ? "Online" : "";
+  const custom = me?.statusText || me?.statusEmoji ? `${me.statusEmoji} ${me.statusText}`.trim() : "";
+  const status = custom || (me ? presenceLabel(me.presence) : "");
   return (
     <section className="tab-panel" aria-labelledby="you-title">
       <div className="you-card">
@@ -588,6 +590,7 @@ function You({ c }: { c?: Community }) {
         <span className="me-text">
           <b id="you-title" className="truncate">{me?.displayName ?? profile?.displayName ?? "You"}</b>
           {status && <small className="truncate">{status}</small>}
+          {custom && <span className="visually-hidden">, {presenceLabel(me?.presence)}</span>}
         </span>
       </div>
       <div className="you-rows">
@@ -973,7 +976,7 @@ function MeBar({ c }: { c: Community }) {
         <Avatar m={me} size={32} presence />
         <span className="me-text">
           <b className="truncate">{me?.displayName ?? profile?.displayName ?? "You"}</b>
-          <small className="truncate">{me?.statusText || me?.statusEmoji ? `${me.statusEmoji} ${me.statusText}`.trim() : (me ? "Online" : c.status === "join" ? "Not a member" : "Connecting…")}</small>
+          <small className="truncate">{me?.statusText || me?.statusEmoji ? `${me.statusEmoji} ${me.statusText}`.trim() : (me ? presenceLabel(me.presence) : c.status === "join" ? "Not a member" : "Connecting…")}</small>
         </span>
       </button>
       <button className="icon-btn" aria-label="Settings" title="Settings" onClick={() => set({ modal: { t: "settings" } })}>
