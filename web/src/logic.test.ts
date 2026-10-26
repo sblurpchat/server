@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { Code } from "@connectrpc/connect";
 import { leavingParts, queueStep, showDown, transient } from "./logic";
 import css from "./app.css?raw";
-import { allDMs, channelLabel, dmPreview, rowWhen, dmPeer, settingsGroups, swipeAxis, swipeEnds, tailnetUrl } from "./logic";
+import { allDMs, channelLabel, dmPreview, mergeNewest, rowWhen, dmPeer, settingsGroups, swipeAxis, swipeEnds, tailnetUrl } from "./logic";
 import {
   ChannelKind,
   ChannelMode,
@@ -1369,6 +1369,17 @@ describe("dmPreview and rowWhen (1455)", () => {
     expect(rowWhen(new Date(2026, 9, 24, 9).getTime(), now)).toBe("Yesterday");
     expect(rowWhen(new Date(2026, 9, 21, 9).getTime(), now)).toBe("Wed");
     expect(rowWhen(new Date(2026, 8, 3, 9).getTime(), now)).toBe("Sep 3");
+  });
+});
+
+describe("mergeNewest (1453)", () => {
+  it("merges every community's rows newest first and skips a failed one", () => {
+    const ok = <T,>(value: T[]): PromiseSettledResult<T[]> => ({ status: "fulfilled", value });
+    const bad: PromiseSettledResult<bigint[]> = { status: "rejected", reason: new Error("down") };
+    const got = mergeNewest(["a", "b", "c"], [ok([5n, 1n]), bad, ok([3n])], (x: bigint) => x);
+    expect(got).toEqual([{ url: "a", x: 5n }, { url: "c", x: 3n }, { url: "a", x: 1n }]);
+    expect(() => mergeNewest(["b"], [bad], (x: bigint) => x)).toThrow("down");
+    expect(mergeNewest([], [], (x: bigint) => x)).toEqual([]);
   });
 });
 

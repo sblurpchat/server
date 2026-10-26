@@ -18,6 +18,7 @@ import {
   encodeMentions,
   formatBytes,
   hostOf,
+  mergeNewest,
   isDM,
   dmPeer,
   listKey,
@@ -1508,6 +1509,7 @@ export function RightPane() {
   const pane = useApp((s) => s.pane);
   const c = useC();
   const channelId = useApp((s) => s.channelId);
+  const many = useApp((s) => s.order.filter((u) => s.cs[u]?.me).length > 1);
   const open = !!pane;
   const ref = useRef<HTMLElement>(null);
   // Closing would drop focus on body (its close button is gone): send it back to the conversation.
@@ -1543,7 +1545,7 @@ export function RightPane() {
           {pane.t === "thread" && ch && <p className="muted small truncate">{isDM(ch) ? channelLabel(ch, c.members, c.me?.id) : `#${ch.name}`}</p>}
           {pane.t === "search" && <p className="muted small truncate">“{pane.q}” in {c.info?.name}</p>}
           {pane.t === "members" && ch?.kind === ChannelKind.PRIVATE && <p className="muted small truncate">#{ch.name}</p>}
-          {(pane.t === "activity" || pane.t === "threads") && <p className="muted small truncate">{c.info?.name}</p>}
+          {(pane.t === "activity" || pane.t === "threads") && <p className="muted small truncate">{many ? "All communities" : c.info?.name}</p>}
         </div>
         <button className="icon-btn pane-close" aria-label={`Close ${title.toLowerCase()}`} onClick={close}>
           <Icon name="x" />
@@ -1561,9 +1563,9 @@ export function RightPane() {
       ) : pane.t === "members" ? (
         <Members c={c} />
       ) : pane.t === "activity" ? (
-        <Activity c={c} />
+        <Activity />
       ) : pane.t === "threads" ? (
-        <Threads c={c} />
+        <Threads />
       ) : (
         <>
           {/* Phone (1456): the query stays editable at the top, with Cancel, like iOS search. */}
@@ -1856,12 +1858,19 @@ function scrollBack(el: HTMLElement | null) {
 }
 
 // Activity and Threads (1405): loaded each time the pane opens, rows like search results.
-function useLoad<T>(c: Community, load: (url: string) => Promise<T[]>) {
-  const [res, setRes] = useState<T[] | null>(null);
+// Every joined community at once (1453), like the DMs tab, so a mention anywhere shows up.
+function useLoad<T>(load: (url: string) => Promise<T[]>, at: (x: T) => bigint) {
+  const cs = useApp((s) => s.cs);
+  const order = useApp((s) => s.order);
+  const urls = order.filter((u) => cs[u]?.me);
+  const key = urls.join(" ");
+  const [res, setRes] = useState<{ url: string; x: T }[] | null>(null);
   const [err, setErr] = useState("");
   useEffect(() => {
-    load(c.url).then(setRes, (e) => setErr(errorText(e, c.info?.name)));
-  }, [c.url]);
+    Promise.allSettled(urls.map(load))
+      .then((got) => mergeNewest(urls, got, at))
+      .then(setRes, (e) => setErr(errorText(e, urls.length === 1 ? cs[urls[0]].info?.name : undefined)));
+  }, [key]);
   const note = err ? (
     <p className="error pane-note" role="alert">
       {err}
@@ -1871,7 +1880,9 @@ function useLoad<T>(c: Community, load: (url: string) => Promise<T[]>) {
       <Skeleton rows={5} lines={2} className="skel-results" />
     </div>
   ) : null;
-  return { res, note };
+  // Rows name their community when there is more than one.
+  const label = (c: Community, channelId: string) => (urls.length > 1 ? `${where(c, channelId)} in ${c.info?.name ?? hostOf(c.url)}` : where(c, channelId));
+  return { res, note, cs, label };
 }
 
 function where(c: Community, channelId: string) {
@@ -1879,14 +1890,15 @@ function where(c: Community, channelId: string) {
   return ch ? (isDM(ch) ? channelLabel(ch, c.members, c.me?.id) : `#${ch.name}`) : "a channel";
 }
 
-function Activity({ c }: { c: Community }) {
+function Activity() {
   const h24 = useApp((s) => s.look.clock === "24");
-  const { res, note } = useLoad<ActivityItem>(c, listActivity);
+  const { res, note, cs, label } = useLoad<ActivityItem>(listActivity, (it) => it.atMs);
   if (note) return note;
   if (!res!.length) return <p className="muted pane-note">Mentions, replies to your threads and reactions to your messages show up here.</p>;
   return (
     <ul className="pane-scroll results loaded" ref={scrollBack}>
-      {res!.map((it, i) => {
+      {res!.map(({ url, x: it }, i) => {
+        const c = cs[url];
         const m = it.message!;
         const who = c.members[it.actorId]?.displayName ?? "Someone";
         const at = Number(it.atMs);
@@ -1905,7 +1917,7 @@ function Activity({ c }: { c: Community }) {
                   ) : (
                     "mentioned you in"
                   )}{" "}
-                  <b>{where(c, m.channelId)}</b>
+                  <b>{label(c, m.channelId)}</b>
                 </span>
                 <span className="muted">
                   {dayLabel(at, Date.now())} {timeLabel(at, h24)}
@@ -1920,18 +1932,19 @@ function Activity({ c }: { c: Community }) {
   );
 }
 
-function Threads({ c }: { c: Community }) {
+function Threads() {
   const h24 = useApp((s) => s.look.clock === "24");
-  const { res, note } = useLoad<ThreadSummary>(c, listThreads);
+  const { res, note, cs, label } = useLoad<ThreadSummary>(listThreads, (t) => t.root!.lastReplyAtMs);
   if (note) return note;
   if (!res!.length) return <p className="muted pane-note">Threads you start or reply in show up here.</p>;
   return (
     <ul className="pane-scroll results loaded" ref={scrollBack}>
-      {res!.map(({ root, unreadCount }) => {
+      {res!.map(({ url, x: { root, unreadCount } }) => {
+        const c = cs[url];
         const m = root!;
         const at = Number(m.lastReplyAtMs);
         return (
-          <li key={m.id}>
+          <li key={`${url} ${m.id}`}>
             <button
               className="result"
               data-unread={unreadCount > 0 || undefined}
@@ -1941,7 +1954,7 @@ function Threads({ c }: { c: Community }) {
               }}
             >
               <span className="result-meta">
-                <b>{where(c, m.channelId)}</b>
+                <b>{label(c, m.channelId)}</b>
                 {unreadCount > 0 && <span className="badge">{unreadCount} new</span>}
               </span>
               <span className="result-text">

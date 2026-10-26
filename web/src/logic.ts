@@ -1501,6 +1501,15 @@ export function allDMs(cs: Record<string, Community>, order: string[]): { url: s
     .sort((a, b) => Number(at(b.ch) - at(a.ch)));
 }
 
+/** Activity and Threads across every community (1453): each server's rows tagged with its url,
+ *  newest first. Seqs are per server, so times order them. Fails only when every server failed. */
+export function mergeNewest<T>(urls: string[], got: PromiseSettledResult<T[]>[], at: (x: T) => bigint): { url: string; x: T }[] {
+  if (got.length && got.every((r) => r.status === "rejected")) throw (got[0] as PromiseRejectedResult).reason;
+  return got
+    .flatMap((r, i) => (r.status === "fulfilled" ? r.value.map((x) => ({ url: urls[i], x })) : []))
+    .sort((a, b) => Number(at(b.x) - at(a.x)));
+}
+
 /** A DM row's one-line preview (1455): what was said, "You: " first when it was me. */
 export function dmPreview(m: Message | undefined, members: Record<string, Member>, meId: string | undefined): string {
   if (!m) return "";
