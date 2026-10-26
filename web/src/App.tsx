@@ -207,41 +207,52 @@ function rowSwipe(e: React.PointerEvent<HTMLLIElement>) {
 }
 
 /** Phone drawer swipe (1354): a sideways drag anywhere on the channel opens the drawer like Slack,
- *  the drawer follows the finger and settles on release; dragging it back closes it. */
+ *  the drawer follows the finger and settles on release; dragging it back closes it. In a thread
+ *  or member pane the same drag pulls the pane away and goes back to the channel (1403, 1416). */
 function useDrawerSwipe(app: React.RefObject<HTMLDivElement | null>, live: React.RefObject<{ drawer: boolean; channelId: string }>) {
   useEffect(() => {
     const root = app.current!;
-    let g: { x: number; y: number; t: number; open: boolean; axis: ReturnType<typeof swipeAxis>; p: number; v: number } | null = null;
+    let g: { x: number; y: number; t: number; t0: number; open: boolean; axis: ReturnType<typeof swipeAxis>; p: number; v: number; pane: HTMLElement | null } | null = null;
     const els = () => [root.querySelector<HTMLElement>(".drawer")!, root.querySelector<HTMLElement>(".scrim")!] as const;
     const start = (e: TouchEvent) => {
       g = null;
       if (!NARROW.matches || e.touches.length !== 1) return;
       const t = e.target as Element;
-      if (t.closest("dialog, .pane, input, textarea, [popover], .side-sec li:has(.chan-close)")) return;
+      // An open menu (a message long press, 1400) owns the touch, and so does the menu itself.
+      if (t.closest("dialog, input, textarea, [popover], .side-sec li:has(.chan-close)") ||document.querySelector(".pop:popover-open")) return;
       for (let el: Element | null = t; el && el !== root; el = el.parentElement) if (scrollsX(el)) return;
       // With no channel picked the drawer is all there is: nothing to swipe back to.
       if (!live.current.channelId) return;
-      const open = live.current.drawer;
-      g = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp, open, axis: null, p: open ? 1 : 0, v: 0 };
+      const pane = t.closest<HTMLElement>(".pane");
+      const open = !pane && live.current.drawer;
+      g = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp, t0: e.timeStamp, open, axis: null, p: open ? 1 : 0, v: 0, pane };
     };
     const move = (e: TouchEvent) => {
       if (!g || g.axis === "none") return;
       const dx = e.touches[0].clientX - g.x;
-      g.axis ??= swipeAxis(g.open, dx, e.touches[0].clientY - g.y);
+      g.axis ??= swipeAxis(g.open, dx, e.touches[0].clientY - g.y, e.timeStamp - g.t0);
       if (g.axis !== "open" && g.axis !== "close") return;
       e.preventDefault();
       const [drawer, scrim] = els();
-      const p = Math.min(1, Math.max(0, (g.open ? 1 : 0) + dx / drawer.offsetWidth));
-      g.v = ((p - g.p) * drawer.offsetWidth) / Math.max(1, e.timeStamp - g.t);
+      const w = (g.pane ?? drawer).offsetWidth;
+      const p = Math.min(1, Math.max(0, (g.open ? 1 : 0) + dx / w));
+      g.v = ((p - g.p) * w) / Math.max(1, e.timeStamp - g.t);
       g.p = p;
       g.t = e.timeStamp;
+      if (g.pane) return void Object.assign(g.pane.style, { transition: "none", translate: `${p * 100}% 0` });
       Object.assign(drawer.style, { transition: "none", visibility: "visible", translate: `${(p - 1) * 100}% 0` });
       Object.assign(scrim.style, { transition: "none", opacity: String(p) });
     };
     const end = () => {
       if (!g || (g.axis !== "open" && g.axis !== "close")) return (g = null);
       const open = swipeEnds(g.p, g.v);
+      const pane = g.pane;
       g = null;
+      if (pane) {
+        Object.assign(pane.style, { transition: "translate 140ms ease-out", translate: open ? "100% 0" : "" });
+        if (open) setTimeout(() => set({ pane: null }), 140);
+        return;
+      }
       for (const el of els()) el.removeAttribute("style");
       set({ drawer: open });
     };
@@ -2153,22 +2164,27 @@ function DeleteConfirm({ id }: { id: string }) {
   );
 }
 
-function BlockMember({ url, memberId }: { url: string; memberId: string }) {
+/** Block, or with `mute` mute (1410), after a confirm. */
+function BlockMember({ url, memberId, mute }: { url: string; memberId: string; mute?: boolean }) {
   const m = useApp((s) => s.cs[url]?.members[memberId]);
   const [err, setErr] = useState("");
   if (!m) return null;
   const name = m.displayName || m.username;
+  const verb = mute ? "Mute" : "Block";
   const go = () =>
-    setBlocked(url, memberId, true).then(
+    (mute ? setMuted(url, memberId, true) : setBlocked(url, memberId, true)).then(
       () => set({ modal: null }),
       (e) => setErr(errorText(e)),
     );
   return (
-    <Dialog label={`Block ${name}`} className="confirm">
-      <h2>Block {name}?</h2>
+    <Dialog label={`${verb} ${name}`} className="confirm">
+      <h2>
+        {verb} {name}?
+      </h2>
       <p className="muted">
-        Neither of you can send the other direct messages, and their messages in channels show collapsed for you. They are not told. Unblock them any time
-        from their profile or in Settings.
+        {mute
+          ? "Their messages show collapsed for you, and you skip their pings, unread counts and typing. They are not told. Unmute them any time from their profile."
+          : "Neither of you can send the other direct messages, and their messages in channels show collapsed for you. They are not told. Unblock them any time from their profile or in Settings."}
       </p>
       {err && (
         <p className="error" role="alert">
@@ -2179,8 +2195,8 @@ function BlockMember({ url, memberId }: { url: string; memberId: string }) {
         <button className="btn ghost" autoFocus onClick={() => set({ modal: null })}>
           Cancel
         </button>
-        <button className="btn danger" onClick={go}>
-          Block
+        <button className={mute ? "btn primary" : "btn danger"} onClick={go}>
+          {verb}
         </button>
       </div>
     </Dialog>
@@ -2328,7 +2344,7 @@ function ProfilePopover() {
             {(mod.remove || (m.id !== me?.id && !blocked)) && (
               <div className="row-end profile-mod">
                 {m.id !== me?.id && !blocked && (
-                  <button className="btn ghost small" title={muted ? undefined : "Collapse their messages and skip their pings, unread and typing. They are not told."} onClick={() => (setErr(""), setMuted(p.url, m.id, !muted).catch((e) => setErr(errorText(e))))}>
+                  <button className="btn ghost small" title={muted ? undefined : "Collapse their messages and skip their pings, unread and typing. They are not told."} onClick={() => (muted ? (setErr(""), setMuted(p.url, m.id, false).catch((e) => setErr(errorText(e)))) : set({ popover: null, modal: { t: "block", url: p.url, memberId: m.id, mute: true } }))}>
                     <Icon name={muted ? "bell" : "bellOff"} size={16} /> {muted ? "Unmute" : "Mute"}
                   </button>
                 )}

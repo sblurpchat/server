@@ -1384,3 +1384,23 @@ describe("settingsGroups", () => {
     expect(settingsGroups(true)).toEqual([["appearance", "notifications", "links"], ["blocked"], ["account"]]);
   });
 });
+
+import { holdStep } from "./logic";
+
+describe("holdStep", () => {
+  it("fires after 450 ms held still", () => {
+    expect(holdStep(0, 0, 0)).toBe("wait");
+    expect(holdStep(449, 3, -3)).toBe("wait");
+    expect(holdStep(450, 0, 0)).toBe("fire");
+  });
+  it("cancels once the finger moves past 8 px", () => {
+    expect(holdStep(100, 8, 0)).toBe("wait");
+    expect(holdStep(100, 0, -9)).toBe("cancel");
+    expect(holdStep(600, 6, 6)).toBe("cancel");
+  });
+  it("keeps a held touch from becoming a drawer swipe (1400)", () => {
+    expect(swipeAxis(false, 3, 0, 450)).toBe("none");
+    expect(swipeAxis(false, 60, 0, 700)).toBe("none"); // held, then dragged
+    expect(swipeAxis(false, 20, 0, 449)).toBe("open");
+  });
+});

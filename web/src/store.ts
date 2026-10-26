@@ -117,7 +117,7 @@ type Modal =
   | { t: "keys" }
   | { t: "profile"; focusPic?: boolean }
   | { t: "remove"; url: string; memberId: string; ban: boolean }
-  | { t: "block"; url: string; memberId: string }
+  | { t: "block"; url: string; memberId: string; mute?: boolean }
   | { t: "report"; url: string; message: Message }
   | { t: "reports" }
   | { t: "setup" }

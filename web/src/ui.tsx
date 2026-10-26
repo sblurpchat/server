@@ -337,7 +337,7 @@ const PHONE = matchMedia("(max-width: 767px)");
 
 /** Focus the composer once `work` has opened its channel (1390). iOS raises the keyboard only for a
  *  focus() inside the tap itself, so a hidden stand-in field takes focus now and hands it over. */
-export async function thenCompose(work: Promise<unknown>) {
+export async function thenCompose(work: Promise<unknown>, composer = ".main .composer-input") {
   const stand = document.createElement("input");
   stand.setAttribute("aria-hidden", "true");
   stand.tabIndex = -1;
@@ -347,7 +347,7 @@ export async function thenCompose(work: Promise<unknown>) {
   try {
     await work;
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); // the new channel has rendered
-    document.querySelector<HTMLElement>(".main .composer-input")?.focus();
+    document.querySelector<HTMLElement>(composer)?.focus();
   } finally {
     stand.remove();
   }
@@ -534,7 +534,7 @@ const ICON_OF: Record<string, IconName> = { recent: "clock", ...Object.fromEntri
 // Frequently used lives in this browser only (a per-viewer convenience); new people start with these.
 const RECENT_KEY = "sblurp.emoji.recent";
 const STARTER = ["thumbsup", "heart", "joy", "tada", "eyes", "pray", "fire", "100", "sparkles"];
-function readRecent(): string[] {
+export function readRecent(): string[] {
   try {
     const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "null");
     return Array.isArray(v) ? v : STARTER;

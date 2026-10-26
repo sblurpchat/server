@@ -6099,3 +6099,104 @@ label:has(> input.visually-hidden:focus-visible) {
     animation: fade-in 160ms ease-out;
   }
 }
+
+/* ------------------------------------------- message menu on touch (1401) */
+
+/* A long press focuses the menu itself, so no item looks picked (1407). */
+.menu [role="menu"]:focus {
+  outline: none;
+}
+
+/* Fingertip rows with body-size text and bigger icons. */
+@media (pointer: coarse) {
+  .menu button {
+    min-height: 48px;
+    height: auto;
+    gap: 14px;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-size: 1rem;
+  }
+  .menu button .icon {
+    width: 22px;
+    height: 22px;
+  }
+  .msg-menu .quick {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 4px 2px 10px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  .msg-menu .quick button {
+    justify-content: center;
+    width: 48px;
+    padding: 0;
+    border-radius: 24px;
+    background: color-mix(in srgb, var(--text) 8%, transparent);
+    font-size: 1.5rem;
+  }
+  .msg-menu .quick .icon {
+    color: var(--text);
+  }
+}
+/* An action sheet from the bottom on phones; a drag down closes it (Pop sheet).
+   !important beats the inline position place() sets. */
+@media (max-width: 767px) {
+  .pop.msg-menu {
+    left: 0 !important;
+    right: 0;
+    top: auto !important;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - env(safe-area-inset-top) - 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 20px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    border-width: 1px 0 0;
+    border-radius: 16px 16px 0 0;
+    transition-duration: 200ms;
+  }
+  .pop.msg-menu::backdrop {
+    background: rgb(0 0 0 / 0.4);
+  }
+  .pop.msg-menu:not(:popover-open) {
+    opacity: 1;
+    transform: translateY(100%);
+  }
+  @starting-style {
+    .pop.msg-menu:popover-open {
+      opacity: 1;
+      transform: translateY(100%);
+    }
+  }
+  .pop.msg-menu::before {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: calc(50% - 18px);
+    width: 36px;
+    height: 5px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--text) 35%, transparent);
+  }
+}
+
+/* Short channels still bounce on touch (1404), like a Safari page: iOS rubber-bands only a
+   scroller that can scroll, so the list is always 1px taller than its view. Messages stay at
+   the bottom. */
+@media (pointer: coarse) {
+  .scroller > .msgs {
+    flex-shrink: 0;
+    min-height: calc(100% + 1px);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  /* Flex margins do not collapse: the first message's own top margin is the gap. */
+  .scroller > .msgs > .day {
+    margin-bottom: 0;
+  }
+}

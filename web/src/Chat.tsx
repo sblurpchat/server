@@ -1,4 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type FormEvent, type KeyboardEvent } from "react";
+import { flushSync } from "react-dom";
+import { appPlatform } from "./downloads";
 import { MOD, useCountdown } from "./App";
 import { Glyph, useCustomMatches } from "./CustomEmoji";
 import { AUTH_URL } from "./auth";
@@ -29,6 +31,8 @@ import {
   type Community,
   cssUrl,
   count,
+  HOLD,
+  holdStep,
   tabBadges,
   shareMessageLink,
   nameColor,
@@ -76,9 +80,17 @@ import {
   unfurled,
   unfurlKey,
 } from "./store";
-import { Avatar, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, ghost, Icon, Markdown, menuKeys, Pop, Resizer, Skeleton, toned, useClamped } from "./ui";
+import { Avatar, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, ghost, Icon, Markdown, menuKeys, Pop, readRecent, Resizer, Skeleton, thenCompose, toned, useClamped } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
+/** A light haptic tap. iOS WebKit has no navigator.vibrate, so the iOS app navigates to
+ *  sblurp-haptic:, which Rust cancels and plays natively (apps/src-tauri/src/lib.rs, 1384). */
+const IOS_APP = appPlatform("__TAURI_INTERNALS__" in globalThis, navigator.userAgent, navigator.maxTouchPoints > 1) === "ios";
+function haptic() {
+  if (IOS_APP) location.href = "sblurp-haptic:tap";
+  else navigator.vibrate?.(10);
+}
+
 /** Touch screens have no hover toolbar (1313): press and hold puts its actions in the menu. */
 const NO_HOVER = matchMedia("(hover: none)");
 export const openProfile = (url: string, memberId: string, el: HTMLElement) =>
@@ -508,10 +520,11 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
     press.current = { timer: 0, held: null, long: e.pointerType !== "mouse" };
     setWho({ emoji: el.dataset.emoji!, rect: el.getBoundingClientRect() });
   };
-  // Press and hold a message on touch opens its actions menu (1297). Like the reaction list,
-  // it opens on release: shown while the finger is still down, the pointerup would dismiss it.
+  // Press and hold a message on touch opens its actions menu (1297) as soon as the hold is
+  // recognized, with a haptic tap (1384). The menu captures the pointer, so the release lands
+  // on it and does not light-dismiss it; the release's click is swallowed below.
   const hold = useRef({ timer: 0, touch: false, on: false, x: 0, y: 0 });
-  const [held, setHeld] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
   const whoR = who && m.reactions.find((r) => r.emoji === who.emoji);
   const author = c.members[m.authorId];
   const mine = m.authorId === c.me?.id;
@@ -563,7 +576,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
       data-fresh={fresh}
       data-focus={focus}
       data-editing={editing}
-      data-held={held}
+      data-held={(!!more && hold.current.on) || undefined}
       tabIndex={-1}
       aria-label={`${name}, ${timeLabel(Number(m.createdAtMs), h24)}`}
       onPointerDown={(e) => {
@@ -572,19 +585,26 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
         h.touch = e.pointerType !== "mouse";
         if (!h.touch || pending || editing || (e.target as Element).closest("button, input, textarea, video, .pop")) return;
         Object.assign(h, { x: e.clientX, y: e.clientY });
-        h.timer = window.setTimeout(() => ((h.on = true), setHeld(true)), 450);
+        const id = e.pointerId;
+        h.timer = window.setTimeout(() => {
+          h.on = true;
+          haptic();
+          flushSync(() => setMore(new DOMRect(h.x, h.y, 0, 0)));
+          moreRef.current?.focus({ preventScroll: true }); // no item looks picked before a tap (1407)
+          try {
+            moreRef.current?.closest(".pop")?.setPointerCapture(id);
+          } catch {
+            // the finger already lifted
+          }
+        }, HOLD.ms);
       }}
-      onPointerUp={() => {
+      onPointerMove={(e) => {
         const h = hold.current;
-        clearTimeout(h.timer);
-        if (!h.on) return;
-        setHeld(false);
-        setMore(new DOMRect(h.x, h.y, 0, 0));
+        if (!h.on && holdStep(0, e.clientX - h.x, e.clientY - h.y) === "cancel") clearTimeout(h.timer);
       }}
+      onPointerUp={() => clearTimeout(hold.current.timer)}
       onPointerCancel={() => {
         clearTimeout(hold.current.timer);
-        hold.current.on = false;
-        setHeld(false);
       }}
       onClickCapture={(e) => {
         if (!hold.current.on) return;
@@ -737,17 +757,40 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
           </>
         )}
       </Pop>
-      <Pop anchor={more} side="left" onClose={() => setMore(null)} className="menu" label="Message actions">
-        <div role="menu" onClick={() => setMore(null)} onKeyDown={menuKeys}>
+      <Pop
+        anchor={more}
+        side="left"
+        onClose={() => setMore(null)}
+        className="menu msg-menu" label="Message actions" sheet>
+        <div role="menu" ref={moreRef} tabIndex={-1} onClick={() => setMore(null)} onKeyDown={menuKeys}>
           {NO_HOVER.matches && (
             <>
               {joined && (
-                <button role="menuitem" onClick={() => setPick(more)}>
-                  <Icon name="smile" size={18} /> Add reaction
-                </button>
+                // An action sheet on phones, the emoji you picked most recently on top like iMessage and
+                // Slack (1401, 1408), and the full picker last.
+                <div className="quick" role="group" aria-label="Quick reactions">
+                  {more &&
+                    readRecent()
+                      .slice(0, 5)
+                      .map((n) => emojiChar(`:${n}:`))
+                      .map((e) => (
+                        <button key={e} role="menuitem" aria-label={`React with ${e}`} onClick={() => void react(url, m, e)}>
+                          <Glyph e={e} />
+                        </button>
+                      ))}
+                  <button role="menuitem" aria-label="Add reaction" onClick={() => setPick(more)}>
+                    <Icon name="plus" size={24} />
+                  </button>
+                </div>
               )}
               {!inThread && (
-                <button role="menuitem" onClick={() => set({ pane: { t: "thread", rootId: m.id } })}>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    // In the tap itself, or iOS does not raise the keyboard (1409).
+                    void thenCompose(Promise.resolve(set({ pane: { t: "thread", rootId: m.id } })), ".pane .composer-input");
+                  }}
+                >
                   <Icon name="thread" size={18} /> Reply in thread
                 </button>
               )}
@@ -770,7 +813,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
             </button>
           )}
           {!mine && !blocked && (
-            <button role="menuitem" onClick={() => void setMuted(url, m.authorId, !muted).catch(() => {})}>
+            <button role="menuitem" onClick={() => (muted ? void setMuted(url, m.authorId, false).catch(() => {}) : set({ modal: { t: "block", url, memberId: m.authorId, mute: true } }))}>
               <Icon name={muted ? "bell" : "bellOff"} size={18} /> {muted ? "Unmute" : "Mute"} {name}
             </button>
           )}

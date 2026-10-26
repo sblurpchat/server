@@ -1449,8 +1449,10 @@ export function tailnetUrl(url: string, tailnet: string): string {
 }
 
 /** Drawer swipe (1354): after 10px the gesture locks to an axis. "open" or "close" only when the
- *  move is mostly sideways and in the direction that changes the drawer; anything else is a scroll. */
-export function swipeAxis(open: boolean, dx: number, dy: number): "open" | "close" | "none" | null {
+ *  move is mostly sideways and in the direction that changes the drawer; anything else is a scroll.
+ *  A touch still undecided when a message long press fires belongs to the press (1400). */
+export function swipeAxis(open: boolean, dx: number, dy: number, ms = 0): "open" | "close" | "none" | null {
+  if (ms >= HOLD.ms) return "none";
   if (Math.hypot(dx, dy) < 10) return null;
   if (Math.abs(dx) < Math.abs(dy) * 1.2) return "none";
   return !open && dx > 0 ? "open" : open && dx < 0 ? "close" : "none";
@@ -1481,6 +1483,15 @@ export type SettingsPage = "appearance" | "notifications" | "links" | "blocked" 
 export function settingsGroups(links: boolean): SettingsPage[][] {
   return [["appearance", "notifications", ...(links ? (["links"] as const) : [])], ["blocked"], ["account"]];
 }
+
+/** Press and hold on touch (1297, 1384): after `ms` without moving more than `slop` px the hold
+ *  fires; moving further first cancels it (the finger is scrolling or dragging, not holding). */
+export const HOLD = { ms: 450, slop: 8 };
+export function holdStep(elapsedMs: number, dx: number, dy: number): "wait" | "fire" | "cancel" {
+  if (dx * dx + dy * dy > HOLD.slop * HOLD.slop) return "cancel";
+  return elapsedMs >= HOLD.ms ? "fire" : "wait";
+}
+
 /** Phone badges (1386), like Slack and Discord mobile. Home: a dot for unread channels and a
  *  count of their mentions. DMs: unread conversations. Back: the mention count away from the
  *  open channel, where an unread DM counts at least once; never a bare dot. */
