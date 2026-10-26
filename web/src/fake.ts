@@ -41,7 +41,8 @@ import {
   type Role,
 } from "./gen/sblurp/v1/sblurp_pb";
 import { videoPoster } from "./avatar";
-import { BANNER_TYPES, byLevel, encodeMentions, levelOf, mayPost, mentionsMe, messageHash } from "./logic";
+import { BANNER_TYPES, byLevel, encodeMentions, levelOf, mayPost, mentionsMe, shareMessageLink } from "./logic";
+import { AUTH_URL } from "./auth";
 
 type Extra = {
   replies?: [number, string, string][];
@@ -1263,10 +1264,9 @@ function init() {
   for (const s of SEEDS) fakes.set(s.url, seed(s, now));
   // Message link previews (1109): links to a message here, one in another community, one in a
   // community I have not joined and one that does not exist. Only the first two get a preview.
-  const app = location.origin + location.pathname + location.search;
   const [sb, owls, press] = SEEDS.filter((s) => s.url !== "https://pottery.thursdays.club").map((s) => fakes.get(s.url)!);
   const first = (f: Fake, name: string) => f.messages.find((m) => f.channels.get(m.channelId)!.name === name && !m.threadRootId)!;
-  const link = (f: Fake, m: Pick<Message, "id" | "channelId" | "threadRootId">) => app + messageHash(f.info.baseUrl, m);
+  const link = (f: Fake, m: Pick<Message, "id" | "channelId" | "threadRootId">) => shareMessageLink(AUTH_URL, f.info.baseUrl, m);
   const general = [...sb.channels.values()].find((c) => c.name === "general")!;
   const m = create(MessageSchema, {
     id: id("x"),
