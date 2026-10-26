@@ -5,7 +5,7 @@ import { MOD, useCountdown } from "./App";
 import { Glyph, useCustomMatches } from "./CustomEmoji";
 import { AUTH_URL } from "./auth";
 import { LinkPreviews } from "./LinkPreview";
-import { ActivityKind, ChannelKind, ChannelMode, MemberKind, MemberRole, type ActivityItem, type Attachment, type Member, type Message, type ThreadSummary } from "./gen/sblurp/v1/sblurp_pb";
+import { ActivityKind, ChannelKind, ChannelMode, MemberKind, MemberRole, NotifyLevel, type ActivityItem, type Channel, type Attachment, type Member, type Message, type ThreadSummary } from "./gen/sblurp/v1/sblurp_pb";
 import {
   acQuery,
   arrivalText,
@@ -20,6 +20,7 @@ import {
   hostOf,
   mergeNewest,
   isDM,
+  levelOf,
   dmPeer,
   listKey,
   matchScore,
@@ -74,6 +75,7 @@ import {
   set,
   setDraft,
   setMuted,
+  setNotifyLevel,
   typing,
   upload,
   useApp,
@@ -83,13 +85,13 @@ import {
   unfurled,
   unfurlKey,
 } from "./store";
-import { Avatar, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, AUTOFOCUS, ghost, Icon, Markdown, menuKeys, Pop, readRecent, Resizer, Skeleton, thenCompose, toned, useClamped } from "./ui";
+import { Avatar, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, AUTOFOCUS, ghost, Icon, type IconName, Markdown, menuKeys, Pop, readRecent, Resizer, Skeleton, thenCompose, toned, useClamped } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
 /** A light haptic tap. iOS WebKit has no navigator.vibrate, so the iOS app navigates to
  *  sblurp-haptic:, which Rust cancels and plays natively (apps/src-tauri/src/lib.rs, 1384). */
 const IOS_APP = appPlatform("__TAURI_INTERNALS__" in globalThis, navigator.userAgent, navigator.maxTouchPoints > 1) === "ios";
-function haptic() {
+export function haptic() {
   if (IOS_APP) location.href = "sblurp-haptic:tap";
   else navigator.vibrate?.(10);
 }
@@ -128,6 +130,42 @@ function Topic({ c, topic, title, onEdit }: { c: Community; topic: string; title
 // ---------------------------------------------------------------------------
 // Channel view
 // ---------------------------------------------------------------------------
+
+const LEVELS: [NotifyLevel, string, IconName][] = [
+  [NotifyLevel.ALL, "All messages", "bell"],
+  [NotifyLevel.MENTIONS, "Only mentions", "atSign"],
+  [NotifyLevel.NOTHING, "Nothing", "bellOff"],
+];
+
+/** Notification level choices for a menu (1498): a channel's, or the community's without ch. */
+export function NotifyItems({ c, ch }: { c: Community; ch?: Channel }) {
+  const id = ch?.id ?? "";
+  const cur = ch ? levelOf(c.levels, ch) : c.levels[""] || NotifyLevel.ALL;
+  const pick = (l: NotifyLevel) => void setNotifyLevel(c.url, id, l).catch(() => {});
+  return (
+    <div role="group" aria-label="Notify me about">
+      <p className="menu-label" aria-hidden="true">
+        Notify me about
+      </p>
+      {LEVELS.map(([l, label, icon]) => (
+        <button key={l} role="menuitemradio" aria-checked={cur === l} onClick={() => pick(l)}>
+          <Icon name={icon} size={18} /> {label}
+          {cur === l && (
+            <span className="menu-check">
+              <Icon name="check" size={18} />
+            </span>
+          )}
+        </button>
+      ))}
+      {/* A channel's own level hides the community's; this goes back to following it. DMs never follow it. */}
+      {ch && !isDM(ch) && !!c.levels[id] && (
+        <button role="menuitem" onClick={() => pick(NotifyLevel.UNSPECIFIED)}>
+          <Icon name="back" size={18} /> Use community setting
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function ChannelView() {
   const c = useC();
@@ -223,13 +261,15 @@ export function ChannelView() {
             Cancel
           </button>
         </form>
-        {(canEdit || canLeave) && (
+        {joined && (
           <button className="icon-btn" aria-label={`#${title} options`} title="Channel options" aria-haspopup="menu" aria-expanded={!!menu} onClick={(e) => setMenu(e.currentTarget.getBoundingClientRect())}>
             <Icon name="more" />
           </button>
         )}
         <Pop anchor={menu} onClose={() => setMenu(null)} className="menu" label={`#${title} options`}>
           <div role="menu" onClick={() => setMenu(null)} onKeyDown={menuKeys}>
+            <NotifyItems c={c} ch={ch} />
+            {(canEdit || canLeave) && <hr />}
             {canEdit && (
               <button role="menuitem" onClick={() => set({ modal: { t: "channel", id: ch.id } })}>
                 <Icon name="edit" size={18} /> Edit channel

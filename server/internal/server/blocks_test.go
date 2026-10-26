@@ -209,3 +209,53 @@ func TestSelfDM(t *testing.T) {
 		t.Fatalf("reopened self DM counted: %v", rs)
 	}
 }
+
+func TestNotifyLevels(t *testing.T) {
+	e := newEnv(t)
+	ana, bob := e.join("ana"), e.join("bob")
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	dm := must(bob.chat.OpenDM(ctx(), connect.NewRequest(&v1.OpenDMRequest{MemberIds: []string{ana.me.Id}}))).Channel
+	bob.send(gen.Id, "hey <@"+ana.me.Id+">")
+	bob.send(gen.Id, "plain")
+	bob.send(dm.Id, "dm")
+	level := func(ch string, l v1.NotifyLevel) error {
+		_, err := ana.srv.SetNotifyLevel(ctx(), connect.NewRequest(&v1.SetNotifyLevelRequest{ChannelId: ch, Level: l}))
+		return err
+	}
+	ok := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	counts := func(ch string, unread, mentions int32) {
+		t.Helper()
+		if rs := readStateFor(ana.state(), ch); rs.UnreadCount != unread || rs.MentionCount != mentions {
+			t.Fatalf("%s: %v, want %d/%d", ch, rs, unread, mentions)
+		}
+	}
+	wantCode(t, level("nope", v1.NotifyLevel_NOTIFY_LEVEL_ALL), connect.CodeNotFound)
+	wantCode(t, level("", 9), connect.CodeInvalidArgument)
+
+	counts(gen.Id, 2, 1)
+	sub := ana.subscribe(ana.state().Seq)
+	ok(level("", v1.NotifyLevel_NOTIFY_LEVEL_MENTIONS))
+	sub.next(func(ev *v1.Event) bool { return ev.GetNotifyLevel().GetLevel() == v1.NotifyLevel_NOTIFY_LEVEL_MENTIONS }, nil)
+	sub.next(func(ev *v1.Event) bool { rs := ev.GetReadState(); return rs != nil && rs.ChannelId == gen.Id && rs.UnreadCount == 0 }, nil)
+	counts(gen.Id, 0, 1)
+	counts(dm.Id, 1, 1) // DMs skip the community level
+	ok(level(gen.Id, v1.NotifyLevel_NOTIFY_LEVEL_NOTHING))
+	counts(gen.Id, 0, 0)
+	ok(level(dm.Id, v1.NotifyLevel_NOTIFY_LEVEL_NOTHING))
+	counts(dm.Id, 0, 0)
+	st := ana.state()
+	if len(st.NotifyLevels) != 3 {
+		t.Fatalf("levels = %v", st.NotifyLevels)
+	}
+	if len(bob.state().NotifyLevels) != 0 {
+		t.Fatal("bob sees ana's levels")
+	}
+	ok(level(gen.Id, v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED))
+	ok(level("", v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED))
+	counts(gen.Id, 2, 1)
+}

@@ -132,6 +132,9 @@ func (s *Server) sendPushes(authorID string, msg *v1.Message) {
 				continue // mentioned in a channel they cannot see
 			}
 		}
+		if l, err := notifyLevel(ctx, s.db.r, id, c); err != nil || l == v1.NotifyLevel_NOTIFY_LEVEL_NOTHING {
+			continue // they silenced this channel or the community
+		}
 		b := pushBody{Handle: handle, Kind: kind, Community: s.cfg.Name, Channel: c.Name, ChannelID: c.Id, MessageID: msg.Id}
 		if preview {
 			b.From = cmp.Or(author.DisplayName, author.Username)

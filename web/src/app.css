@@ -1424,6 +1424,31 @@ kbd {
   color: var(--ink);
   font-weight: 700;
 }
+/* Notifications off (1498): dimmed, with a bell-off at the end. */
+.chan[data-silent="true"] {
+  opacity: 0.6;
+}
+.chan-silent {
+  display: inline-flex;
+  margin-left: auto;
+}
+/* A held row opens its notification menu, so iOS must not show the link callout. */
+.side-sec li {
+  -webkit-touch-callout: none;
+}
+.menu-label {
+  margin: 4px 10px 2px;
+  color: var(--graphite);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.menu-check {
+  display: inline-flex;
+  margin-left: auto;
+}
+.menu .menu-check .icon {
+  color: var(--text);
+}
 .chan[aria-current="page"] {
   background: var(--selected);
   color: var(--ink);

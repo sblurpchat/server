@@ -17,6 +17,7 @@ import {
   ChatService,
   ReadStateSchema,
   MessageSchema,
+  NotifyLevel,
   ServerService,
   type Attachment,
   type Channel,
@@ -40,6 +41,7 @@ import {
   hostOf,
   isDM,
   landingChannel,
+  levelOf,
   listKey,
   mentionsMe,
   quiet,
@@ -395,6 +397,7 @@ function maybeNotify(url: string, m: Message) {
   if (!c || !ch || m.authorId === c.me?.id || quiet(c, m.authorId) || !state.notify || !document.hidden) return;
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
   if (!isDM(ch) && !mentionsMe(m.text, c.me?.id)) return;
+  if (levelOf(c.levels, ch) === NotifyLevel.NOTHING) return;
   const author = c.members[m.authorId]?.displayName ?? "Someone";
   const n = new Notification(isDM(ch) ? author : `${author} in #${ch.name}`, {
     body: plainText(m.text, c.members).slice(0, 180),
@@ -830,6 +833,11 @@ export async function setMuted(url: string, memberId: string, on: boolean) {
   if (on) await api(url).server.muteMember({ memberId });
   else await api(url).server.unmuteMember({ memberId });
   local(url, on ? { case: "memberMuted", value: memberId } : { case: "memberUnmuted", value: memberId });
+}
+
+/** Set my notification level for a channel, or the community with channelId "" (1498). The server's events apply it. */
+export async function setNotifyLevel(url: string, channelId: string, level: NotifyLevel) {
+  await api(url).server.setNotifyLevel({ channelId, level });
 }
 
 export async function search(url: string, q: string) {

@@ -290,6 +290,13 @@ the simulator rereads the file each time. It is not in any release build.
   `GetState.muted_member_ids` and the muter-only events `member_muted` /
   `member_unmuted` let clients collapse their messages, skip notifications
   and hide typing. Nobody else sees the mute list.
+- **Notification levels** (1498). `SetNotifyLevel` (any member, for
+  themselves) sets ALL, MENTIONS or NOTHING on one channel, or on the
+  community with `channel_id` "" (every channel but DMs follows it unless it
+  has its own). MENTIONS drops the channel's unread count, NOTHING drops
+  unread and mention counts and its pushes. `GetState.notify_levels` and the
+  event `notify_level`, followed by fresh `read_state` events, keep the
+  member's devices in step.
 - **Reports** (1119). `ReportMessage` (any member, about a message they can
   see that someone else wrote, optional note) stores a copy of the text, so a
   report outlives an edit or delete. A DM report shares that one message and

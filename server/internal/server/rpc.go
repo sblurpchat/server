@@ -452,7 +452,18 @@ func readState(ctx context.Context, q queryer, m *memberRow, c *v1.Channel) (*v1
 	rs.LastReadSeq = max(rs.LastReadSeq, m.joinedSeq)
 	dm := c.Kind == v1.ChannelKind_CHANNEL_KIND_DM
 	err = q.QueryRowContext(ctx, unreadCounts, dm, "<@"+m.Id+">", c.Id, rs.LastReadSeq, m.Id).Scan(&rs.UnreadCount, &rs.MentionCount)
-	return rs, err
+	if err != nil {
+		return nil, err
+	}
+	switch l, err := notifyLevel(ctx, q, m.Id, c); {
+	case err != nil:
+		return nil, err
+	case l == v1.NotifyLevel_NOTIFY_LEVEL_NOTHING:
+		rs.UnreadCount, rs.MentionCount = 0, 0
+	case l == v1.NotifyLevel_NOTIFY_LEVEL_MENTIONS:
+		rs.UnreadCount = 0
+	}
+	return rs, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -821,6 +832,9 @@ func (s *Server) GetState(ctx context.Context, _ *connect.Request[v1.GetStateReq
 		return nil, err
 	}
 	if out.MutedMemberIds, err = listRel(ctx, tx, muteRel, m.Id); err != nil {
+		return nil, err
+	}
+	if out.NotifyLevels, err = listNotifyLevels(ctx, tx, m.Id); err != nil {
 		return nil, err
 	}
 	if out.OpenReports, err = s.openReports(ctx, tx, m.Role); err != nil {

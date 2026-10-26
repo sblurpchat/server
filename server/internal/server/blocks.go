@@ -124,3 +124,90 @@ func (s *Server) setRel(ctx context.Context, r relation, target string, on bool)
 		return t.emit(ev, "", m.Id)
 	})
 }
+
+// Notification levels (1498) sit next to mutes: a mute quiets a member, a
+// level quiets a channel or the whole community, for the member who set it.
+
+// notifyLevel is member's level for c: its own setting, else the community
+// setting (DMs skip it), else ALL.
+func notifyLevel(ctx context.Context, q queryer, member string, c *v1.Channel) (v1.NotifyLevel, error) {
+	var l v1.NotifyLevel
+	err := q.QueryRowContext(ctx, `SELECT COALESCE(
+		(SELECT level FROM notify_levels WHERE member_id = ?1 AND channel_id = ?2),
+		(SELECT level FROM notify_levels WHERE member_id = ?1 AND channel_id = '' AND NOT ?3), 1)`,
+		member, c.Id, c.Kind == v1.ChannelKind_CHANNEL_KIND_DM).Scan(&l)
+	return l, err
+}
+
+func listNotifyLevels(ctx context.Context, q queryer, member string) ([]*v1.NotifySetting, error) {
+	rows, err := q.QueryContext(ctx, "SELECT channel_id, level FROM notify_levels WHERE member_id = ? ORDER BY channel_id", member)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*v1.NotifySetting
+	for rows.Next() {
+		n := &v1.NotifySetting{}
+		if err := rows.Scan(&n.ChannelId, &n.Level); err != nil {
+			return nil, err
+		}
+		out = append(out, n)
+	}
+	return out, rows.Err()
+}
+
+func (s *Server) SetNotifyLevel(ctx context.Context, req *connect.Request[v1.SetNotifyLevelRequest]) (*connect.Response[v1.SetNotifyLevelResponse], error) {
+	m, r := me(ctx), req.Msg
+	if err := checkID("channel_id", r.ChannelId); err != nil {
+		return nil, err
+	}
+	if _, ok := v1.NotifyLevel_name[int32(r.Level)]; !ok {
+		return nil, errf(connect.CodeInvalidArgument, "unknown level %d", r.Level)
+	}
+	err := s.writeTx(ctx, func(t *wtx) error {
+		where := "id IN (SELECT channel_id FROM channel_members WHERE member_id = ?) AND kind != ?"
+		args := []any{m.Id, v1.ChannelKind_CHANNEL_KIND_DM}
+		if r.ChannelId != "" {
+			if _, err := channelFor(ctx, t, r.ChannelId, m.Id); err != nil {
+				return err
+			}
+			where, args = "id = ?", []any{r.ChannelId}
+		}
+		q, qargs := "DELETE FROM notify_levels WHERE member_id = ? AND channel_id = ?", []any{m.Id, r.ChannelId}
+		if r.Level != v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED {
+			q = `INSERT INTO notify_levels(member_id, channel_id, level) VALUES (?,?,?)
+				ON CONFLICT DO UPDATE SET level = excluded.level WHERE level != excluded.level`
+			qargs = append(qargs, r.Level)
+		}
+		res, err := t.ExecContext(ctx, q, qargs...)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return nil
+		}
+		if err := t.emit(&v1.Event{Kind: &v1.Event_NotifyLevel{NotifyLevel: &v1.NotifySetting{ChannelId: r.ChannelId, Level: r.Level}}}, "", m.Id); err != nil {
+			return err
+		}
+		// The counts change with the level, so send them again.
+		cs, err := queryChannels(ctx, t, where, args...)
+		if err != nil {
+			return err
+		}
+		row, err := s.loadMember(ctx, t, "id = ?", m.Id)
+		if err != nil {
+			return err
+		}
+		for _, c := range cs {
+			rs, err := readState(ctx, t, row, c)
+			if err != nil {
+				return err
+			}
+			if err := t.emit(&v1.Event{Kind: &v1.Event_ReadState{ReadState: rs}}, "", m.Id); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return connect.NewResponse(&v1.SetNotifyLevelResponse{}), err
+}

@@ -6,6 +6,7 @@ import {
   ChannelMode,
   MemberKind,
   MemberRole,
+  NotifyLevel,
   Presence,
   ReadStateSchema,
   type Channel,
@@ -79,6 +80,8 @@ export interface Community {
   muted: string[];
   /** Moderators: open reports I can see (1255). */
   openReports?: number;
+  /** My notification levels (1498), keyed by channel id; "" is the community. */
+  levels: Record<string, NotifyLevel>;
 }
 
 export const emptyCommunity = (url: string, info?: Info): Community => ({
@@ -96,10 +99,18 @@ export const emptyCommunity = (url: string, info?: Info): Community => ({
   failed: {},
   blocked: [],
   muted: [],
+  levels: {},
 });
 
 /** A blocked or muted member: no unread, mentions, notifications or typing (1244, 1293). */
 export const quiet = (c: Community, id: string) => c.blocked.includes(id) || c.muted.includes(id);
+
+/** My level for a channel: its own, else the community's (DMs skip that), else ALL, as on the server (1498). */
+export const levelOf = (levels: Record<string, NotifyLevel>, ch: Channel) => levels[ch.id] || (isDM(ch) ? 0 : levels[""]) || NotifyLevel.ALL;
+
+/** MENTIONS keeps only mentions, NOTHING keeps nothing, as the server counts them (1498). */
+export const byLevel = (rs: ReadState, l: NotifyLevel): ReadState =>
+  l === NotifyLevel.NOTHING ? { ...rs, unreadCount: 0, mentionCount: 0 } : l === NotifyLevel.MENTIONS ? { ...rs, unreadCount: 0 } : rs;
 
 export const listKey = (channelId: string, rootId = "") => (rootId ? `t:${rootId}` : channelId);
 
@@ -119,6 +130,7 @@ export function applySnapshot(c: Community, s: GetStateResponse): Community {
     seq: s.seq,
     blocked: s.blockedMemberIds,
     muted: s.mutedMemberIds,
+    levels: Object.fromEntries(s.notifyLevels.map((n) => [n.channelId, n.level])),
     openReports: s.openReports,
     // Lists may have missed events; the open view reloads them.
     lists: {},
@@ -209,11 +221,11 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
       const counts = !quiet(c, m.authorId);
       if (ch && !m.threadRootId) {
         next.channels = { ...c.channels, [ch.id]: { ...ch, lastMessageSeq: ev.seq, lastMessage: isDM(ch) ? m : undefined } };
-        if (counts) next.reads = { ...c.reads, [ch.id]: bumpUnread(c.reads[ch.id], ch.id, m, ev.seq, c.me?.id, isDM(ch), viewing === ch.id) };
+        if (counts) next.reads = { ...c.reads, [ch.id]: byLevel(bumpUnread(c.reads[ch.id], ch.id, m, ev.seq, c.me?.id, isDM(ch), viewing === ch.id), levelOf(c.levels, ch)) };
       } else if (ch && counts && m.authorId !== c.me?.id && (isDM(ch) || mentionsMe(m.text, c.me?.id))) {
         // Thread replies are not channel unread, but a mention in one (or any DM reply) still counts.
         const rs = c.reads[ch.id] ?? create(ReadStateSchema, { channelId: ch.id });
-        next.reads = { ...c.reads, [ch.id]: { ...rs, mentionCount: rs.mentionCount + 1 } };
+        next.reads = { ...c.reads, [ch.id]: byLevel({ ...rs, mentionCount: rs.mentionCount + 1 }, levelOf(c.levels, ch)) };
       }
       return next;
     }
@@ -304,6 +316,11 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
     case "memberUnmuted":
       next.muted = c.muted.filter((id) => id !== k.value);
       return next;
+    case "notifyLevel": {
+      const { [k.value.channelId]: _, ...rest } = c.levels;
+      next.levels = k.value.level ? { ...rest, [k.value.channelId]: k.value.level } : rest;
+      return next; // fresh read_state events follow from the server
+    }
     case "pluginsChanged":
       next.pluginsRev = (c.pluginsRev ?? 0) + 1;
       return next;

@@ -18,6 +18,8 @@ import {
   MemberRole,
   MemberSchema,
   MessageSchema,
+  NotifyLevel,
+  NotifySettingSchema,
   PluginSchema,
   ReportSchema,
   type Plugin,
@@ -39,7 +41,7 @@ import {
   type Role,
 } from "./gen/sblurp/v1/sblurp_pb";
 import { videoPoster } from "./avatar";
-import { BANNER_TYPES, encodeMentions, mayPost, mentionsMe, messageHash } from "./logic";
+import { BANNER_TYPES, byLevel, encodeMentions, levelOf, mayPost, mentionsMe, messageHash } from "./logic";
 
 type Extra = {
   replies?: [number, string, string][];
@@ -385,6 +387,7 @@ interface Fake {
   plugins: Plugin[];
   blocked: Set<string>; // members I blocked (1118)
   muted: Set<string>; // members I muted (1293)
+  levels: Record<string, NotifyLevel>; // my notification levels (1498)
   reports: Report[]; // open reports, newest first (1119)
   hidden: Set<string>; // DMs I left; a new message brings one back
 }
@@ -429,6 +432,7 @@ function seed(s: Seed, now: number): Fake {
     notIn: new Set(),
     blocked: new Set(),
     muted: new Set(),
+    levels: {},
     reports: [],
     hidden: new Set(),
     bans: [],
@@ -749,6 +753,18 @@ function service(f: Fake) {
         if (f.muted.delete(req.memberId)) emit(f, { case: "memberUnmuted", value: req.memberId });
         return {};
       },
+      setNotifyLevel(req: { channelId: string; level: NotifyLevel }) {
+        need();
+        const { [req.channelId]: _, ...rest } = f.levels;
+        f.levels = req.level ? { ...rest, [req.channelId]: req.level } : rest;
+        emit(f, { case: "notifyLevel", value: create(NotifySettingSchema, req) });
+        for (const ch of f.channels.values()) {
+          const rs = f.reads.get(ch.id);
+          if (rs && inside(f, ch) && (ch.id === req.channelId || (!req.channelId && ch.kind !== ChannelKind.DM)))
+            emit(f, { case: "readState", value: byLevel(rs, levelOf(f.levels, ch)) });
+        }
+        return {};
+      },
       leaveCommunity() {
         need();
         if (me().role === MemberRole.OWNER) throw new ConnectError("the owner cannot leave", Code.FailedPrecondition);
@@ -911,7 +927,8 @@ function service(f: Fake) {
             .filter((c) => inside(f, c))
             .map((c) => (c.kind === ChannelKind.DM ? { ...c, lastMessage: f.messages.findLast((m) => m.channelId === c.id && !m.threadRootId && !m.deleted) } : c)),
           members: [...f.members.values()],
-          readStates: [...f.reads.values()].filter((r) => inside(f, f.channels.get(r.channelId))),
+          readStates: [...f.reads.values()].filter((r) => inside(f, f.channels.get(r.channelId))).map((r) => byLevel(r, levelOf(f.levels, f.channels.get(r.channelId)!))),
+          notifyLevels: Object.entries(f.levels).map(([channelId, level]) => ({ channelId, level })),
           roles: [...f.roles].sort((a, b) => a.position - b.position),
           channelMode: f.mode,
           blockedMemberIds: [...f.blocked],

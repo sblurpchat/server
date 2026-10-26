@@ -1,10 +1,10 @@
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent } from "react";
 import { ChannelDialog, CommunitySettings, Invites, PERMISSION, RoleChips, ReportDialog, ReportsDialog } from "./Admin";
-import { ChannelView, openProfile, PeoplePicker, RightPane } from "./Chat";
+import { ChannelView, haptic, NotifyItems, openProfile, PeoplePicker, RightPane } from "./Chat";
 import { SetupWizard, useSetupPrompt } from "./Setup";
 import { create } from "@bufbuild/protobuf";
-import { ChannelKind, ChannelMode, MemberKind, MemberRole, MemberSchema, type Channel, type GetServerInfoResponse, type Member } from "./gen/sblurp/v1/sblurp_pb";
+import { ChannelKind, ChannelMode, MemberKind, MemberRole, MemberSchema, NotifyLevel, type Channel, type GetServerInfoResponse, type Member } from "./gen/sblurp/v1/sblurp_pb";
 import {
   channelLabel,
   communityBadge,
@@ -41,6 +41,9 @@ import {
   blockedRows,
   swipeAxis,
   swipeEnds,
+  HOLD,
+  holdStep,
+  levelOf,
   swipeTab,
   allDMs,
   dmPreview,
@@ -211,6 +214,31 @@ function rowSwipe(e: React.PointerEvent<HTMLLIElement>) {
   li.addEventListener("pointermove", move);
   li.addEventListener("pointerup", up);
   li.addEventListener("pointercancel", up);
+}
+
+/** Press and hold a sidebar row for its notification menu (1498); a right click does the same.
+ *  The release's click is swallowed in onClickCapture, so the hold does not open the channel. */
+function rowHold(e: React.PointerEvent<HTMLLIElement>, open: (at: DOMRect) => void) {
+  const li = e.currentTarget;
+  delete li.dataset.held; // a hold whose release fired no click must not swallow the next tap
+  if (e.pointerType === "mouse") return;
+  const x0 = e.clientX, y0 = e.clientY;
+  const done = () => {
+    clearTimeout(timer);
+    li.removeEventListener("pointermove", move);
+    li.removeEventListener("pointerup", done);
+    li.removeEventListener("pointercancel", done);
+  };
+  const move = (m: PointerEvent) => holdStep(0, m.clientX - x0, m.clientY - y0) === "cancel" && done();
+  const timer = setTimeout(() => {
+    done();
+    li.dataset.held = "";
+    haptic();
+    open(new DOMRect(x0, y0, 0, 0));
+  }, HOLD.ms);
+  li.addEventListener("pointermove", move);
+  li.addEventListener("pointerup", done);
+  li.addEventListener("pointercancel", done);
 }
 
 /** What a tab swipe moves: the drawer's list, not the tab bar under it. */
@@ -784,6 +812,7 @@ function Sidebar({ c }: { c: Community }) {
   const channelId = useApp((s) => s.channelId);
   const collapsed = useApp((s) => s.collapsed);
   const [menu, setMenu] = useState<DOMRect | null>(null);
+  const [rowMenu, setRowMenu] = useState<{ ch: Channel; at: DOMRect } | null>(null);
   const name = c.info?.name ?? hostOf(c.url);
   const sections = useMemo(() => sidebarSections(c), [c.channels]);
   const admin = (c.me?.role ?? 0) >= MemberRole.ADMIN;
@@ -847,6 +876,8 @@ function Sidebar({ c }: { c: Community }) {
             <Icon name="check" size={18} /> Mark all as read
           </button>
           <hr />
+          <NotifyItems c={c} />
+          <hr />
           <button role="menuitem" className="danger" onClick={() => set({ modal: { t: "leave" } })}>
             <Icon name="leave" size={18} /> Leave community
           </button>
@@ -900,12 +931,33 @@ function Sidebar({ c }: { c: Community }) {
                     const unread = (rs?.unreadCount ?? 0) > 0 && ch.id !== channelId;
                     const other = sec.dm ? c.members[dmPeer(ch, c.me?.id)] : undefined;
                     const label = channelLabel(ch, c.members, c.me?.id);
+                    const silent = levelOf(c.levels, ch) === NotifyLevel.NOTHING;
                     return (
-                      <li key={ch.id} onPointerDown={sec.dm ? rowSwipe : undefined}>
+                      <li
+                        key={ch.id}
+                        onPointerDown={(e) => {
+                          if (sec.dm) rowSwipe(e);
+                          rowHold(e, (at) => setRowMenu({ ch, at }));
+                        }}
+                        onClickCapture={(e) => {
+                          if (e.currentTarget.dataset.held == null) return;
+                          delete e.currentTarget.dataset.held;
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          const show = () => setRowMenu({ ch, at: new DOMRect(e.clientX, e.clientY, 0, 0) });
+                          // Opened while the button is down, the release would light-dismiss it.
+                          if (e.buttons) window.addEventListener("pointerup", show, { once: true });
+                          else show();
+                        }}
+                      >
                         <a
                           href={formatHash(c.url, ch.id)}
                           className="chan"
                           data-unread={unread}
+                          data-silent={silent || undefined}
                           aria-current={ch.id === channelId ? "page" : undefined}
                           onClick={(e) => {
                             e.preventDefault();
@@ -922,6 +974,12 @@ function Sidebar({ c }: { c: Community }) {
                           <span className="truncate">{label}</span>
                           {other && ch.memberIds.length <= 2 && <span className="visually-hidden">, {presenceLabel(other.presence)}</span>}
                           {unread && <span className="visually-hidden">, unread</span>}
+                          {silent && (
+                            <span className="chan-silent" title="Notifications off">
+                              <Icon name="bellOff" size={14} />
+                              <span className="visually-hidden">, notifications off</span>
+                            </span>
+                          )}
                           {(rs?.mentionCount ?? 0) > 0 && ch.id !== channelId && (
                             <span className="badge">
                               {rs!.mentionCount}
@@ -953,6 +1011,11 @@ function Sidebar({ c }: { c: Community }) {
           <Skeleton rows={7} avatar={16} lines={0} className="side-skel" />
         )}
       </nav>
+      <Pop anchor={rowMenu?.at ?? null} onClose={() => setRowMenu(null)} className="menu" label={rowMenu ? `${channelLabel(rowMenu.ch, c.members, c.me?.id)} notifications` : undefined} sheet>
+        <div role="menu" onClick={() => setRowMenu(null)} onKeyDown={menuKeys}>
+          {rowMenu && <NotifyItems c={c} ch={rowMenu.ch} />}
+        </div>
+      </Pop>
       <NotifyNudge />
       <MeBar c={c} />
     </aside>

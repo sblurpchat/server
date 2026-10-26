@@ -120,6 +120,30 @@ func TestPushSender(t *testing.T) {
 	nothingBefore("blocked author")
 	must(ana.srv.UnblockMember(ctx(), connect.NewRequest(&v1.UnblockMemberRequest{MemberId: bob.me.Id})))
 
+	// Notification levels (1498): NOTHING on the channel or the community
+	// stops pushes; MENTIONS keeps them; a channel's own level wins; DMs
+	// ignore the community level.
+	level := func(ch string, l v1.NotifyLevel) {
+		must(ana.srv.SetNotifyLevel(ctx(), connect.NewRequest(&v1.SetNotifyLevelRequest{ChannelId: ch, Level: l})))
+	}
+	level(gen.Id, v1.NotifyLevel_NOTIFY_LEVEL_NOTHING)
+	bob.send(gen.Id, "<@"+ana.me.Id+"> channel silenced")
+	level(gen.Id, v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED) // so the marker gets through
+	nothingBefore("channel level NOTHING")
+	level("", v1.NotifyLevel_NOTIFY_LEVEL_NOTHING)
+	bob.send(gen.Id, "<@"+ana.me.Id+"> community silenced")
+	m = bob.send(dm.Id, "dm still pushes")
+	if b := next(); b.MessageID != m.Id {
+		t.Fatalf("community level NOTHING: got %+v", b)
+	}
+	level(gen.Id, v1.NotifyLevel_NOTIFY_LEVEL_MENTIONS)
+	m = bob.send(gen.Id, "<@"+ana.me.Id+"> channel overrides")
+	if b := next(); b.MessageID != m.Id {
+		t.Fatalf("channel MENTIONS under community NOTHING: got %+v", b)
+	}
+	level(gen.Id, v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED)
+	level("", v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED)
+
 	// Opted in: sender and text, with mentions as usernames.
 	ana = as(ana, pushToken("ana", "h-ana", true))
 	m = bob.send(gen.Id, "<@"+ana.me.Id+"> look at <@"+eve.me.Id+">")

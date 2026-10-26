@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
-import { ChannelKind, ChannelSchema, EventSchema, GetStateResponseSchema, MemberSchema, MessageSchema, TypingEventSchema, type Event } from "./gen/sblurp/v1/sblurp_pb";
-import { applyEvent, applySnapshot, blockedRows, emptyCommunity, type Community } from "./logic";
+import { ChannelKind, ChannelSchema, EventSchema, GetStateResponseSchema, MemberSchema, MessageSchema, NotifyLevel, NotifySettingSchema, TypingEventSchema, type Event } from "./gen/sblurp/v1/sblurp_pb";
+import { applyEvent, applySnapshot, blockedRows, emptyCommunity, levelOf, type Community } from "./logic";
 
 const ev = (seq: bigint, kind: Event["kind"]) => create(EventSchema, { seq, kind });
 
@@ -47,5 +47,33 @@ describe("muting (1293) and blocking skip unread, mentions and typing (1244)", (
     c = applyEvent(c, typing("bob"), 0, null);
     expect([c.reads.c1.unreadCount, c.reads.c1.mentionCount]).toEqual([1, 1]);
     expect(Object.keys(c.typing.c1)).toEqual(["bob"]);
+  });
+});
+
+describe("notification levels (1498)", () => {
+  it("follows the snapshot and events, and counts what the level allows", () => {
+    const text = create(ChannelSchema, { id: "c1", kind: ChannelKind.TEXT });
+    const dm = create(ChannelSchema, { id: "d1", kind: ChannelKind.DM });
+    const snap = create(GetStateResponseSchema, {
+      me: create(MemberSchema, { id: "me" }),
+      notifyLevels: [create(NotifySettingSchema, { channelId: "", level: NotifyLevel.MENTIONS })],
+      seq: 1n,
+    });
+    let c: Community = { ...applySnapshot(emptyCommunity("u"), snap), channels: { c1: text, d1: dm } };
+    expect(levelOf(c.levels, text)).toBe(NotifyLevel.MENTIONS);
+    expect(levelOf(c.levels, dm)).toBe(NotifyLevel.ALL); // DMs skip the community level
+    const msg = (seq: bigint, channelId: string, t: string) => ev(seq, { case: "messageCreated", value: create(MessageSchema, { id: `m${seq}`, channelId, authorId: "bob", text: t, seq }) });
+    c = applyEvent(c, msg(2n, "c1", "plain"), 0, null);
+    c = applyEvent(c, msg(3n, "c1", "hi <@me>"), 0, null);
+    expect([c.reads.c1.unreadCount, c.reads.c1.mentionCount]).toEqual([0, 1]);
+    const set = (seq: bigint, channelId: string, level: NotifyLevel) => ev(seq, { case: "notifyLevel", value: create(NotifySettingSchema, { channelId, level }) });
+    c = applyEvent(c, set(4n, "c1", NotifyLevel.NOTHING), 0, null);
+    c = applyEvent(c, msg(5n, "c1", "hi again <@me>"), 0, null);
+    expect(c.reads.c1.mentionCount).toBe(0);
+    c = applyEvent(c, set(6n, "c1", NotifyLevel.UNSPECIFIED), 0, null);
+    c = applyEvent(c, set(7n, "", NotifyLevel.UNSPECIFIED), 0, null);
+    expect(c.levels).toEqual({});
+    c = applyEvent(c, msg(8n, "c1", "plain"), 0, null);
+    expect(c.reads.c1.unreadCount).toBe(1);
   });
 });
