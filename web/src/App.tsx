@@ -78,6 +78,7 @@ import {
 } from "./store";
 import { AUTH_URL, nativeApp } from "./auth";
 import { appPlatform, DOWNLOADS, offered } from "./downloads";
+import { LinksSetting } from "./links";
 import { AvatarField } from "./AvatarField";
 import { pond } from "./pond";
 import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped, ZoomStage } from "./ui";
@@ -1333,6 +1334,7 @@ function Settings() {
         {denied && <p className="error small">Notifications are blocked for this site. Allow them in your browser's site settings, then turn this on.</p>}
       </section>
       <BlockedList />
+      <LinksSetting />
       <section className="desk-only">
         <h3>Keyboard</h3>
         <button className="btn small" aria-keyshortcuts={`${MOD === "⌘" ? "Meta" : "Control"}+/`} onClick={() => set({ modal: { t: "keys" } })}>
