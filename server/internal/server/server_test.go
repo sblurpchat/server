@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -25,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -57,15 +59,24 @@ func (c *fakeClock) Advance(d time.Duration) {
 }
 
 type issuer struct {
-	url string
-	key ed25519.PrivateKey
-	kid string
+	url        string
+	key        ed25519.PrivateKey
+	kid        string
+	pushes     chan pushBody // what servers post to /api/push/send
+	pushStatus atomic.Int32  // its answer; 0 means 202
 }
 
 func newIssuer(t *testing.T) *issuer {
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
-	is := &issuer{key: priv, kid: "k1"}
+	is := &issuer{key: priv, kid: "k1", pushes: make(chan pushBody, 64)}
 	hs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/push/send" {
+			var b pushBody
+			json.NewDecoder(r.Body).Decode(&b)
+			is.pushes <- b
+			w.WriteHeader(cmp.Or(int(is.pushStatus.Load()), http.StatusAccepted))
+			return
+		}
 		if r.URL.Path != "/.well-known/jwks.json" {
 			http.NotFound(w, r)
 			return

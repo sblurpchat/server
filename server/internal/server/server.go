@@ -67,6 +67,8 @@ type Server struct {
 	pluginErrs      map[string]string // plugin name -> why it did not load
 	pluginOps       sync.Mutex        // one admin plugin change at a time
 	pluginJobs      chan func()
+	pushJobs        chan func()
+	pushSeen        sync.Map // member id -> push claims last saved (push.go)
 	writeWait       time.Duration
 	updateAvailable atomic.Pointer[string]
 	emoji           emojiCache
@@ -126,6 +128,7 @@ func New(cfg Config) (*Server, error) {
 		fileKey:   fileKey,
 		writeWait: writeWait,
 		stop:      make(chan struct{}),
+		pushJobs:  make(chan func(), 256),
 	}
 	s.hub = newHub(s.nowMs)
 	if cfg.Seed != "" {
@@ -138,8 +141,9 @@ func New(cfg Config) (*Server, error) {
 		d.close()
 		return nil, err
 	}
-	s.wg.Add(1)
+	s.wg.Add(2)
 	go s.pruneLoop()
+	go s.pushLoop()
 	if cfg.UpdateURL != "" {
 		s.wg.Add(1)
 		go s.updateLoop()

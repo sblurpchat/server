@@ -451,6 +451,7 @@ with a JWKS, and real Connect clients, with a fake clock.
 | `internal/server/migrations/` | `NNN_name.sql`, applied in order, tracked by `PRAGMA user_version`. |
 | `internal/server/auth.go` | EdDSA JWT check, JWKS cache, bot tokens, the auth interceptor. |
 | `internal/server/hub.go` | Live fan-out, presence. |
+| `internal/server/push.go` | Push notifications: mentions and DMs for members with no open stream, posted to their account server. |
 | `internal/server/rpc.go` | Every RPC. Validation helpers are pure functions. |
 | `internal/server/plugins.go`, `plugins/examples/` | The plugin runtime and an example plugin. |
 | `internal/server/roles.go` | Custom roles, channel modes, who sees which text channel. |
@@ -464,6 +465,12 @@ with a JWKS, and real Connect clients, with a fake clock.
   server fetch a URL of its choice), then the signature, `aud`, `exp`, `iat`
   and `nbf` with 60 s skew. JWKS are cached for an hour; an unknown `kid`
   triggers a refetch at most every 30 s per issuer.
+- **Push needs no setup.** A member's token from a trusted issuer can carry
+  an opaque `push` handle. For a mention or DM while they have no open
+  stream, the server posts the handle, the community and channel names and
+  the ids to `{iss}/api/push/send`, plus the sender and text only when the
+  token says `push_preview`. It never sees device tokens. A 410 answer
+  clears the handle.
 - **Every write goes through `writeTx`** (one mutex, one connection). Events
   get their seq inside the transaction and are published to the hub after
   commit while the lock is still held, so live order equals seq order.

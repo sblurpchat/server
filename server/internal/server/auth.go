@@ -34,6 +34,8 @@ type claims struct {
 	EmailVerified bool     `json:"email_verified"`
 	AgeOver13     bool     `json:"age_over_13"`
 	AgeOver18     bool     `json:"age_over_18"`
+	Push          string   `json:"push"`         // opaque push handle from the issuer (push.go)
+	PushPreview   bool     `json:"push_preview"` // the member wants message text in pushes
 }
 
 // audience accepts the JWT "aud" as a string or a list of strings.
@@ -269,6 +271,9 @@ func (s *Server) authenticate(ctx context.Context, header string) (*identity, er
 	}
 	id := &identity{iss: c.Iss, sub: c.Sub, username: c.Username, member: m,
 		emailVerified: c.EmailVerified, ageOver13: c.AgeOver13, ageOver18: c.AgeOver18}
+	if m != nil {
+		s.rememberPush(ctx, m.Id, c.Push, c.PushPreview)
+	}
 	if m != nil && m.claim != c.Username {
 		if fresh, err := s.syncUsername(ctx, id); err != nil {
 			s.log.Warn("username sync failed", "member", m.Id, "err", err)

@@ -1330,6 +1330,7 @@ func (s *Server) SendMessage(ctx context.Context, req *connect.Request[v1.SendMe
 		return nil, err
 	}
 	s.pluginMessage(m, out)
+	s.pushMessage(m.Id, out)
 	return connect.NewResponse(&v1.SendMessageResponse{Message: out}), nil
 }
 

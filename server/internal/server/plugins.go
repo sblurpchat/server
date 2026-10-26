@@ -454,10 +454,14 @@ func (s *Server) pluginSend(p *plugin, r pluginReply, channelID, threadID string
 		err = errors.New("reply has no channel")
 	}
 	if err == nil {
+		var msg *v1.Message
 		err = s.writeTx(context.Background(), func(t *wtx) error {
-			_, err := s.sendMessage(t, p.botID, &v1.SendMessageRequest{ChannelId: channelID, Text: text, ThreadRootId: threadID}, s.now())
+			msg, err = s.sendMessage(t, p.botID, &v1.SendMessageRequest{ChannelId: channelID, Text: text, ThreadRootId: threadID}, s.now())
 			return err
 		})
+		if err == nil {
+			s.pushMessage(p.botID, msg)
+		}
 	}
 	if err != nil {
 		s.log.Warn("plugin reply not sent", "plugin", p.name, "err", err)
