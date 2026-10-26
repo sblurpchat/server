@@ -1521,7 +1521,8 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
             <Icon name="send" size={18} />
           </button>
         </div>
-        {longText && (
+        {/* A touch keyboard has no ⌘ Shift Enter (1482). */}
+        {longText && !NO_HOVER.matches && (
           <p className="composer-hint">
             Long text? <kbd>{MOD}</kbd> <kbd>Shift</kbd> <kbd>Enter</kbd> posts it as a snippet.
           </p>
