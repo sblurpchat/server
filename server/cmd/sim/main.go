@@ -45,21 +45,24 @@ const (
 	dm      action = "dm"
 	groupDM action = "group-dm"
 	image   action = "image"
+	react   action = "react"
 )
 
 // pick maps a roll in [0, 100) to an action: mostly plain posts, the rest
 // split between the states worth seeing.
 func pick(roll int) action {
 	switch {
-	case roll < 40:
+	case roll < 35:
 		return post
-	case roll < 60:
+	case roll < 55:
 		return thread
-	case roll < 70:
+	case roll < 65:
+		return react
+	case roll < 75:
 		return image
-	case roll < 80:
+	case roll < 85:
 		return mention
-	case roll < 90:
+	case roll < 93:
 		return dm
 	default:
 		return groupDM
@@ -184,7 +187,7 @@ func step(ctx context.Context, url, dir, meName string, act action) error {
 				}
 			}
 		}
-		if len(defaults) > 0 && (act == thread || act == mention || rand.IntN(4) > 0) {
+		if len(defaults) > 0 && (act == thread || act == mention || act == react || rand.IntN(4) > 0) {
 			chans = defaults
 		}
 		if len(chans) == 0 {
@@ -194,12 +197,23 @@ func step(ctx context.Context, url, dir, meName string, act action) error {
 		if act == mention || (act == thread && meID != "" && rand.IntN(3) == 0) {
 			req.Text = "<@" + meID + "> " + asks[rand.IntN(len(asks))]
 		}
-		if act == thread {
+		if act == thread || act == react {
 			msgs, err := chat.ListMessages(ctx, connect.NewRequest(&v1.ListMessagesRequest{ChannelId: req.ChannelId, Limit: 20}))
 			if err != nil {
 				return err
 			}
 			req.ThreadRootId = pickRoot(msgs.Msg.Messages, meID, rand.IntN(6))
+		}
+		if act == react {
+			if req.ThreadRootId == "" {
+				return nil // empty channel
+			}
+			e := emoji[rand.IntN(len(emoji))]
+			if _, err := chat.React(ctx, connect.NewRequest(&v1.ReactRequest{MessageId: req.ThreadRootId, Emoji: e})); err != nil {
+				return fmt.Errorf("%s react: %w", author, err)
+			}
+			slog.Info("sent", "url", url, "by", author, "action", act, "emoji", e)
+			return nil
 		}
 		if act == image {
 			id, err := upload(hc, url, seed.Avatar(names[rand.IntN(len(names))]))
@@ -216,7 +230,7 @@ func step(ctx context.Context, url, dir, meName string, act action) error {
 	return nil
 }
 
-// pickRoot chooses which message a thread reply goes under: half the time
+// pickRoot chooses which message a thread reply or reaction goes on: half the time
 // your newest message (replies to you are the thread state worth seeing),
 // otherwise one of the three newest, so threads grow where you look. ms is
 // oldest first; roll is in [0, 6).
@@ -233,6 +247,8 @@ func pickRoot(ms []*v1.Message, meID string, roll int) string {
 	}
 	return ms[max(len(ms)-1-roll%3, 0)].Id
 }
+
+var emoji = []string{"👍", "❤️", "😂", "🎉", "🔥", "👀", "🙏", "💯"}
 
 var pics = []string{"look who I ran into today", "new profile pic, thoughts?", "", "this is the one I meant", "📸"}
 

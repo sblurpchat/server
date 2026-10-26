@@ -86,12 +86,12 @@ Or, in the web client or the iOS dev app, open the devnotes menu and turn on
 "Chat simulator": the ticket board runs it (`tools/tickets/README.md`).
 
 About every 5 seconds a random seeded person posts in a dev community whose
-server ran with `-seed`. About 40% are plain channel posts; the rest are
-thread replies, photos, @mentions, DMs and group DMs with you, so every
-unread, mention and badge state shows. In an opt-in community you are only
+server ran with `-seed`. About a third are plain channel posts; the rest are
+thread replies, reactions, photos, @mentions, DMs and group DMs with you, so
+every unread, mention and badge state shows. In an opt-in community you are only
 sure to be in the default channels, so mentions and thread replies go there,
-and so do most posts. Thread replies go under your own newest message or one
-of the three newest. Ctrl-C stops it. Tokens rotate when the server restarts;
+and so do most posts. Thread replies and reactions go on your own newest
+message or one of the three newest. Ctrl-C stops it. Tokens rotate when the server restarts;
 the simulator rereads the file each time. It is not in any release build.
 
 ## API notes for clients

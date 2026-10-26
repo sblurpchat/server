@@ -7,7 +7,7 @@ import (
 )
 
 func TestPick(t *testing.T) {
-	want := map[int]action{0: post, 39: post, 40: thread, 59: thread, 60: image, 69: image, 70: mention, 79: mention, 80: dm, 89: dm, 90: groupDM, 99: groupDM}
+	want := map[int]action{0: post, 34: post, 35: thread, 54: thread, 55: react, 64: react, 65: image, 74: image, 75: mention, 84: mention, 85: dm, 92: dm, 93: groupDM, 99: groupDM}
 	for roll, a := range want {
 		if got := pick(roll); got != a {
 			t.Errorf("pick(%d) = %s, want %s", roll, got, a)
