@@ -482,13 +482,20 @@ function You({ c }: { c?: Community }) {
             <Icon name="edit" size={20} /> Edit profile and status
           </button>
         )}
-        <button onClick={() => set({ modal: { t: "settings" } })}>
-          <Icon name="gear" size={20} /> Settings
-        </button>
         <button onClick={() => set({ modal: { t: "add" } })}>
           <Icon name="plus" size={20} /> Add a community
         </button>
       </div>
+      {/* Settings rows live here on the phone, one tap closer (1418). */}
+      {settingsGroups(sheetApp).map((g) => (
+        <div className="you-rows" key={g[0]}>
+          {g.map((p) => (
+            <button key={p} onClick={() => set({ modal: { t: "settings", page: p } })}>
+              <Icon name={PAGES[p][1]} size={20} /> {PAGES[p][0]}
+            </button>
+          ))}
+        </div>
+      ))}
     </section>
   );
 }
@@ -1138,7 +1145,7 @@ function Modals() {
   const modal = useApp((s) => s.modal);
   switch (modal?.t) {
     case "settings":
-      return <Settings />;
+      return <Settings start={modal.page} />;
     case "add":
       return <AddCommunity input={modal.input} />;
     case "switcher":
@@ -1502,10 +1509,11 @@ const PAGES: Record<SettingsPage, [string, IconName]> = {
 };
 
 /** Settings. On a phone (1368, 1370) it is a short list of grouped rows, and each row opens its
- *  own page with a back button in the top bar, like iOS Settings. */
-function Settings() {
+ *  own page with a back button in the top bar, like iOS Settings. Opened at `start` from the You
+ *  tab (1418), back goes back to the tab. */
+function Settings({ start }: { start?: SettingsPage }) {
   const narrow = useSyncExternalStore(onNarrow, () => NARROW.matches);
-  const [page, setPage] = useState<SettingsPage | null>(null);
+  const [page, setPage] = useState<SettingsPage | null>(start ?? null);
   const last = useRef<SettingsPage | null>(null);
   const listRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -1524,7 +1532,7 @@ function Settings() {
     <Dialog label="Settings" className="settings">
       <header className="dialog-head">
         {sub && (
-          <button className="icon-btn settings-back" aria-label="Back to Settings" autoFocus onClick={() => setPage(null)}>
+          <button className="icon-btn settings-back" aria-label="Back" autoFocus onClick={() => (start ? set({ modal: null }) : setPage(null))}>
             <Icon name="chevron" />
           </button>
         )}

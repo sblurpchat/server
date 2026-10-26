@@ -67,6 +67,7 @@ import {
   readDelay,
   isExpired,
   type Permalink,
+  type SettingsPage,
 } from "./logic";
 
 const params = new URLSearchParams(location.search);
@@ -102,7 +103,7 @@ function save(key: string, v: unknown) {
 
 type Modal =
   | null
-  | { t: "settings" }
+  | { t: "settings"; page?: SettingsPage }
   | { t: "add"; input?: string }
   | { t: "switcher" }
   | { t: "info" }
