@@ -89,7 +89,7 @@ import {
   setBlocked,
   setMuted,
 } from "./store";
-import { AUTH_URL, nativeApp, type Profile } from "./auth";
+import { AUTH_URL, fetchProfile, nativeApp, SignedOutError, type Profile } from "./auth";
 import { appPlatform, DOWNLOADS, offered } from "./downloads";
 import { LinksSetting, sheetApp } from "./links";
 import { AvatarField } from "./AvatarField";
@@ -1894,6 +1894,18 @@ function WebNotifications() {
 function Account() {
   const profile = useApp((s) => s.profile);
   const [confirm, setConfirm] = useState(false);
+  // Back from the account pages (the sign-in sheet in the iOS app, a tab on the web), show the
+  // edited profile, and sign out here if the account was deleted (1467).
+  useEffect(() => {
+    if (FAKE) return;
+    const check = () => void fetchProfile().then((profile) => set({ profile })).catch((e) => e instanceof SignedOutError && set({ auth: "out" }));
+    addEventListener("sblurp-sheet-closed", check);
+    addEventListener("focus", check);
+    return () => {
+      removeEventListener("sblurp-sheet-closed", check);
+      removeEventListener("focus", check);
+    };
+  }, []);
   return (
     <section>
       <h3>Account</h3>
@@ -1910,6 +1922,11 @@ function Account() {
       <button className="btn danger-ghost signout" onClick={() => setConfirm(true)}>
         Sign out
       </button>
+      {/* In the iOS app this opens in the sign-in sheet, which is still signed in (lib.rs). */}
+      <a className="btn danger-ghost delete-account" href={`${AUTH_URL}/account/delete`} target="_blank" rel="noopener noreferrer">
+        Delete account <Icon name="external" size={14} />
+      </a>
+      <p className="fine">Deletes your sblurp.chat account, profile and sign-ins for good. Communities keep their own copies of your messages.</p>
       {confirm && (
         <Dialog label="Sign out" className="confirm" onClose={() => setConfirm(false)}>
           <h2>Sign out of Sblurp?</h2>
