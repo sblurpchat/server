@@ -687,7 +687,7 @@ function SignIn() {
         <p className="signin-lede">Every community you belong to, in one window. Each runs its own server; your sign-in works in all of them.</p>
         <div className="signin-actions">
           <button className="btn primary big" onClick={() => signIn(false)}>
-            Sign in with sblurp.chat
+            Sign in
           </button>
           <button className="btn big" onClick={() => signIn(true)}>
             Create an account
