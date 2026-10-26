@@ -1502,7 +1502,7 @@ function Appearance() {
         k="motion"
         label="Less motion"
         options={[
-          ["system", "Same as device"],
+          ["system", "Device"],
           ["reduce", "On"],
           ["full", "Off"],
         ]}

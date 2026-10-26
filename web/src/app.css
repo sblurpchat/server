@@ -1964,8 +1964,11 @@ kbd {
   background: var(--frost);
   border: 1px solid var(--line);
 }
+/* Grid centers a label in its segment when a neighbor wraps to two lines (1425). */
 .seg label {
   flex: 1;
+  display: grid;
+  place-items: center;
   text-align: center;
   padding: 6px 8px;
   border-radius: 7px;
