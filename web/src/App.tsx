@@ -86,7 +86,7 @@ import {
   setBlocked,
   setMuted,
 } from "./store";
-import { AUTH_URL, nativeApp } from "./auth";
+import { AUTH_URL, nativeApp, type Profile } from "./auth";
 import { appPlatform, DOWNLOADS, offered } from "./downloads";
 import { LinksSetting, sheetApp } from "./links";
 import { AvatarField } from "./AvatarField";
@@ -475,6 +475,7 @@ function TabBar() {
   const tab = useApp((s) => s.tab);
   const cs = useApp((s) => s.cs);
   const me = useApp((s) => s.cs[s.url]?.me);
+  const profile = useApp((s) => s.profile);
   const b = useMemo(() => tabBadges(cs), [cs]);
   const item = (t: typeof tab, label: string, icon: React.ReactNode, badge = 0, dot = false) => (
     <button className="tab" aria-current={tab === t ? "page" : undefined} onClick={() => (tab === t ? toTop() : set({ tab: t }))}>
@@ -498,7 +499,7 @@ function TabBar() {
     <nav className="tabbar" aria-label="Sections">
       {item("home", "Home", <Icon name="house" size={24} />, b.home.mentions, b.home.unread)}
       {item("dms", "DMs", <Icon name="messages" size={24} />, b.dms)}
-      {item("you", "You", <Avatar m={me} size={24} />)}
+      {item("you", "You", <Avatar m={accountAvatar(profile, me)} size={24} />)}
     </nav>
   );
 }
@@ -578,29 +579,53 @@ function DMList() {
   );
 }
 
+/** The sblurp.chat account as an Avatar, the same in every community (1502); the member until it loads. */
+const accountAvatar = (p: Profile | undefined, me?: Member) => (p ? ({ ...p } as Partial<Member> as Member) : me);
+
+/** The phone You tab. The card is the sblurp.chat account, the same in every community; the
+ *  community profile and status are a labelled row under it (1471), so the tab keeps its
+ *  identity with no community (1502). Rows that open a page end in a chevron. */
 function You({ c }: { c?: Community }) {
   const profile = useApp((s) => s.profile);
   const me = c?.me;
   const custom = me?.statusText || me?.statusEmoji ? `${me.statusEmoji} ${me.statusText}`.trim() : "";
   const status = custom || (me ? presenceLabel(me.presence) : "");
+  const row = (icon: IconName, label: string, sub = "") => (
+    <>
+      <Icon name={icon} size={20} />
+      <span className="you-row-text">
+        {label}
+        {sub && <small className="truncate">{sub}</small>}
+      </span>
+    </>
+  );
+  const link = (href: string, icon: IconName, label: string, sub = "") => (
+    <a href={href} target="_blank" rel="noopener noreferrer">
+      {row(icon, label, sub)}
+      <Icon name="external" size={16} />
+    </a>
+  );
   return (
     <section className="tab-panel" aria-labelledby="you-title">
       <div className="you-card">
-        <Avatar m={me} size={56} presence={!!me} />
+        <Avatar m={accountAvatar(profile, me)} size={56} />
         <span className="me-text">
-          <b id="you-title" className="truncate">{me?.displayName ?? profile?.displayName ?? "You"}</b>
-          {status && <small className="truncate">{status}</small>}
-          {custom && <span className="visually-hidden">, {presenceLabel(me?.presence)}</span>}
+          <b id="you-title" className="truncate">{profile?.displayName || profile?.username || me?.displayName || "You"}</b>
+          {profile && <small className="truncate">@{profile.username} on sblurp.chat</small>}
         </span>
       </div>
       <div className="you-rows">
-        {me && (
+        {link(ACCOUNT_URL, "user", "Edit profile", "Your sblurp.chat name, photo and bio")}
+        {me && c && (
           <button onClick={() => set({ modal: { t: "profile" } })}>
-            <Icon name="edit" size={20} /> Edit profile and status
+            {row("edit", `Profile in ${c.info?.name ?? hostOf(c.url)}`, status)}
+            {custom && <span className="visually-hidden">, {presenceLabel(me.presence)}</span>}
+            <Icon name="chevron" size={16} />
           </button>
         )}
         <button onClick={() => set({ modal: { t: "add" } })}>
-          <Icon name="plus" size={20} /> Add a community
+          {row("plus", "Add a community")}
+          <Icon name="chevron" size={16} />
         </button>
       </div>
       {/* Settings rows live here on the phone, one tap closer (1418). */}
@@ -608,11 +633,18 @@ function You({ c }: { c?: Community }) {
         <div className="you-rows" key={g[0]}>
           {g.map((p) => (
             <button key={p} onClick={() => set({ modal: { t: "settings", page: p } })}>
-              <Icon name={PAGES[p][1]} size={20} /> {PAGES[p][0]}
+              {row(PAGES[p][1], PAGES[p][0])}
+              <Icon name="chevron" size={16} />
             </button>
           ))}
         </div>
       ))}
+      <div className="you-rows">
+        {link(`${AUTH_URL}/docs`, "info", "Help")}
+        {link(`${AUTH_URL}/privacy`, "lock", "Privacy policy")}
+        {link(`${AUTH_URL}/terms`, "file", "Terms of service")}
+      </div>
+      <p className="you-version">Sblurp {import.meta.env.VITE_APP_VERSION}</p>
     </section>
   );
 }

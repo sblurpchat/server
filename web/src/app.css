@@ -6349,7 +6349,7 @@ label:has(> input.visually-hidden:focus-visible) {
     background: var(--raised);
     overflow: hidden;
   }
-  .you-rows button {
+  .you-rows > :is(button, a) {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -6360,15 +6360,38 @@ label:has(> input.visually-hidden:focus-visible) {
     font-weight: 500;
     color: var(--text);
     text-align: left;
+    text-decoration: none;
   }
-  .you-rows button + button {
+  .you-rows > * + * {
     border-top: 1px solid var(--line);
   }
-  .you-rows button:active {
+  .you-rows > :is(button, a):active {
     background: var(--hover);
   }
   .you-rows .icon {
+    flex: none;
     color: var(--graphite);
+  }
+  .you-rows button > .icon:last-child {
+    rotate: -90deg;
+  }
+  .you-row-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    padding: 8px 0;
+  }
+  .you-row-text small {
+    color: var(--graphite);
+    font-size: 0.8125rem;
+    font-weight: 400;
+  }
+  .you-version {
+    margin: 16px;
+    color: var(--graphite);
+    font-size: 0.8125rem;
+    text-align: center;
   }
 }
 

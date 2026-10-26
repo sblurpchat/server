@@ -1,7 +1,10 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import tauri from "../apps/src-tauri/tauri.conf.json";
 
 export default defineConfig({
+  // The app version for the You tab (1502); apps/scripts/version.sh sets it in tauri.conf.json.
+  define: { "import.meta.env.VITE_APP_VERSION": JSON.stringify(tauri.version) },
   plugins: [
     react(),
     {
