@@ -1665,7 +1665,7 @@ kbd {
 .skel-chat .skel-lines {
   padding-top: 3px;
 }
-@media (min-width: 768px) {
+@media (min-width: 768px) and (min-height: 501px), (min-width: 768px) and (pointer: fine) {
   :root:is([data-density="compact"], [data-density="irc"]) .skel-chat {
     --av: 0px !important;
   }
@@ -2713,7 +2713,7 @@ li.sw-empty {
   margin-top: 0;
 }
 /* On phones the moderation actions are a grouped list of fingertip rows, destructive last (1459). */
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   .profile-mod {
     flex-direction: column;
     align-items: stretch;
@@ -3011,7 +3011,7 @@ li.sw-empty {
     max-width: none;
   }
   /* Desktop only: on phones the search is already a 36px icon. */
-  @media (min-width: 768px) {
+  @media (min-width: 768px) and (min-height: 501px), (min-width: 768px) and (pointer: fine) {
     .chan-search {
       flex: 1 1 0;
       min-width: 96px;
@@ -3544,7 +3544,7 @@ li.sw-empty {
   padding: 6px 8px;
   font-weight: 500;
 }
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   /* A bottom sheet on phones; !important beats the inline position place() sets. */
   .pop.who {
     left: 0 !important;
@@ -3922,7 +3922,7 @@ li.sw-empty {
 .snippet-more[aria-expanded="true"] svg {
   transform: rotate(180deg);
 }
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   .snippet-head .muted,
   .snippet-tools .btn > span { display: none; }
 }
@@ -4437,7 +4437,7 @@ li.sw-empty {
 
 /* --------------------------------------------------------------- mobile */
 
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   .app,
   .app[data-pane="true"] {
     grid-template-columns: minmax(0, 1fr);
@@ -4613,7 +4613,7 @@ li.sw-empty {
   height: 20px;
   padding-bottom: 0;
 }
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   .drawer,
   .pane {
     padding: env(safe-area-inset-top) 0 0 env(safe-area-inset-left);
@@ -4622,7 +4622,7 @@ li.sw-empty {
 
 /* Tablet portrait (1156): the thread or member pane slides over the channel
    instead of squeezing it to a sliver. */
-@media (min-width: 768px) and (max-width: 1023px) {
+@media (min-width: 768px) and (max-width: 1023px) and (min-height: 501px), (min-width: 768px) and (max-width: 1023px) and (pointer: fine) {
   .app[data-pane="true"] {
     grid-template-columns: 72px var(--side-w, 260px) minmax(0, 1fr);
   }
@@ -4652,7 +4652,7 @@ li.sw-empty {
 
 /* On a phone the thread or member pane covers the channel: it slides in from the right,
    and ghost() in ui.tsx slides a copy back out when it closes. */
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   .pane {
     animation: pane-push 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
@@ -4665,7 +4665,7 @@ li.sw-empty {
     translate: 100% 0;
   }
 }
-@media (min-width: 768px) {
+@media (min-width: 768px) and (min-height: 501px), (min-width: 768px) and (pointer: fine) {
   .pane.leaving {
     animation: pane-in 140ms ease-in reverse forwards;
   }
@@ -4889,7 +4889,7 @@ li.sw-empty {
     font-weight: 600;
   }
 }
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   :root[data-density="irc"] .msg-head .name::after {
     content: ":" / "";
   }
@@ -4911,7 +4911,7 @@ li.sw-empty {
     font-family: var(--sans);
   }
 }
-@media (min-width: 768px) {
+@media (min-width: 768px) and (min-height: 501px), (min-width: 768px) and (pointer: fine) {
 :root[data-density="irc"] {
   .msg-body {
     display: grid;
@@ -5826,7 +5826,7 @@ label:has(> input.visually-hidden:focus-visible) {
 
 /* ------------------------------------------------- phone polish (1350-1364) */
 
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   /* Header image (1350): a backdrop for the normal bar, not a 112px poster. */
   .chan-head[data-img] {
     min-height: 56px;
@@ -6097,15 +6097,22 @@ label:has(> input.visually-hidden:focus-visible) {
 .tabbar {
   display: none;
 }
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   /* Like Slack and Discord: the list sheet covers 90% of the phone (1381), so the channel
      peeks out on the right, and a floating glass tab bar sits above the home bar. */
   .drawer {
     display: grid;
     grid-template: minmax(0, 1fr) / auto minmax(0, 1fr);
-    width: 90vw;
+    /* A phone on its side keeps a phone-width sheet (1465). */
+    width: min(90vw, 440px);
     background: var(--frost);
     --tabbar-room: calc(76px + max(8px, env(safe-area-inset-bottom) - 12px));
+  }
+  /* Landscape has no room for the description above the channels. */
+  @media (max-height: 500px) {
+    .drawer .side-about {
+      display: none;
+    }
   }
   .drawer > :not(.tabbar) {
     min-height: 0;
@@ -6316,7 +6323,7 @@ label:has(> input.visually-hidden:focus-visible) {
 /* Liquid glass (1369): the floating tab bar and the phone sheet title bars are frosted
    panes that content scrolls under, with a bright top edge. Solid where blur is missing
    or the person asked for less transparency. */
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   .tabbar,
   .dialog:has(> .dialog-head, > form > .dialog-head):not(.lightbox) .dialog-head {
     --glass: color-mix(in srgb, var(--frost) 72%, transparent);
@@ -6343,7 +6350,7 @@ label:has(> input.visually-hidden:focus-visible) {
     }
   }
 }
-@media (max-width: 767px) and (prefers-reduced-transparency: reduce) {
+@media (max-width: 767px) and (prefers-reduced-transparency: reduce), (max-height: 500px) and (pointer: coarse) and (prefers-reduced-transparency: reduce) {
   .tabbar,
   .dialog:has(> .dialog-head, > form > .dialog-head):not(.lightbox) .dialog-head {
     background: var(--raised);
@@ -6354,7 +6361,7 @@ label:has(> input.visually-hidden:focus-visible) {
 
 /* Phone (1397): a new channel or community fades in over the plain background instead of
    flashing the old one. The global reduced-motion rule turns it off. */
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   .channel {
     animation: fade-in 160ms ease-out;
   }
@@ -6413,7 +6420,7 @@ label:has(> input.visually-hidden:focus-visible) {
 }
 /* An action sheet from the bottom on phones; a drag down closes it (Pop sheet).
    !important beats the inline position place() sets. */
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   .pop.msg-menu {
     left: 0 !important;
     right: 0;
@@ -6456,7 +6463,7 @@ label:has(> input.visually-hidden:focus-visible) {
 
 /* The emoji picker is a bottom sheet on phones (1415). It sits above the keyboard when the search
    field raises it (--kb from main.tsx), the grid scrolls inside it, and every target is 44px. */
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   .pop.emoji-sheet {
     left: 0 !important;
     right: 0;

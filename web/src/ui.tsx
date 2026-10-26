@@ -338,7 +338,7 @@ export function place(el: HTMLElement, a: DOMRect, side: "below" | "above" | "ri
   el.style.top = `${y}px`;
 }
 
-const PHONE = matchMedia("(max-width: 767px)");
+const PHONE = matchMedia("(max-width: 767px), (max-height: 500px) and (pointer: coarse)");
 
 /** Focus the composer once `work` has opened its channel (1390). iOS raises the keyboard only for a
  *  focus() inside the tap itself, so a hidden stand-in field takes focus now and hands it over. */

@@ -172,8 +172,8 @@ function useShortcuts() {
 // Shell
 // ---------------------------------------------------------------------------
 
-// The phone layout (< 768px), where the rail and sidebar are a drawer over the channel.
-const NARROW = matchMedia("(max-width: 767px)");
+// The phone layout (< 768px, or a phone on its side: 1465), where the rail and sidebar are a drawer over the channel.
+const NARROW = matchMedia("(max-width: 767px), (max-height: 500px) and (pointer: coarse)");
 const onNarrow = (f: () => void) => (NARROW.addEventListener("change", f), () => NARROW.removeEventListener("change", f));
 
 

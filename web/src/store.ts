@@ -432,7 +432,7 @@ export function selectCommunity(url: string) {
 export function selectChannel(url: string, channelId: string, push = true, close = true) {
   // Phone (1381): start the drawer sliding away first. Mounting the channel in the same frame
   // can take longer than the 180ms slide, and then the drawer seems to vanish.
-  if (close && state.drawer && channelId && matchMedia("(max-width: 767px)").matches) {
+  if (close && state.drawer && channelId && matchMedia("(max-width: 767px), (max-height: 500px) and (pointer: coarse)").matches) {
     set({ drawer: false });
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
@@ -525,7 +525,7 @@ export async function loadList(url: string, channelId: string, rootId = "", page
 export function closePane() {
   const drawer = !!history.state?.drawer;
   if (drawer) history.replaceState({ ...history.state, drawer: undefined }, "");
-  set(drawer && matchMedia("(max-width: 767px)").matches ? { pane: null, drawer: true } : { pane: null });
+  set(drawer && matchMedia("(max-width: 767px), (max-height: 500px) and (pointer: coarse)").matches ? { pane: null, drawer: true } : { pane: null });
 }
 
 // Opens the channel (and thread) of a search hit and loads the messages around it.
