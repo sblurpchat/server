@@ -5197,6 +5197,25 @@ li.sw-empty {
 .report-dialog textarea {
   resize: vertical;
 }
+/* Reason chips (1499): native radios, the checked one filled. */
+.report-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  border: 0;
+}
+.report-reasons legend {
+  margin-bottom: 6px;
+  padding: 0;
+  font-size: 0.875rem;
+}
+.report-reasons .btn:has(:checked) {
+  background: var(--accent-fill);
+  border-color: transparent;
+  color: var(--on-accent);
+}
 .token-once {
   display: grid;
   gap: 8px;

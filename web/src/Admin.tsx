@@ -733,20 +733,26 @@ function BansTab({ url }: { url: string }) {
 // Reports (1119)
 // ---------------------------------------------------------------------------
 
+const REASONS = ["Spam", "Harassment", "Hate", "Something else"];
+
 export function ReportDialog({ url, message: m }: { url: string; message: Message }) {
   const c = useApp((s) => s.cs[url]);
+  const blocked = useApp((s) => !!s.cs[url]?.blocked.includes(m.authorId));
+  const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState("");
   if (!c) return null;
   const author = c.members[m.authorId];
+  const name = author ? author.displayName || author.username : "";
   const dm = c.channels[m.channelId]?.kind === ChannelKind.DM;
   const send = (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setErr("");
-    reportMessage(url, m.id, note.trim()).then(
+    // ponytail: the reason rides in the note, so the server needs no new field; add one if reports get filtered by reason.
+    reportMessage(url, m.id, [reason, note.trim()].filter(Boolean).join(": ")).then(
       () => setSent(true),
       (x) => (setErr(errorText(x, c.info?.name)), setBusy(false)),
     );
@@ -759,6 +765,11 @@ export function ReportDialog({ url, message: m }: { url: string; message: Messag
           Thank you. The moderators of {c.info?.name ?? hostOf(url)} can now see it. You will not see what they do, and the author is not told who reported it.
         </p>
         <div className="row-end">
+          {author && !blocked && (
+            <button className="btn ghost" onClick={() => set({ modal: { t: "block", url, memberId: m.authorId } })}>
+              Block {name}
+            </button>
+          )}
           <button className="btn primary" autoFocus={AUTOFOCUS} onClick={() => set({ modal: null })}>
             Done
           </button>
@@ -770,7 +781,7 @@ export function ReportDialog({ url, message: m }: { url: string; message: Messag
       <form onSubmit={send}>
         <h2>Report this message?</h2>
         <blockquote className="delete-preview">
-          <b>{author ? author.displayName || author.username : "Former member"}</b> {m.text || "(attachment)"}
+          <b>{name || "Former member"}</b> {m.text || "(attachment)"}
         </blockquote>
         <p className="muted">
           {dm
@@ -778,9 +789,18 @@ export function ReportDialog({ url, message: m }: { url: string; message: Messag
             : "Moderators and admins see the message, your name and your note."}{" "}
           The author is not told who reported it.
         </p>
+        <fieldset className="report-reasons">
+          <legend>Reason</legend>
+          {REASONS.map((r) => (
+            <label key={r} className="btn small">
+              <input type="radio" className="visually-hidden" name="reason" checked={reason === r} onChange={() => setReason(r)} />
+              {r}
+            </label>
+          ))}
+        </fieldset>
         <label className="field">
           <span>Note for moderators (optional)</span>
-          <textarea className="input" rows={3} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What is wrong with this message?" />
+          <textarea className="input" rows={3} maxLength={980} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What is wrong with this message?" />
         </label>
         {err && (
           <p className="error" role="alert">
