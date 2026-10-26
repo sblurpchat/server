@@ -86,7 +86,7 @@ import {
   unfurled,
   unfurlKey,
 } from "./store";
-import { Avatar, Confirm, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, AUTOFOCUS, ghost, Icon, type IconName, Markdown, menuKeys, Pop, readRecent, Resizer, Skeleton, thenCompose, toned, useClamped } from "./ui";
+import { Avatar, Confirm, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, AUTOFOCUS, ghost, Icon, type IconName, Markdown, menuKeys, Pop, readRecent, Resizer, Skeleton, thenCompose, toned, useClamped, useLoad } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
 /** A light haptic tap. iOS WebKit has no navigator.vibrate, so the iOS app navigates to
@@ -2014,18 +2014,13 @@ function scrollBack(el: HTMLElement | null) {
 
 // Activity and Threads (1405): loaded each time the pane opens, rows like search results.
 // Every joined community at once (1453), like the DMs tab, so a mention anywhere shows up.
-function useLoad<T>(load: (url: string) => Promise<T[]>, at: (x: T) => bigint) {
+function useFeed<T>(load: (url: string) => Promise<T[]>, at: (x: T) => bigint) {
   const cs = useApp((s) => s.cs);
   const order = useApp((s) => s.order);
   const urls = order.filter((u) => cs[u]?.me);
   const key = urls.join(" ");
-  const [res, setRes] = useState<{ url: string; x: T }[] | null>(null);
-  const [err, setErr] = useState("");
-  useEffect(() => {
-    Promise.allSettled(urls.map(load))
-      .then((got) => mergeNewest(urls, got, at))
-      .then(setRes, (e) => setErr(errorText(e, urls.length === 1 ? cs[urls[0]].info?.name : undefined)));
-  }, [key]);
+  const name = urls.length === 1 ? cs[urls[0]].info?.name : undefined;
+  const { data: res, err } = useLoad(() => Promise.allSettled(urls.map(load)).then((got) => mergeNewest(urls, got, at)), [key], name);
   const note = err ? (
     <p className="error pane-note" role="alert">
       {err}
@@ -2047,7 +2042,7 @@ function where(c: Community, channelId: string) {
 
 function Activity() {
   const h24 = useApp((s) => s.look.clock === "24");
-  const { res, note, cs, label } = useLoad<ActivityItem>(listActivity, (it) => it.atMs);
+  const { res, note, cs, label } = useFeed<ActivityItem>(listActivity, (it) => it.atMs);
   if (note) return note;
   if (!res!.length) return <p className="muted pane-note">Mentions, replies to your threads and reactions to your messages show up here.</p>;
   return (
@@ -2089,7 +2084,7 @@ function Activity() {
 
 function Threads() {
   const h24 = useApp((s) => s.look.clock === "24");
-  const { res, note, cs, label } = useLoad<ThreadSummary>(listThreads, (t) => t.root!.lastReplyAtMs);
+  const { res, note, cs, label } = useFeed<ThreadSummary>(listThreads, (t) => t.root!.lastReplyAtMs);
   if (note) return note;
   if (!res!.length) return <p className="muted pane-note">Threads you start or reply in show up here.</p>;
   return (

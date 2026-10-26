@@ -5,7 +5,7 @@ import { PANELS, SKELETON_DELAY_MS, clampWidth, gridMove, initials, keyWidth, li
 import { Img, Shortcodes, useEmojiSet, useMore } from "./CustomEmoji";
 import { bumpRecent, pickerSections, TONES, withTone, type PickItem } from "./emoji";
 import { EMOJI_DATA } from "./emoji-data";
-import { absUrl, set, setLook, useApp } from "./store";
+import { absUrl, errorText, set, setLook, useApp } from "./store";
 import { AUTH_URL, reach } from "./auth";
 
 // ---------------------------------------------------------------------------
@@ -228,6 +228,19 @@ export function Dialog({
       {open && children}
     </dialog>
   );
+}
+
+/**
+ * Runs `load` when `deps` change and keeps its result. `reload` runs it again and never rejects;
+ * `fail` puts any error into `err` as text. `data` stays null until the first load succeeds.
+ */
+export function useLoad<T>(load: () => Promise<T>, deps: unknown[], name?: string) {
+  const [data, setData] = useState<T | null>(null);
+  const [err, setErr] = useState("");
+  const fail = (e: unknown) => setErr(errorText(e, name));
+  const reload = () => load().then(setData, fail);
+  useEffect(() => void reload(), deps);
+  return { data, setData, err, setErr, fail, reload };
 }
 
 /** An error line that screen readers announce. Renders nothing while `text` is empty. */

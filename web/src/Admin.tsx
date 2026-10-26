@@ -1,7 +1,7 @@
 // Admin screens: create and edit channels, and community settings (members, invites, bots).
 import { AUTH_URL } from "./auth";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Ban, type Channel, type GetMeResponse, type Invite, type Member, type Message, type Plugin, type Report, type Role } from "./gen/sblurp/v1/sblurp_pb";
+import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Channel, type GetMeResponse, type Member, type Message, type Plugin, type Role } from "./gen/sblurp/v1/sblurp_pb";
 import { BANNER_TYPES, bannerFileError, banDetail, channelSlug, count, hostOf, memberRoles, inviteState, shareInviteLink, matchScore, modActions, pluginFormError, pluginNameFromFile, pluginStatus, reportDetail, reportPlace, tokenBots, reorderChannel, sidebarSections, squareCrop, unsavedBlock } from "./logic";
 import {
   absUrl,
@@ -42,7 +42,7 @@ import {
   useApp,
 } from "./store";
 import { EmojiTab } from "./CustomEmoji";
-import { Alert, AUTOFOCUS, Avatar, CopyButton, Dialog, Icon, Skeleton } from "./ui";
+import { Alert, AUTOFOCUS, Avatar, CopyButton, Dialog, Icon, Skeleton, useLoad } from "./ui";
 
 /** The old rank. The UI calls it "Permission"; "Roles" are the custom tags from ticket 1011. */
 export const PERMISSION: Record<number, string> = {
@@ -664,15 +664,11 @@ const FADE = 150;
 
 function BansTab({ url }: { url: string }) {
   const members = useApp((s) => s.cs[url].members);
-  const [bans, setBans] = useState<Ban[] | null>(null);
+  const { data: bans, err, setErr, fail, reload } = useLoad(() => listBans(url), [url]);
   const [gone, setGone] = useState("");
-  const [err, setErr] = useState("");
-  const fail = (e: unknown) => setErr(errorText(e));
-  const load = () => listBans(url).then(setBans, fail);
-  useEffect(() => void load(), [url]);
   const unban = (id: string) => {
     setErr("");
-    unbanMember(url, id).then(() => (setGone(id), setTimeout(() => load().then(() => setGone("")), FADE)), fail);
+    unbanMember(url, id).then(() => (setGone(id), setTimeout(() => reload().then(() => setGone("")), FADE)), fail);
   };
   const now = Date.now();
   return (
@@ -682,10 +678,10 @@ function BansTab({ url }: { url: string }) {
       {!bans && !err && <Skeleton rows={2} avatar={32} className="skel-admin" />}
       {bans && !bans.length && <p className="muted small">Nobody is banned.</p>}
       {!!bans?.length && (
-        <ul className="admin-list" aria-label="Banned members" style={{ animation: `fade-in ${FADE}ms ease-out` }}>
+        <ul className="admin-list" aria-label="Banned members">
           {bans.map(({ member: m, bannedBy, bannedAtMs }) =>
             m ? (
-              <li key={m.id} style={{ opacity: gone === m.id ? 0 : 1, transition: `opacity ${FADE}ms ease-out` }}>
+              <li key={m.id} className="fade-row" data-leaving={gone === m.id || undefined}>
                 <Avatar m={m} size={32} />
                 <span className="truncate">
                   <b>{m.displayName || m.username}</b>
@@ -794,18 +790,14 @@ export function ReportDialog({ url, message: m }: { url: string; message: Messag
 
 export function ReportsDialog() {
   const c = useApp((s) => s.cs[s.url]);
-  const [reports, setReports] = useState<Report[] | null>(null);
   const [resolved, setResolved] = useState(false);
   const [gone, setGone] = useState("");
-  const [err, setErr] = useState("");
   const url = c?.url ?? "";
-  const fail = (e: unknown) => setErr(errorText(e));
-  const load = () => listReports(url, resolved).then(setReports, fail);
-  useEffect(() => (setReports(null), void load()), [url, resolved]);
+  const { data: reports, setData: setReports, err, setErr, fail, reload } = useLoad(() => listReports(url, resolved), [url, resolved]);
   if (!c) return null;
   const resolve = (id: string) => {
     setErr("");
-    resolveReport(url, id).then(() => (setGone(id), setTimeout(() => load().then(() => setGone("")), FADE)), fail);
+    resolveReport(url, id).then(() => (setGone(id), setTimeout(() => reload().then(() => setGone("")), FADE)), fail);
   };
   const now = Date.now();
   return (
@@ -819,7 +811,7 @@ export function ReportsDialog() {
         <div className="seg" role="radiogroup" aria-label="Show">
           {[false, true].map((v) => (
             <label key={String(v)}>
-              <input type="radio" name="reports-show" checked={resolved === v} onChange={() => setResolved(v)} />
+              <input type="radio" name="reports-show" checked={resolved === v} onChange={() => (setReports(null), setResolved(v))} />
               {v ? "Resolved" : "Open"}
             </label>
           ))}
@@ -828,14 +820,14 @@ export function ReportsDialog() {
         {!reports && !err && <Skeleton rows={3} avatar={32} lines={2} className="skel-admin" />}
         {reports && !reports.length && <p className="muted small">{resolved ? "No resolved reports." : "No open reports."}</p>}
         {!!reports?.length && (
-          <ul className="admin-list report-list" aria-label={resolved ? "Resolved reports" : "Open reports"} style={{ animation: `fade-in ${FADE}ms ease-out` }}>
+          <ul className="admin-list report-list" aria-label={resolved ? "Resolved reports" : "Open reports"}>
             {reports.map((r) => {
               const a = r.author;
               const name = a ? a.displayName || a.username : "Former member";
               const place = reportPlace(r, c.channels);
               const mod = a ? modActions(c.me, c.members[a.id] ?? a) : { remove: false };
               return (
-                <li key={r.id} style={{ opacity: gone === r.id ? 0 : 1, transition: `opacity ${FADE}ms ease-out` }}>
+                <li key={r.id} className="fade-row" data-leaving={gone === r.id || undefined}>
                   <Avatar m={a} size={32} />
                   <div className="report-body">
                     <span className="report-head">
@@ -908,11 +900,8 @@ function BotsTab({ url }: { url: string }) {
   const [token, setToken] = useState<{ who: string; token: string } | null>(null);
   const [form, setForm] = useState({ username: "", displayName: "", bio: "" });
   const [confirm, setConfirm] = useState("");
-  const [err, setErr] = useState("");
   const rev = useApp((s) => s.cs[url]?.pluginsRev ?? 0);
-  const fail = (e: unknown) => setErr(errorText(e));
-  const load = () => Promise.all([listBots(url).then(setBots), listPlugins(url).then(setPlugins)]).catch(fail);
-  useEffect(() => void load(), [url, rev]);
+  const { err, setErr, fail, reload: load } = useLoad(() => Promise.all([listBots(url).then(setBots), listPlugins(url).then(setPlugins)]), [url, rev]);
   const bots = all && plugins ? tokenBots(all, plugins) : null;
   const make = async (e: FormEvent) => {
     e.preventDefault();
@@ -1198,14 +1187,10 @@ const MAX_USES = [0, 1, 5, 10, 25];
 
 /** Admin view: invite-only switch, a form to make a link, and the live links. */
 export function Invites({ url, inviteOnly }: { url: string; inviteOnly: boolean }) {
-  const [list, setList] = useState<Invite[] | null>(null);
+  const { data: list, err, setErr, fail, reload: load } = useLoad(() => listInvites(url), [url]);
   const [expires, setExpires] = useState(7 * 86400);
   const [maxUses, setMaxUses] = useState(0);
   const [copied, setCopied] = useState("");
-  const [err, setErr] = useState("");
-  const fail = (e: unknown) => setErr(errorText(e));
-  const load = () => listInvites(url).then(setList, fail);
-  useEffect(() => void load(), [url]);
   const copy = (code: string) => navigator.clipboard.writeText(shareInviteLink(AUTH_URL, url, code)).then(() => setCopied(code));
   const make = async (e: FormEvent) => {
     e.preventDefault();
@@ -1446,12 +1431,7 @@ function RolesTab({ url }: { url: string }) {
 
 function ChannelsTab({ url }: { url: string }) {
   const c = useApp((s) => s.cs[url]);
-  const [chans, setChans] = useState<Channel[] | null>(null);
-  const [err, setErr] = useState("");
-  const fail = (x: unknown) => setErr(errorText(x));
-  useEffect(() => {
-    browseChannels(url).then(setChans, (x) => setErr(errorText(x)));
-  }, [url]);
+  const { data: chans, setData: setChans, err, setErr, fail } = useLoad(() => browseChannels(url), [url]);
   const optIn = c.mode === ChannelMode.OPT_IN;
   const access = (ch: Channel, roleIds: string[], isDefault: boolean) => {
     setErr("");
