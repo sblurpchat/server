@@ -6051,6 +6051,16 @@ label:has(> input.visually-hidden:focus-visible) {
   .settings-back {
     margin: 0 -8px 0 -12px;
   }
+  /* Sign out is its own grouped row (1493). */
+  .settings .signout {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 24px;
+    border-radius: 12px;
+    background: var(--frost);
+    font-size: 1rem;
+    text-decoration: none;
+  }
   /* The top bar already names the page; keep only where the setting is saved. */
   .settings-page > section > h3 {
     font-size: 0;

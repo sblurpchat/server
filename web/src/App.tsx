@@ -1794,6 +1794,7 @@ function WebNotifications() {
 
 function Account() {
   const profile = useApp((s) => s.profile);
+  const [confirm, setConfirm] = useState(false);
   return (
     <section>
       <h3>Account</h3>
@@ -1806,9 +1807,24 @@ function Account() {
           Manage account <Icon name="external" size={14} />
         </a>
       </div>
-      <button className="btn danger-ghost" onClick={signOut}>
+      {/* Signing out deletes this device's drafts, so it asks first (1493). */}
+      <button className="btn danger-ghost signout" onClick={() => setConfirm(true)}>
         Sign out
       </button>
+      {confirm && (
+        <Dialog label="Sign out" className="confirm" onClose={() => setConfirm(false)}>
+          <h2>Sign out of Sblurp?</h2>
+          <p className="muted">Unsent drafts on this device will be deleted.</p>
+          <div className="row-end">
+            <button className="btn ghost" autoFocus={AUTOFOCUS} onClick={() => setConfirm(false)}>
+              Cancel
+            </button>
+            <button className="btn danger" onClick={signOut}>
+              Sign out
+            </button>
+          </div>
+        </Dialog>
+      )}
     </section>
   );
 }
