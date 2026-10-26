@@ -69,6 +69,16 @@ func pick(roll int) action {
 	}
 }
 
+// burst maps a roll in [0, 100) to how many messages to send this tick:
+// usually one, but 8% of the time 3 to 6 at once (ticket 1504), so several
+// messages arriving together shows up in the client.
+func burst(roll int) int {
+	if roll < 92 {
+		return 1
+	}
+	return 3 + roll%4
+}
+
 var lines = []string{
 	"Anyone else seeing the deploy queue back up this morning?",
 	"Just pushed the fix, give it a minute to roll out.",
@@ -120,8 +130,10 @@ func main() {
 			slog.Warn("no sim-tokens.json yet; start the dev servers with -seed")
 		} else {
 			c := ready[rand.IntN(len(ready))]
-			if err := step(ctx, c[0], c[1], *me, pick(rand.IntN(100))); err != nil {
-				slog.Warn("step", "url", c[0], "err", err)
+			for range burst(rand.IntN(100)) { // back to back, so a burst lands within a second
+				if err := step(ctx, c[0], c[1], *me, pick(rand.IntN(100))); err != nil {
+					slog.Warn("step", "url", c[0], "err", err)
+				}
 			}
 		}
 		select {

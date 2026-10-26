@@ -32,3 +32,11 @@ func TestPickRoot(t *testing.T) {
 		t.Error("empty channel")
 	}
 }
+
+func TestBurst(t *testing.T) {
+	for roll, want := range map[int]int{0: 1, 91: 1, 92: 3, 93: 4, 94: 5, 95: 6, 99: 6} {
+		if got := burst(roll); got != want {
+			t.Errorf("burst(%d) = %d, want %d", roll, got, want)
+		}
+	}
+}
