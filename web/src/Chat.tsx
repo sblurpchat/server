@@ -522,8 +522,9 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
   };
   // Press and hold a message on touch opens its actions menu (1297) as soon as the hold is
   // recognized, with a haptic tap (1384). The menu captures the pointer, so the release lands
-  // on it and does not light-dismiss it; the release's click is swallowed below.
-  const hold = useRef({ timer: 0, touch: false, on: false, x: 0, y: 0 });
+  // on it and does not light-dismiss it; the release's click is swallowed below. Where capture
+  // fails the release still light-dismisses it, so a close right at the release reopens it (1420).
+  const hold = useRef({ timer: 0, touch: false, on: false, x: 0, y: 0, up: 0 });
   const moreRef = useRef<HTMLDivElement>(null);
   const whoR = who && m.reactions.find((r) => r.emoji === who.emoji);
   const author = c.members[m.authorId];
@@ -602,7 +603,10 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
         const h = hold.current;
         if (!h.on && holdStep(0, e.clientX - h.x, e.clientY - h.y) === "cancel") clearTimeout(h.timer);
       }}
-      onPointerUp={() => clearTimeout(hold.current.timer)}
+      onPointerUp={() => {
+        clearTimeout(hold.current.timer);
+        if (hold.current.on) hold.current.up = performance.now();
+      }}
       onPointerCancel={() => {
         clearTimeout(hold.current.timer);
       }}
@@ -760,7 +764,12 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
       <Pop
         anchor={more}
         side="left"
-        onClose={() => setMore(null)}
+        onClose={() => {
+          if (performance.now() - hold.current.up > 300) return setMore(null);
+          hold.current.up = 0;
+          moreRef.current?.closest<HTMLElement>(".pop")?.showPopover();
+          moreRef.current?.focus({ preventScroll: true });
+        }}
         className="menu msg-menu" label="Message actions" sheet>
         <div role="menu" ref={moreRef} tabIndex={-1} onClick={() => setMore(null)} onKeyDown={menuKeys}>
           {NO_HOVER.matches && (
