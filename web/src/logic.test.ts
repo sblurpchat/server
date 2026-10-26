@@ -202,6 +202,13 @@ describe("markdown", () => {
   });
 
   it("leaves snake_case and raw HTML as text", () => {
+    expect(parseInline("a ![a **b**](diagram.png) ![](https://x.test/y.png)")).toEqual([
+      { t: "text", v: "a " },
+      { t: "img", alt: "a **b**", src: "diagram.png" },
+      { t: "text", v: " " },
+      { t: "img", alt: "", src: "https://x.test/y.png" },
+    ]);
+    expect(parseInline("hi! [docs](https://d.test)")[1]).toEqual({ t: "link", href: "https://d.test", c: [{ t: "text", v: "docs" }] });
     expect(parseInline("my_var_name <b>x</b>")).toEqual([{ t: "text", v: "my_var_name <b>x</b>" }]);
   });
 

@@ -3940,6 +3940,12 @@ li.sw-empty {
   border: 0;
   border-top: 1px solid var(--line);
 }
+.md-img {
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+  border-radius: 6px;
+}
 .md-h {
   font-weight: 700;
   line-height: 1.25;

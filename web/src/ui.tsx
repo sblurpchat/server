@@ -1,7 +1,7 @@
 // Shared UI primitives: icons, avatars, dialogs, popovers, the emoji picker and the markdown renderer.
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MemberRole, Presence, type Member } from "./gen/sblurp/v1/sblurp_pb";
-import { PANELS, SKELETON_DELAY_MS, clampWidth, gridMove, initials, keyWidth, listMove, onBackdrop, onWhite, parseMarkdown, shareToDeepLink, skeletonRows, swatch, swipeEnds, pinchView, type Block, type Inline, type View } from "./logic";
+import { PANELS, SKELETON_DELAY_MS, clampWidth, gridMove, initials, keyWidth, listMove, onBackdrop, onWhite, parseInline, parseMarkdown, shareToDeepLink, skeletonRows, swatch, swipeEnds, pinchView, type Block, type Inline, type View } from "./logic";
 import { Img, Shortcodes, useEmojiSet, useMore } from "./CustomEmoji";
 import { bumpRecent, pickerSections, TONES, withTone, type PickItem } from "./emoji";
 import { EMOJI_DATA } from "./emoji-data";
@@ -842,6 +842,8 @@ function renderInline(nodes: Inline[], members: Record<string, Member>, meId: st
           </a>
         );
       }
+      case "img":
+        return <MdImg key={i} alt={n.alt} src={n.src} old={() => ["!", ...renderInline(parseInline(`[${n.alt}](${n.src})`), members, meId, onMention)]} />;
       case "mention": {
         const m = members[n.id];
         return (
@@ -852,6 +854,16 @@ function renderInline(nodes: Inline[], members: Record<string, Member>, meId: st
       }
     }
   });
+}
+
+/** Image name to signed src, for the images attached next to a Markdown file (1333). */
+const MdImages = createContext<Record<string, string>>({});
+
+/** Only an image attached to the same message loads, so a file can't fetch a third-party URL
+ *  from every reader's device. Anything else renders as before: a "!" and a link. */
+function MdImg({ alt, src, old }: { alt: string; src: string; old: () => ReactNode[] }) {
+  const url = useContext(MdImages)[src.replace(/^\.\//, "")];
+  return url ? <img className="md-img" src={url} alt={alt} loading="lazy" /> : <>{old()}</>;
 }
 
 /** A fenced block. The highlighter loads on first use, guesses the language when none is given, and colors it in place. */
@@ -878,12 +890,14 @@ export function Markdown({
   meId,
   onMention,
   doc = false,
+  images = {},
 }: {
   text: string;
   members: Record<string, Member>;
   meId?: string;
   onMention: (id: string, el: HTMLElement) => void;
   doc?: boolean;
+  images?: Record<string, string>;
 }) {
   const inl = (c: Inline[]) => renderInline(c, members, meId, onMention);
   const blocks = (bs: Block[]): ReactNode[] =>
@@ -943,7 +957,7 @@ export function Markdown({
         <p key={i}>{inl(b.c)}</p>
       ),
     );
-  return <>{blocks(parseMarkdown(text, doc))}</>;
+  return <MdImages.Provider value={images}>{blocks(parseMarkdown(text, doc))}</MdImages.Provider>;
 }
 
 /** Text that someone allowed to change it can click to edit (1192, 1195): a hover tint and a pencil.

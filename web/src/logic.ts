@@ -633,6 +633,8 @@ export type Inline =
   | { t: "code"; v: string }
   | { t: "mention"; id: string }
   | { t: "link"; href: string; c: Inline[] }
+  /** `![alt](src)`. Shown only when src names an image attached to the same message (1333). */
+  | { t: "img"; alt: string; src: string }
   | { t: "b" | "i" | "s"; c: Inline[] };
 
 export type Block =
@@ -656,7 +658,7 @@ const cells = (line: string) =>
 const indent = (l: string) => /^\s*/.exec(l)![0].length;
 
 const INLINE =
-  /`([^`\n]+)`|<@([\w-]+)>|\[([^\]\n]+)\]\(((?:https?:\/\/|mailto:)[^\s)]+)\)|(https?:\/\/[^\s<]*[^\s<.,:;"')\]!?])|\*\*([^\n]+?)\*\*|~~([^\n]+?)~~|\*([^*\s](?:[^*\n]*[^*\s])?)\*|(?<!\w)_([^_\s](?:[^_\n]*[^_\s])?)_(?!\w)/g;
+  /`([^`\n]+)`|<@([\w-]+)>|\[([^\]\n]+)\]\(((?:https?:\/\/|mailto:)[^\s)]+)\)|(https?:\/\/[^\s<]*[^\s<.,:;"')\]!?])|\*\*([^\n]+?)\*\*|~~([^\n]+?)~~|\*([^*\s](?:[^*\n]*[^*\s])?)\*|(?<!\w)_([^_\s](?:[^_\n]*[^_\s])?)_(?!\w)|!\[([^\]\n]*)\]\(([^\s)]+)\)/g;
 
 export function parseInline(s: string): Inline[] {
   const out: Inline[] = [];
@@ -671,6 +673,7 @@ export function parseInline(s: string): Inline[] {
     else if (m[5] !== undefined) out.push({ t: "link", href: m[5], c: [{ t: "text", v: m[5] }] });
     else if (m[6] !== undefined) out.push({ t: "b", c: parseInline(m[6]) });
     else if (m[7] !== undefined) out.push({ t: "s", c: parseInline(m[7]) });
+    else if (m[11] !== undefined) out.push({ t: "img", alt: m[10], src: m[11] });
     else out.push({ t: "i", c: parseInline(m[8] ?? m[9]) });
   }
   if (last < s.length) out.push({ t: "text", v: s.slice(last) });

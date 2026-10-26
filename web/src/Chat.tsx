@@ -1145,7 +1145,7 @@ function Snippet({ url, a, m, src }: { url: string; a: Attachment; m: Message; s
           <p className="muted small">Couldn't load this file. Download it instead.</p>
         ) : md && !raw ? (
           <div className="snippet-md msg-text">
-            <Markdown doc text={code} members={c.members} meId={c.me?.id} onMention={(id, el) => openProfile(url, id, el)} />
+            <Markdown doc text={code} images={Object.fromEntries(m.attachments.filter((x) => x.contentType.startsWith("image/")).map((x) => [x.name, absUrl(url, x.url)]))} members={c.members} meId={c.me?.id} onMention={(id, el) => openProfile(url, id, el)} />
           </div>
         ) : (
           <pre>{hl.html === null ? <code>{code}</code> : <code dangerouslySetInnerHTML={{ __html: hl.html }} />}</pre>
