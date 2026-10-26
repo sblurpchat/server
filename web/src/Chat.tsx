@@ -273,24 +273,35 @@ function Banner({ c }: { c: Community }) {
   // retryAt is set whenever reconnecting, so this ticks every second and the quiet time ends on time.
   const secs = useCountdown(c.retryAt);
   const online = useOnline();
+  const name = c.info?.name ?? hostOf(c.url);
   // No network is one fact for the whole app, not each community's fault (1494).
-  if (!online)
-    return (
-      <div className="banner">
-        <span role="status">You're offline. Messages will send when you reconnect.</span>
-      </div>
-    );
-  if (!showDown(c, Date.now())) return null;
+  const down = !online ? "You're offline. Messages will send when you reconnect." : showDown(c, Date.now()) ? `Can't reach ${name}.` : "";
+  // A live region inserted with its text is not read out, so this one is always mounted and only
+  // its text changes: the first sentence, never the countdown, and then the recovery (1486).
+  const [said, setSaid] = useState("");
+  useEffect(() => setSaid((was) => down || (was && "Connected again.")), [down]);
   return (
-    <div className="banner">
-      <span>
-        {/* Only the first sentence is live: the countdown would be read out every second. */}
-        <span role="status">Can't reach {c.info?.name ?? hostOf(c.url)}.</span> {c.status === "reconnecting" && (secs > 0 ? `Trying again in ${secs}s.` : "Reconnecting…")}
-      </span>
-      <button className="btn small" onClick={() => retryNow(c.url)}>
-        Try now
-      </button>
-    </div>
+    <>
+      <p className="visually-hidden" role="status">
+        {said}
+      </p>
+      {down && (
+        <div className="banner">
+          {online ? (
+            <>
+              <span>
+                {down} {c.status === "reconnecting" && (secs > 0 ? `Trying again in ${secs}s.` : "Reconnecting…")}
+              </span>
+              <button className="btn small" onClick={() => retryNow(c.url)}>
+                Try now
+              </button>
+            </>
+          ) : (
+            <span>{down}</span>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
