@@ -5612,14 +5612,15 @@ label:has(> input.visually-hidden:focus-visible) {
   .chan-head[data-img] {
     min-height: 56px;
   }
-  /* Composer (1361): the text line centers on the 44px attach and send buttons. */
+  /* Composer (1361): the last text line centers on the 44px attach and send buttons.
+     Less padding on top, so wrapped lines do not sit low in the pill (1437). */
   .composer-row {
     align-items: flex-end;
     padding: 0 4px;
   }
   .composer-input {
-    min-height: 44px;
-    padding-block: 10px;
+    min-height: 40px;
+    padding-block: 6px 10px;
     line-height: 24px;
   }
   .attach,
