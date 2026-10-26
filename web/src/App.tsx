@@ -1063,6 +1063,13 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
   const [share, setShare] = useState({ displayName: true, avatarUrl: true, bio: false });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  // Which field a refusal is about, so its message sits under that field and it takes focus (1495).
+  const [errField, setErrField] = useState<"" | "invite" | "questions">("");
+  const fieldRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
+  useEffect(() => {
+    fieldRef.current?.focus({ preventScroll: true });
+    fieldRef.current?.scrollIntoView({ block: "center" });
+  }, [err, errField]);
   const [code, setCode] = useState(invite);
   const [answers, setAnswers] = useState(() => info.joinQuestions.map(() => ""));
   const fields = [
@@ -1080,8 +1087,10 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
     } catch (x) {
       // A refusal is permission_denied: a bad invite code, or a reason from the community's join check.
       const ce = ConnectError.from(x);
+      const invite = info.inviteOnly && /invite/i.test(ce.rawMessage);
+      setErrField(ce.code !== Code.PermissionDenied ? "" : invite ? "invite" : info.joinQuestions.length ? "questions" : "");
       if (ce.code !== Code.PermissionDenied) setErr(errorText(x, info.name));
-      else if (info.inviteOnly && /invite/i.test(ce.rawMessage)) setErr("That invite code doesn't work. It may have expired or been used up.");
+      else if (invite) setErr("That invite code doesn't work. Check it, or ask for a new invite.");
       else setErr(sentence(ce.rawMessage));
       setBusy(false);
     }
@@ -1110,8 +1119,17 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
             spellCheck={false}
             autoCapitalize="characters"
             placeholder="From your invite link"
+            ref={errField === "invite" ? fieldRef : undefined}
+            aria-invalid={errField === "invite" && !!err}
+            aria-describedby={errField === "invite" && err ? "join-err" : undefined}
           />
-          <small className="muted">{info.name} is invite only.</small>
+          {errField === "invite" && err ? (
+            <small className="error" id="join-err" role="alert">
+              {err}
+            </small>
+          ) : (
+            <small className="muted">{info.name} is invite only.</small>
+          )}
         </label>
       )}
       {info.joinQuestions.length > 0 && (
@@ -1127,9 +1145,17 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
                 maxLength={1000}
                 value={answers[i]}
                 onChange={(e) => setAnswers(answers.map((a, j) => (j === i ? e.target.value : a)))}
+                ref={errField === "questions" && i === 0 ? fieldRef : undefined}
+                aria-invalid={errField === "questions" && !!err}
+                aria-describedby={errField === "questions" && err ? "join-err" : undefined}
               />
             </label>
           ))}
+          {errField === "questions" && err && (
+            <p className="error" id="join-err" role="alert">
+              {err}
+            </p>
+          )}
         </fieldset>
       )}
       <h3>Share your profile with {info.name}?</h3>
@@ -1160,7 +1186,7 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
       <p className="fine">
         {info.name} gets only what is switched on. Your email and the rest of your sblurp.chat account stay private.
       </p>
-      {err && (
+      {err && !errField && (
         <p className="error" role="alert">
           {err}
         </p>
