@@ -1652,6 +1652,7 @@ export function PeoplePicker({
   empty,
   onSubmit,
   onClose,
+  children,
 }: {
   c: Community;
   title: string;
@@ -1662,6 +1663,8 @@ export function PeoplePicker({
   empty: string;
   onSubmit: (ids: string[]) => Promise<unknown>;
   onClose: () => void;
+  /** Shown above the search field, e.g. a community picker (1454). */
+  children?: React.ReactNode;
 }) {
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
@@ -1695,6 +1698,7 @@ export function PeoplePicker({
             <Icon name="x" />
           </button>
         </header>
+        {children}
         <input className="input" autoFocus={AUTOFOCUS} placeholder="Search by name" aria-label="Search people" value={q} onChange={(e) => setQ(e.target.value)} />
         <ul className="pick-list" aria-label="People">
           {options.map((m) => (

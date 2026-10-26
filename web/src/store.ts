@@ -756,7 +756,7 @@ export async function upload(url: string, file: File): Promise<Attachment> {
 export async function openDM(url: string, memberIds: string | string[]) {
   const r = await api(url).chat.openDM({ memberIds: [memberIds].flat() });
   const ch = r.channel!;
-  patchC(url, (c) => ({ ...c, channels: { ...c.channels, [ch.id]: ch } }));
+  patchC(url, (c) => ({ ...c, channels: { ...c.channels, [ch.id]: { ...ch, lastMessage: c.channels[ch.id]?.lastMessage } } }));
   // From a profile in another channel (1503), Back and the swipe return there, as after a jump (1433).
   const back = !!state.popover && !state.drawer && state.channelId !== ch.id;
   set({ popover: null });

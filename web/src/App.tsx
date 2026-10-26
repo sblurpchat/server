@@ -2087,11 +2087,18 @@ function BrowseChannels() {
 }
 
 function NewMessage() {
-  const c = useApp((s) => s.cs[s.url]);
+  const cs = useApp((s) => s.cs);
+  const order = useApp((s) => s.order);
+  const current = useApp((s) => s.url);
+  // The DMs tab spans every community, so say which one the DM is in and let it change (1454).
+  const [url, setUrl] = useState(current);
+  const c = cs[url];
+  const joined = order.filter((u) => cs[u]?.me);
   if (!c?.me) return null;
   const close = () => set({ modal: null });
   return (
     <PeoplePicker
+      key={url}
       c={c}
       title="New message"
       exclude={[]}
@@ -2101,7 +2108,20 @@ function NewMessage() {
       empty="Nobody else is here yet."
       onSubmit={(ids) => openDM(c.url, ids)}
       onClose={close}
-    />
+    >
+      {joined.length > 1 && (
+        <label className="field">
+          <b>Community</b>
+          <select className="input" value={url} onChange={(e) => setUrl(e.target.value)}>
+            {joined.map((u) => (
+              <option key={u} value={u}>
+                {cs[u].info?.name ?? hostOf(u)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+    </PeoplePicker>
   );
 }
 
