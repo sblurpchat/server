@@ -411,28 +411,41 @@ function Empty({ title, body, action }: { title: string; body: string; action?: 
 function Loading({ c }: { c: Community }) {
   const name = c.info?.name ?? hostOf(c.url);
   const secs = useCountdown(c.retryAt);
-  if (!c.error || !showDown(c, Date.now()))
-    return (
-      <div className="loading-main" aria-busy="true">
-        <div className="chan-head">
-          <h1 className="visually-hidden">Loading {name}</h1>
-        </div>
-        <Skeleton rows={8} avatar={36} chat className="skel-chat" />
-        <div className="composer" aria-hidden="true">
-          <div className="composer-box skel-composer" />
-        </div>
-      </div>
-    );
+  const down = c.error && showDown(c, Date.now());
+  // The title already says it can't be reached, so only a different reason is repeated (1468).
+  const reason = c.error?.startsWith("Can't reach") ? "" : `${c.error} `;
   return (
-    <Empty
-      title={`Can't reach ${name}`}
-      body={`${c.error ?? ""} ${secs > 0 ? `Trying again in ${secs}s.` : "Trying again now."}`}
-      action={
-        <button className="btn" onClick={() => retryNow(c.url)}>
-          Try now
+    <div className="loading-main" aria-busy={!down}>
+      {/* The phone header stays, so the menu button is a way out while it loads or fails (1468). */}
+      <header className="chan-head">
+        <button className="icon-btn only-mobile menu-btn" aria-label="Open communities and channels" onClick={() => set({ drawer: true })}>
+          <Icon name="back" />
         </button>
-      }
-    />
+        <div className="chan-id">
+          <h1 className="chan-title">
+            <span className="truncate">{name}</span>
+          </h1>
+        </div>
+      </header>
+      {down ? (
+        <Empty
+          title={`Can't reach ${name}`}
+          body={`${reason}${secs > 0 ? `Trying again in ${secs}s.` : "Trying again now."}`}
+          action={
+            <button className="btn" onClick={() => retryNow(c.url)}>
+              Try now
+            </button>
+          }
+        />
+      ) : (
+        <>
+          <Skeleton rows={8} avatar={36} chat className="skel-chat" />
+          <div className="composer" aria-hidden="true">
+            <div className="composer-box skel-composer" />
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -478,8 +491,8 @@ function TabBar() {
   );
   return (
     <nav className="tabbar" aria-label="Sections">
-      {item("home", "Home", <Icon name="house" />, b.home.mentions, b.home.unread)}
-      {item("dms", "DMs", <Icon name="messages" />, b.dms)}
+      {item("home", "Home", <Icon name="house" size={24} />, b.home.mentions, b.home.unread)}
+      {item("dms", "DMs", <Icon name="messages" size={24} />, b.dms)}
       {item("you", "You", <Avatar m={me} size={24} />)}
     </nav>
   );
@@ -2477,7 +2490,7 @@ function ProfilePopover() {
                     className="btn danger-ghost small"
                     onClick={() => set({ popover: null, modal: { t: "remove", url: p.url, memberId: m.id, ban } })}
                   >
-                    {ban ? "Ban" : "Kick"}
+                    <Icon name={ban ? "ban" : "leave"} size={16} /> {ban ? "Ban" : "Kick"}
                   </button>
                 ))}
               </div>
