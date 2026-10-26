@@ -4774,7 +4774,7 @@ li.sw-empty {
   .input.small,
   .composer-input,
   .chan-search input {
-    font-size: 16px;
+    font-size: max(16px, 1rem); /* still grows with Text size (1484) */
   }
   .icon-btn {
     width: 44px;
@@ -6546,7 +6546,7 @@ label:has(> input.visually-hidden:focus-visible) {
   }
   .emoji-sheet .emoji-top .input {
     height: 44px;
-    font-size: 16px; /* below 16px iOS zooms the page on focus */
+    font-size: max(16px, 1rem); /* below 16px iOS zooms the page on focus */
   }
   .emoji-sheet .emoji-tone,
   .emoji-sheet .emoji-tones button,
