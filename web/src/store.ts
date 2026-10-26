@@ -401,10 +401,10 @@ function ensureChannel(url: string, force = false) {
   const s = state;
   if (s.url !== url) return;
   const c = s.cs[url];
-  if (!force && s.channelId && c.channels[s.channelId]) return selectChannel(url, s.channelId, false);
+  if (!force && s.channelId && c.channels[s.channelId]) return selectChannel(url, s.channelId, false, false);
   const last = load<Record<string, string>>("lastChannel", {})[url];
   const id = last && c.channels[last] ? last : landingChannel(c);
-  if (id) selectChannel(url, id, false);
+  if (id) selectChannel(url, id, false, false);
 }
 
 export function selectCommunity(url: string) {
@@ -414,10 +414,12 @@ export function selectCommunity(url: string) {
   else history.pushState(null, "", formatHash(url, ""));
 }
 
-export function selectChannel(url: string, channelId: string, push = true) {
+// close: a tap on a channel closes the phone drawer. Switching community (1397) or a resync
+// picks a channel without closing it, like Discord keeps its server list open.
+export function selectChannel(url: string, channelId: string, push = true, close = true) {
   // Phone (1381): start the drawer sliding away first. Mounting the channel in the same frame
   // can take longer than the 180ms slide, and then the drawer seems to vanish.
-  if (state.drawer && channelId && matchMedia("(max-width: 767px)").matches) {
+  if (close && state.drawer && channelId && matchMedia("(max-width: 767px)").matches) {
     set({ drawer: false });
     requestAnimationFrame(() =>
       requestAnimationFrame(() => {
@@ -433,7 +435,7 @@ export function selectChannel(url: string, channelId: string, push = true) {
   set((s) => ({
     url,
     channelId,
-    drawer: false,
+    drawer: close ? false : s.drawer,
     pane: s.channelId === channelId && s.url === url ? s.pane : keepPane,
     editing: null,
     viewing: null,

@@ -5921,3 +5921,11 @@ label:has(> input.visually-hidden:focus-visible) {
     backdrop-filter: none;
   }
 }
+
+/* Phone (1397): a new channel or community fades in over the plain background instead of
+   flashing the old one. The global reduced-motion rule turns it off. */
+@media (max-width: 767px) {
+  .channel {
+    animation: fade-in 160ms ease-out;
+  }
+}

@@ -1383,7 +1383,7 @@ export function arrivalText(items: Message[], since: number, meId: string | unde
 }
 
 /** How long a load may take before its skeleton shows, so a fast load never flashes one. */
-export const SKELETON_DELAY_MS = 200;
+export const SKELETON_DELAY_MS = 300;
 
 /** What the top of a message list shows: a skeleton before the first page, an error,
  * placeholder rows while older pages remain, or the start of the channel. */
