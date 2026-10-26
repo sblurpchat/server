@@ -3213,6 +3213,13 @@ li.sw-empty {
 .msg[data-pending="true"] .msg-text {
   color: var(--graphite);
 }
+/* Not grey alone (1487). Shown only if the ack is slow, so a quick send does not flash it. */
+.sending {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  animation: fade-in 160ms ease-out 700ms backwards;
+}
 .msg[data-fresh="true"] {
   animation: fade-in 120ms ease-out;
 }

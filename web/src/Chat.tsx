@@ -622,7 +622,7 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
       data-editing={editing}
       data-held={(!!more && hold.current.on) || undefined}
       tabIndex={-1}
-      aria-label={`${name}, ${timeLabel(Number(m.createdAtMs), h24)}`}
+      aria-label={`${name}, ${timeLabel(Number(m.createdAtMs), h24)}${pending && !failed ? ", sending" : ""}`}
       onPointerDown={(e) => {
         const h = hold.current;
         h.on = false; // a hold whose release fired no click must not swallow the next tap
@@ -694,6 +694,11 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
           <div className="msg-text">
             <Markdown text={m.text} members={c.members} meId={c.me?.id} onMention={(id, el) => openProfile(url, id, el)} />
             {m.editedAtMs > 0n && <span className="edited">(edited)</span>}
+            {pending && !failed && (
+              <span className="edited sending">
+                <Icon name="clock" size={12} /> Sending…
+              </span>
+            )}
           </div>
         )}
         {links.map((l) => (
