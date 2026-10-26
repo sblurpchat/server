@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { Code } from "@connectrpc/connect";
-import { queueStep, showDown, transient } from "./logic";
+import { leavingParts, queueStep, showDown, transient } from "./logic";
 import css from "./app.css?raw";
 import { allDMs, channelLabel, dmPeer, settingsGroups, swipeAxis, swipeEnds, tailnetUrl } from "./logic";
 import {
@@ -1428,5 +1428,22 @@ describe("nameColor nick colors (1432)", () => {
     expect(got).toEqual(ids.map((id) => nameColor(undefined, [], dark, id)));
     expect(new Set(got).size).toBeGreaterThanOrEqual(3);
     for (const c of got) expect(contrast(c, dark[0])).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("leavingParts", () => {
+  const safe = ["app.sblurp.chat", "sblurp.chat", "owls.test:8443"];
+  it("asks only for web links off the safe hosts", () => {
+    expect(leavingParts("https://sblurp.chat/docs", safe)).toBeNull();
+    expect(leavingParts("https://owls.test:8443/f/1.png", safe)).toBeNull();
+    expect(leavingParts("mailto:a@b.c", safe)).toBeNull();
+    expect(leavingParts("not a url", safe)).toBeNull();
+    expect(leavingParts("https://owls.test/x", safe)).toEqual(["https://", "owls.test", "/x"]);
+  });
+  it("splits around the real host", () => {
+    expect(leavingParts("http://sblurp.chat.evil.test/a?b#c", safe)).toEqual(["http://", "sblurp.chat.evil.test", "/a?b#c"]);
+    expect(leavingParts("https://sblurp.chat@evil.test/", safe)).toEqual(["https://sblurp.chat@", "evil.test", "/"]);
+    expect(leavingParts("https://xn--sblrp-mva.chat/", safe)?.[1]).toBe("xn--sblrp-mva.chat");
+    expect(leavingParts("https://sblürp.chat/", safe)?.[1]).toBe("xn--sblrp-mva.chat");
   });
 });

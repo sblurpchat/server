@@ -951,6 +951,21 @@ export function shareToDeepLink(href: string, share: string): string | null {
   return i ? `sblurp://${i[1]}/invite/${i[2]}` : null;
 }
 
+/** The web link `href` splits around its host, or null when it needs no "Leaving Sblurp" check (1447):
+ *  not http(s), or on a host in `safe` (the app, auth, joined communities, hosts the user trusts). */
+export function leavingParts(href: string, safe: string[]): [string, string, string] | null {
+  let u: URL;
+  try {
+    u = new URL(href);
+  } catch {
+    return null;
+  }
+  if (!/^https?:$/.test(u.protocol) || safe.includes(u.host)) return null;
+  // Any user:pass@ stays before the host, so https://bank.com@evil.test shows evil.test as the host.
+  const at = u.username || u.password ? u.href.indexOf("@") + 1 : u.protocol.length + 2;
+  return [u.href.slice(0, at), u.host, u.href.slice(at + u.host.length)];
+}
+
 /** Image types a server takes for a banner or channel header (it refuses the rest). */
 export const BANNER_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"];
 const MAX_BANNER = 8 << 20;

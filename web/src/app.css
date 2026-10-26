@@ -2276,6 +2276,37 @@ kbd {
 .confirm > p {
   margin-top: 10px;
 }
+/* "Leaving Sblurp" (1447): the whole address, host in bold, so a look-alike shows. */
+.leaving-url {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--frost);
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  color: var(--graphite);
+  overflow-wrap: anywhere;
+  max-height: 8lh;
+  overflow-y: auto;
+}
+.leaving-url svg {
+  flex: none;
+  margin-top: 1px;
+}
+.leaving-url b {
+  color: var(--text);
+  font-weight: 700;
+}
+.leaving-trust {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 14px 0 18px;
+  overflow-wrap: anywhere;
+}
 .delete-preview {
   margin: 14px 0 0;
   padding: 10px 12px;
