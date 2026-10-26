@@ -1404,3 +1404,14 @@ describe("holdStep", () => {
     expect(swipeAxis(false, 20, 0, 449)).toBe("open");
   });
 });
+
+import { swipeTab } from "./logic";
+describe("swipeTab (1423)", () => {
+  it("brings in the tab on the side the finger moves away from", () => {
+    expect(swipeTab("dms", 40)).toBe("home");
+    expect(swipeTab("you", 40)).toBe("dms");
+    expect(swipeTab("home", 40)).toBeNull();
+    expect(swipeTab("home", -40)).toBe("dms");
+    expect(swipeTab("you", -40)).toBeNull();
+  });
+});

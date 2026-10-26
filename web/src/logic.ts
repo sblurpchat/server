@@ -1517,3 +1517,10 @@ export function tabBadges(
   }
   return out;
 }
+
+/** The phone tab a sideways swipe on the tab lists moves to (1423). The content follows the finger,
+ *  like iOS paging: a swipe to the right brings in the tab on the left. Null past either end. */
+const TABS = ["home", "dms", "you"] as const;
+export function swipeTab(tab: (typeof TABS)[number], dx: number): (typeof TABS)[number] | null {
+  return TABS[TABS.indexOf(tab) + (dx > 0 ? -1 : 1)] ?? null;
+}
