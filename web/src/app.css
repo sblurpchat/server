@@ -577,6 +577,11 @@ body,
   height: 100%;
   margin: 0;
 }
+/* A drag on the header or composer must not rubber-band the whole app off its safe areas (1475). */
+html,
+body {
+  overscroll-behavior: none;
+}
 body {
   font: 0.9375rem/1.47 var(--sans);
   color: var(--text);
