@@ -415,6 +415,18 @@ export function selectCommunity(url: string) {
 }
 
 export function selectChannel(url: string, channelId: string, push = true) {
+  // Phone (1381): start the drawer sliding away first. Mounting the channel in the same frame
+  // can take longer than the 180ms slide, and then the drawer seems to vanish.
+  if (state.drawer && channelId && matchMedia("(max-width: 767px)").matches) {
+    set({ drawer: false });
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        selectChannel(url, channelId, push);
+        if (document.activeElement === document.body) document.querySelector<HTMLElement>(".menu-btn")?.focus();
+      }),
+    );
+    return;
+  }
   const c = state.cs[url];
   const rs = c?.reads[channelId];
   const keepPane = state.pane?.t === "members" ? state.pane : null;

@@ -5656,15 +5656,14 @@ label:has(> input.visually-hidden:focus-visible) {
   display: none;
 }
 @media (max-width: 767px) {
-  /* Like Slack and Discord: the list screens fill the phone and a tab bar sits over the
-     home bar. Inside a channel the drawer is away, so the bar is too. */
+  /* Like Slack and Discord: the list sheet covers 90% of the phone (1381), so the channel
+     peeks out on the right, and a floating glass tab bar sits above the home bar. */
   .drawer {
     display: grid;
-    grid-template: minmax(0, 1fr) auto / auto minmax(0, 1fr);
-    width: 100vw;
-    padding-right: env(safe-area-inset-right);
+    grid-template: minmax(0, 1fr) / auto minmax(0, 1fr);
+    width: 90vw;
     background: var(--frost);
-    box-shadow: none;
+    --tabbar-room: calc(76px + max(8px, env(safe-area-inset-bottom) - 12px));
   }
   .drawer > :not(.tabbar) {
     min-height: 0;
@@ -5673,16 +5672,26 @@ label:has(> input.visually-hidden:focus-visible) {
   .drawer > .tab-panel {
     grid-column: 1 / -1;
   }
+  /* Content scrolls under the floating bar but can still reach past it. */
+  .drawer .rail,
+  .drawer .sidebar,
+  .tab-panel {
+    padding-bottom: var(--tabbar-room);
+  }
   /* The You tab has the profile and settings. */
   .drawer .mebar {
     display: none;
   }
   .tabbar {
-    grid-column: 1 / -1;
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: max(8px, env(safe-area-inset-bottom) - 12px);
+    z-index: 2;
     display: flex;
-    border-top: 1px solid var(--line);
-    background: var(--frost);
-    padding: 0 8px max(4px, calc(env(safe-area-inset-bottom) - 12px));
+    gap: 4px;
+    padding: 6px;
+    border-radius: 999px;
   }
   .tab {
     position: relative;
@@ -5690,8 +5699,9 @@ label:has(> input.visually-hidden:focus-visible) {
     display: grid;
     justify-items: center;
     gap: 2px;
-    padding: 8px 0 4px;
+    padding: 6px 0 4px;
     min-height: 52px;
+    border-radius: 999px;
     color: var(--graphite);
     font-size: 0.6875rem;
     font-weight: 600;
@@ -5699,6 +5709,7 @@ label:has(> input.visually-hidden:focus-visible) {
   }
   .tab[aria-current="page"] {
     color: var(--text);
+    background: color-mix(in srgb, var(--text) 10%, transparent);
   }
   .tab .icon,
   .tab .avatar {
@@ -5818,5 +5829,44 @@ label:has(> input.visually-hidden:focus-visible) {
   }
   .you-rows .icon {
     color: var(--graphite);
+  }
+}
+
+/* Liquid glass (1369): the floating tab bar and the phone sheet title bars are frosted
+   panes that content scrolls under, with a bright top edge. Solid where blur is missing
+   or the person asked for less transparency. */
+@media (max-width: 767px) {
+  .tabbar,
+  .dialog:has(> .dialog-head, > form > .dialog-head):not(.lightbox) .dialog-head {
+    --glass: color-mix(in srgb, var(--frost) 72%, transparent);
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+  .tabbar {
+    border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, white 22%, transparent),
+      0 8px 28px color-mix(in srgb, black 28%, transparent);
+  }
+  .dialog:has(> .dialog-head, > form > .dialog-head):not(.lightbox) .dialog-head {
+    --glass: color-mix(in srgb, var(--raised) 72%, transparent);
+    box-shadow: inset 0 -1px 0 color-mix(in srgb, white 8%, transparent);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .tabbar {
+      --glass: var(--raised);
+    }
+    .dialog:has(> .dialog-head, > form > .dialog-head):not(.lightbox) .dialog-head {
+      --glass: var(--raised);
+    }
+  }
+}
+@media (max-width: 767px) and (prefers-reduced-transparency: reduce) {
+  .tabbar,
+  .dialog:has(> .dialog-head, > form > .dialog-head):not(.lightbox) .dialog-head {
+    background: var(--raised);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 }
