@@ -447,13 +447,16 @@ export function useCountdown(at?: number) {
 // Phone tabs (1369): Home, DMs and You at the bottom of the drawer, like Slack and Discord
 // ---------------------------------------------------------------------------
 
+// A second tap on the open tab scrolls its list to the top, like iOS (1472).
+const toTop = () => document.querySelector(".drawer > :is(.sidebar, .tab-panel)")?.scrollTo({ top: 0, behavior: "smooth" });
+
 function TabBar() {
   const tab = useApp((s) => s.tab);
   const cs = useApp((s) => s.cs);
   const me = useApp((s) => s.cs[s.url]?.me);
   const b = useMemo(() => tabBadges(cs), [cs]);
   const item = (t: typeof tab, label: string, icon: React.ReactNode, badge = 0, dot = false) => (
-    <button className="tab" aria-current={tab === t ? "page" : undefined} onClick={() => set({ tab: t })}>
+    <button className="tab" aria-current={tab === t ? "page" : undefined} onClick={() => (tab === t ? toTop() : set({ tab: t }))}>
       {icon}
       <span>{label}</span>
       {badge > 0 ? (
