@@ -165,7 +165,9 @@ function opener(el: Element | null): HTMLElement | null {
 const focusBack = (el: HTMLElement | null) => el?.isConnected && el.focus();
 /** Focus the open channel's composer, else its messages: the skip link and a closed side pane land here. */
 export const focusMain = () =>
-  [".main .composer-input", ".main .scroller", ".main"].map((q) => document.querySelector<HTMLElement>(q)).find(Boolean)?.focus();
+  // On touch, focusing the composer pops the keyboard up while the pane slides away (1374).
+  [matchMedia("(pointer: coarse)").matches ? "" : ".main .composer-input", ".main .scroller", ".main"]
+    .filter(Boolean).map((q) => document.querySelector<HTMLElement>(q)).find(Boolean)?.focus();
 
 export function Dialog({
   label,
@@ -303,6 +305,9 @@ export function ghost(el: HTMLElement | null) {
   Object.assign(g.style, { position: "fixed", inset: "auto", margin: "0", left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, maxWidth: "none", maxHeight: "none" });
   document.body.append(g);
   g.showPopover();
+  // The copy starts scrolled to the top: put it where the reader was, or it jumps as it leaves (1374).
+  const src = el.querySelectorAll("*");
+  g.querySelectorAll("*").forEach((n, i) => src[i]?.scrollTop && (n.scrollTop = src[i].scrollTop));
   const a = g.getAnimations()[0]; // none when motion is reduced
   if (a) void a.finished.finally(() => g.remove());
   else g.remove();

@@ -38,6 +38,7 @@ import {
   blockedRows,
   swipeAxis,
   swipeEnds,
+  allDMs,
 } from "./logic";
 import {
   absUrl,
@@ -231,6 +232,7 @@ function Shell() {
   const narrow = useSyncExternalStore(onNarrow, () => NARROW.matches);
   const covered = narrow && (drawer || !channelId);
   const appRef = useRef<HTMLDivElement>(null);
+  const tab = useApp((s) => s.tab);
   const live = useRef({ drawer, channelId });
   live.current = { drawer, channelId };
   useDrawerSwipe(appRef, live);
@@ -248,8 +250,17 @@ function Shell() {
         Skip to messages
       </button>
       <div className="drawer">
-        <Rail />
-        {c && <Sidebar c={c} />}
+        {!narrow || tab === "home" ? (
+          <>
+            <Rail />
+            {c && <Sidebar c={c} />}
+          </>
+        ) : tab === "dms" ? (
+          <DMList />
+        ) : (
+          <You c={c} />
+        )}
+        {narrow && <TabBar />}
       </div>
       <main className="main" tabIndex={-1} inert={covered}>
         {!url || !c ? (
@@ -320,6 +331,123 @@ export function useCountdown(at?: number) {
     return () => clearInterval(t);
   }, [at]);
   return at ? Math.max(0, Math.ceil((at - now) / 1000)) : 0;
+}
+
+// ---------------------------------------------------------------------------
+// Phone tabs (1369): Home, DMs and You at the bottom of the drawer, like Slack and Discord
+// ---------------------------------------------------------------------------
+
+function TabBar() {
+  const tab = useApp((s) => s.tab);
+  const cs = useApp((s) => s.cs);
+  const order = useApp((s) => s.order);
+  const me = useApp((s) => s.cs[s.url]?.me);
+  const unread = useMemo(() => allDMs(cs, order).filter((d) => d.unread).length, [cs, order]);
+  const item = (t: typeof tab, label: string, icon: React.ReactNode, badge = 0) => (
+    <button className="tab" aria-current={tab === t ? "page" : undefined} onClick={() => set({ tab: t })}>
+      {icon}
+      <span>{label}</span>
+      {badge > 0 && (
+        <span className="badge tab-badge">
+          {badge > 99 ? "99+" : badge}
+          <span className="visually-hidden"> unread</span>
+        </span>
+      )}
+    </button>
+  );
+  return (
+    <nav className="tabbar" aria-label="Sections">
+      {item("home", "Home", <Icon name="house" />)}
+      {item("dms", "DMs", <Icon name="messages" />, unread)}
+      {item("you", "You", <Avatar m={me} size={24} />)}
+    </nav>
+  );
+}
+
+function DMList() {
+  const cs = useApp((s) => s.cs);
+  const order = useApp((s) => s.order);
+  const current = useApp((s) => s.channelId);
+  const dms = useMemo(() => allDMs(cs, order), [cs, order]);
+  const many = order.length > 1;
+  return (
+    <section className="tab-panel" aria-labelledby="dms-title">
+      <header className="tab-head">
+        <h2 id="dms-title">Direct messages</h2>
+        <button className="icon-btn" aria-label="New message" title="New message" onClick={() => set({ modal: { t: "newdm" } })}>
+          <Icon name="plus" />
+        </button>
+      </header>
+      {dms.length ? (
+        <ul className="tab-scroll">
+          {dms.map(({ url, ch, unread, mentions }) => {
+            const c = cs[url];
+            const other = c.members[dmPeer(ch, c.me?.id)];
+            const label = channelLabel(ch, c.members, c.me?.id);
+            return (
+              <li key={`${url} ${ch.id}`}>
+                <a
+                  href={formatHash(url, ch.id)}
+                  className="dm-row"
+                  data-unread={unread}
+                  aria-current={ch.id === current ? "page" : undefined}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    selectChannel(url, ch.id);
+                  }}
+                >
+                  <Avatar m={other} size={36} presence={ch.memberIds.length <= 2} />
+                  <span className="dm-text">
+                    <b className="truncate">{label}</b>
+                    {many && <small className="truncate">{c.info?.name ?? hostOf(url)}</small>}
+                  </span>
+                  {unread && !mentions && <span className="visually-hidden">, unread</span>}
+                  {mentions > 0 && (
+                    <span className="badge">
+                      {mentions}
+                      <span className="visually-hidden"> {mentions === 1 ? "mention" : "mentions"}</span>
+                    </span>
+                  )}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="tab-empty">No direct messages yet. Start one with the + button.</p>
+      )}
+    </section>
+  );
+}
+
+function You({ c }: { c?: Community }) {
+  const profile = useApp((s) => s.profile);
+  const me = c?.me;
+  const status = me?.statusText || me?.statusEmoji ? `${me.statusEmoji} ${me.statusText}`.trim() : me ? "Online" : "";
+  return (
+    <section className="tab-panel" aria-labelledby="you-title">
+      <div className="you-card">
+        <Avatar m={me} size={56} presence={!!me} />
+        <span className="me-text">
+          <b id="you-title" className="truncate">{me?.displayName ?? profile?.displayName ?? "You"}</b>
+          {status && <small className="truncate">{status}</small>}
+        </span>
+      </div>
+      <div className="you-rows">
+        {me && (
+          <button onClick={() => set({ modal: { t: "profile" } })}>
+            <Icon name="edit" size={20} /> Edit profile and status
+          </button>
+        )}
+        <button onClick={() => set({ modal: { t: "settings" } })}>
+          <Icon name="gear" size={20} /> Settings
+        </button>
+        <button onClick={() => set({ modal: { t: "add" } })}>
+          <Icon name="plus" size={20} /> Add a community
+        </button>
+      </div>
+    </section>
+  );
 }
 
 // ---------------------------------------------------------------------------

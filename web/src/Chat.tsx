@@ -164,7 +164,7 @@ export function ChannelView() {
           data-unread={elsewhere}
           onClick={() => set({ drawer: true })}
         >
-          <Icon name="menu" />
+          <Icon name="back" />
         </button>
         <div className="chan-id">
           <h1 className="chan-title">
@@ -181,8 +181,11 @@ export function ChannelView() {
             if (q.trim()) set({ pane: { t: "search", q: q.trim() } });
           }}
         >
-          <Icon name="search" size={16} />
-          <input type="search" aria-label={`Search ${c.info?.name ?? ""}`} placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} />
+          {/* On a phone the box is just this icon, so the icon must focus the input (1375). */}
+          <label htmlFor={`search-${channelId}`} className="chan-search-icon">
+            <Icon name="search" size={16} />
+          </label>
+          <input id={`search-${channelId}`} type="search" aria-label={`Search ${c.info?.name ?? ""}`} placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
         {(canEdit || canLeave) && (
           <button className="icon-btn" aria-label={`#${title} options`} title="Channel options" aria-haspopup="menu" aria-expanded={!!menu} onClick={(e) => setMenu(e.currentTarget.getBoundingClientRect())}>

@@ -1435,3 +1435,16 @@ export function swipeAxis(open: boolean, dx: number, dy: number): "open" | "clos
 export function swipeEnds(progress: number, velocity: number): boolean {
   return Math.abs(velocity) > 0.4 ? velocity > 0 : progress > 0.5;
 }
+
+/** The phone DMs tab (1369): every DM in every community, unread first, then in rail order,
+ *  newest first within a community. Seqs are per server, so they only order within one. */
+export function allDMs(cs: Record<string, Community>, order: string[]): { url: string; ch: Channel; unread: boolean; mentions: number }[] {
+  return order
+    .flatMap((url, i) =>
+      Object.values(cs[url]?.channels ?? {})
+        .filter(isDM)
+        .map((ch) => ({ url, ch, i, unread: (cs[url].reads[ch.id]?.unreadCount ?? 0) > 0, mentions: cs[url].reads[ch.id]?.mentionCount ?? 0 })),
+    )
+    .sort((a, b) => Number(b.unread) - Number(a.unread) || a.i - b.i || Number(b.ch.lastMessageSeq - a.ch.lastMessageSeq))
+    .map(({ i: _, ...x }) => x);
+}

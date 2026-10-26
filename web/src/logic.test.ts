@@ -2,7 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { Code } from "@connectrpc/connect";
 import css from "./app.css?raw";
-import { channelLabel, dmPeer, swipeAxis, swipeEnds, tailnetUrl } from "./logic";
+import { allDMs, channelLabel, dmPeer, swipeAxis, swipeEnds, tailnetUrl } from "./logic";
 import {
   ChannelKind,
   ChannelMode,
@@ -1311,5 +1311,20 @@ describe("drawer swipe (1354)", () => {
     expect(swipeEnds(0.9, -0.8)).toBe(false);
     expect(swipeEnds(0.6, 0)).toBe(true);
     expect(swipeEnds(0.4, 0.1)).toBe(false);
+  });
+});
+
+describe("allDMs (1369)", () => {
+  it("puts unread first, then rail order, then newest within a community, and skips channels", () => {
+    const dm = (id: string, lastMessageSeq: bigint) => create(ChannelSchema, { id, kind: ChannelKind.DM, memberIds: ["me", id], lastMessageSeq });
+    const a = emptyCommunity("https://a.test");
+    a.channels = { a1: dm("a1", 3n), a2: dm("a2", 90n), gen: create(ChannelSchema, { id: "gen", kind: ChannelKind.TEXT }) };
+    const b = emptyCommunity("https://b.test");
+    b.channels = { b1: dm("b1", 1n), b2: dm("b2", 2n) };
+    b.reads = { b1: create(ReadStateSchema, { channelId: "b1", unreadCount: 2, mentionCount: 1 }) };
+    const got = allDMs({ [a.url]: a, [b.url]: b }, [a.url, b.url, "https://gone.test"]);
+    expect(got.map((x) => x.ch.id)).toEqual(["b1", "a2", "a1", "b2"]);
+    expect(got[0]).toMatchObject({ url: "https://b.test", unread: true, mentions: 1 });
+    expect(got[1]).toMatchObject({ unread: false, mentions: 0 });
   });
 });

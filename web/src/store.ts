@@ -136,6 +136,8 @@ interface State {
   surfaces: string[]; // paper, msg-hover, mention-bg: what message text sits on
   notify: boolean;
   drawer: boolean;
+  /** Phone bottom tab (1369): what the drawer shows. Desktop ignores it. */
+  tab: "home" | "dms" | "you";
   collapsed: Record<string, boolean>;
   drafts: Record<string, string>;
   /** Channel the person is looking at with the list at the bottom. */
@@ -160,6 +162,7 @@ let state: State = {
   drawer: false,
   collapsed: load("collapsed", {}),
   drafts: load("drafts", {}),
+  tab: "home",
   viewing: null,
   newMarker: {},
   editing: null,

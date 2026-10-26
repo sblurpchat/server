@@ -5646,3 +5646,177 @@ label:has(> input.visually-hidden:focus-visible) {
     translate: 0 100%;
   }
 }
+
+/* ------------------------------------------- phone tabs (1369, 1374, 1375) */
+
+.chan-search-icon {
+  display: contents;
+}
+.tabbar {
+  display: none;
+}
+@media (max-width: 767px) {
+  /* Like Slack and Discord: the list screens fill the phone and a tab bar sits over the
+     home bar. Inside a channel the drawer is away, so the bar is too. */
+  .drawer {
+    display: grid;
+    grid-template: minmax(0, 1fr) auto / auto minmax(0, 1fr);
+    width: 100vw;
+    padding-right: env(safe-area-inset-right);
+    background: var(--frost);
+    box-shadow: none;
+  }
+  .drawer > :not(.tabbar) {
+    min-height: 0;
+    animation: fade-in 120ms ease-out;
+  }
+  .drawer > .tab-panel {
+    grid-column: 1 / -1;
+  }
+  /* The You tab has the profile and settings. */
+  .drawer .mebar {
+    display: none;
+  }
+  .tabbar {
+    grid-column: 1 / -1;
+    display: flex;
+    border-top: 1px solid var(--line);
+    background: var(--frost);
+    padding: 0 8px max(4px, calc(env(safe-area-inset-bottom) - 12px));
+  }
+  .tab {
+    position: relative;
+    flex: 1;
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    padding: 8px 0 4px;
+    min-height: 52px;
+    color: var(--graphite);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    transition: color 150ms ease-out;
+  }
+  .tab[aria-current="page"] {
+    color: var(--text);
+  }
+  .tab .icon,
+  .tab .avatar {
+    transition: scale 150ms ease-out;
+  }
+  .tab:active .icon,
+  .tab:active .avatar {
+    scale: 0.92;
+  }
+  .tab-badge {
+    position: absolute;
+    top: 4px;
+    left: calc(50% + 6px);
+    margin: 0;
+    box-shadow: 0 0 0 2px var(--frost);
+  }
+  .tab-panel {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .tab-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 56px;
+    padding: 0 8px 0 16px;
+  }
+  .tab-head h2 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .tab-scroll {
+    padding: 0 8px 12px;
+  }
+  .tab-empty {
+    padding: 24px 16px;
+    color: var(--graphite);
+  }
+  .dm-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    color: var(--graphite);
+    text-decoration: none;
+  }
+  .dm-row:active {
+    background: var(--hover);
+  }
+  .dm-row[aria-current="page"] {
+    background: var(--selected);
+  }
+  .dm-row .avatar {
+    --ring: var(--frost);
+  }
+  .dm-text {
+    display: grid;
+    min-width: 0;
+    line-height: 1.3;
+  }
+  .dm-text b {
+    font-weight: 500;
+    font-size: 0.9375rem;
+  }
+  .dm-row[data-unread="true"] .dm-text b {
+    font-weight: 700;
+    color: var(--text);
+  }
+  .dm-text small {
+    font-size: 0.8125rem;
+  }
+  .you-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 24px 16px 16px;
+  }
+  .you-card .avatar {
+    --ring: var(--frost);
+  }
+  .you-card .me-text b {
+    font-size: 1.25rem;
+    font-weight: 800;
+  }
+  .you-card .me-text small {
+    color: var(--graphite);
+    font-size: 0.875rem;
+  }
+  .you-rows {
+    margin: 8px 12px;
+    border-radius: 12px;
+    background: var(--raised);
+    overflow: hidden;
+  }
+  .you-rows button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 52px;
+    padding: 0 16px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--text);
+    text-align: left;
+  }
+  .you-rows button + button {
+    border-top: 1px solid var(--line);
+  }
+  .you-rows button:active {
+    background: var(--hover);
+  }
+  .you-rows .icon {
+    color: var(--graphite);
+  }
+}
