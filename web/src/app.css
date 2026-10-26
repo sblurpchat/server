@@ -3185,15 +3185,16 @@ li.sw-empty {
   border-radius: 8px;
   background: var(--hover);
 }
+/* Flex end so a time wider than the gutter (a monospace font, 1417) spills left into the row padding, never into the text. */
 .hover-time {
-  display: block;
+  display: flex;
+  justify-content: flex-end;
   visibility: hidden;
   font-size: 0.6875rem;
   font-weight: 500;
   color: var(--graphite);
   line-height: 22px;
-  text-align: right;
-  padding-right: 12px;
+  padding-right: 8px;
   white-space: nowrap;
 }
 .msg:hover .hover-time {
@@ -4362,6 +4363,11 @@ li.sw-empty {
     padding-right: 12px;
     grid-template-columns: 46px minmax(0, 1fr);
   }
+  /* "12:59 PM" in a wide font needs the smaller size to fit the narrow gutter (1417). */
+  .hover-time {
+    font-size: 0.625rem;
+    padding-right: 6px;
+  }
   .composer,
   .pane .composer {
     padding: 4px 10px 0;
@@ -4634,7 +4640,7 @@ li.sw-empty {
     visibility: visible;
   }
   .hover-time {
-    text-align: left;
+    justify-content: flex-start;
     padding: 0;
     line-height: inherit;
     font-size: 0.75rem;
