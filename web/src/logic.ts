@@ -499,8 +499,7 @@ export function parseAppearance(v: unknown): Appearance {
   const custom = typeof o.custom === "string" ? parseThemeString(o.custom) : null;
   const size = typeof o.fontSize === "number" && Number.isFinite(o.fontSize) ? Math.round(Math.min(30, Math.max(12, o.fontSize))) : APPEARANCE.fontSize;
   return {
-    // Cocoa was replaced by Clementine (1323).
-    theme: o.theme === "custom" && !custom ? APPEARANCE.theme : o.theme === "cocoa" ? "clementine" : one(o.theme, THEMES, APPEARANCE.theme),
+    theme: o.theme === "custom" && !custom ? APPEARANCE.theme : one(o.theme, THEMES, APPEARANCE.theme),
     accent: typeof o.accent === "string" && /^#[0-9a-f]{6}$/i.test(o.accent) ? o.accent.toLowerCase() : "",
     density: one(o.density, DENSITIES, APPEARANCE.density),
     sidebar: one(o.sidebar, ["cozy", "compact"] as const, APPEARANCE.sidebar),
@@ -1090,34 +1089,18 @@ export const messageHash = (url: string, m: { id: string; channelId: string; thr
 
 export type Permalink = { host: string; channelId: string; messageId: string; rootId: string };
 
-/** A message link in this app at `app` (origin and path), as Copy link made it before 1298, or a
- *  share link on `share`. A channel link with ?thread=<root> and no message id points at the root. */
-export function parsePermalink(href: string, app: string, share = ""): Permalink | null {
-  const d = share ? shareToDeepLink(href, share) : null;
-  if (d) {
-    const r = parseHash(deepLinkHash(`#/open?${d}`) ?? "");
-    return r?.messageId ? r : null;
-  }
-  let u: URL, a: URL;
-  try {
-    u = new URL(href);
-    a = new URL(app);
-  } catch {
-    return null;
-  }
-  if (u.origin !== a.origin || u.pathname !== a.pathname) return null;
-  const r = parseHash(u.hash);
-  if (!r?.channelId) return null;
-  if (r.messageId) return r;
-  const p = parsePane(u.hash);
-  return p?.t === "thread" ? { ...r, messageId: p.rootId } : null;
+/** A share link on `share` to one message. */
+export function parsePermalink(href: string, share: string): Permalink | null {
+  const d = shareToDeepLink(href, share);
+  const r = d ? parseHash(deepLinkHash(`#/open?${d}`) ?? "") : null;
+  return r?.messageId ? r : null;
 }
 
 /** The message links in a message's text to preview: each message once, at most three. */
-export function permalinks(text: string, app: string, share = ""): Permalink[] {
+export function permalinks(text: string, share: string): Permalink[] {
   const out: Permalink[] = [];
   for (const [href] of text.matchAll(/https?:\/\/[^\s<]*[^\s<.,:;"')\]!?]/g)) {
-    const l = parsePermalink(href, app, share);
+    const l = parsePermalink(href, share);
     if (l && !out.some((x) => x.host === l.host && x.messageId === l.messageId)) out.push(l);
     if (out.length === 3) break;
   }

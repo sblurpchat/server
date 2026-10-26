@@ -618,7 +618,7 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
   const blocked = useApp((s) => s.cs[s.url]!.blocked.includes(m.authorId));
   const muted = useApp((s) => s.cs[s.url]!.muted.includes(m.authorId));
   const [reveal, setReveal] = useState(false);
-  const links = useMemo(() => permalinks(m.text, location.origin + location.pathname, AUTH_URL), [m.text]);
+  const links = useMemo(() => permalinks(m.text, AUTH_URL), [m.text]);
   const [pick, setPick] = useState<DOMRect | null>(null);
   const [more, setMore] = useState<DOMRect | null>(null);
   const [heldImg, setHeldImg] = useState<{ src: string; name: string } | null>(null); // a held image adds Save and Share

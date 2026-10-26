@@ -504,9 +504,9 @@ describe("community URLs", () => {
     expect(normalizeCommunityUrl("https://sblurp.chat/c/localhost:8082/c1/m2", S)).toEqual({ url: "http://localhost:8082", invite: "" });
     // Previewed like a permalink, not by the server.
     const app = "https://app.sblurp.chat/";
-    expect(parsePermalink("https://sblurp.chat/c/owls.test/c1/m2/r3", app, S)).toEqual({ host: "owls.test", channelId: "c1", messageId: "m2", rootId: "r3" });
-    expect(parsePermalink("https://sblurp.chat/c/owls.test/c1", app, S)).toBeNull();
-    expect(permalinks("see https://sblurp.chat/c/owls.test/c1/m2.", app, S)).toEqual([{ host: "owls.test", channelId: "c1", messageId: "m2", rootId: "" }]);
+    expect(parsePermalink("https://sblurp.chat/c/owls.test/c1/m2/r3", S)).toEqual({ host: "owls.test", channelId: "c1", messageId: "m2", rootId: "r3" });
+    expect(parsePermalink("https://sblurp.chat/c/owls.test/c1", S)).toBeNull();
+    expect(permalinks("see https://sblurp.chat/c/owls.test/c1/m2.", S)).toEqual([{ host: "owls.test", channelId: "c1", messageId: "m2", rootId: "" }]);
     expect(shownPreviews([{ url: "https://sblurp.chat/i/owls.test/AB" }, { url: "https://sblurp.chat/docs" }], app, S)).toEqual([{ url: "https://sblurp.chat/docs" }]);
   });
   it("rejects junk and other schemes", () => {
@@ -549,28 +549,23 @@ describe("community URLs", () => {
 });
 
 describe("message link previews", () => {
-  const app = "http://app.sblurp.localhost:1355/";
-  it("reads a message link from this app only", () => {
-    const want = { host: "community.sblurp.localhost:1355", channelId: "c1", messageId: "m1", rootId: "" };
-    expect(parsePermalink(`${app}#/c/community.sblurp.localhost%3A1355/c1/m1`, app)).toEqual(want);
-    expect(parsePermalink(`${app}#/c/community.sblurp.localhost%3A1355/c1/m1?thread=m1`, app)).toEqual(want);
-    expect(parsePermalink(`${app}?fake#/c/community.sblurp.localhost%3A1355/c1/m1`, app)).toEqual(want);
-    expect(parsePermalink(`${app}#/c/community.sblurp.localhost%3A1355/c1?thread=m1`, app)).toEqual(want);
-    expect(parsePermalink(`${app}#/c/x.test/c1/m2/m1`, app)).toEqual({ host: "x.test", channelId: "c1", messageId: "m2", rootId: "m1" });
-    expect(parsePermalink(`${app}#/c/x.test/c1`, app)).toBeNull();
-    expect(parsePermalink(`${app}#/c/x.test`, app)).toBeNull();
-    expect(parsePermalink("https://evil.test/#/c/x.test/c1/m1", app)).toBeNull();
-    expect(parsePermalink("http://app.sblurp.localhost:1355/other#/c/x.test/c1/m1", app)).toBeNull();
-    expect(parsePermalink("not a url", app)).toBeNull();
+  const S = "https://sblurp.chat";
+  it("reads a share link to one message only", () => {
+    expect(parsePermalink(`${S}/c/x.test/c1/m2/m1`, S)).toEqual({ host: "x.test", channelId: "c1", messageId: "m2", rootId: "m1" });
+    expect(parsePermalink(`${S}/c/x.test/c1`, S)).toBeNull();
+    expect(parsePermalink("https://evil.test/c/x.test/c1/m1", S)).toBeNull();
+    // The old app-origin hash links (before 1298) no longer preview.
+    expect(parsePermalink("https://app.sblurp.chat/#/c/x.test/c1/m1", S)).toBeNull();
+    expect(parsePermalink("not a url", S)).toBeNull();
   });
   it("finds each linked message once, at most three", () => {
-    const l = (m: string) => `${app}#/c/x.test/c1/${m}`;
-    expect(permalinks(`see ${l("m1")}, and (${l("m2")}). Again ${l("m1")} https://example.com`, app).map((x) => x.messageId)).toEqual(["m1", "m2"]);
-    expect(permalinks(`[here](${l("m9")})`, app).map((x) => x.messageId)).toEqual(["m9"]);
-    expect(permalinks([1, 2, 3, 4].map((i) => l(`m${i}`)).join(" "), app)).toHaveLength(3);
-    expect(permalinks("no links", app)).toEqual([]);
+    const l = (m: string) => `${S}/c/x.test/c1/${m}`;
+    expect(permalinks(`see ${l("m1")}, and (${l("m2")}). Again ${l("m1")} https://example.com`, S).map((x) => x.messageId)).toEqual(["m1", "m2"]);
+    expect(permalinks(`[here](${l("m9")})`, S).map((x) => x.messageId)).toEqual(["m9"]);
+    expect(permalinks([1, 2, 3, 4].map((i) => l(`m${i}`)).join(" "), S)).toHaveLength(3);
+    expect(permalinks("no links", S)).toEqual([]);
     // A bad escape in someone's message must not throw while rendering it.
-    expect(permalinks(`${app}#/c/x.test/c1/%E0%A4`, app)).toEqual([]);
+    expect(permalinks(`${S}/c/x.test/c1/%E0%A4`, S)).toEqual([]);
     expect(parseHash("#/c/%zz")).toBeNull();
   });
 });
@@ -780,8 +775,7 @@ describe("appearance", () => {
     const bad = parseAppearance({ theme: "vaporwave", accent: "red", density: "COMPACT", sidebar: 1, fontSize: "18", clock: 24, motion: true });
     expect(bad).toEqual({ theme: "system", accent: "", density: "cozy", sidebar: "cozy", fontSize: 15, clock: "12", motion: "system", custom: "", font: "default", skinTone: 0 });
     expect(parseAppearance({ theme: "clementine", font: "iosevka" })).toMatchObject({ theme: "clementine", font: "iosevka" });
-    // A saved Cocoa appearance (removed in 1323) becomes Clementine, not the default.
-    expect(parseAppearance({ theme: "cocoa", font: "iosevka" })).toMatchObject({ theme: "clementine", font: "iosevka" });
+    expect(parseAppearance({ theme: "cocoa" }).theme).toBe("system");
     expect(parseAppearance({ font: "comic-sans" }).font).toBe("default");
     expect(parseAppearance({ theme: "mint", accent: "#D0306A", density: "irc", fontSize: 99, clock: "24", motion: "reduce" })).toMatchObject({
       theme: "mint",
