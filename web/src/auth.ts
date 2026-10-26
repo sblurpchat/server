@@ -1,4 +1,5 @@
 // Login against sblurp.chat (Authorization Code + PKCE) and per-community access tokens.
+import { appPlatform } from "./downloads";
 import { tailnetUrl, tokenFresh } from "./logic";
 
 export const AUTH_URL: string = import.meta.env.VITE_AUTH_URL ?? "http://localhost:8081";
@@ -108,7 +109,35 @@ export async function finishLogin(params: URLSearchParams): Promise<boolean> {
   if (!verifier || !code || params.get("iss")?.replace(/\/+$/, "") !== AUTH_URL.replace(/\/+$/, "")) return false;
   await tokenRequest(new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: redirectUri(), code_verifier: verifier }));
   localStorage.removeItem(REAUTH_KEY);
+  askForPush();
   return true;
+}
+
+// Notifications in the iOS app (ticket 0300). A sblurp-push: navigation makes Rust ask for
+// permission and register with APNs (apps/src-tauri/src/lib.rs); the device token comes back as a
+// sblurp-push event and goes to sblurp.chat. Community tokens then carry a push handle.
+const PUSH_KEY = "sblurp.pushDevice";
+const iosApp = () => "__TAURI_INTERNALS__" in globalThis && appPlatform(true, navigator.userAgent, navigator.maxTouchPoints > 1) === "ios";
+function askForPush() {
+  if (iosApp() && hasSession()) location.href = "sblurp-push:register";
+}
+async function registerDevice(d: { token: string; sandbox: boolean }) {
+  const res = await fetch(`${AUTH_URL}/api/push/devices`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await getToken(AUTH_URL)}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ platform: "apns", token: d.token, sandbox: d.sandbox, preview: false }),
+  });
+  if (!res.ok) return;
+  const first = localStorage.getItem(PUSH_KEY) !== d.token;
+  localStorage.setItem(PUSH_KEY, d.token);
+  // Fresh community tokens carry the handle, so servers learn it now instead of in 15 minutes.
+  if (first) for (const aud of [...cache.keys()]) if (aud !== AUTH_URL) cache.delete(aud);
+}
+if (iosApp()) {
+  addEventListener("sblurp-push", (e) => void registerDevice((e as CustomEvent).detail).catch(() => {}));
+  // Every start registers again, which keeps the device from expiring after 60 days.
+  if (document.readyState === "complete") setTimeout(askForPush);
+  else addEventListener("load", askForPush);
 }
 
 // Refresh tokens rotate on every use, so refreshes must never overlap: not across audiences in
@@ -208,12 +237,33 @@ export function signOut() {
   localStorage.removeItem(RT_KEY);
   cache.clear();
   localStorage.setItem(REAUTH_KEY, "1");
-  if (rt) {
-    fetch(`${AUTH_URL}/oauth/revoke`, {
+  const device = localStorage.getItem(PUSH_KEY);
+  localStorage.removeItem(PUSH_KEY);
+  if (rt) void endSession(rt, device);
+}
+
+async function endSession(rt: string, device: string | null) {
+  if (device) {
+    // Forget this phone first, so whoever signs in on it next gets none of this account's alerts.
+    const j = await fetch(`${AUTH_URL}/oauth/token`, {
       method: "POST",
-      // end_session also signs out the sblurp.chat browser session that approved this app, so the
-      // iOS sign-in sheet, which shares Safari's cookies, does not sign straight back in.
-      body: new URLSearchParams({ token: rt, client_id: CLIENT_ID, end_session: "1" }),
-    }).catch(() => {});
+      body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: rt, client_id: CLIENT_ID }),
+    })
+      .then((r) => r.json())
+      .catch(() => ({}));
+    if (j.access_token) {
+      await fetch(`${AUTH_URL}/api/push/devices/remove`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${j.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ token: device }),
+      }).catch(() => {});
+      rt = j.refresh_token ?? rt;
+    }
   }
+  await fetch(`${AUTH_URL}/oauth/revoke`, {
+    method: "POST",
+    // end_session also signs out the sblurp.chat browser session that approved this app, so the
+    // iOS sign-in sheet, which shares Safari's cookies, does not sign straight back in.
+    body: new URLSearchParams({ token: rt, client_id: CLIENT_ID, end_session: "1" }),
+  }).catch(() => {});
 }

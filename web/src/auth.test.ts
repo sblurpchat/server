@@ -157,4 +157,23 @@ describe("sign out, then sign in again (ticket 1311)", () => {
     expect(await finishLogin(new URLSearchParams({ state: "s2", code: "c", iss: AUTH_URL }))).toBe(true);
     expect(prompt()).toBeNull();
   });
+
+  it("removes this phone's push device before it revokes", async () => {
+    store.set("sblurp.refreshToken", "rt1");
+    store.set("sblurp.pushDevice", "ab".repeat(32));
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", async (u: string, init: { body: URLSearchParams | string; headers?: Record<string, string> }) => {
+      const path = new URL(u).pathname;
+      calls.push(`${path} ${init.headers?.Authorization ?? ""} ${init.body}`);
+      return new Response(path === "/oauth/token" ? JSON.stringify({ access_token: "at2", refresh_token: "rt2" }) : "{}");
+    });
+    signOut();
+    await vi.waitFor(() => expect(calls).toHaveLength(3));
+    expect(calls[0]).toContain("/oauth/token");
+    expect(calls[0]).toContain("refresh_token=rt1");
+    expect(calls[1]).toBe(`/api/push/devices/remove Bearer at2 {"token":"${"ab".repeat(32)}"}`);
+    expect(calls[2]).toContain("token=rt2");
+    expect(calls[2]).toContain("end_session=1");
+    expect(store.has("sblurp.pushDevice")).toBe(false);
+  });
 });
