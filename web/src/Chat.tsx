@@ -1027,12 +1027,14 @@ function EditBox({ url, m }: { url: string; m: Message }) {
         ref={ref}
         className="composer-input"
         aria-label="Edit message"
+        enterKeyHint={NO_HOVER.matches ? "enter" : undefined}
         value={text}
         autoFocus
         onFocus={(e) => e.target.setSelectionRange(text.length, text.length)}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+          // On a touch keyboard Return is a newline; Save is the button (1448).
+          if (e.key === "Enter" && !e.shiftKey && !NO_HOVER.matches && !e.nativeEvent.isComposing) {
             e.preventDefault();
             void save();
           } else if (e.key === "Escape") {
@@ -1048,7 +1050,7 @@ function EditBox({ url, m }: { url: string; m: Message }) {
         </p>
       )}
       <p className="fine">
-        Enter to save, Esc to cancel.{" "}
+        {!NO_HOVER.matches && "Enter to save, Esc to cancel. "}
         <button className="link-btn" onClick={() => set({ editing: null })}>
           Cancel
         </button>{" "}
@@ -1361,6 +1363,7 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
             className="composer-input"
             aria-label={placeholder}
             placeholder={placeholder}
+            enterKeyHint={NO_HOVER.matches ? "enter" : undefined}
             value={text}
             aria-autocomplete="list"
             aria-controls={options.length ? `ac-${key}` : undefined}
@@ -1404,7 +1407,8 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
                   return;
                 }
               }
-              if (e.key === "Enter" && !e.shiftKey) {
+              // On a touch keyboard Return is a newline and the send button sends, like iMessage (1448).
+              if (e.key === "Enter" && !e.shiftKey && !NO_HOVER.matches) {
                 e.preventDefault();
                 submit();
               } else if (e.key === "ArrowUp" && !text) {
