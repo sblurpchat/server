@@ -39,6 +39,9 @@ import {
   type SettingsPage,
   channelSlug,
   blockedRows,
+  snoozeEnd,
+  snoozedUntil,
+  type SnoozeChoice,
   swipeAxis,
   swipeEnds,
   HOLD,
@@ -75,6 +78,7 @@ import {
   useOnline,
   setRole,
   setNotify,
+  snooze,
   setLook,
   startCustomTheme,
   signIn,
@@ -1844,8 +1848,68 @@ function Settings({ start }: { start?: SettingsPage }) {
 }
 
 function Notifications() {
-  if (iosApp()) return <PushSetting />;
-  return <WebNotifications />;
+  return (
+    <>
+      {iosApp() ? <PushSetting /> : <WebNotifications />}
+      <Snooze />
+    </>
+  );
+}
+
+const SNOOZES: [SnoozeChoice, string][] = [
+  ["1h", "1 hour"],
+  ["8h", "8 hours"],
+  ["tomorrow", "Until tomorrow 8:00"],
+];
+
+/** Silence alerts and pushes everywhere for a while (1515). Each community's server keeps the time. */
+function Snooze() {
+  const cs = useApp((s) => s.cs);
+  const [now, setNow] = useState(Date.now);
+  const [err, setErr] = useState("");
+  const until = snoozedUntil(Object.values(cs), now);
+  // Show the end of the snooze when it comes.
+  useEffect(() => {
+    if (!until) return;
+    const t = setTimeout(() => setNow(Date.now()), until - Date.now() + 50);
+    return () => clearTimeout(t);
+  }, [until]);
+  const run = (t: number) => {
+    setErr("");
+    setNow(Date.now());
+    snooze(t).catch((e: Error) => setErr(e.message));
+  };
+  const end = new Date(until);
+  const label = end.toDateString() === new Date(now).toDateString() ? end.toLocaleTimeString([], { timeStyle: "short" }) : end.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
+  return (
+    <section>
+      <h3>
+        Snooze <small className="scope">All communities</small>
+      </h3>
+      {until ? (
+        <div className="toggle-row snoozed" role="status">
+          <span>
+            <b>
+              <Icon name="bellOff" size={16} /> Snoozed until {label}
+            </b>
+            <small>No alerts or pushes until then.</small>
+          </span>
+          <button className="btn small" onClick={() => run(0)}>
+            End snooze
+          </button>
+        </div>
+      ) : (
+        <div className="snooze-choices" role="group" aria-label="Snooze notifications for">
+          {SNOOZES.map(([k, l]) => (
+            <button key={k} className="btn small" onClick={() => run(snoozeEnd(k, new Date()))}>
+              {l}
+            </button>
+          ))}
+        </div>
+      )}
+      {err && <p className="error small">{err}</p>}
+    </section>
+  );
 }
 
 function WebNotifications() {

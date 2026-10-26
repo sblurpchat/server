@@ -1,7 +1,7 @@
 package server
 
 import (
-	"slices"
+	"maps"
 	"testing"
 	"time"
 
@@ -12,21 +12,45 @@ import (
 
 func TestPushCandidates(t *testing.T) {
 	for _, c := range []struct {
-		dm        bool
-		text      string
-		dmMembers []string
-		want      []string
-		wantKind  string
+		dm                   bool
+		text                 string
+		dmMembers, followers []string
+		want                 map[string]string
 	}{
-		{false, "hi <@b> and <@c>, <@b> again", nil, []string{"b", "c"}, "mention"},
-		{false, "hi <@me>", nil, []string{}, "mention"},
-		{false, "hi @b <@> <b> <@b c>", nil, []string{}, "mention"},
-		{true, "no mentions", []string{"me", "b", "c"}, []string{"b", "c"}, "dm"},
-		{true, "<@d> in a dm", []string{"b", "me"}, []string{"b"}, "dm"},
+		{false, "hi <@b> and <@c>, <@b> again", nil, nil, map[string]string{"b": "mention", "c": "mention"}},
+		{false, "hi <@me>", nil, nil, map[string]string{}},
+		{false, "hi @b <@> <b> <@b c>", nil, nil, map[string]string{}},
+		{true, "no mentions", []string{"me", "b", "c"}, nil, map[string]string{"b": "dm", "c": "dm"}},
+		{true, "<@d> in a dm", []string{"b", "me"}, []string{"x"}, map[string]string{"b": "dm"}},
+		// Followers (channel set to ALL, 1515) get every message; a mention says so instead.
+		{false, "hi <@b>", nil, []string{"b", "f", "me"}, map[string]string{"b": "mention", "f": "message"}},
 	} {
-		ids, kind := pushCandidates(c.dm, c.text, "me", c.dmMembers)
-		if kind != c.wantKind || !slices.Equal(ids, c.want) {
-			t.Errorf("%q: %v %s, want %v %s", c.text, ids, kind, c.want, c.wantKind)
+		if got := pushCandidates(c.dm, c.text, "me", c.dmMembers, c.followers); !maps.Equal(got, c.want) {
+			t.Errorf("%q: %v, want %v", c.text, got, c.want)
+		}
+	}
+}
+
+func TestEffectiveLevel(t *testing.T) {
+	const u, all, men, no = v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED, v1.NotifyLevel_NOTIFY_LEVEL_ALL, v1.NotifyLevel_NOTIFY_LEVEL_MENTIONS, v1.NotifyLevel_NOTIFY_LEVEL_NOTHING
+	for _, c := range []struct {
+		own, community v1.NotifyLevel
+		dm             bool
+		want           v1.NotifyLevel
+	}{
+		{u, u, false, all},
+		{u, men, false, men},
+		{u, no, false, no},
+		{all, no, false, all},
+		{men, no, false, men},
+		{u, u, true, all},
+		{u, men, true, all}, // DMs skip a MENTIONS community
+		{u, no, true, no},   // but not NOTHING (1515)
+		{all, no, true, all},
+		{no, u, true, no},
+	} {
+		if got := effectiveLevel(c.own, c.community, c.dm); got != c.want {
+			t.Errorf("effectiveLevel(%v, %v, dm=%v) = %v, want %v", c.own, c.community, c.dm, got, c.want)
 		}
 	}
 }
@@ -121,8 +145,8 @@ func TestPushSender(t *testing.T) {
 	must(ana.srv.UnblockMember(ctx(), connect.NewRequest(&v1.UnblockMemberRequest{MemberId: bob.me.Id})))
 
 	// Notification levels (1498): NOTHING on the channel or the community
-	// stops pushes; MENTIONS keeps them; a channel's own level wins; DMs
-	// ignore the community level.
+	// stops pushes; MENTIONS keeps them; a channel's own level wins. A
+	// community NOTHING silences DMs too unless the DM has its own level (1515).
 	level := func(ch string, l v1.NotifyLevel) {
 		must(ana.srv.SetNotifyLevel(ctx(), connect.NewRequest(&v1.SetNotifyLevelRequest{ChannelId: ch, Level: l})))
 	}
@@ -132,10 +156,13 @@ func TestPushSender(t *testing.T) {
 	nothingBefore("channel level NOTHING")
 	level("", v1.NotifyLevel_NOTIFY_LEVEL_NOTHING)
 	bob.send(gen.Id, "<@"+ana.me.Id+"> community silenced")
-	m = bob.send(dm.Id, "dm still pushes")
+	bob.send(dm.Id, "dm silenced too")
+	level(dm.Id, v1.NotifyLevel_NOTIFY_LEVEL_ALL)
+	m = bob.send(dm.Id, "dm's own level wins")
 	if b := next(); b.MessageID != m.Id {
 		t.Fatalf("community level NOTHING: got %+v", b)
 	}
+	level(dm.Id, v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED)
 	level(gen.Id, v1.NotifyLevel_NOTIFY_LEVEL_MENTIONS)
 	m = bob.send(gen.Id, "<@"+ana.me.Id+"> channel overrides")
 	if b := next(); b.MessageID != m.Id {
@@ -143,6 +170,53 @@ func TestPushSender(t *testing.T) {
 	}
 	level(gen.Id, v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED)
 	level("", v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED)
+
+	// A channel set to ALL pushes every message (1515), but not thread
+	// replies, the member's own messages, or after they lose access.
+	level(gen.Id, v1.NotifyLevel_NOTIFY_LEVEL_ALL)
+	m = bob.send(gen.Id, "plain message")
+	if b := next(); b.Kind != "message" || b.MessageID != m.Id || b.Handle != "h-ana" {
+		t.Fatalf("ALL channel push: %+v", b)
+	}
+	m = bob.send(gen.Id, "<@"+ana.me.Id+"> mentioned")
+	if b := next(); b.Kind != "mention" || b.MessageID != m.Id {
+		t.Fatalf("ALL channel mention: %+v", b)
+	}
+	must(bob.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: gen.Id, ThreadRootId: m.Id, Text: "a reply"})))
+	nothingBefore("thread reply in an ALL channel") // the marker mentions ana, so it pushes once
+	ana.send(gen.Id, "my own")
+	m = bob.send(gen.Id, "after mine")
+	if b := next(); b.MessageID != m.Id {
+		t.Fatalf("own message pushed: %+v", b)
+	}
+	must(ana.srv.MuteMember(ctx(), connect.NewRequest(&v1.MuteMemberRequest{MemberId: bob.me.Id})))
+	bob.send(gen.Id, "muted in an ALL channel")
+	nothingBefore("muted author in an ALL channel") // pushes are checked when sent, so unmute after
+	must(ana.srv.UnmuteMember(ctx(), connect.NewRequest(&v1.UnmuteMemberRequest{MemberId: bob.me.Id})))
+	level(gen.Id, v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED)
+
+	// Snooze (1515): nothing pushes until it ends.
+	snooze := func(until int64) {
+		must(ana.srv.SnoozeNotifications(ctx(), connect.NewRequest(&v1.SnoozeNotificationsRequest{Until: until})))
+	}
+	wantCode(t, func() error {
+		_, err := ana.srv.SnoozeNotifications(ctx(), connect.NewRequest(&v1.SnoozeNotificationsRequest{Until: -1}))
+		return err
+	}(), connect.CodeInvalidArgument)
+	until := e.clock.Now().Add(time.Hour).UnixMilli()
+	snooze(until)
+	if st := ana.state(); st.SnoozeUntil != until {
+		t.Fatalf("snooze_until = %d, want %d", st.SnoozeUntil, until)
+	}
+	bob.send(gen.Id, "<@"+ana.me.Id+"> snoozed")
+	bob.send(dm.Id, "snoozed dm")
+	eve.send(gen.Id, "<@"+bob.me.Id+"> sync") // bob's push means ana's turn has passed
+	if b := next(); b.Handle != "h-bob" {
+		t.Fatalf("pushed while snoozed: %+v", b)
+	}
+	snooze(e.clock.Now().Add(-time.Minute).UnixMilli()) // a past time is no snooze
+	nothingBefore("snooze over")
+	snooze(0)
 
 	// Opted in: sender and text, with mentions as usernames.
 	ana = as(ana, pushToken("ana", "h-ana", true))

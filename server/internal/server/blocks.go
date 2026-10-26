@@ -128,15 +128,26 @@ func (s *Server) setRel(ctx context.Context, r relation, target string, on bool)
 // Notification levels (1498) sit next to mutes: a mute quiets a member, a
 // level quiets a channel or the whole community, for the member who set it.
 
-// notifyLevel is member's level for c: its own setting, else the community
-// setting (DMs skip it), else ALL.
+// effectiveLevel is a channel's own level, else the community level, else
+// ALL. DMs follow the community only when it is NOTHING (1515).
+func effectiveLevel(own, community v1.NotifyLevel, dm bool) v1.NotifyLevel {
+	switch {
+	case own != v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED:
+		return own
+	case community == v1.NotifyLevel_NOTIFY_LEVEL_NOTHING, community != v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED && !dm:
+		return community
+	}
+	return v1.NotifyLevel_NOTIFY_LEVEL_ALL
+}
+
+// notifyLevel is member's effective level for c.
 func notifyLevel(ctx context.Context, q queryer, member string, c *v1.Channel) (v1.NotifyLevel, error) {
-	var l v1.NotifyLevel
-	err := q.QueryRowContext(ctx, `SELECT COALESCE(
-		(SELECT level FROM notify_levels WHERE member_id = ?1 AND channel_id = ?2),
-		(SELECT level FROM notify_levels WHERE member_id = ?1 AND channel_id = '' AND NOT ?3), 1)`,
-		member, c.Id, c.Kind == v1.ChannelKind_CHANNEL_KIND_DM).Scan(&l)
-	return l, err
+	var own, community v1.NotifyLevel
+	err := q.QueryRowContext(ctx, `SELECT
+		COALESCE((SELECT level FROM notify_levels WHERE member_id = ?1 AND channel_id = ?2), 0),
+		COALESCE((SELECT level FROM notify_levels WHERE member_id = ?1 AND channel_id = ''), 0)`,
+		member, c.Id).Scan(&own, &community)
+	return effectiveLevel(own, community, c.Kind == v1.ChannelKind_CHANNEL_KIND_DM), err
 }
 
 func listNotifyLevels(ctx context.Context, q queryer, member string) ([]*v1.NotifySetting, error) {
@@ -165,8 +176,8 @@ func (s *Server) SetNotifyLevel(ctx context.Context, req *connect.Request[v1.Set
 		return nil, errf(connect.CodeInvalidArgument, "unknown level %d", r.Level)
 	}
 	err := s.writeTx(ctx, func(t *wtx) error {
-		where := "id IN (SELECT channel_id FROM channel_members WHERE member_id = ?) AND kind != ?"
-		args := []any{m.Id, v1.ChannelKind_CHANNEL_KIND_DM}
+		// The community level reaches DMs too when it is or was NOTHING (1515).
+		where, args := "id IN (SELECT channel_id FROM channel_members WHERE member_id = ?)", []any{m.Id}
 		if r.ChannelId != "" {
 			if _, err := channelFor(ctx, t, r.ChannelId, m.Id); err != nil {
 				return err
@@ -210,4 +221,22 @@ func (s *Server) SetNotifyLevel(ctx context.Context, req *connect.Request[v1.Set
 		return nil
 	})
 	return connect.NewResponse(&v1.SetNotifyLevelResponse{}), err
+}
+
+func (s *Server) SnoozeNotifications(ctx context.Context, req *connect.Request[v1.SnoozeNotificationsRequest]) (*connect.Response[v1.SnoozeNotificationsResponse], error) {
+	m, until := me(ctx), req.Msg.Until
+	if until < 0 {
+		return nil, errf(connect.CodeInvalidArgument, "until must be unix ms or 0")
+	}
+	err := s.writeTx(ctx, func(t *wtx) error {
+		res, err := t.ExecContext(ctx, "UPDATE members SET snooze_until = ? WHERE id = ? AND snooze_until != ?", until, m.Id, until)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return nil
+		}
+		return t.emit(&v1.Event{Kind: &v1.Event_SnoozeUntil{SnoozeUntil: until}}, "", m.Id)
+	})
+	return connect.NewResponse(&v1.SnoozeNotificationsResponse{}), err
 }

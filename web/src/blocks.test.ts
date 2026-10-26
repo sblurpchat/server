@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { ChannelKind, ChannelSchema, EventSchema, GetStateResponseSchema, MemberSchema, MessageSchema, NotifyLevel, NotifySettingSchema, TypingEventSchema, type Event } from "./gen/sblurp/v1/sblurp_pb";
-import { applyEvent, applySnapshot, blockedRows, emptyCommunity, levelOf, type Community } from "./logic";
+import { applyEvent, applySnapshot, blockedRows, emptyCommunity, levelOf, snoozedUntil, snoozeEnd, type Community } from "./logic";
 
 const ev = (seq: bigint, kind: Event["kind"]) => create(EventSchema, { seq, kind });
 
@@ -75,5 +75,33 @@ describe("notification levels (1498)", () => {
     expect(c.levels).toEqual({});
     c = applyEvent(c, msg(8n, "c1", "plain"), 0, null);
     expect(c.reads.c1.unreadCount).toBe(1);
+  });
+});
+
+describe("notification follow-ups (1515)", () => {
+  const dm = create(ChannelSchema, { id: "d1", kind: ChannelKind.DM });
+  it("a community set to Nothing quiets DMs unless the DM has its own level", () => {
+    expect(levelOf({ "": NotifyLevel.NOTHING }, dm)).toBe(NotifyLevel.NOTHING);
+    expect(levelOf({ "": NotifyLevel.NOTHING, d1: NotifyLevel.ALL }, dm)).toBe(NotifyLevel.ALL);
+    expect(levelOf({ "": NotifyLevel.MENTIONS }, dm)).toBe(NotifyLevel.ALL);
+    let c: Community = { ...emptyCommunity("u"), me: create(MemberSchema, { id: "me" }), channels: { d1: dm }, levels: { "": NotifyLevel.NOTHING } };
+    c = applyEvent(c, ev(2n, { case: "messageCreated", value: create(MessageSchema, { id: "m2", channelId: "d1", authorId: "bob", text: "hi", seq: 2n }) }), 0, null);
+    expect([c.reads.d1.unreadCount, c.reads.d1.mentionCount]).toEqual([0, 0]);
+  });
+  it("snooze ends in 1 or 8 hours, or tomorrow at 8:00 local time", () => {
+    const now = new Date(2026, 9, 26, 23, 30);
+    expect(snoozeEnd("1h", now)).toBe(new Date(2026, 9, 27, 0, 30).getTime());
+    expect(snoozeEnd("8h", now)).toBe(new Date(2026, 9, 27, 7, 30).getTime());
+    expect(snoozeEnd("tomorrow", now)).toBe(new Date(2026, 9, 27, 8, 0).getTime());
+    expect(snoozeEnd("tomorrow", new Date(2026, 11, 31, 0, 10))).toBe(new Date(2027, 0, 1, 8, 0).getTime());
+  });
+  it("follows the snapshot and events, and shows the latest running snooze", () => {
+    let c = applySnapshot(emptyCommunity("u"), create(GetStateResponseSchema, { me: create(MemberSchema, { id: "me" }), snoozeUntil: 5000n, seq: 1n }));
+    expect(c.snoozeUntil).toBe(5000);
+    c = applyEvent(c, ev(2n, { case: "snoozeUntil", value: 9000n }), 0, null);
+    const other = { ...emptyCommunity("v"), snoozeUntil: 7000 };
+    expect(snoozedUntil([c, other], 1000)).toBe(9000);
+    expect(snoozedUntil([c, other], 9000)).toBe(0);
+    expect(snoozedUntil([], 0)).toBe(0);
   });
 });

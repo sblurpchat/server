@@ -396,8 +396,8 @@ function maybeNotify(url: string, m: Message) {
   const ch = c?.channels[m.channelId];
   if (!c || !ch || m.authorId === c.me?.id || quiet(c, m.authorId) || !state.notify || !document.hidden) return;
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
-  if (!isDM(ch) && !mentionsMe(m.text, c.me?.id)) return;
-  if (levelOf(c.levels, ch) === NotifyLevel.NOTHING) return;
+  if (!isDM(ch) && !mentionsMe(m.text, c.me?.id) && (c.levels[ch.id] !== NotifyLevel.ALL || m.threadRootId)) return;
+  if (levelOf(c.levels, ch) === NotifyLevel.NOTHING || c.snoozeUntil > Date.now()) return;
   const author = c.members[m.authorId]?.displayName ?? "Someone";
   const n = new Notification(isDM(ch) ? author : `${author} in #${ch.name}`, {
     body: plainText(m.text, c.members).slice(0, 180),
@@ -838,6 +838,12 @@ export async function setMuted(url: string, memberId: string, on: boolean) {
 /** Set my notification level for a channel, or the community with channelId "" (1498). The server's events apply it. */
 export async function setNotifyLevel(url: string, channelId: string, level: NotifyLevel) {
   await api(url).server.setNotifyLevel({ channelId, level });
+}
+
+/** Snooze alerts and pushes in every community I am in until a unix ms time, or end it with 0 (1515). The servers' events apply it. */
+export async function snooze(until: number) {
+  const rs = await Promise.allSettled(state.order.map((url) => api(url).server.snoozeNotifications({ until: BigInt(until) })));
+  if (rs.some((r) => r.status === "rejected")) throw new Error("Some communities did not get the snooze. Try again.");
 }
 
 export async function search(url: string, q: string) {

@@ -388,6 +388,7 @@ interface Fake {
   blocked: Set<string>; // members I blocked (1118)
   muted: Set<string>; // members I muted (1293)
   levels: Record<string, NotifyLevel>; // my notification levels (1498)
+  snoozeUntil: bigint; // 1515
   reports: Report[]; // open reports, newest first (1119)
   hidden: Set<string>; // DMs I left; a new message brings one back
 }
@@ -433,6 +434,7 @@ function seed(s: Seed, now: number): Fake {
     blocked: new Set(),
     muted: new Set(),
     levels: {},
+    snoozeUntil: 0n,
     reports: [],
     hidden: new Set(),
     bans: [],
@@ -760,9 +762,14 @@ function service(f: Fake) {
         emit(f, { case: "notifyLevel", value: create(NotifySettingSchema, req) });
         for (const ch of f.channels.values()) {
           const rs = f.reads.get(ch.id);
-          if (rs && inside(f, ch) && (ch.id === req.channelId || (!req.channelId && ch.kind !== ChannelKind.DM)))
+          if (rs && inside(f, ch) && (ch.id === req.channelId || !req.channelId))
             emit(f, { case: "readState", value: byLevel(rs, levelOf(f.levels, ch)) });
         }
+        return {};
+      },
+      snoozeNotifications(req: { until: bigint }) {
+        need();
+        if (f.snoozeUntil !== req.until) emit(f, { case: "snoozeUntil", value: (f.snoozeUntil = req.until) });
         return {};
       },
       leaveCommunity() {
@@ -929,6 +936,7 @@ function service(f: Fake) {
           members: [...f.members.values()],
           readStates: [...f.reads.values()].filter((r) => inside(f, f.channels.get(r.channelId))).map((r) => byLevel(r, levelOf(f.levels, f.channels.get(r.channelId)!))),
           notifyLevels: Object.entries(f.levels).map(([channelId, level]) => ({ channelId, level })),
+          snoozeUntil: f.snoozeUntil,
           roles: [...f.roles].sort((a, b) => a.position - b.position),
           channelMode: f.mode,
           blockedMemberIds: [...f.blocked],

@@ -159,8 +159,8 @@ export function NotifyItems({ c, ch }: { c: Community; ch?: Channel }) {
           )}
         </button>
       ))}
-      {/* A channel's own level hides the community's; this goes back to following it. DMs never follow it. */}
-      {ch && !isDM(ch) && !!c.levels[id] && (
+      {/* A channel's own level hides the community's; this goes back to following it (DMs follow only Nothing). */}
+      {ch && !!c.levels[id] && (
         <button role="menuitem" onClick={() => pick(NotifyLevel.UNSPECIFIED)}>
           <Icon name="back" size={18} /> Use community setting
         </button>

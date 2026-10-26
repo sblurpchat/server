@@ -258,4 +258,14 @@ func TestNotifyLevels(t *testing.T) {
 	ok(level(gen.Id, v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED))
 	ok(level("", v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED))
 	counts(gen.Id, 2, 1)
+
+	// A community set to NOTHING quiets DMs too, unless the DM has its own level (1515).
+	ok(level(dm.Id, v1.NotifyLevel_NOTIFY_LEVEL_UNSPECIFIED))
+	counts(dm.Id, 1, 1)
+	sub = ana.subscribe(ana.state().Seq)
+	ok(level("", v1.NotifyLevel_NOTIFY_LEVEL_NOTHING))
+	sub.next(func(ev *v1.Event) bool { rs := ev.GetReadState(); return rs != nil && rs.ChannelId == dm.Id && rs.UnreadCount == 0 }, nil)
+	counts(dm.Id, 0, 0)
+	ok(level(dm.Id, v1.NotifyLevel_NOTIFY_LEVEL_ALL))
+	counts(dm.Id, 1, 1)
 }

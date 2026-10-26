@@ -117,6 +117,9 @@ const (
 	// ServerServiceSetNotifyLevelProcedure is the fully-qualified name of the ServerService's
 	// SetNotifyLevel RPC.
 	ServerServiceSetNotifyLevelProcedure = "/sblurp.v1.ServerService/SetNotifyLevel"
+	// ServerServiceSnoozeNotificationsProcedure is the fully-qualified name of the ServerService's
+	// SnoozeNotifications RPC.
+	ServerServiceSnoozeNotificationsProcedure = "/sblurp.v1.ServerService/SnoozeNotifications"
 	// ServerServiceReportMessageProcedure is the fully-qualified name of the ServerService's
 	// ReportMessage RPC.
 	ServerServiceReportMessageProcedure = "/sblurp.v1.ServerService/ReportMessage"
@@ -228,6 +231,7 @@ type ServerServiceClient interface {
 	MuteMember(context.Context, *connect.Request[v1.MuteMemberRequest]) (*connect.Response[v1.MuteMemberResponse], error)
 	UnmuteMember(context.Context, *connect.Request[v1.UnmuteMemberRequest]) (*connect.Response[v1.UnmuteMemberResponse], error)
 	SetNotifyLevel(context.Context, *connect.Request[v1.SetNotifyLevelRequest]) (*connect.Response[v1.SetNotifyLevelResponse], error)
+	SnoozeNotifications(context.Context, *connect.Request[v1.SnoozeNotificationsRequest]) (*connect.Response[v1.SnoozeNotificationsResponse], error)
 	ReportMessage(context.Context, *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error)
 	ListReports(context.Context, *connect.Request[v1.ListReportsRequest]) (*connect.Response[v1.ListReportsResponse], error)
 	ResolveReport(context.Context, *connect.Request[v1.ResolveReportRequest]) (*connect.Response[v1.ResolveReportResponse], error)
@@ -400,6 +404,12 @@ func NewServerServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(serverServiceMethods.ByName("SetNotifyLevel")),
 			connect.WithClientOptions(opts...),
 		),
+		snoozeNotifications: connect.NewClient[v1.SnoozeNotificationsRequest, v1.SnoozeNotificationsResponse](
+			httpClient,
+			baseURL+ServerServiceSnoozeNotificationsProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("SnoozeNotifications")),
+			connect.WithClientOptions(opts...),
+		),
 		reportMessage: connect.NewClient[v1.ReportMessageRequest, v1.ReportMessageResponse](
 			httpClient,
 			baseURL+ServerServiceReportMessageProcedure,
@@ -449,6 +459,7 @@ type serverServiceClient struct {
 	muteMember           *connect.Client[v1.MuteMemberRequest, v1.MuteMemberResponse]
 	unmuteMember         *connect.Client[v1.UnmuteMemberRequest, v1.UnmuteMemberResponse]
 	setNotifyLevel       *connect.Client[v1.SetNotifyLevelRequest, v1.SetNotifyLevelResponse]
+	snoozeNotifications  *connect.Client[v1.SnoozeNotificationsRequest, v1.SnoozeNotificationsResponse]
 	reportMessage        *connect.Client[v1.ReportMessageRequest, v1.ReportMessageResponse]
 	listReports          *connect.Client[v1.ListReportsRequest, v1.ListReportsResponse]
 	resolveReport        *connect.Client[v1.ResolveReportRequest, v1.ResolveReportResponse]
@@ -584,6 +595,11 @@ func (c *serverServiceClient) SetNotifyLevel(ctx context.Context, req *connect.R
 	return c.setNotifyLevel.CallUnary(ctx, req)
 }
 
+// SnoozeNotifications calls sblurp.v1.ServerService.SnoozeNotifications.
+func (c *serverServiceClient) SnoozeNotifications(ctx context.Context, req *connect.Request[v1.SnoozeNotificationsRequest]) (*connect.Response[v1.SnoozeNotificationsResponse], error) {
+	return c.snoozeNotifications.CallUnary(ctx, req)
+}
+
 // ReportMessage calls sblurp.v1.ServerService.ReportMessage.
 func (c *serverServiceClient) ReportMessage(ctx context.Context, req *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error) {
 	return c.reportMessage.CallUnary(ctx, req)
@@ -629,6 +645,7 @@ type ServerServiceHandler interface {
 	MuteMember(context.Context, *connect.Request[v1.MuteMemberRequest]) (*connect.Response[v1.MuteMemberResponse], error)
 	UnmuteMember(context.Context, *connect.Request[v1.UnmuteMemberRequest]) (*connect.Response[v1.UnmuteMemberResponse], error)
 	SetNotifyLevel(context.Context, *connect.Request[v1.SetNotifyLevelRequest]) (*connect.Response[v1.SetNotifyLevelResponse], error)
+	SnoozeNotifications(context.Context, *connect.Request[v1.SnoozeNotificationsRequest]) (*connect.Response[v1.SnoozeNotificationsResponse], error)
 	ReportMessage(context.Context, *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error)
 	ListReports(context.Context, *connect.Request[v1.ListReportsRequest]) (*connect.Response[v1.ListReportsResponse], error)
 	ResolveReport(context.Context, *connect.Request[v1.ResolveReportRequest]) (*connect.Response[v1.ResolveReportResponse], error)
@@ -797,6 +814,12 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(serverServiceMethods.ByName("SetNotifyLevel")),
 		connect.WithHandlerOptions(opts...),
 	)
+	serverServiceSnoozeNotificationsHandler := connect.NewUnaryHandler(
+		ServerServiceSnoozeNotificationsProcedure,
+		svc.SnoozeNotifications,
+		connect.WithSchema(serverServiceMethods.ByName("SnoozeNotifications")),
+		connect.WithHandlerOptions(opts...),
+	)
 	serverServiceReportMessageHandler := connect.NewUnaryHandler(
 		ServerServiceReportMessageProcedure,
 		svc.ReportMessage,
@@ -869,6 +892,8 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 			serverServiceUnmuteMemberHandler.ServeHTTP(w, r)
 		case ServerServiceSetNotifyLevelProcedure:
 			serverServiceSetNotifyLevelHandler.ServeHTTP(w, r)
+		case ServerServiceSnoozeNotificationsProcedure:
+			serverServiceSnoozeNotificationsHandler.ServeHTTP(w, r)
 		case ServerServiceReportMessageProcedure:
 			serverServiceReportMessageHandler.ServeHTTP(w, r)
 		case ServerServiceListReportsProcedure:
@@ -986,6 +1011,10 @@ func (UnimplementedServerServiceHandler) UnmuteMember(context.Context, *connect.
 
 func (UnimplementedServerServiceHandler) SetNotifyLevel(context.Context, *connect.Request[v1.SetNotifyLevelRequest]) (*connect.Response[v1.SetNotifyLevelResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.SetNotifyLevel is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) SnoozeNotifications(context.Context, *connect.Request[v1.SnoozeNotificationsRequest]) (*connect.Response[v1.SnoozeNotificationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.SnoozeNotifications is not implemented"))
 }
 
 func (UnimplementedServerServiceHandler) ReportMessage(context.Context, *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error) {

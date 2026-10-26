@@ -2,7 +2,8 @@ package server
 
 // Push notifications (ticket 0110; design in docs/ARCHITECTURE.md). A
 // member's access token can carry an opaque push handle from their account
-// server. When a message mentions them, or arrives in their DM, and they
+// server. When a message mentions them, arrives in their DM or in a channel
+// they set to All messages (1515), and they
 // have no open Subscribe stream, the server posts the handle to
 // {their iss}/api/push/send. It never learns device tokens.
 
@@ -11,6 +12,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"regexp"
 	"slices"
@@ -21,20 +23,26 @@ import (
 
 var mentionIDRE = regexp.MustCompile(`<@([A-Za-z0-9_-]{1,64})>`)
 
-// pushCandidates is who a message may notify: everyone else in a DM, or the
-// members it mentions. The caller still checks handles, presence and blocks.
-func pushCandidates(dm bool, text, author string, dmMembers []string) (ids []string, kind string) {
+// pushCandidates is who a message may notify, and why: everyone else in a
+// DM, the members it mentions, and the members who set the channel to ALL
+// (1515). The caller still checks handles, presence, blocks, visibility,
+// levels and snoozes.
+func pushCandidates(dm bool, text, author string, dmMembers, followers []string) map[string]string {
+	out := map[string]string{}
 	if dm {
-		ids, kind = dmMembers, "dm"
-	} else {
-		for _, m := range mentionIDRE.FindAllStringSubmatch(text, -1) {
-			ids = append(ids, m[1])
+		for _, id := range dmMembers {
+			out[id] = "dm"
 		}
-		kind = "mention"
+	} else {
+		for _, id := range followers {
+			out[id] = "message"
+		}
+		for _, m := range mentionIDRE.FindAllStringSubmatch(text, -1) {
+			out[m[1]] = "mention"
+		}
 	}
-	slices.Sort(ids)
-	ids = slices.Compact(ids)
-	return slices.DeleteFunc(ids, func(id string) bool { return id == author }), kind
+	delete(out, author)
+	return out
 }
 
 // rememberPush stores the push claims from a member's token when they change.
@@ -104,16 +112,21 @@ func (s *Server) sendPushes(authorID string, msg *v1.Message) {
 		return
 	}
 	dm := c.Kind == v1.ChannelKind_CHANNEL_KIND_DM
-	var members []string
+	var members, followers []string
 	if dm {
 		var key string
 		if s.db.r.QueryRowContext(ctx, "SELECT dm_key FROM channels WHERE id = ?", c.Id).Scan(&key) != nil {
 			return
 		}
 		members = strings.Split(key, ",")
+	} else if msg.ThreadRootId == "" { // thread replies are not channel messages
+		if followers, err = s.channelFollowers(ctx, c.Id); err != nil {
+			s.log.Warn("push followers", "channel", c.Id, "err", err)
+		}
 	}
-	ids, kind := pushCandidates(dm, msg.Text, author.Id, members)
-	for _, id := range ids {
+	cands := pushCandidates(dm, msg.Text, author.Id, members, followers)
+	for _, id := range slices.Sorted(maps.Keys(cands)) {
+		kind := cands[id]
 		if s.hub.isOnline(id) {
 			continue
 		}
@@ -122,10 +135,11 @@ func (s *Server) sendPushes(authorID string, msg *v1.Message) {
 		err := s.db.r.QueryRowContext(ctx, `SELECT iss, push_handle, push_preview FROM members m WHERE id = ?1 AND push_handle != ''
 			AND kind = ?2 AND deleted = 0
 			AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id = ?1 AND blocked_id = ?3)
-			AND NOT EXISTS (SELECT 1 FROM mutes WHERE muter_id = ?1 AND muted_id = ?3)`,
-			id, v1.MemberKind_MEMBER_KIND_HUMAN, author.Id).Scan(&iss, &handle, &preview)
+			AND NOT EXISTS (SELECT 1 FROM mutes WHERE muter_id = ?1 AND muted_id = ?3)
+			AND snooze_until <= ?4`,
+			id, v1.MemberKind_MEMBER_KIND_HUMAN, author.Id, s.nowMs()).Scan(&iss, &handle, &preview)
 		if err != nil {
-			continue // no handle, a bot, gone, or they blocked or muted the author
+			continue // no handle, a bot, gone, snoozed, or they blocked or muted the author
 		}
 		if !dm {
 			if _, err := channelFor(ctx, s.db.r, c.Id, id); err != nil {
@@ -142,6 +156,24 @@ func (s *Server) sendPushes(authorID string, msg *v1.Message) {
 		}
 		s.postPush(id, iss, b)
 	}
+}
+
+// channelFollowers are the members who set channel to ALL (1515).
+func (s *Server) channelFollowers(ctx context.Context, channel string) ([]string, error) {
+	rows, err := s.db.r.QueryContext(ctx, "SELECT member_id FROM notify_levels WHERE channel_id = ? AND level = ?", channel, v1.NotifyLevel_NOTIFY_LEVEL_ALL)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 // mentionNames shows <@id> as @username, the way clients render it.

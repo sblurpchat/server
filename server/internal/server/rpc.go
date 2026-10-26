@@ -837,6 +837,9 @@ func (s *Server) GetState(ctx context.Context, _ *connect.Request[v1.GetStateReq
 	if out.NotifyLevels, err = listNotifyLevels(ctx, tx, m.Id); err != nil {
 		return nil, err
 	}
+	if err := tx.QueryRowContext(ctx, "SELECT snooze_until FROM members WHERE id = ?", m.Id).Scan(&out.SnoozeUntil); err != nil {
+		return nil, err
+	}
 	if out.OpenReports, err = s.openReports(ctx, tx, m.Role); err != nil {
 		return nil, err
 	}

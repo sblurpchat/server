@@ -79,9 +79,9 @@ enum ChannelKind {
 // How much a channel or the whole community tells me (1498). See SetNotifyLevel.
 enum NotifyLevel {
   NOTIFY_LEVEL_UNSPECIFIED = 0; // a channel follows the community; the community is ALL
-  NOTIFY_LEVEL_ALL = 1;         // unread and mentions count; push for mentions and DMs
+  NOTIFY_LEVEL_ALL = 1;         // unread and mentions count; push for mentions and DMs, and set on a channel, for every message (1515)
   NOTIFY_LEVEL_MENTIONS = 2;    // only mentions (and DM messages) count and push
-  NOTIFY_LEVEL_NOTHING = 3;     // nothing counts or pushes
+  NOTIFY_LEVEL_NOTHING = 3;     // nothing counts or pushes; for the community, DMs too unless they have their own level (1515)
 }
 
 // channel_id "" is the community-wide level.
@@ -254,6 +254,7 @@ message GetStateResponse {
   repeated string muted_member_ids = 9;   // members I muted, see MuteMember
   int32 open_reports = 10;                // moderators and up: open reports ListReports shows me (1255)
   repeated NotifySetting notify_levels = 11; // levels I set, see SetNotifyLevel
+  int64 snooze_until = 12;                   // unix ms; no pushes before this, see SnoozeNotifications
 }
 
 message SubscribeRequest {
@@ -313,6 +314,7 @@ message Event {
     string member_unmuted = 34;     // member id; I unmuted them
     int32 open_reports = 35;        // moderators and up: my open report count changed (1255)
     NotifySetting notify_level = 36; // I set a level (from any of my devices); UNSPECIFIED clears it
+    int64 snooze_until = 37;         // I snoozed (from any of my devices); 0 or past means not snoozed
   }
 }
 
@@ -590,6 +592,12 @@ message SetNotifyLevelRequest {
 }
 message SetNotifyLevelResponse {}
 
+// Any member, for themselves only (1515): no pushes before until (unix ms).
+// 0 ends a snooze. Clients send the same time to every community they are in.
+// The caller's devices get Event.snooze_until.
+message SnoozeNotificationsRequest { int64 until = 1; }
+message SnoozeNotificationsResponse {}
+
 // ---------------------------------------------------------------------------
 // Reports (1119)
 // ---------------------------------------------------------------------------
@@ -849,6 +857,7 @@ service ServerService {
   rpc MuteMember(MuteMemberRequest) returns (MuteMemberResponse) {}
   rpc UnmuteMember(UnmuteMemberRequest) returns (UnmuteMemberResponse) {}
   rpc SetNotifyLevel(SetNotifyLevelRequest) returns (SetNotifyLevelResponse) {}
+  rpc SnoozeNotifications(SnoozeNotificationsRequest) returns (SnoozeNotificationsResponse) {}
   rpc ReportMessage(ReportMessageRequest) returns (ReportMessageResponse) {}
   rpc ListReports(ListReportsRequest) returns (ListReportsResponse) {}
   rpc ResolveReport(ResolveReportRequest) returns (ResolveReportResponse) {}
