@@ -3196,6 +3196,7 @@ li.sw-empty {
   font-size: 0.78125rem;
   font-weight: 600;
   color: var(--graphite);
+  scroll-margin-top: 12px; /* clear of the scroller's top fade when the pill scrolls to it (1509) */
 }
 .day::before,
 .day::after,

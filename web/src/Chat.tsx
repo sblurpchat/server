@@ -445,7 +445,22 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
   return (
     <div className="msg-wrap">
       {newAbove && (
-        <button className="jump jump-new" onClick={() => scroller.current?.querySelector(".new-divider")?.scrollIntoView({ block: "center" })}>
+        <button
+          className="jump jump-new"
+          onClick={() => {
+            // Glide up to where the unread start, the divider at the top (1509); check() hides the pill once it shows.
+            const m = get().look.motion;
+            const still = m === "reduce" || (m !== "full" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+            const d = scroller.current?.querySelector(".new-divider");
+            // Rows skipped by content-visibility take their real height once on screen and move it,
+            // so an instant jump aims again for a few frames. A smooth one corrects itself on the way.
+            const go = (n: number) => {
+              d?.scrollIntoView({ block: "start", behavior: still ? "instant" : "smooth" });
+              if (still && n) requestAnimationFrame(() => go(n - 1));
+            };
+            go(6);
+          }}
+        >
           New messages above <Icon name="chevron" size={14} />
         </button>
       )}
