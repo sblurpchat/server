@@ -165,10 +165,17 @@ function opener(el: Element | null): HTMLElement | null {
   return o ? opener(o) : (el as HTMLElement | null);
 }
 const focusBack = (el: HTMLElement | null) => el?.isConnected && el.focus();
+/** Whether a view that opens or switches may focus a field or button in it (1430). Not on touch: a field
+ *  pops the keyboard and a button gets a ring. There the dialog or sheet itself takes focus instead,
+ *  so keyboard and screen reader focus is still inside. Opens that exist to type keep autoFocus. */
+export const AUTOFOCUS = !matchMedia("(pointer: coarse)").matches;
+/** Focus `el`, or on touch the dialog, sheet or drawer around it (1430). */
+export const autoFocusTo = (el: Element | null | undefined) =>
+  (AUTOFOCUS ? (el as HTMLElement | null | undefined) : el?.closest<HTMLElement>("dialog, [popover], .drawer"))?.focus();
 /** Focus the open channel's composer, else its messages: the skip link and a closed side pane land here. */
 export const focusMain = () =>
   // On touch, focusing the composer pops the keyboard up while the pane slides away (1374).
-  [matchMedia("(pointer: coarse)").matches ? "" : ".main .composer-input", ".main .scroller", ".main"]
+  [AUTOFOCUS ? ".main .composer-input" : "", ".main .scroller", ".main"]
     .filter(Boolean).map((q) => document.querySelector<HTMLElement>(q)).find(Boolean)?.focus();
 
 export function Dialog({
@@ -420,7 +427,7 @@ export function Pop({
       }
       place(el, anchor, side);
       // A phone sheet does not focus its search field: the keyboard stays down and the sheet takes its place (1415).
-      el.querySelector<HTMLElement>(sheet && PHONE.matches ? "button, [tabindex]" : "input, button, [tabindex]")?.focus();
+      autoFocusTo(el.querySelector(sheet && PHONE.matches ? "button, [tabindex]" : "input, button, [tabindex]") ?? el);
     } else if (el.matches(":popover-open")) {
       const a = document.activeElement; // body when the focused child just unmounted
       if (a === document.body || el.contains(a)) focusBack(openers.get(el) ?? null); // its blur may hide it already
@@ -432,6 +439,7 @@ export function Pop({
       ref={ref}
       popover="auto"
       role="dialog"
+      tabIndex={-1}
       aria-label={label}
       className={`pop ${className}`}
       onPointerDown={sheet ? dragSheet : undefined}
@@ -642,7 +650,7 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
                 aria-checked={t === tone}
                 aria-label={TONE_NAMES[t]}
                 title={TONE_NAMES[t]}
-                autoFocus={t === tone}
+                autoFocus={AUTOFOCUS && t === tone}
                 onClick={() => (setLook({ skinTone: t }), setTones(false))}
               >
                 {withTone("\u270B", t)}

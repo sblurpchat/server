@@ -9,7 +9,7 @@ import { fakeEmoji } from "./fakeEmoji";
 import { EmojiUploadStatus, ListEmojiResponseSchema, MemberRole, UploadEmojiResponseSchema } from "./gen/sblurp/v1/sblurp_pb";
 import { count, hostOf } from "./logic";
 import { absUrl, api, errorText, FAKE, useApp } from "./store";
-import { emojiChar, Icon } from "./ui";
+import { AUTOFOCUS, emojiChar, Icon } from "./ui";
 
 export interface Emoji {
   name: string;
@@ -337,7 +337,7 @@ export function EmojiTab({ url }: { url: string }) {
             </span>
             {manage &&
               (confirm === e.name ? (
-                <button className="btn danger small" onClick={() => del(e.name)} onBlur={() => setConfirm("")} autoFocus>
+                <button className="btn danger small" onClick={() => del(e.name)} onBlur={() => setConfirm("")} autoFocus={AUTOFOCUS}>
                   Delete
                 </button>
               ) : (

@@ -656,8 +656,10 @@ ul {
   outline-offset: 2px;
 }
 /* WebKit marks a dialog that takes focus on open as focus-visible, even after a tap (1307, 1312).
-   The box itself is not a control, so it never gets a ring. */
-dialog:focus-visible {
+   The box itself is not a control, so it never gets a ring. On touch sheets and the drawer take focus too (1430). */
+dialog:focus-visible,
+[role="dialog"]:focus-visible,
+.drawer:focus-visible {
   outline: none;
 }
 .truncate {

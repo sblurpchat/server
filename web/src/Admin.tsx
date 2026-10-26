@@ -42,7 +42,7 @@ import {
   useApp,
 } from "./store";
 import { EmojiTab } from "./CustomEmoji";
-import { Avatar, CopyButton, Dialog, Icon, Skeleton } from "./ui";
+import { AUTOFOCUS, Avatar, CopyButton, Dialog, Icon, Skeleton } from "./ui";
 
 /** The old rank. The UI calls it "Permission"; "Roles" are the custom tags from ticket 1011. */
 export const PERMISSION: Record<number, string> = {
@@ -117,7 +117,7 @@ export function ChannelDialog({ id, category = "", name: initial = "", focusTopi
             <Icon name={ch?.kind === ChannelKind.PRIVATE || priv ? "lock" : "hash"} size={16} />
             <input
               className="input"
-              autoFocus={!focusTopic}
+              autoFocus={AUTOFOCUS && !focusTopic}
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -135,7 +135,7 @@ export function ChannelDialog({ id, category = "", name: initial = "", focusTopi
         </label>
         <label className="field">
           <b>Topic</b>
-          <textarea className="input textarea" rows={3} maxLength={500} autoFocus={focusTopic} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="What this channel is for" />
+          <textarea className="input textarea" rows={3} maxLength={500} autoFocus={AUTOFOCUS && focusTopic} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="What this channel is for" />
           <small className="muted">Markdown works. The header shows two lines; people can open the rest.</small>
         </label>
         {ch && (
@@ -375,7 +375,7 @@ function AboutTab({ url, focusDesc }: { url: string; focusDesc?: boolean }) {
         <label htmlFor="about-desc">
           <b>Description</b>
         </label>
-        <textarea id="about-desc" className="input textarea" autoFocus={focusDesc} rows={5} maxLength={2000} value={desc} onChange={(e) => setDesc(e.target.value)} />
+        <textarea id="about-desc" className="input textarea" autoFocus={AUTOFOCUS && focusDesc} rows={5} maxLength={2000} value={desc} onChange={(e) => setDesc(e.target.value)} />
         <small className="muted">Markdown works: **bold**, _italic_, `code` and [links](https://example.com). Shown under the name in everyone's sidebar.</small>
         {err && (
           <p className="error" role="alert">
@@ -759,7 +759,7 @@ export function ReportDialog({ url, message: m }: { url: string; message: Messag
           Thank you. The moderators of {c.info?.name ?? hostOf(url)} can now see it. You will not see what they do, and the author is not told who reported it.
         </p>
         <div className="row-end">
-          <button className="btn primary" autoFocus onClick={() => set({ modal: null })}>
+          <button className="btn primary" autoFocus={AUTOFOCUS} onClick={() => set({ modal: null })}>
             Done
           </button>
         </div>
@@ -788,7 +788,7 @@ export function ReportDialog({ url, message: m }: { url: string; message: Messag
           </p>
         )}
         <div className="row-end">
-          <button type="button" className="btn ghost" autoFocus onClick={() => set({ modal: null })}>
+          <button type="button" className="btn ghost" autoFocus={AUTOFOCUS} onClick={() => set({ modal: null })}>
             Cancel
           </button>
           <button className="btn danger" disabled={busy}>

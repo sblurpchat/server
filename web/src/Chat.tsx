@@ -80,7 +80,7 @@ import {
   unfurled,
   unfurlKey,
 } from "./store";
-import { Avatar, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, ghost, Icon, Markdown, menuKeys, Pop, readRecent, Resizer, Skeleton, thenCompose, toned, useClamped } from "./ui";
+import { Avatar, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, AUTOFOCUS, ghost, Icon, Markdown, menuKeys, Pop, readRecent, Resizer, Skeleton, thenCompose, toned, useClamped } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
 /** A light haptic tap. iOS WebKit has no navigator.vibrate, so the iOS app navigates to
@@ -1288,7 +1288,7 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
           <h2>Post a snippet</h2>
           <label className="field">
             <span>Title (optional)</span>
-            <input className="input" autoFocus maxLength={100} value={snip.title} placeholder="snippet" onChange={(e) => setSnip({ ...snip, title: e.target.value })} />
+            <input className="input" autoFocus={AUTOFOCUS} maxLength={100} value={snip.title} placeholder="snippet" onChange={(e) => setSnip({ ...snip, title: e.target.value })} />
           </label>
           <label className="field">
             <span>Language</span>
@@ -1582,7 +1582,7 @@ function Members({ c }: { c: Community }) {
           <h2>Leave #{priv.name}?</h2>
           <p className="muted">It's private, so you can't see it again until someone in it adds you back.</p>
           <div className="row-end">
-            <button className="btn ghost" autoFocus onClick={() => setLeaving(false)}>
+            <button className="btn ghost" autoFocus={AUTOFOCUS} onClick={() => setLeaving(false)}>
               Cancel
             </button>
             <button className="btn danger" onClick={() => (setLeaving(false), drop(c.me!.id))}>
@@ -1649,7 +1649,7 @@ export function PeoplePicker({
             <Icon name="x" />
           </button>
         </header>
-        <input className="input" autoFocus placeholder="Search by name" aria-label="Search people" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="input" autoFocus={AUTOFOCUS} placeholder="Search by name" aria-label="Search people" value={q} onChange={(e) => setQ(e.target.value)} />
         <ul className="pick-list" aria-label="People">
           {options.map((m) => (
             <li key={m.id}>

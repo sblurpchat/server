@@ -89,7 +89,7 @@ import { AvatarField } from "./AvatarField";
 import { PushAsk, PushSetting } from "./PushAsk";
 import { iosApp } from "./push";
 import { pond } from "./pond";
-import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, Icon, type IconName, thenCompose, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped, ZoomStage } from "./ui";
+import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, AUTOFOCUS, autoFocusTo, Icon, type IconName, thenCompose, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped, ZoomStage } from "./ui";
 
 export function App() {
   const auth = useApp((s) => s.auth);
@@ -322,7 +322,7 @@ function Shell() {
   const was = useRef(false);
   useEffect(() => {
     if (!narrow) return;
-    if (drawer) document.querySelector<HTMLElement>(".drawer [aria-current=page], .drawer button")?.focus();
+    if (drawer) autoFocusTo(document.querySelector(".drawer [aria-current=page], .drawer button"));
     else if (was.current) document.querySelector<HTMLElement>(".menu-btn")?.focus();
     was.current = drawer;
   }, [drawer, narrow]);
@@ -331,7 +331,7 @@ function Shell() {
       <button className="btn skip-link" onClick={focusMain}>
         Skip to messages
       </button>
-      <div className="drawer">
+      <div className="drawer" tabIndex={-1}>
         {!narrow || tab === "home" ? (
           <>
             <Rail />
@@ -1147,7 +1147,7 @@ function AddCommunity({ input: given }: { input?: string }) {
           <p className="muted">Enter its address or paste an invite link.</p>
           <input
             className="input big"
-            autoFocus
+            autoFocus={AUTOFOCUS}
             aria-label="Community address or invite link"
             placeholder="nightowls.chat"
             value={input}
@@ -1564,7 +1564,7 @@ function Settings({ start }: { start?: SettingsPage }) {
   const listRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (page) last.current = page;
-    else listRef.current?.querySelector<HTMLElement>(`[data-page="${last.current}"]`)?.focus();
+    autoFocusTo(page ? document.querySelector(".settings-back") : listRef.current?.querySelector(`[data-page="${last.current}"]`));
   }, [page]);
   const sub = narrow ? page : null;
   const body = {
@@ -1578,7 +1578,7 @@ function Settings({ start }: { start?: SettingsPage }) {
     <Dialog label="Settings" className="settings">
       <header className="dialog-head">
         {sub && (
-          <button className="icon-btn settings-back" aria-label="Back" autoFocus onClick={() => (start ? set({ modal: null }) : setPage(null))}>
+          <button className="icon-btn settings-back" aria-label="Back" onClick={() => (start ? set({ modal: null }) : setPage(null))}>
             <Icon name="chevron" />
           </button>
         )}
@@ -1861,7 +1861,7 @@ function LeaveDialog({ c, name }: { c: Community; name: string }) {
         </p>
       )}
       <div className="row-end">
-        <button className="btn ghost" autoFocus onClick={() => set({ modal: null })}>
+        <button className="btn ghost" autoFocus={AUTOFOCUS} onClick={() => set({ modal: null })}>
           Cancel
         </button>
         <button
@@ -2005,7 +2005,7 @@ function BrowseChannels() {
           <Icon name="x" />
         </button>
       </header>
-      <input className="input" type="search" aria-label="Search channels" placeholder="Search by name or topic" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+      <input className="input" type="search" aria-label="Search channels" placeholder="Search by name or topic" value={q} onChange={(e) => setQ(e.target.value)} autoFocus={AUTOFOCUS} />
       {err && (
         <p className="error small" role="alert">
           {err}
@@ -2107,7 +2107,7 @@ function EditProfile({ focusPic }: { focusPic?: boolean }) {
             <Icon name="x" />
           </button>
         </header>
-        <AvatarField url={c.url} me={me} name={name} value={pic} onChange={setPic} onBusy={setUploading} autoFocus={focusPic} />
+        <AvatarField url={c.url} me={me} name={name} value={pic} onChange={setPic} onBusy={setUploading} autoFocus={AUTOFOCUS && focusPic} />
         <label className="field">
           <b>Display name</b>
           <input className="input" value={f.displayName} onChange={(e) => setF({ ...f, displayName: e.target.value })} placeholder={me.username} maxLength={64} />
@@ -2193,7 +2193,7 @@ function DeleteConfirm({ id }: { id: string }) {
         </p>
       )}
       <div className="row-end">
-        <button className="btn ghost" autoFocus onClick={() => set({ modal: null })}>
+        <button className="btn ghost" autoFocus={AUTOFOCUS} onClick={() => set({ modal: null })}>
           Cancel
         </button>
         <button className="btn danger" onClick={go}>
@@ -2232,7 +2232,7 @@ function BlockMember({ url, memberId, mute }: { url: string; memberId: string; m
         </p>
       )}
       <div className="row-end">
-        <button className="btn ghost" autoFocus onClick={() => set({ modal: null })}>
+        <button className="btn ghost" autoFocus={AUTOFOCUS} onClick={() => set({ modal: null })}>
           Cancel
         </button>
         <button className={mute ? "btn primary" : "btn danger"} onClick={go}>
@@ -2272,7 +2272,7 @@ function RemoveMember({ url, memberId, ban }: { url: string; memberId: string; b
         </p>
       )}
       <div className="row-end">
-        <button className="btn ghost" autoFocus onClick={() => set({ modal: null })}>
+        <button className="btn ghost" autoFocus={AUTOFOCUS} onClick={() => set({ modal: null })}>
           Cancel
         </button>
         <button className="btn danger" onClick={go}>

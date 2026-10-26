@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { MemberRole } from "./gen/sblurp/v1/sblurp_pb";
 import { applyTemplate, errorText, finishSetup, get, set, useApp } from "./store";
 import { TEMPLATES, templateChannels, type Template } from "./templates";
-import { Dialog, Icon } from "./ui";
+import { AUTOFOCUS, Dialog, Icon } from "./ui";
 import "./setup.css";
 
 const offered = new Set<string>();
@@ -65,7 +65,7 @@ export function SetupWizard() {
             <legend className="visually-hidden">Template</legend>
             {TEMPLATES.map((x) => (
               <label key={x.id} className="tpl">
-                <input type="radio" name="tpl" value={x.id} checked={x === t} onChange={() => setT(x)} autoFocus={x === t} />
+                <input type="radio" name="tpl" value={x.id} checked={x === t} onChange={() => setT(x)} autoFocus={AUTOFOCUS && x === t} />
                 <span className="tpl-head">
                   <Icon name={x.icon} size={18} />
                   <b>{x.name}</b>
@@ -155,7 +155,7 @@ export function SetupWizard() {
           </ul>
           <div className="setup-foot">
             <span />
-            <button type="button" className="btn primary" autoFocus onClick={close}>
+            <button type="button" className="btn primary" autoFocus={AUTOFOCUS} onClick={close}>
               Done
             </button>
           </div>
