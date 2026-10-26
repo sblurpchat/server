@@ -4640,7 +4640,15 @@ li.sw-empty {
 @media (max-width: 767px), (max-height: 500px) and (pointer: coarse) {
   .drawer,
   .pane {
-    padding: env(safe-area-inset-top) 0 0 env(safe-area-inset-left);
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  }
+  /* In landscape the dark rail runs under the notch instead of a band of sheet colour (1490). */
+  .drawer {
+    padding-inline: 0;
+  }
+  .drawer .rail,
+  .drawer > .tab-panel {
+    padding-left: env(safe-area-inset-left);
   }
 }
 
@@ -6175,7 +6183,7 @@ label:has(> input.visually-hidden:focus-visible) {
   }
   .tabbar {
     position: absolute;
-    left: 12px;
+    left: calc(12px + env(safe-area-inset-left));
     right: 12px;
     bottom: max(8px, env(safe-area-inset-bottom) - 12px);
     z-index: 2;
