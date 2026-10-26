@@ -513,6 +513,7 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
   const links = useMemo(() => permalinks(m.text, location.origin + location.pathname, AUTH_URL), [m.text]);
   const [pick, setPick] = useState<DOMRect | null>(null);
   const [more, setMore] = useState<DOMRect | null>(null);
+  const [heldImg, setHeldImg] = useState<{ src: string; name: string } | null>(null); // a held image adds Save and Share
   const [who, setWho] = useState<{ emoji: string; rect: DOMRect } | null>(null);
   const press = useRef<{ timer: number; held: HTMLElement | null; long: boolean }>({ timer: 0, held: null, long: false });
   const release = (e: { pointerType: string }) => {
@@ -587,13 +588,20 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
         const h = hold.current;
         h.on = false; // a hold whose release fired no click must not swallow the next tap
         h.touch = e.pointerType !== "mouse";
-        if (!h.touch || pending || editing || (e.target as Element).closest("button, input, textarea, video, .pop")) return;
+        // Buttons hold too: an image, avatar, name or quote card is much of a phone row, and the
+        // release's click is swallowed below (1458). Reactions have their own hold (who reacted).
+        const t = e.target as Element;
+        if (!h.touch || pending || editing || t.closest("input, textarea, select, video, .reaction, .pop")) return;
+        const img = t.closest(".att-img")?.querySelector("img");
         Object.assign(h, { x: e.clientX, y: e.clientY });
         const id = e.pointerId;
         h.timer = window.setTimeout(() => {
           h.on = true;
           haptic();
-          flushSync(() => setMore(new DOMRect(h.x, h.y, 0, 0)));
+          flushSync(() => {
+            setHeldImg(img ? { src: img.src, name: img.alt } : null);
+            setMore(new DOMRect(h.x, h.y, 0, 0));
+          });
           moreRef.current?.focus({ preventScroll: true }); // no item looks picked before a tap (1407)
           try {
             moreRef.current?.closest(".pop")?.setPointerCapture(id);
@@ -768,7 +776,7 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
         anchor={more}
         side="left"
         onClose={() => {
-          if (performance.now() - hold.current.up > 300) return setMore(null);
+          if (performance.now() - hold.current.up > 300) return (setMore(null), setHeldImg(null));
           hold.current.up = 0;
           moreRef.current?.closest<HTMLElement>(".pop")?.showPopover();
           moreRef.current?.focus({ preventScroll: true });
@@ -809,6 +817,18 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
               {mine && (
                 <button role="menuitem" onClick={() => set({ editing: m.id })}>
                   <Icon name="edit" size={18} /> Edit message
+                </button>
+              )}
+            </>
+          )}
+          {heldImg && (
+            <>
+              <a role="menuitem" href={heldImg.src} download={heldImg.name}>
+                <Icon name="download" size={18} /> Save image
+              </a>
+              {"share" in navigator && (
+                <button role="menuitem" onClick={() => void navigator.share({ title: heldImg.name, url: heldImg.src }).catch(() => {})}>
+                  <Icon name="upload" size={18} /> Share image
                 </button>
               )}
             </>
