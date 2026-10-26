@@ -749,8 +749,11 @@ export async function openDM(url: string, memberIds: string | string[]) {
   const r = await api(url).chat.openDM({ memberIds: [memberIds].flat() });
   const ch = r.channel!;
   patchC(url, (c) => ({ ...c, channels: { ...c.channels, [ch.id]: ch } }));
+  // From a profile in another channel (1503), Back and the swipe return there, as after a jump (1433).
+  const back = !!state.popover && !state.drawer && state.channelId !== ch.id;
   set({ popover: null });
   selectChannel(url, ch.id);
+  if (back) history.replaceState({ back: true }, "");
 }
 
 const local = (url: string, kind: Event["kind"]) => dispatch(url, { seq: 0n, atMs: 0n, kind } as Event);
