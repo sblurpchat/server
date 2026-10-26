@@ -3574,6 +3574,12 @@ li.sw-empty {
     visibility: visible;
   }
 }
+/* Touch has no hover, so the add pill is always there to tap (1478). */
+@media (hover: none) {
+  .reaction.add {
+    visibility: visible;
+  }
+}
 .reaction.add:focus-visible {
   visibility: visible;
 }
