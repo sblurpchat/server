@@ -616,14 +616,25 @@ message ReportMessageRequest {
 }
 message ReportMessageResponse {}
 
+// Any member, about another member (1507), with the same optional note and
+// the same rate limit as ReportMessage. The report holds no message.
+// Reporting the same member again while that report is open replaces the
+// note. Someone who left may still be reported.
+message ReportMemberRequest {
+  string member_id = 1;
+  string note = 2;
+}
+message ReportMemberResponse {}
+
 message Report {
   string id = 1;
   // Copy at report time: id, channel_id, author_id, text, created_at_ms,
   // thread_root_id, and the attachments whose files still exist (an open
-  // report keeps them; resolving lets them go).
+  // report keeps them; resolving lets them go). Unset for a report about a
+  // member (ReportMember, 1507).
   Message message = 2;
   bool dm = 3;                // the message is in a DM; moderators cannot open it
-  Member author = 4;          // who wrote the message (may have left)
+  Member author = 4;          // who wrote the message, or the reported member (may have left)
   Member reporter = 5;
   string note = 6;
   int64 reported_at_ms = 7;
@@ -639,7 +650,8 @@ message ListReportsRequest { bool resolved = 1; }
 message ListReportsResponse { repeated Report reports = 1; }
 
 // Moderator or higher, for an open report ListReports shows them. Resolving
-// closes every open report of that message and records who and when.
+// closes every open report of that message (or, for a member report, every
+// open member report about that member) and records who and when.
 message ResolveReportRequest { string report_id = 1; }
 message ResolveReportResponse {}
 
@@ -859,6 +871,7 @@ service ServerService {
   rpc SetNotifyLevel(SetNotifyLevelRequest) returns (SetNotifyLevelResponse) {}
   rpc SnoozeNotifications(SnoozeNotificationsRequest) returns (SnoozeNotificationsResponse) {}
   rpc ReportMessage(ReportMessageRequest) returns (ReportMessageResponse) {}
+  rpc ReportMember(ReportMemberRequest) returns (ReportMemberResponse) {}
   rpc ListReports(ListReportsRequest) returns (ListReportsResponse) {}
   rpc ResolveReport(ResolveReportRequest) returns (ResolveReportResponse) {}
 }

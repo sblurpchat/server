@@ -206,3 +206,62 @@ func TestReportLog(t *testing.T) {
 		t.Fatal("old resolved reports stay")
 	}
 }
+
+// 1507: a report about a member holds no message.
+func TestReportMember(t *testing.T) {
+	e := newEnv(t)
+	ana, bob, cat, dan := e.join("ana"), e.join("bob"), e.join("cat"), e.join("dan") // ana owns
+	must0(t, ana.setRole(cat.me.Id, v1.MemberRole_MEMBER_ROLE_MODERATOR))
+	report := func(c *client, member, note string) error {
+		_, err := c.srv.ReportMember(ctx(), connect.NewRequest(&v1.ReportMemberRequest{MemberId: member, Note: note}))
+		return err
+	}
+	list := func(c *client) []*v1.Report {
+		return must(c.srv.ListReports(ctx(), connect.NewRequest(&v1.ListReportsRequest{}))).Reports
+	}
+	wantCode(t, report(dan, dan.me.Id, ""), connect.CodeInvalidArgument)
+	wantCode(t, report(dan, "01900000-0000-7000-8000-000000000000", ""), connect.CodeNotFound)
+	must0(t, report(dan, bob.me.Id, "Spam"))
+	must0(t, report(dan, bob.me.Id, "Spam: again")) // replaces the note
+	must0(t, report(ana, bob.me.Id, ""))
+	must0(t, report(dan, cat.me.Id, "")) // about a moderator: only the owner sees it
+	// A message report by the same reporter about the same member is its own row.
+	talk := ana.channel("talk", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	must(dan.srv.ReportMessage(ctx(), connect.NewRequest(&v1.ReportMessageRequest{MessageId: bob.send(talk.Id, "buy now").Id})))
+
+	got := list(cat)
+	if len(got) != 3 {
+		t.Fatalf("cat sees %d reports", len(got))
+	}
+	var member []*v1.Report
+	for _, r := range got {
+		if r.Message == nil {
+			member = append(member, r)
+		}
+	}
+	if len(member) != 2 || member[0].Author.GetId() != bob.me.Id || member[1].Author.GetId() != bob.me.Id {
+		t.Fatalf("member reports = %v", member)
+	}
+	notes := map[string]bool{member[0].Note: true, member[1].Note: true}
+	if !notes["Spam: again"] || !notes[""] || notes["Spam"] {
+		t.Fatalf("notes = %v", notes)
+	}
+	if n := len(list(ana)); n != 4 {
+		t.Fatalf("owner sees %d", n)
+	}
+
+	// Resolving a member report closes the member reports about that member
+	// only, not the message report, nor the one about cat.
+	must(cat.srv.ResolveReport(ctx(), connect.NewRequest(&v1.ResolveReportRequest{ReportId: member[0].Id})))
+	left := list(ana)
+	if len(left) != 2 {
+		t.Fatalf("after resolve: %d", len(left))
+	}
+	for _, r := range left {
+		if r.Message == nil && r.Author.GetId() == bob.me.Id {
+			t.Fatal("member report about bob stays open")
+		}
+	}
+	// Dan spent 5 (the self report is refused before the limit).
+	wantCode(t, report(dan, bob.me.Id, ""), connect.CodeResourceExhausted)
+}

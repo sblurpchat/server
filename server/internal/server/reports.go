@@ -29,15 +29,8 @@ func seesReport(viewer, author v1.MemberRole) bool {
 func (s *Server) ReportMessage(ctx context.Context, req *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error) {
 	m := me(ctx)
 	r := req.Msg
-	if err := checkText("note", r.Note, maxReportNote, false); err != nil {
+	if err := s.checkReport(m.Id, "message_id", r.MessageId, r.Note); err != nil {
 		return nil, err
-	}
-	if err := checkID("message_id", r.MessageId); err != nil {
-		return nil, err
-	}
-	// Separate key from SendMessage's bucket.
-	if !s.limiter.allow("report "+m.Id, reportRate, reportBurst) {
-		return nil, errf(connect.CodeResourceExhausted, "you have sent many reports; try again in a few minutes")
 	}
 	err := s.writeTx(ctx, func(t *wtx) error {
 		msg, c, err := loadMessage(ctx, t, r.MessageId, m.Id)
@@ -57,7 +50,7 @@ func (s *Server) ReportMessage(ctx context.Context, req *connect.Request[v1.Repo
 		ids, _ := json.Marshal(files)
 		_, err = t.ExecContext(ctx, `INSERT INTO reports(id, message_id, channel_id, dm, author_id, text, created_at_ms, thread_root_id, reporter_id, note, at_ms, attachment_ids)
 			VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-			ON CONFLICT(message_id, reporter_id) WHERE resolved_at_ms = 0
+			ON CONFLICT(message_id, author_id, reporter_id) WHERE resolved_at_ms = 0
 			DO UPDATE SET note = excluded.note, text = excluded.text, at_ms = excluded.at_ms, attachment_ids = excluded.attachment_ids`,
 			newID(s.now()), msg.Id, msg.ChannelId, c.Kind == v1.ChannelKind_CHANNEL_KIND_DM, msg.AuthorId, msg.Text, msg.CreatedAtMs, msg.ThreadRootId, m.Id, r.Note, s.nowMs(), string(ids))
 		if err != nil {
@@ -71,6 +64,55 @@ func (s *Server) ReportMessage(ctx context.Context, req *connect.Request[v1.Repo
 	return connect.NewResponse(&v1.ReportMessageResponse{}), nil
 }
 
+// checkReport validates a report's target id and note, then spends a token
+// from the reporter's own bucket (separate from SendMessage's).
+func (s *Server) checkReport(reporter, field, id, note string) error {
+	if err := checkText("note", note, maxReportNote, false); err != nil {
+		return err
+	}
+	if err := checkID(field, id); err != nil {
+		return err
+	}
+	if !s.limiter.allow("report "+reporter, reportRate, reportBurst) {
+		return errf(connect.CodeResourceExhausted, "you have sent many reports; try again in a few minutes")
+	}
+	return nil
+}
+
+// ReportMember (1507) stores a report with no message: message_id is '' and
+// author_id is the reported member.
+func (s *Server) ReportMember(ctx context.Context, req *connect.Request[v1.ReportMemberRequest]) (*connect.Response[v1.ReportMemberResponse], error) {
+	m := me(ctx)
+	r := req.Msg
+	if r.MemberId == m.Id {
+		return nil, errf(connect.CodeInvalidArgument, "you cannot report yourself")
+	}
+	if err := s.checkReport(m.Id, "member_id", r.MemberId, r.Note); err != nil {
+		return nil, err
+	}
+	err := s.writeTx(ctx, func(t *wtx) error {
+		if row, err := s.loadMember(ctx, t, "id = ?", r.MemberId); err != nil || row == nil {
+			if err == nil {
+				err = errf(connect.CodeNotFound, "member not found")
+			}
+			return err
+		}
+		_, err := t.ExecContext(ctx, `INSERT INTO reports(id, message_id, channel_id, dm, author_id, text, created_at_ms, thread_root_id, reporter_id, note, at_ms)
+			VALUES (?,'','',0,?,'',0,'',?,?,?)
+			ON CONFLICT(message_id, author_id, reporter_id) WHERE resolved_at_ms = 0
+			DO UPDATE SET note = excluded.note, at_ms = excluded.at_ms`,
+			newID(s.now()), r.MemberId, m.Id, r.Note, s.nowMs())
+		if err != nil {
+			return err
+		}
+		return s.emitReportCounts(t)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&v1.ReportMemberResponse{}), nil
+}
+
 // reports lists the reports a viewer with this role may see: open ones
 // newest first, or resolved ones newest resolution first.
 func (s *Server) reports(ctx context.Context, q queryer, viewer v1.MemberRole, resolved bool) ([]*v1.Report, error) {
@@ -80,7 +122,7 @@ func (s *Server) reports(ctx context.Context, q queryer, viewer v1.MemberRole, r
 	if err != nil {
 		return nil, err
 	}
-	type extra struct{ reporter, files, resolver string }
+	type extra struct{ author, reporter, files, resolver string }
 	var all []*v1.Report
 	var more []extra
 	for rows.Next() {
@@ -90,6 +132,10 @@ func (s *Server) reports(ctx context.Context, q queryer, viewer v1.MemberRole, r
 			&p.Message.ThreadRootId, &x.reporter, &p.Note, &p.ReportedAtMs, &x.files, &x.resolver, &p.ResolvedAtMs); err != nil {
 			rows.Close()
 			return nil, err
+		}
+		x.author = p.Message.AuthorId
+		if p.Message.Id == "" {
+			p.Message = nil // a member report (1507)
 		}
 		all = append(all, p)
 		more = append(more, x)
@@ -101,7 +147,7 @@ func (s *Server) reports(ctx context.Context, q queryer, viewer v1.MemberRole, r
 	// ponytail: a few lookups per report; fine for a moderation queue of tens.
 	var out []*v1.Report
 	for i, p := range all {
-		a, err := s.loadMember(ctx, q, "id = ?", p.Message.AuthorId)
+		a, err := s.loadMember(ctx, q, "id = ?", more[i].author)
 		if err != nil {
 			return nil, err
 		}
@@ -200,8 +246,8 @@ func (s *Server) ResolveReport(ctx context.Context, req *connect.Request[v1.Reso
 		if a == nil || !seesReport(m.Role, a.Role) {
 			return errf(connect.CodeNotFound, "report not found")
 		}
-		if _, err = t.ExecContext(ctx, "UPDATE reports SET resolved_by = ?, resolved_at_ms = ? WHERE message_id = ? AND resolved_at_ms = 0",
-			m.Id, s.nowMs(), msgID); err != nil {
+		if _, err = t.ExecContext(ctx, "UPDATE reports SET resolved_by = ?, resolved_at_ms = ? WHERE message_id = ? AND author_id = ? AND resolved_at_ms = 0",
+			m.Id, s.nowMs(), msgID, author); err != nil {
 			return err
 		}
 		return s.emitReportCounts(t)

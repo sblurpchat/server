@@ -123,6 +123,9 @@ const (
 	// ServerServiceReportMessageProcedure is the fully-qualified name of the ServerService's
 	// ReportMessage RPC.
 	ServerServiceReportMessageProcedure = "/sblurp.v1.ServerService/ReportMessage"
+	// ServerServiceReportMemberProcedure is the fully-qualified name of the ServerService's
+	// ReportMember RPC.
+	ServerServiceReportMemberProcedure = "/sblurp.v1.ServerService/ReportMember"
 	// ServerServiceListReportsProcedure is the fully-qualified name of the ServerService's ListReports
 	// RPC.
 	ServerServiceListReportsProcedure = "/sblurp.v1.ServerService/ListReports"
@@ -233,6 +236,7 @@ type ServerServiceClient interface {
 	SetNotifyLevel(context.Context, *connect.Request[v1.SetNotifyLevelRequest]) (*connect.Response[v1.SetNotifyLevelResponse], error)
 	SnoozeNotifications(context.Context, *connect.Request[v1.SnoozeNotificationsRequest]) (*connect.Response[v1.SnoozeNotificationsResponse], error)
 	ReportMessage(context.Context, *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error)
+	ReportMember(context.Context, *connect.Request[v1.ReportMemberRequest]) (*connect.Response[v1.ReportMemberResponse], error)
 	ListReports(context.Context, *connect.Request[v1.ListReportsRequest]) (*connect.Response[v1.ListReportsResponse], error)
 	ResolveReport(context.Context, *connect.Request[v1.ResolveReportRequest]) (*connect.Response[v1.ResolveReportResponse], error)
 }
@@ -416,6 +420,12 @@ func NewServerServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(serverServiceMethods.ByName("ReportMessage")),
 			connect.WithClientOptions(opts...),
 		),
+		reportMember: connect.NewClient[v1.ReportMemberRequest, v1.ReportMemberResponse](
+			httpClient,
+			baseURL+ServerServiceReportMemberProcedure,
+			connect.WithSchema(serverServiceMethods.ByName("ReportMember")),
+			connect.WithClientOptions(opts...),
+		),
 		listReports: connect.NewClient[v1.ListReportsRequest, v1.ListReportsResponse](
 			httpClient,
 			baseURL+ServerServiceListReportsProcedure,
@@ -461,6 +471,7 @@ type serverServiceClient struct {
 	setNotifyLevel       *connect.Client[v1.SetNotifyLevelRequest, v1.SetNotifyLevelResponse]
 	snoozeNotifications  *connect.Client[v1.SnoozeNotificationsRequest, v1.SnoozeNotificationsResponse]
 	reportMessage        *connect.Client[v1.ReportMessageRequest, v1.ReportMessageResponse]
+	reportMember         *connect.Client[v1.ReportMemberRequest, v1.ReportMemberResponse]
 	listReports          *connect.Client[v1.ListReportsRequest, v1.ListReportsResponse]
 	resolveReport        *connect.Client[v1.ResolveReportRequest, v1.ResolveReportResponse]
 }
@@ -605,6 +616,11 @@ func (c *serverServiceClient) ReportMessage(ctx context.Context, req *connect.Re
 	return c.reportMessage.CallUnary(ctx, req)
 }
 
+// ReportMember calls sblurp.v1.ServerService.ReportMember.
+func (c *serverServiceClient) ReportMember(ctx context.Context, req *connect.Request[v1.ReportMemberRequest]) (*connect.Response[v1.ReportMemberResponse], error) {
+	return c.reportMember.CallUnary(ctx, req)
+}
+
 // ListReports calls sblurp.v1.ServerService.ListReports.
 func (c *serverServiceClient) ListReports(ctx context.Context, req *connect.Request[v1.ListReportsRequest]) (*connect.Response[v1.ListReportsResponse], error) {
 	return c.listReports.CallUnary(ctx, req)
@@ -647,6 +663,7 @@ type ServerServiceHandler interface {
 	SetNotifyLevel(context.Context, *connect.Request[v1.SetNotifyLevelRequest]) (*connect.Response[v1.SetNotifyLevelResponse], error)
 	SnoozeNotifications(context.Context, *connect.Request[v1.SnoozeNotificationsRequest]) (*connect.Response[v1.SnoozeNotificationsResponse], error)
 	ReportMessage(context.Context, *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error)
+	ReportMember(context.Context, *connect.Request[v1.ReportMemberRequest]) (*connect.Response[v1.ReportMemberResponse], error)
 	ListReports(context.Context, *connect.Request[v1.ListReportsRequest]) (*connect.Response[v1.ListReportsResponse], error)
 	ResolveReport(context.Context, *connect.Request[v1.ResolveReportRequest]) (*connect.Response[v1.ResolveReportResponse], error)
 }
@@ -826,6 +843,12 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(serverServiceMethods.ByName("ReportMessage")),
 		connect.WithHandlerOptions(opts...),
 	)
+	serverServiceReportMemberHandler := connect.NewUnaryHandler(
+		ServerServiceReportMemberProcedure,
+		svc.ReportMember,
+		connect.WithSchema(serverServiceMethods.ByName("ReportMember")),
+		connect.WithHandlerOptions(opts...),
+	)
 	serverServiceListReportsHandler := connect.NewUnaryHandler(
 		ServerServiceListReportsProcedure,
 		svc.ListReports,
@@ -896,6 +919,8 @@ func NewServerServiceHandler(svc ServerServiceHandler, opts ...connect.HandlerOp
 			serverServiceSnoozeNotificationsHandler.ServeHTTP(w, r)
 		case ServerServiceReportMessageProcedure:
 			serverServiceReportMessageHandler.ServeHTTP(w, r)
+		case ServerServiceReportMemberProcedure:
+			serverServiceReportMemberHandler.ServeHTTP(w, r)
 		case ServerServiceListReportsProcedure:
 			serverServiceListReportsHandler.ServeHTTP(w, r)
 		case ServerServiceResolveReportProcedure:
@@ -1019,6 +1044,10 @@ func (UnimplementedServerServiceHandler) SnoozeNotifications(context.Context, *c
 
 func (UnimplementedServerServiceHandler) ReportMessage(context.Context, *connect.Request[v1.ReportMessageRequest]) (*connect.Response[v1.ReportMessageResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.ReportMessage is not implemented"))
+}
+
+func (UnimplementedServerServiceHandler) ReportMember(context.Context, *connect.Request[v1.ReportMemberRequest]) (*connect.Response[v1.ReportMemberResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ServerService.ReportMember is not implemented"))
 }
 
 func (UnimplementedServerServiceHandler) ListReports(context.Context, *connect.Request[v1.ListReportsRequest]) (*connect.Response[v1.ListReportsResponse], error) {
