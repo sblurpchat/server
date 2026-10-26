@@ -622,6 +622,9 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
   const [more, setMore] = useState<DOMRect | null>(null);
   const [heldImg, setHeldImg] = useState<{ src: string; name: string } | null>(null); // a held image adds Save and Share
   const [who, setWho] = useState<{ emoji: string; rect: DOMRect } | null>(null);
+  // The toolbar stays in the accessibility tree (1516), so its buttons are Tab stops only once focus is in the message.
+  const [inside, setInside] = useState(false);
+  const tab = inside ? 0 : -1;
   const press = useRef<{ timer: number; held: HTMLElement | null; long: boolean }>({ timer: 0, held: null, long: false });
   const release = (e: { pointerType: string }) => {
     clearTimeout(press.current.timer);
@@ -691,6 +694,8 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
       data-held={(!!more && hold.current.on) || undefined}
       tabIndex={-1}
       aria-label={`${name}, ${timeLabel(Number(m.createdAtMs), h24)}${pending && !failed ? ", sending" : ""}`}
+      onFocus={() => setInside(true)}
+      onBlur={(e) => e.currentTarget.contains(e.relatedTarget) || setInside(false)}
       onPointerDown={(e) => {
         const h = hold.current;
         h.on = false; // a hold whose release fired no click must not swallow the next tap
@@ -844,21 +849,21 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
       {!pending && !editing && (
         <div className="toolbar" role="group" aria-label="Message actions">
           {joined && (
-            <button aria-label="Add reaction" title="Add reaction" aria-haspopup="dialog" aria-expanded={!!pick} onClick={(e) => setPick(e.currentTarget.getBoundingClientRect())}>
+            <button tabIndex={tab} aria-label="Add reaction" title="Add reaction" aria-haspopup="dialog" aria-expanded={!!pick} onClick={(e) => setPick(e.currentTarget.getBoundingClientRect())}>
               <Icon name="smile" size={18} />
             </button>
           )}
           {!inThread && (
-            <button aria-label="Reply in thread" title="Reply in thread" onClick={() => set({ pane: { t: "thread", rootId: m.id } })}>
+            <button tabIndex={tab} aria-label="Reply in thread" title="Reply in thread" onClick={() => set({ pane: { t: "thread", rootId: m.id } })}>
               <Icon name="thread" size={18} />
             </button>
           )}
           {mine && (
-            <button aria-label="Edit message" title="Edit" onClick={() => set({ editing: m.id })}>
+            <button tabIndex={tab} aria-label="Edit message" title="Edit" onClick={() => set({ editing: m.id })}>
               <Icon name="edit" size={18} />
             </button>
           )}
-          <button aria-label="More actions" title="More" aria-haspopup="menu" aria-expanded={!!more} onClick={(e) => setMore(e.currentTarget.getBoundingClientRect())}>
+          <button tabIndex={tab} aria-label="More actions" title="More" aria-haspopup="menu" aria-expanded={!!more} onClick={(e) => setMore(e.currentTarget.getBoundingClientRect())}>
             <Icon name="more" size={18} />
           </button>
         </div>
