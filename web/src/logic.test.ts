@@ -1,6 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { Code } from "@connectrpc/connect";
+import { queueStep, showDown, transient } from "./logic";
 import css from "./app.css?raw";
 import { allDMs, channelLabel, dmPeer, swipeAxis, swipeEnds, tailnetUrl } from "./logic";
 import {
@@ -415,6 +416,30 @@ describe("timing", () => {
   it("refreshes tokens with less than a minute left", () => {
     expect(tokenFresh(T0 + 61_000, T0)).toBe(true);
     expect(tokenFresh(T0 + 59_000, T0)).toBe(false);
+  });
+});
+
+describe("dropped connection (1376)", () => {
+  it("stays quiet for 10s after a drop", () => {
+    expect(showDown({ status: "reconnecting", downSince: T0 }, T0 + 9_999)).toBe(false);
+    expect(showDown({ status: "reconnecting", downSince: T0 }, T0 + 10_000)).toBe(true);
+    expect(showDown({ status: "live" }, T0)).toBe(false);
+    expect(showDown({ status: "connecting" }, T0 + 60_000)).toBe(false);
+  });
+  it("sends the oldest queued message when live, waits offline, fails after two minutes", () => {
+    const a = { id: "a", since: T0 + 1000 };
+    const b = { id: "b", since: T0 };
+    const old = { id: "old", since: T0 - 120_000 };
+    expect(queueStep([a, b, old], true, T0)).toEqual({ fail: [old], send: b });
+    expect(queueStep([a, b], false, T0)).toEqual({ fail: [], send: undefined });
+    expect(queueStep([a], false, T0 + 121_000)).toEqual({ fail: [a], send: undefined });
+    expect(queueStep([], true, T0)).toEqual({ fail: [], send: undefined });
+  });
+  it("retries network errors only", () => {
+    expect(transient(Code.Unavailable)).toBe(true);
+    expect(transient(Code.Unknown)).toBe(true);
+    expect(transient(Code.PermissionDenied)).toBe(false);
+    expect(transient(Code.ResourceExhausted)).toBe(false);
   });
 });
 

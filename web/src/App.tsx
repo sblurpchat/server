@@ -10,6 +10,7 @@ import {
   communityBadge,
   formatHash,
   hostOf,
+  showDown,
   isDM,
   dmPeer,
   matchScore,
@@ -273,19 +274,7 @@ function Shell() {
         ) : c.status === "join" ? (
           <JoinCard url={url} />
         ) : !c.me ? (
-          c.error ? (
-            <Unreachable c={c} />
-          ) : (
-            <div className="loading-main" aria-busy="true">
-              <div className="chan-head">
-                <h1 className="visually-hidden">Loading {c.info?.name ?? hostOf(url)}</h1>
-              </div>
-              <Skeleton rows={8} avatar={36} chat className="skel-chat" />
-              <div className="composer" aria-hidden="true">
-                <div className="composer-box skel-composer" />
-              </div>
-            </div>
-          )
+          <Loading c={c} />
         ) : (
           <ChannelView key={`${url} ${channelId}`} />
         )}
@@ -308,9 +297,22 @@ function Empty({ title, body, action }: { title: string; body: string; action?: 
   );
 }
 
-function Unreachable({ c }: { c: Community }) {
+/** The skeleton, or after QUIET_MS of failing, why the community does not load (1376). */
+function Loading({ c }: { c: Community }) {
   const name = c.info?.name ?? hostOf(c.url);
   const secs = useCountdown(c.retryAt);
+  if (!c.error || !showDown(c, Date.now()))
+    return (
+      <div className="loading-main" aria-busy="true">
+        <div className="chan-head">
+          <h1 className="visually-hidden">Loading {name}</h1>
+        </div>
+        <Skeleton rows={8} avatar={36} chat className="skel-chat" />
+        <div className="composer" aria-hidden="true">
+          <div className="composer-box skel-composer" />
+        </div>
+      </div>
+    );
   return (
     <Empty
       title={`Can't reach ${name}`}

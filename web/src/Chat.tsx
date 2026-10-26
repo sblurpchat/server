@@ -40,6 +40,7 @@ import {
   listPhase,
   mayPost,
   posterNames,
+  showDown,
 } from "./logic";
 import {
   absUrl,
@@ -239,8 +240,9 @@ export function ChannelView() {
 }
 
 function Banner({ c }: { c: Community }) {
+  // retryAt is set whenever reconnecting, so this ticks every second and the quiet time ends on time.
   const secs = useCountdown(c.retryAt);
-  if (c.status !== "reconnecting" && c.status !== "error") return null;
+  if (!showDown(c, Date.now())) return null;
   return (
     <div className="banner">
       <span>
@@ -285,6 +287,13 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
     if (!list) void loadList(url, channelId, rootId);
   }, [url, channelId, rootId, list]);
   useEffect(() => () => leaveList(url, key), [url, key]);
+  // A load that failed while the connection was down tries again once it is back, and stays
+  // quiet until then like the banner (1376).
+  const live = c.status === "live";
+  const listError = list?.error && (live || showDown(c, Date.now())) ? list.error : "";
+  useEffect(() => {
+    if (live && list?.error) void loadList(url, channelId, rootId, list.items.length ? "older" : "");
+  }, [live]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const check = () => {
     const el = scroller.current;
@@ -347,9 +356,9 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
         <div className="msgs" key={phase === "skeleton" ? "skel" : "list"} data-loaded={cold && phase !== "skeleton"}>
           {phase === "skeleton" && !rootId ? (
             <Skeleton rows={9} avatar={36} chat className="skel-chat" />
-          ) : list?.error ? (
+          ) : listError ? (
             <div className="list-note">
-              <p className="error">{list.error}</p>
+              <p className="error">{listError}</p>
               <button className="btn small" onClick={() => loadList(url, channelId, rootId, list.items.length ? "older" : "")}>
                 Try again
               </button>

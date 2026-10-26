@@ -2971,6 +2971,7 @@ li.sw-empty {
   font-size: 0.875rem;
   font-weight: 500;
   flex: none;
+  animation: fade-in 160ms ease-out;
 }
 
 /* Message list */

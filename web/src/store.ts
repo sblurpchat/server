@@ -30,6 +30,8 @@ import {
   applySnapshot,
   backoffMs,
   denied,
+  queueStep,
+  transient,
   STABLE_MS,
   emptyCommunity,
   formatHash,
@@ -276,6 +278,8 @@ const conns = new Map<string, { ctl: AbortController; wake: () => void }>();
 export function retryNow(url: string) {
   conns.get(url)?.wake();
 }
+// The network came back: retry now instead of waiting out the backoff.
+addEventListener("online", () => conns.forEach((c) => c.wake()));
 
 function refreshInfo(url: string, signal?: AbortSignal) {
   api(url)
@@ -318,7 +322,10 @@ async function connect(url: string) {
           liveAt ||= Date.now();
           // Live only once the server answers (it sends a heartbeat at once), so the banner does
           // not flicker off on every retry while the server is still down.
-          if (state.cs[url]?.status !== "live") patchC(url, (c) => ({ ...c, status: "live", error: undefined, retryAt: undefined }));
+          if (state.cs[url]?.status !== "live") {
+            patchC(url, (c) => ({ ...c, status: "live", error: undefined, retryAt: undefined, downSince: undefined }));
+            void flush(url);
+          }
           if (ev.kind.case === "resync") {
             snapshot = true;
             break;
@@ -356,7 +363,8 @@ async function connect(url: string) {
     }
     if (failed) patchC(url, (c) => ({ ...c, error: errorText(failed, c.info?.name) }));
     const delay = backoffMs(attempt++, Math.random());
-    patchC(url, (c) => ({ ...c, status: "reconnecting", retryAt: Date.now() + delay }));
+    patchC(url, (c) => ({ ...c, status: "reconnecting", retryAt: Date.now() + delay, downSince: c.downSince ?? Date.now() }));
+    void flush(url);
     await new Promise<void>((r) => {
       const t = setTimeout(r, delay);
       conn.wake = () => {
@@ -561,29 +569,64 @@ export async function send(url: string, channelId: string, rootId: string, text:
   await deliver(url, key, m);
 }
 
+// Unsent messages by client_id (1376). They show as pending while the connection is down and go
+// out in order once it is back. The server drops a repeated client_id, so a resend is safe.
+// ponytail: memory only, a reload while offline loses the queue; persist it if that bites.
+const waiting = new Map<string, { url: string; key: string; m: Message; since: number }>();
+const flushing = new Set<string>();
+
 async function deliver(url: string, key: string, m: Message) {
   patchC(url, (c) => {
     const { [m.clientId]: _, ...failed } = c.failed;
     return { ...c, failed };
   });
+  waiting.set(m.clientId, { url, key, m, since: Date.now() });
+  await flush(url);
+}
+
+async function flush(url: string) {
+  if (flushing.has(url)) return;
+  flushing.add(url);
   try {
-    const r = await api(url).chat.sendMessage({
-      channelId: m.channelId,
-      text: m.text,
-      threadRootId: m.threadRootId,
-      clientId: m.clientId,
-      attachmentIds: m.attachments.map((a) => a.id),
-    });
-    if (r.message) {
-      const sent = r.message;
-      patchList(url, key, (l) => ({ ...l, items: upsertMessage(l.items, sent) }));
+    for (;;) {
+      const step = queueStep([...waiting.values()].filter((w) => w.url === url), state.cs[url]?.status === "live", Date.now());
+      for (const w of step.fail) {
+        waiting.delete(w.m.clientId);
+        patchC(url, (c) => ({ ...c, failed: { ...c.failed, [w.m.clientId]: true } }));
+      }
+      const w = step.send;
+      if (!w) return;
+      const { m, key } = w;
+      try {
+        const r = await api(url).chat.sendMessage({
+          channelId: m.channelId,
+          text: m.text,
+          threadRootId: m.threadRootId,
+          clientId: m.clientId,
+          attachmentIds: m.attachments.map((a) => a.id),
+        });
+        waiting.delete(m.clientId);
+        if (r.message) {
+          const sent = r.message;
+          patchList(url, key, (l) => ({ ...l, items: upsertMessage(l.items, sent) }));
+        }
+      } catch (e) {
+        // A network error leaves it queued: try again shortly, or when the stream comes back.
+        if (!(e instanceof SignedOutError) && transient(ConnectError.from(e).code)) {
+          setTimeout(() => void flush(url), 5000);
+          return;
+        }
+        waiting.delete(m.clientId);
+        patchC(url, (c) => ({ ...c, failed: { ...c.failed, [m.clientId]: true } }));
+      }
     }
-  } catch {
-    patchC(url, (c) => ({ ...c, failed: { ...c.failed, [m.clientId]: true } }));
+  } finally {
+    flushing.delete(url);
   }
 }
 
 export function retrySend(url: string, m: Message) {
+  retryNow(url);
   void deliver(url, listKey(m.channelId, m.threadRootId), m);
 }
 export function discardSend(url: string, m: Message) {

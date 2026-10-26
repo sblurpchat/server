@@ -53,6 +53,8 @@ export interface Community {
   status: Status;
   error?: string;
   retryAt?: number;
+  /** When the connection dropped; unset while live (1376). */
+  downSince?: number;
   me?: Member;
   members: Record<string, Member>;
   /** My sidebar: in OPT_IN mode only the channels I joined. */
@@ -831,6 +833,28 @@ export const STABLE_MS = 30_000;
 
 /** Servers send a heartbeat every 25s. Two missed beats plus slack means the stream is dead. */
 export const HEARTBEAT_TIMEOUT_MS = 60_000;
+
+/** A dropped connection stays quiet this long, so a quick reconnect shows nothing (1376). */
+export const QUIET_MS = 10_000;
+/** An unsent message waits this long for the connection, then shows as failed with Try again. */
+export const QUEUE_MS = 120_000;
+
+/** Whether to tell the person the community is unreachable: only once it has been down QUIET_MS. */
+export const showDown = (c: Pick<Community, "status" | "downSince">, now: number) =>
+  c.status === "error" || (c.status === "reconnecting" && now - (c.downSince ?? now) >= QUIET_MS);
+
+/**
+ * The send queue (1376): messages that waited QUEUE_MS fail; while live the oldest of the rest goes
+ * next, one at a time so they arrive in order. Offline, the rest wait.
+ */
+export function queueStep<T extends { since: number }>(q: T[], live: boolean, now: number): { fail: T[]; send?: T } {
+  const fail = q.filter((w) => now - w.since >= QUEUE_MS);
+  const rest = q.filter((w) => now - w.since < QUEUE_MS).sort((a, b) => a.since - b.since);
+  return { fail, send: live ? rest[0] : undefined };
+}
+
+/** A send that failed with one of these may work after a reconnect; anything else is the server saying no. */
+export const transient = (code: Code) => code === Code.Unavailable || code === Code.Unknown || code === Code.DeadlineExceeded || code === Code.Aborted;
 
 /** Access tokens are refreshed when less than this is left. */
 const TOKEN_SKEW_MS = 60_000;
