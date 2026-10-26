@@ -1212,6 +1212,8 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
       .slice(0, 8)
       .map(({ m }) => ({ id: m.id, label: m.displayName || m.username, insert: `@${m.username} `, m: m as Member | undefined }));
   }, [ac?.kind, ac?.q, c.members, custom, tone]);
+  // The phone list scrolls after four rows, so the picked row stays in view (1480).
+  useEffect(() => document.getElementById(`ac-${key}-${sel}`)?.scrollIntoView({ block: "nearest" }), [key, sel]);
 
   const uploading = files.some((f) => !f.att && !f.error);
   const ready = files.filter((f) => f.att).map((f) => f.att!);

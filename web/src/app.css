@@ -4215,6 +4215,17 @@ li.sw-empty {
 .ac li[aria-selected="true"] {
   background: var(--selected);
 }
+/* Phones (1480): fingertip rows, and four of them at most so the header stays above the keyboard. */
+@media (max-width: 767px) {
+  .ac {
+    max-height: 190px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .ac li {
+    height: 44px;
+  }
+}
 .ac .emoji {
   font-size: 1.125rem;
   width: 22px;
