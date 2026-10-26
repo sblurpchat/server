@@ -1,6 +1,6 @@
-// The app downloads (ticket 1325). auth owns the list, so the marketing site, its docs and
-// this settings page show the same platforms and links.
-import list from "../../auth/cmd/auth/static/downloads.json";
+// The app downloads (ticket 1325). auth keeps a copy (auth/cmd/auth/static/downloads.json, kept equal by
+// a test there), so the marketing site, its docs and this settings page show the same platforms and links.
+import list from "./downloads.json";
 
 /** One platform's app. An empty url means coming soon. icon is a Simple Icons path. */
 export type Download = { id: string; name: string; action: string; url: string; hint: string; icon: string };
