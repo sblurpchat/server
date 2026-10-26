@@ -1157,6 +1157,7 @@ const THEME_NAMES: Record<Theme, string> = {
   sand: "Sand",
   grape: "Grape",
   black: "Black",
+  ash: "Ash",
   neon: "Neon",
   phosphor: "Phosphor",
   klein: "Klein",

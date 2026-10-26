@@ -424,7 +424,7 @@ export function browseDetail(ch: Channel): string {
 // Appearance: synced to the account as an opaque blob, parsed defensively because localStorage and the blob are user-editable.
 // ---------------------------------------------------------------------------
 
-export const THEMES = ["system", "light", "dark", "midnight", "contrast", "cvd", "cola", "mint", "clementine", "fjord", "sand", "grape", "black", "neon", "phosphor", "klein", "chrome", "custom"] as const;
+export const THEMES = ["system", "light", "dark", "midnight", "contrast", "cvd", "cola", "mint", "clementine", "fjord", "sand", "grape", "black", "ash", "neon", "phosphor", "klein", "chrome", "custom"] as const;
 export type Theme = (typeof THEMES)[number];
 const DENSITIES = ["cozy", "compact", "irc"] as const;
 /** "default" is Schibsted Grotesk. */

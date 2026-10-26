@@ -334,6 +334,34 @@
   color-scheme: dark;
 }
 
+/* Ash (1402): true neutral grays, darker than Fjord, one muted sage accent. */
+[data-theme="ash"] {
+  --ink: #ededed;
+  --rail: #090909;
+  --frost: #0f0f0f;
+  --paper: #141414;
+  --raspberry: #8fc7a6;
+  --accent-fill: #2f6a4e;
+  --cherry: #e5727b;
+  --cherry-text: #ef868e;
+  --badge: #b8343f;
+  --graphite: #9a9a9a;
+  --line: #262626;
+  --hover: #1e1e1e;
+  --selected: #2a2a2a;
+  --text: #e2e2e2;
+  --msg-hover: #1a1a1a;
+  --mention-bg: #1e2a23;
+  --raised: #1c1c1c;
+  --shadow-c: rgb(0 0 0 / 0.6);
+  --scrim: rgb(0 0 0 / 0.7);
+  --online: #6fcf8e;
+  --away: #e0b25c;
+  --code-bg: #0b0b0b;
+  --tip: #2e2e2e;
+  color-scheme: dark;
+}
+
 /* Neon (1341): a city at 3am. Blue-black glass, cyan signage for links, magenta for anything you press. */
 [data-theme="neon"] {
   --ink: #f4f0ff;
