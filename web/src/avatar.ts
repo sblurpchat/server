@@ -8,17 +8,22 @@ export function shrinkPlan(w: number, h: number, type: string, max = 512): { w: 
   return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)), type: type === "image/jpeg" || type.startsWith("image/hei") ? "image/jpeg" : "image/png" };
 }
 
+/** Draws the [sx, sy, sw, sh] part of `src` at w × h and encodes it; null when the browser can't. */
+export function drawBlob(src: CanvasImageSource, [sx, sy, sw, sh]: number[], w: number, h: number, type: string, quality: number): Promise<Blob | null> {
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  c.getContext("2d")!.drawImage(src, sx, sy, sw, sh, 0, 0, w, h);
+  return new Promise((r) => c.toBlob(r, type, quality));
+}
+
 /** The file to upload: shrunk when big, the original when small or not decodable. */
 export async function shrinkImage(file: File): Promise<File> {
   try {
     const bmp = await createImageBitmap(file);
     const p = shrinkPlan(bmp.width, bmp.height, file.type);
     if (!p) return file;
-    const c = document.createElement("canvas");
-    c.width = p.w;
-    c.height = p.h;
-    c.getContext("2d")!.drawImage(bmp, 0, 0, p.w, p.h);
-    const blob = await new Promise<Blob | null>((r) => c.toBlob(r, p.type, 0.92));
+    const blob = await drawBlob(bmp, [0, 0, bmp.width, bmp.height], p.w, p.h, p.type, 0.92);
     return blob ? new File([blob], p.type === "image/png" ? "avatar.png" : "avatar.jpg", { type: p.type }) : file;
   } catch {
     return file;
@@ -45,11 +50,7 @@ export function videoPoster(file: File): Promise<File | null> {
       const h = v.videoHeight;
       if (!w || !h) return null;
       const p = shrinkPlan(w, h, "image/jpeg", 960) ?? { w, h };
-      const c = document.createElement("canvas");
-      c.width = p.w;
-      c.height = p.h;
-      c.getContext("2d")!.drawImage(v, 0, 0, p.w, p.h);
-      const blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.8));
+      const blob = await drawBlob(v, [0, 0, w, h], p.w, p.h, "image/jpeg", 0.8);
       return blob && blob.size <= 500 << 10 ? new File([blob], "poster.jpg", { type: "image/jpeg" }) : null; // server cap 512 KB
     } catch {
       return null;

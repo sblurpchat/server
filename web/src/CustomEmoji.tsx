@@ -2,14 +2,14 @@
 // server's ETag and refetched on emoji_changed), inline rendering, and the
 // Emoji tab of community settings with bulk upload (files, folders, zips) and export.
 import { fromJson } from "@bufbuild/protobuf";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { getToken } from "./auth";
 import { emojiName, planUpload, searchEmoji, splitShortcodes, tally, type UploadResult } from "./emoji";
 import { fakeEmoji } from "./fakeEmoji";
 import { EmojiUploadStatus, ListEmojiResponseSchema, MemberRole, UploadEmojiResponseSchema } from "./gen/sblurp/v1/sblurp_pb";
 import { count, hostOf } from "./logic";
 import { absUrl, api, errorText, FAKE, useApp } from "./store";
-import { Alert, AUTOFOCUS, emojiChar, Icon } from "./ui";
+import { Alert, AUTOFOCUS, emojiChar, Icon, useDrop } from "./ui";
 
 export interface Emoji {
   name: string;
@@ -167,7 +167,7 @@ export function EmojiTab({ url }: { url: string }) {
   const [results, setResults] = useState<UploadResult[] | null>(null);
   const [busy, setBusy] = useState<{ done: number; total: number; failed: number } | null>(null);
   const [err, setErr] = useState("");
-  const [drag, setDrag] = useState(false);
+  const [drag, dropHandlers] = useDrop((d) => void onDrop(d), (e) => manage && e.dataTransfer.types.includes("Files"));
   const [confirm, setConfirm] = useState("");
   const [gone, setGone] = useState("");
   const hits = useMemo(() => searchEmoji(list, q), [list, q]);
@@ -209,12 +209,10 @@ export function EmojiTab({ url }: { url: string }) {
     void loadEmoji(url);
   };
 
-  const onDrop = async (e: DragEvent) => {
-    e.preventDefault();
-    setDrag(false);
+  const onDrop = async (d: DataTransfer) => {
     if (!manage) return;
-    const entries = [...e.dataTransfer.items].map((i) => i.webkitGetAsEntry?.()).filter((x): x is FileSystemEntry => !!x);
-    if (!entries.length) return run([...e.dataTransfer.files].map((file) => ({ path: file.name, file })));
+    const entries = [...d.items].map((i) => i.webkitGetAsEntry?.()).filter((x): x is FileSystemEntry => !!x);
+    if (!entries.length) return run([...d.files].map((file) => ({ path: file.name, file })));
     const out: Picked[] = [];
     for (const en of entries) await walk(en, out);
     void run(out);
@@ -243,13 +241,7 @@ export function EmojiTab({ url }: { url: string }) {
     <div
       className="stack emoji-tab"
       data-drag={drag || undefined}
-      onDragOver={(e) => {
-        if (!manage || !e.dataTransfer.types.includes("Files")) return;
-        e.preventDefault();
-        setDrag(true);
-      }}
-      onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && setDrag(false)}
-      onDrop={onDrop}
+      {...dropHandlers}
     >
       <p className="muted small">
         Use custom emoji in messages and reactions as <code>:name:</code>.{" "}

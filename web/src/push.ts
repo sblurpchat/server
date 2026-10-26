@@ -6,7 +6,8 @@
 // The iOS prompt can be shown only once, so it never fires on start: at a moment that makes sense
 // (opening a DM, not right after sign-in, 1500) a sheet explains it first, and only its Enable shows the prompt.
 import { AUTH_URL, forgetCommunityTokens, getToken, hasSession } from "./auth";
-import { appPlatform } from "./downloads";
+import { PLATFORM } from "./downloads";
+import { readKey as get, writeKey as put } from "./storage";
 
 export const PUSH_KEY = "sblurp.pushDevice"; // the registered device token
 const ASKED_KEY = "sblurp.pushAskedAt"; // when Not now was tapped
@@ -20,23 +21,14 @@ export function shouldAsk(status: PushStatus, askedAt: number, now: number): boo
   return status === "notDetermined" && !(now - askedAt < ASK_AGAIN_MS);
 }
 
-export const iosApp = () => "__TAURI_INTERNALS__" in globalThis && appPlatform(true, navigator.userAgent, navigator.maxTouchPoints > 1) === "ios";
+export const iosApp = () => PLATFORM === "ios";
 
-const get = (k: string) => {
-  try {
-    return localStorage.getItem(k);
-  } catch {
-    return null;
-  }
-};
-const put = (k: string, v: string | null) => {
-  try {
-    if (v === null) localStorage.removeItem(k);
-    else localStorage.setItem(k, v);
-  } catch {
-    // blocked storage: the choice lasts for this session only
-  }
-};
+const post = async (path: string, body: object) =>
+  fetch(`${AUTH_URL}/api/push/${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await getToken(AUTH_URL)}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 const native = (what: "status" | "register" | "settings") => (location.href = `sblurp-push:${what}`);
 
 // A tiny store for the sheet and the Settings row (useSyncExternalStore).
@@ -84,20 +76,12 @@ async function removeDevice() {
   const token = get(PUSH_KEY);
   if (!token) return;
   put(PUSH_KEY, null);
-  await fetch(`${AUTH_URL}/api/push/devices/remove`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${await getToken(AUTH_URL)}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ token }),
-  }).catch(() => {});
+  await post("devices/remove", { token }).catch(() => {});
 }
 
 async function registerDevice(d: { token: string; sandbox: boolean }) {
   if (get(OFF_KEY)) return;
-  const res = await fetch(`${AUTH_URL}/api/push/devices`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${await getToken(AUTH_URL)}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ platform: "apns", token: d.token, sandbox: d.sandbox, preview: false }),
-  });
+  const res = await post("devices", { platform: "apns", token: d.token, sandbox: d.sandbox, preview: false });
   if (!res.ok) return;
   const first = get(PUSH_KEY) !== d.token;
   put(PUSH_KEY, d.token);

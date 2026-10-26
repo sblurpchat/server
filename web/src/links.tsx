@@ -10,50 +10,31 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { AUTH_URL } from "./auth";
-import { appPlatform } from "./downloads";
+import { PLATFORM } from "./downloads";
 import { hostOf, leavingParts, shareToDeepLink } from "./logic";
 import { get } from "./store";
+import { readKey, writeKey } from "./storage";
 import { AUTOFOCUS, Dialog, Icon } from "./ui";
 
 const KEY = "sblurp.linksInBrowser";
 
 /** True in the iOS and Android apps, where a link can open in a sheet. */
-export const sheetApp = ["ios", "android"].includes(appPlatform("__TAURI_INTERNALS__" in globalThis, navigator.userAgent, navigator.maxTouchPoints > 1));
+export const sheetApp = ["ios", "android"].includes(PLATFORM);
 
-export function linksInBrowser(): boolean {
-  try {
-    return localStorage.getItem(KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-export function setLinksInBrowser(on: boolean) {
-  try {
-    if (on) localStorage.setItem(KEY, "1");
-    else localStorage.removeItem(KEY);
-  } catch {
-    // storage blocked: links keep opening in the sheet
-  }
-}
+export const linksInBrowser = () => readKey(KEY) === "1";
+export const setLinksInBrowser = (on: boolean) => writeKey(KEY, on ? "1" : null);
 
 const TRUST = "sblurp.trustedHosts";
 
 function trusted(): string[] {
   try {
-    return JSON.parse(localStorage.getItem(TRUST) ?? "[]");
+    return JSON.parse(readKey(TRUST) ?? "[]");
   } catch {
     return [];
   }
 }
 
-function trust(host: string) {
-  try {
-    localStorage.setItem(TRUST, JSON.stringify([...trusted(), host]));
-  } catch {
-    // storage blocked: the dialog asks again next time
-  }
-}
+const trust = (host: string) => writeKey(TRUST, JSON.stringify([...trusted(), host]));
 
 function open(href: string) {
   if (sheetApp) location.href = linksInBrowser() ? `sblurp-browser:${href}` : href;

@@ -9,6 +9,7 @@ import { loadEmoji } from "./CustomEmoji";
 import { templateChannels, type Template } from "./templates";
 import { fakeTransport, fakeUpload, FAKE_URLS, startSimulation } from "./fake";
 import { videoPoster } from "./avatar";
+import { readKey, writeKey } from "./storage";
 import {
   AttachmentSchema,
   BotService,
@@ -85,20 +86,14 @@ export const SELF_HOST_DOCS_URL = `${AUTH_URL}/docs/self-host`;
 
 const ns = FAKE ? "sblurp.fake." : "sblurp.";
 function load<T>(key: string, fallback: T): T {
+  const v = readKey(ns + key);
   try {
-    const v = localStorage.getItem(ns + key);
     return v === null ? fallback : JSON.parse(v);
   } catch {
     return fallback;
   }
 }
-function save(key: string, v: unknown) {
-  try {
-    localStorage.setItem(ns + key, JSON.stringify(v));
-  } catch {
-    // storage full or blocked: the setting lasts for this session only
-  }
-}
+const save = (key: string, v: unknown) => writeKey(ns + key, JSON.stringify(v));
 
 // ---------------------------------------------------------------------------
 // Store
@@ -800,16 +795,6 @@ export async function updateChannel(url: string, req: { channelId: string; name?
   const r = await api(url).chat.updateChannel(req);
   if (r.channel) local(url, { case: "channelUpdated", value: r.channel });
 }
-export const createBot = (url: string, req: { username: string; displayName: string; bio: string }) =>
-  api(url).bot.createBot({ ...req, avatarUrl: "" });
-export const listBots = async (url: string) => (await api(url).bot.listBots({})).bots;
-export const rotateBotToken = async (url: string, botId: string) => (await api(url).bot.rotateBotToken({ botId })).token;
-export const deleteBot = (url: string, botId: string) => api(url).bot.deleteBot({ botId });
-export const listPlugins = async (url: string) => (await api(url).bot.listPlugins({})).plugins;
-export const installPlugin = (url: string, name: string, source: string) => api(url).bot.installPlugin({ name, source });
-export const setPluginEnabled = (url: string, name: string, enabled: boolean) => api(url).bot.setPluginEnabled({ name, enabled });
-export const deletePlugin = (url: string, name: string) => api(url).bot.deletePlugin({ name });
-
 export async function addToChannel(url: string, channelId: string, memberIds: string[]) {
   const r = await api(url).chat.addChannelMembers({ channelId, memberIds });
   if (r.channel) local(url, { case: "channelUpdated", value: r.channel });
@@ -854,9 +839,6 @@ export async function search(url: string, q: string) {
 // Communities
 // ---------------------------------------------------------------------------
 
-export const getMe = (url: string) => api(url).server.getMe({});
-export const listActivity = async (url: string) => (await api(url).chat.listActivity({ limit: 100 })).items;
-export const listThreads = async (url: string) => (await api(url).chat.listThreads({ limit: 100 })).threads;
 export const markThreadRead = (url: string, rootId: string) => void api(url).chat.markRead({ threadRootId: rootId }).catch(() => {});
 
 export async function probe(url: string): Promise<GetServerInfoResponse> {
@@ -897,20 +879,6 @@ export async function leaveCommunity(url: string) {
 }
 
 export const setRole = (url: string, memberId: string, role: MemberRole) => api(url).server.setMemberRole({ memberId, role });
-export const removeMember = (url: string, memberId: string, ban: boolean) =>
-  ban ? api(url).server.banMember({ memberId }) : api(url).server.kickMember({ memberId });
-
-export const listBans = async (url: string) => (await api(url).server.listBans({})).bans;
-export const unbanMember = (url: string, memberId: string) => api(url).server.unbanMember({ memberId });
-
-export const reportMessage = (url: string, messageId: string, note: string) => api(url).server.reportMessage({ messageId, note });
-export const listReports = async (url: string, resolved = false) => (await api(url).server.listReports({ resolved })).reports;
-export const resolveReport = (url: string, reportId: string) => api(url).server.resolveReport({ reportId });
-
-export const createInvite = (url: string, expiresInSeconds: number, maxUses: number) =>
-  api(url).server.createInvite({ expiresInSeconds: BigInt(expiresInSeconds), maxUses });
-export const listInvites = async (url: string) => (await api(url).server.listInvites({})).invites;
-export const revokeInvite = (url: string, code: string) => api(url).server.revokeInvite({ code });
 /** Delete messages after this many days; 0 keeps them forever (1072). */
 export async function setRetention(url: string, retentionDays: number) {
   const r = await api(url).server.updateServerSettings({ retentionDays });

@@ -55,6 +55,7 @@ import {
 } from "./logic";
 import {
   absUrl,
+  api,
   ACCOUNT_URL,
   SELF_HOST_DOCS_URL,
   errorText,
@@ -66,7 +67,6 @@ import {
   leaveCommunity,
   markAllRead,
   updateProfile,
-  removeMember,
   openDM,
   probe,
   remove,
@@ -99,8 +99,9 @@ import { LinksSetting, sheetApp } from "./links";
 import { AvatarField } from "./AvatarField";
 import { PushAsk, PushSetting } from "./PushAsk";
 import { iosApp } from "./push";
+import { readKey, writeKey } from "./storage";
 import { pond } from "./pond";
-import { Alert, Avatar, AvatarEditOverlay, CommunityIcon, Confirm, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, AUTOFOCUS, autoFocusTo, Icon, type IconName, thenCompose, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped, ZoomStage } from "./ui";
+import { Alert, Avatar, AvatarEditOverlay, CommunityIcon, Confirm, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, AUTOFOCUS, autoFocusTo, Icon, type IconName, thenCompose, Markdown, menuKeys, PHONE, Pop, presenceLabel, Resizer, Skeleton, useClamped, ZoomStage } from "./ui";
 
 export function App() {
   const auth = useApp((s) => s.auth);
@@ -180,8 +181,7 @@ function useShortcuts() {
 // ---------------------------------------------------------------------------
 
 // The phone layout (< 768px, or a phone on its side: 1465), where the rail and sidebar are a drawer over the channel.
-const NARROW = matchMedia("(max-width: 767px), (max-height: 500px) and (pointer: coarse)");
-const onNarrow = (f: () => void) => (NARROW.addEventListener("change", f), () => NARROW.removeEventListener("change", f));
+const onNarrow = (f: () => void) => (PHONE.addEventListener("change", f), () => PHONE.removeEventListener("change", f));
 
 
 /** Can this element scroll sideways? Then a sideways drag inside it is its own, not the drawer's. */
@@ -260,7 +260,7 @@ function useDrawerSwipe(app: React.RefObject<HTMLDivElement | null>, live: React
     const els = () => [root.querySelector<HTMLElement>(".drawer")!, root.querySelector<HTMLElement>(".scrim")!] as const;
     const start = (e: TouchEvent) => {
       g = null;
-      if (!NARROW.matches || e.touches.length !== 1) return;
+      if (!PHONE.matches || e.touches.length !== 1) return;
       const t = e.target as Element;
       // An open menu (a message long press, 1400) owns the touch, and so does the menu itself.
       if (t.closest("dialog, input, textarea, [popover], .side-sec li:has(.chan-close)") ||document.querySelector(".pop:popover-open")) return;
@@ -360,7 +360,7 @@ function Shell() {
   const drawer = useApp((s) => s.drawer);
   const channelId = useApp((s) => s.channelId);
   const tab = useApp((s) => s.tab);
-  const narrow = useSyncExternalStore(onNarrow, () => NARROW.matches);
+  const narrow = useSyncExternalStore(onNarrow, () => PHONE.matches);
   // The phone drawer or side pane covers main, so it leaves the tab and VoiceOver order (1464).
   const covered = narrow && (drawer || !channelId || !!pane);
   const appRef = useRef<HTMLDivElement>(null);
@@ -729,7 +729,7 @@ function Rail() {
                 aria-current={u === current ? "page" : undefined}
                 aria-keyshortcuts="Alt+Shift+ArrowUp Alt+Shift+ArrowDown"
                 // On a phone the drawer stays open on the new community's channels (1297).
-                onClick={() => (selectCommunity(u), NARROW.matches && set({ drawer: true }))}
+                onClick={() => (selectCommunity(u), PHONE.matches && set({ drawer: true }))}
                 onKeyDown={(e) => {
                   if (e.altKey && e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
                     e.preventDefault();
@@ -791,7 +791,7 @@ function SideAbout({ c, text, admin }: { c: Community; text: string; admin: bool
 // On a phone, closing it goes back to the drawer it came from (1469).
 function openSideView(t: "activity" | "threads") {
   set({ pane: { t }, drawer: false });
-  if (NARROW.matches) history.replaceState({ ...history.state, drawer: true }, "");
+  if (PHONE.matches) history.replaceState({ ...history.state, drawer: true }, "");
 }
 
 function SideViews() {
@@ -1028,25 +1028,14 @@ function Sidebar({ c }: { c: Community }) {
 
 // 1330: browser users get one offer to turn on notifications; X hides it for good. The Tauri app asks on its own.
 const NUDGE_KEY = "sblurp.notifyNudgeDismissed";
-const nudgeDismissed = () => {
-  try {
-    return !!localStorage.getItem(NUDGE_KEY);
-  } catch {
-    return false;
-  }
-};
 
 function NotifyNudge() {
   const [hidden, setHidden] = useState(
-    () => "__TAURI_INTERNALS__" in globalThis || typeof Notification === "undefined" || Notification.permission !== "default" || nudgeDismissed(),
+    () => "__TAURI_INTERNALS__" in globalThis || typeof Notification === "undefined" || Notification.permission !== "default" || !!readKey(NUDGE_KEY),
   );
   if (hidden) return null;
   const dismiss = () => {
-    try {
-      localStorage.setItem(NUDGE_KEY, "1");
-    } catch {
-      // blocked storage: hidden for this session only
-    }
+    writeKey(NUDGE_KEY, "1");
     setHidden(true);
   };
   return (
@@ -1750,7 +1739,7 @@ const PAGES: Record<SettingsPage, [string, IconName]> = {
  *  own page with a back button in the top bar, like iOS Settings. Opened at `start` from the You
  *  tab (1418), back goes back to the tab. */
 function Settings({ start }: { start?: SettingsPage }) {
-  const narrow = useSyncExternalStore(onNarrow, () => NARROW.matches);
+  const narrow = useSyncExternalStore(onNarrow, () => PHONE.matches);
   const [page, setPage] = useState<SettingsPage | null>(start ?? null);
   const last = useRef<SettingsPage | null>(null);
   const listRef = useRef<HTMLElement>(null);
@@ -2513,7 +2502,7 @@ function RemoveMember({ url, memberId, ban }: { url: string; memberId: string; b
   const where = c.info?.name ?? hostOf(url);
   const verb = ban ? "Ban" : "Kick";
   const go = () =>
-    removeMember(url, memberId, ban).then(
+    (ban ? api(url).server.banMember({ memberId }) : api(url).server.kickMember({ memberId })).then(
       () => set({ modal: null }),
       (e) => setErr(errorText(e, where)),
     );

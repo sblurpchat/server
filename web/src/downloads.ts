@@ -18,5 +18,8 @@ export function appPlatform(installed: boolean, ua: string, touch: boolean): str
   return "";
 }
 
+/** The platform this page runs in as an installed app (Tauri, including dev builds), or "" in a browser. */
+export const PLATFORM = appPlatform("__TAURI_INTERNALS__" in globalThis, navigator.userAgent, navigator.maxTouchPoints > 1);
+
 /** The downloads to offer: inside an installed app, every platform but its own. */
 export const offered = (all: Download[], here: string) => all.filter((d) => d.id !== here);

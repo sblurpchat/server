@@ -8,7 +8,7 @@ import { shrinkImage } from "./avatar";
 import type { Member } from "./gen/sblurp/v1/sblurp_pb";
 import { bannerFileError } from "./logic";
 import { absUrl, errorText, upload, useApp } from "./store";
-import { Alert, Avatar, AvatarEditOverlay, Icon } from "./ui";
+import { Alert, Avatar, AvatarEditOverlay, Icon, useDrop } from "./ui";
 
 /** value: the avatar_url to save, or null for no change. */
 export function AvatarField({ url, me, name, value, onChange, onBusy, autoFocus }: {
@@ -23,7 +23,7 @@ export function AvatarField({ url, me, name, value, onChange, onBusy, autoFocus 
   const account = useApp((s) => s.profile?.avatarUrl);
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const [over, setOver] = useState(false);
+  const [over, drop] = useDrop((d) => void pick(d.files[0]));
   const [err, setErr] = useState("");
   const shown = value === null ? me.avatarUrl : absUrl(url, value);
   const pick = async (file?: File) => {
@@ -46,16 +46,7 @@ export function AvatarField({ url, me, name, value, onChange, onBusy, autoFocus 
     <div
       className="field avatar-field"
       data-over={over || undefined}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setOver(true);
-      }}
-      onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && setOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setOver(false);
-        void pick(e.dataTransfer.files[0]);
-      }}
+      {...drop}
     >
       <b id="pic-label">Picture</b>
       <div className="avatar-field-row">

@@ -7,6 +7,7 @@ import { bumpRecent, pickerSections, TONES, withTone, type PickItem } from "./em
 import { EMOJI_DATA } from "./emoji-data";
 import { absUrl, errorText, set, setLook, useApp } from "./store";
 import { AUTH_URL, reach } from "./auth";
+import { readKey, writeKey } from "./storage";
 
 // ---------------------------------------------------------------------------
 // Icons: Lucide on a 24px grid, drawn at a 1.75 stroke
@@ -243,6 +244,28 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[], name?: strin
   return { data, setData, err, setErr, fail, reload };
 }
 
+/**
+ * A file drop zone: spread `handlers` on it and mark it with `over` while files hover it.
+ * `accept` can turn a drag away; `drop` gets the files.
+ */
+export function useDrop(drop: (d: DataTransfer) => void, accept = (_: React.DragEvent) => true) {
+  const [over, setOver] = useState(false);
+  const handlers = {
+    onDragOver: (e: React.DragEvent) => {
+      if (!accept(e)) return;
+      e.preventDefault();
+      setOver(true);
+    },
+    onDragLeave: (e: React.DragEvent) => !e.currentTarget.contains(e.relatedTarget as Node | null) && setOver(false),
+    onDrop: (e: React.DragEvent) => {
+      e.preventDefault();
+      setOver(false);
+      drop(e.dataTransfer);
+    },
+  };
+  return [over, handlers] as const;
+}
+
 /** An error line that screen readers announce. Renders nothing while `text` is empty. */
 export const Alert = ({ text, id }: { text: ReactNode; id?: string }) =>
   text ? (
@@ -397,7 +420,8 @@ export function place(el: HTMLElement, a: DOMRect, side: "below" | "above" | "ri
   el.style.top = `${y}px`;
 }
 
-const PHONE = matchMedia("(max-width: 767px), (max-height: 500px) and (pointer: coarse)");
+/** A phone, or a phone on its side. */
+export const PHONE = matchMedia("(max-width: 767px), (max-height: 500px) and (pointer: coarse)");
 
 /** Focus the composer once `work` has opened its channel (1390). iOS raises the keyboard only for a
  *  focus() inside the tap itself, so a hidden stand-in field takes focus now and hands it over. */
@@ -609,7 +633,7 @@ const RECENT_KEY = "sblurp.emoji.recent";
 const STARTER = ["thumbsup", "heart", "joy", "tada", "eyes", "pray", "fire", "100", "sparkles"];
 export function readRecent(): string[] {
   try {
-    const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "null");
+    const v = JSON.parse(readKey(RECENT_KEY) ?? "null");
     return Array.isArray(v) ? v : STARTER;
   } catch {
     return STARTER;
@@ -674,11 +698,7 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
     setAt(id);
   };
   const pick = (e: PickItem) => {
-    try {
-      localStorage.setItem(RECENT_KEY, JSON.stringify(bumpRecent(recent, e.name)));
-    } catch {
-      // private mode: frequently used just won't update
-    }
+    writeKey(RECENT_KEY, JSON.stringify(bumpRecent(recent, e.name)));
     onPick(e.ch ?? `:${e.name}:`);
   };
 
@@ -959,27 +979,14 @@ export function useClamped(ref: { current: HTMLElement | null }, dep: unknown) {
 // Drag handle that sets --side-w or --pane-w on .app and remembers the width
 // ---------------------------------------------------------------------------
 
-const load = (k: string) => {
-  try {
-    return Number(localStorage.getItem(k)) || null;
-  } catch {
-    return null;
-  }
-};
-
 export function Resizer({ panel, label }: { panel: keyof typeof PANELS; label: string }) {
   const p = PANELS[panel];
   const key = `sblurp.width.${panel}`;
   const ref = useRef<HTMLDivElement>(null);
-  const [w, setW] = useState(() => clampWidth(p, load(key) ?? p.def));
+  const [w, setW] = useState(() => clampWidth(p, Number(readKey(key)) || p.def));
   useLayoutEffect(() => {
     ref.current?.closest<HTMLElement>(".app")?.style.setProperty(`--${panel}-w`, `${w}px`);
-    try {
-      if (w === p.def) localStorage.removeItem(key);
-      else localStorage.setItem(key, String(w));
-    } catch {
-      /* private mode: the width just isn't remembered */
-    }
+    writeKey(key, w === p.def ? null : String(w));
   }, [w, panel, key, p.def]);
   return (
     <div

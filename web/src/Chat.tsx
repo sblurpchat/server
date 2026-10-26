@@ -1,6 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type CSSProperties, type FormEvent, type KeyboardEvent } from "react";
 import { flushSync } from "react-dom";
-import { appPlatform } from "./downloads";
+import { PLATFORM } from "./downloads";
 import { MOD, useCountdown } from "./App";
 import { Glyph, useCustomMatches } from "./CustomEmoji";
 import { AUTH_URL } from "./auth";
@@ -25,7 +25,7 @@ import {
   levelOf,
   dmPeer,
   listKey,
-  matchScore,
+  fuzzyFilter,
   memberGroups,
   mentionsMe,
   retained,
@@ -52,6 +52,7 @@ import {
 } from "./logic";
 import {
   absUrl,
+  api,
   addToChannel,
   discardSend,
   edit,
@@ -70,8 +71,6 @@ import {
   retryNow,
   retrySend,
   search,
-  listActivity,
-  listThreads,
   markThreadRead,
   send,
   set,
@@ -92,7 +91,7 @@ import { Avatar, Confirm, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker
 const useC = () => useApp((s) => s.cs[s.url]!);
 /** A light haptic tap. iOS WebKit has no navigator.vibrate, so the iOS app navigates to
  *  sblurp-haptic:, which Rust cancels and plays natively (apps/src-tauri/src/lib.rs, 1384). */
-const IOS_APP = appPlatform("__TAURI_INTERNALS__" in globalThis, navigator.userAgent, navigator.maxTouchPoints > 1) === "ios";
+const IOS_APP = PLATFORM === "ios";
 export function haptic() {
   if (IOS_APP) location.href = "sblurp-haptic:tap";
   else navigator.vibrate?.(10);
@@ -1282,12 +1281,10 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
         EMOJI_NAMES,
         custom.map((e) => e.name),
       ).map((e) => ({ id: e.ch ? e.name : `c:${e.name}`, label: `:${e.name}:`, insert: `${e.ch ? toned(e.ch, tone) : `:${e.name}:`} `, m: undefined }));
-    return Object.values(c.members)
-      .map((m) => ({ m, s: Math.max(matchScore(ac.q, m.username), matchScore(ac.q, m.displayName)) }))
-      .filter((x) => x.s >= 0)
-      .sort((a, b) => b.s - a.s || a.m.username.localeCompare(b.m.username))
+    const byName = Object.values(c.members).sort((a, b) => a.username.localeCompare(b.username));
+    return fuzzyFilter(byName, ac.q, (m) => [m.username, m.displayName])
       .slice(0, 8)
-      .map(({ m }) => ({ id: m.id, label: m.displayName || m.username, insert: `@${m.username} `, m: m as Member | undefined }));
+      .map((m) => ({ id: m.id, label: m.displayName || m.username, insert: `@${m.username} `, m: m as Member | undefined }));
   }, [ac?.kind, ac?.q, c.members, custom, tone]);
   // The phone list scrolls after four rows, so the picked row stays in view (1480).
   useEffect(() => document.getElementById(`ac-${key}-${sel}`)?.scrollIntoView({ block: "nearest" }), [key, sel]);
@@ -1885,12 +1882,10 @@ export function PeoplePicker({
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const options = Object.values(c.members)
+  const byName = Object.values(c.members)
     .filter((m) => !exclude.includes(m.id))
-    .map((m) => ({ m, s: Math.max(matchScore(q, m.username), matchScore(q, m.displayName)) }))
-    .filter((x) => x.s >= 0)
-    .sort((a, b) => b.s - a.s || (a.m.displayName || a.m.username).localeCompare(b.m.displayName || b.m.username))
-    .map((x) => x.m);
+    .sort((a, b) => (a.displayName || a.username).localeCompare(b.displayName || b.username));
+  const options = fuzzyFilter(byName, q, (m) => [m.username, m.displayName]);
   // You may pick yourself (a self DM, 1309); you never count toward the limit.
   const n = picked.filter((id) => id !== c.me?.id).length;
   const full = max > 0 && n >= max;
@@ -2050,7 +2045,7 @@ function where(c: Community, channelId: string) {
 
 function Activity() {
   const h24 = useApp((s) => s.look.clock === "24");
-  const { res, note, cs, label } = useFeed<ActivityItem>(listActivity, (it) => it.atMs);
+  const { res, note, cs, label } = useFeed<ActivityItem>(async (url) => (await api(url).chat.listActivity({ limit: 100 })).items, (it) => it.atMs);
   if (note) return note;
   if (!res!.length) return <p className="muted pane-note">Mentions, replies to your threads and reactions to your messages show up here.</p>;
   return (
@@ -2092,7 +2087,7 @@ function Activity() {
 
 function Threads() {
   const h24 = useApp((s) => s.look.clock === "24");
-  const { res, note, cs, label } = useFeed<ThreadSummary>(listThreads, (t) => t.root!.lastReplyAtMs);
+  const { res, note, cs, label } = useFeed<ThreadSummary>(async (url) => (await api(url).chat.listThreads({ limit: 100 })).threads, (t) => t.root!.lastReplyAtMs);
   if (note) return note;
   if (!res!.length) return <p className="muted pane-note">Threads you start or reply in show up here.</p>;
   return (

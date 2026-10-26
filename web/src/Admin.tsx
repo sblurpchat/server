@@ -1,14 +1,15 @@
 // Admin screens: create and edit channels, and community settings (members, invites, bots).
 import { AUTH_URL } from "./auth";
+import { drawBlob } from "./avatar";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Channel, type GetMeResponse, type Member, type Message, type Plugin, type Role } from "./gen/sblurp/v1/sblurp_pb";
 import { BANNER_TYPES, bannerFileError, banDetail, channelSlug, count, hostOf, memberRoles, inviteState, shareInviteLink, matchScore, modActions, pluginFormError, pluginNameFromFile, pluginStatus, reportDetail, reportPlace, tokenBots, reorderChannel, sidebarSections, squareCrop, unsavedBlock } from "./logic";
 import {
   absUrl,
+  api,
   setCommunityProfile,
   upload,
   browseChannels,
-  createBot,
   createChannel,
   createRole,
   deleteRole,
@@ -16,33 +17,17 @@ import {
   setChannelMode,
   setMemberRoles,
   updateRole,
-  createInvite,
-  deleteBot,
-  deletePlugin,
   errorText,
-  installPlugin,
-  listPlugins,
-  setPluginEnabled,
-  getMe,
   jumpTo,
-  listBans,
-  listBots,
-  listReports,
-  reportMessage,
-  resolveReport,
-  listInvites,
-  revokeInvite,
-  rotateBotToken,
   set,
   setInviteOnly,
   setRetention,
   setRole,
-  unbanMember,
   updateChannel,
   useApp,
 } from "./store";
 import { EmojiTab } from "./CustomEmoji";
-import { Alert, AUTOFOCUS, Avatar, CopyButton, Dialog, Icon, Skeleton, useLoad } from "./ui";
+import { Alert, AUTOFOCUS, Avatar, CopyButton, Dialog, Icon, Skeleton, useDrop, useLoad } from "./ui";
 
 /** The old rank. The UI calls it "Permission"; "Roles" are the custom tags from ticket 1011. */
 export const PERMISSION: Record<number, string> = {
@@ -232,10 +217,7 @@ async function squareIcon(file: File): Promise<File> {
     const bmp = await createImageBitmap(file);
     const { sx, sy, side, out } = squareCrop(bmp.width, bmp.height, 512);
     if (out === bmp.width && out === bmp.height) return file;
-    const cv = document.createElement("canvas");
-    cv.width = cv.height = out;
-    cv.getContext("2d")!.drawImage(bmp, sx, sy, side, side, 0, 0, out, out);
-    const blob = await new Promise<Blob | null>((r) => cv.toBlob(r, "image/webp", 0.9));
+    const blob = await drawBlob(bmp, [sx, sy, side, side], out, out, "image/webp", 0.9);
     return blob ? new File([blob], `${file.name.replace(/\.\w+$/, "")}.${blob.type.split("/")[1]}`, { type: blob.type }) : file;
   } catch {
     return file; // the server checks it anyway
@@ -259,7 +241,7 @@ function ImageField({
   const c = useApp((s) => s.cs[s.url]);
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const [over, setOver] = useState(false);
+  const [over, drop] = useDrop((d) => pick(d.files[0]));
   const [err, setErr] = useState("");
   const run = async (f: () => Promise<void>) => {
     setBusy(true);
@@ -287,16 +269,7 @@ function ImageField({
     <div
       className="field image-field dropzone"
       data-over={over || undefined}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setOver(true);
-      }}
-      onDragLeave={() => setOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setOver(false);
-        pick(e.dataTransfer.files[0]);
-      }}
+      {...drop}
     >
       <b>{label}</b>
       {src && <img className={square ? "image-preview square" : "image-preview"} src={src} alt={`Current ${label.toLowerCase()}`} />}
@@ -454,7 +427,7 @@ function Retention({ url }: { url: string }) {
 function ServerVersion({ url }: { url: string }) {
   const [me, setMe] = useState<GetMeResponse>();
   useEffect(() => {
-    getMe(url).then(setMe, () => {});
+    api(url).server.getMe({}).then(setMe, () => {});
   }, [url]);
   if (!me?.serverVersion) return null;
   return (
@@ -664,11 +637,11 @@ const FADE = 150;
 
 function BansTab({ url }: { url: string }) {
   const members = useApp((s) => s.cs[url].members);
-  const { data: bans, err, setErr, fail, reload } = useLoad(() => listBans(url), [url]);
+  const { data: bans, err, setErr, fail, reload } = useLoad(async () => (await api(url).server.listBans({})).bans, [url]);
   const [gone, setGone] = useState("");
   const unban = (id: string) => {
     setErr("");
-    unbanMember(url, id).then(() => (setGone(id), setTimeout(() => reload().then(() => setGone("")), FADE)), fail);
+    api(url).server.unbanMember({ memberId: id }).then(() => (setGone(id), setTimeout(() => reload().then(() => setGone("")), FADE)), fail);
   };
   const now = Date.now();
   return (
@@ -724,7 +697,7 @@ export function ReportDialog({ url, message: m }: { url: string; message: Messag
     setBusy(true);
     setErr("");
     // ponytail: the reason rides in the note, so the server needs no new field; add one if reports get filtered by reason.
-    reportMessage(url, m.id, [reason, note.trim()].filter(Boolean).join(": ")).then(
+    api(url).server.reportMessage({ messageId: m.id, note: [reason, note.trim()].filter(Boolean).join(": ") }).then(
       () => setSent(true),
       (x) => (setErr(errorText(x, c.info?.name)), setBusy(false)),
     );
@@ -793,11 +766,11 @@ export function ReportsDialog() {
   const [resolved, setResolved] = useState(false);
   const [gone, setGone] = useState("");
   const url = c?.url ?? "";
-  const { data: reports, setData: setReports, err, setErr, fail, reload } = useLoad(() => listReports(url, resolved), [url, resolved]);
+  const { data: reports, setData: setReports, err, setErr, fail, reload } = useLoad(async () => (await api(url).server.listReports({ resolved })).reports, [url, resolved]);
   if (!c) return null;
   const resolve = (id: string) => {
     setErr("");
-    resolveReport(url, id).then(() => (setGone(id), setTimeout(() => reload().then(() => setGone("")), FADE)), fail);
+    api(url).server.resolveReport({ reportId: id }).then(() => (setGone(id), setTimeout(() => reload().then(() => setGone("")), FADE)), fail);
   };
   const now = Date.now();
   return (
@@ -901,13 +874,13 @@ function BotsTab({ url }: { url: string }) {
   const [form, setForm] = useState({ username: "", displayName: "", bio: "" });
   const [confirm, setConfirm] = useState("");
   const rev = useApp((s) => s.cs[url]?.pluginsRev ?? 0);
-  const { err, setErr, fail, reload: load } = useLoad(() => Promise.all([listBots(url).then(setBots), listPlugins(url).then(setPlugins)]), [url, rev]);
+  const { err, setErr, fail, reload: load } = useLoad(() => Promise.all([api(url).bot.listBots({}).then((r) => setBots(r.bots)), api(url).bot.listPlugins({}).then((r) => setPlugins(r.plugins))]), [url, rev]);
   const bots = all && plugins ? tokenBots(all, plugins) : null;
   const make = async (e: FormEvent) => {
     e.preventDefault();
     setErr("");
     try {
-      const r = await createBot(url, { username: form.username.trim(), displayName: form.displayName.trim(), bio: form.bio.trim() });
+      const r = await api(url).bot.createBot({ username: form.username.trim(), displayName: form.displayName.trim(), bio: form.bio.trim(), avatarUrl: "" });
       setToken({ who: r.bot?.displayName || form.username, token: r.token });
       setForm({ username: "", displayName: "", bio: "" });
       await load();
@@ -946,7 +919,7 @@ function BotsTab({ url }: { url: string }) {
                     <button
                       className="btn danger small"
                       onClick={() =>
-                        deleteBot(url, b.id).then(
+                        api(url).bot.deleteBot({ botId: b.id }).then(
                           () => (setConfirm(""), load()),
                           fail,
                         )
@@ -960,7 +933,7 @@ function BotsTab({ url }: { url: string }) {
                     <button
                       className="btn small"
                       aria-label={`New token for ${name}`}
-                      onClick={() => rotateBotToken(url, b.id).then((t) => setToken({ who: name, token: t }), fail)}
+                      onClick={() => api(url).bot.rotateBotToken({ botId: b.id }).then((r) => setToken({ who: name, token: r.token }), fail)}
                     >
                       New token
                     </button>
@@ -1018,7 +991,7 @@ function Plugins({ url, plugins, reload }: { url: string; plugins: Plugin[]; rel
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState("");
   const [picked, setPicked] = useState("");
-  const [over, setOver] = useState(false);
+  const [over, drop] = useDrop((d) => void pick(d.files[0]));
   const file = useRef<HTMLInputElement>(null);
   const formErr = pluginFormError(name, source);
   const replaces = plugins.some((p) => p.name === name);
@@ -1042,7 +1015,7 @@ function Plugins({ url, plugins, reload }: { url: string; plugins: Plugin[]; rel
   const install = (e: FormEvent) => {
     e.preventDefault();
     void act(async () => {
-      await installPlugin(url, name, source);
+      await api(url).bot.installPlugin({ name, source });
       setName("");
       setSource("");
       setPicked("");
@@ -1084,7 +1057,7 @@ function Plugins({ url, plugins, reload }: { url: string; plugins: Plugin[]; rel
                     <button className="btn ghost small" onClick={() => setConfirm("")}>
                       Keep
                     </button>
-                    <button className="btn danger small" disabled={busy} onClick={() => act(() => deletePlugin(url, p.name)).then(() => setConfirm(""))}>
+                    <button className="btn danger small" disabled={busy} onClick={() => act(() => api(url).bot.deletePlugin({ name: p.name })).then(() => setConfirm(""))}>
                       Delete {p.name}
                     </button>
                   </span>
@@ -1097,7 +1070,7 @@ function Plugins({ url, plugins, reload }: { url: string; plugins: Plugin[]; rel
                       aria-label={`Run ${p.name}`}
                       checked={p.enabled}
                       disabled={busy}
-                      onChange={(e) => act(() => setPluginEnabled(url, p.name, e.target.checked))}
+                      onChange={(e) => act(() => api(url).bot.setPluginEnabled({ name: p.name, enabled: e.target.checked }))}
                     />
                     <button className="btn danger-ghost small" aria-label={`Delete ${p.name}`} onClick={() => setConfirm(p.name)}>
                       <Icon name="trash" size={16} />
@@ -1117,9 +1090,7 @@ function Plugins({ url, plugins, reload }: { url: string; plugins: Plugin[]; rel
             <label
               className="dropzone file-pick"
               data-over={over || undefined}
-              onDragOver={(e) => (e.preventDefault(), setOver(true))}
-              onDragLeave={() => setOver(false)}
-              onDrop={(e) => (e.preventDefault(), setOver(false), void pick(e.dataTransfer.files[0]))}
+              {...drop}
             >
               <input ref={file} type="file" accept=".js,text/javascript" className="visually-hidden" onChange={(e) => pick(e.target.files?.[0])} />
               <span className="btn small">
@@ -1187,7 +1158,7 @@ const MAX_USES = [0, 1, 5, 10, 25];
 
 /** Admin view: invite-only switch, a form to make a link, and the live links. */
 export function Invites({ url, inviteOnly }: { url: string; inviteOnly: boolean }) {
-  const { data: list, err, setErr, fail, reload: load } = useLoad(() => listInvites(url), [url]);
+  const { data: list, err, setErr, fail, reload: load } = useLoad(async () => (await api(url).server.listInvites({})).invites, [url]);
   const [expires, setExpires] = useState(7 * 86400);
   const [maxUses, setMaxUses] = useState(0);
   const [copied, setCopied] = useState("");
@@ -1196,7 +1167,7 @@ export function Invites({ url, inviteOnly }: { url: string; inviteOnly: boolean 
     e.preventDefault();
     setErr("");
     try {
-      const r = await createInvite(url, expires, maxUses);
+      const r = await api(url).server.createInvite({ expiresInSeconds: BigInt(expires), maxUses });
       await load();
       if (r.invite) copy(r.invite.code).catch(() => {});
     } catch (x) {
@@ -1262,7 +1233,7 @@ export function Invites({ url, inviteOnly }: { url: string; inviteOnly: boolean 
                 )}
                 <button
                   className="btn ghost"
-                  onClick={() => revokeInvite(url, i.code).then(load, fail)}
+                  onClick={() => api(url).server.revokeInvite({ code: i.code }).then(load, fail)}
                   aria-label={`Revoke invite ${i.code}`}
                 >
                   Revoke
