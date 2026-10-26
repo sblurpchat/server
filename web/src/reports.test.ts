@@ -9,6 +9,7 @@ describe("reports (1119)", () => {
     expect(reportPlace({ dm: false, message: { channelId: "c1" } }, channels)).toEqual({ label: "#general", open: true });
     expect(reportPlace({ dm: true, message: { channelId: "c1" } }, channels)).toEqual({ label: "Direct message", open: false });
     expect(reportPlace({ dm: false, message: { channelId: "secret" } }, channels)).toEqual({ label: "A channel you cannot see", open: false });
+    expect(reportPlace({ dm: false }, channels)).toEqual({ label: "Report about this person", open: false });
   });
   it("names the reporter and the day", () => {
     const now = new Date(2026, 9, 18, 12).getTime();

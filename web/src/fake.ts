@@ -590,6 +590,18 @@ function seed(s: Seed, now: number): Fake {
         reportedAtMs: BigInt(now - 40 * 60_000),
       }),
     );
+  // And one about a person, with no message (1507).
+  const person = all.find((m) => m.id !== f.meId && m.id !== reporter?.id && m.id !== target?.authorId && m.kind === MemberKind.HUMAN);
+  if (person && reporter)
+    f.reports.push(
+      create(ReportSchema, {
+        id: id("r"),
+        author: person,
+        reporter,
+        note: "Harassment: Sends me the same DM every morning after I asked them to stop.",
+        reportedAtMs: BigInt(now - 3 * 60 * 60_000),
+      }),
+    );
   f.logStart = f.seq;
   return f;
 }
@@ -816,6 +828,15 @@ function service(f: Fake) {
         );
         return {};
       },
+      reportMember(req: { memberId: string; note: string }) {
+        need();
+        if (req.memberId === f.meId) throw new ConnectError("you cannot report yourself", Code.InvalidArgument);
+        const author = f.members.get(req.memberId);
+        if (!author) throw new ConnectError("member not found", Code.NotFound);
+        f.reports = f.reports.filter((r) => !(!r.message && !r.resolvedAtMs && r.author?.id === req.memberId && r.reporter?.id === f.meId));
+        f.reports.unshift(create(ReportSchema, { id: id("r"), author, reporter: me(), note: req.note, reportedAtMs: BigInt(Date.now()) }));
+        return {};
+      },
       listReports(req: { resolved: boolean }) {
         mod();
         return {
@@ -827,7 +848,7 @@ function service(f: Fake) {
         const r = f.reports.find((x) => x.id === req.reportId);
         if (!r) throw new ConnectError("report not found", Code.NotFound);
         for (const x of f.reports)
-          if (x.message?.id === r.message?.id && !x.resolvedAtMs) {
+          if (x.message?.id === r.message?.id && x.author?.id === r.author?.id && !x.resolvedAtMs) {
             x.resolvedAtMs = BigInt(Date.now());
             x.resolvedBy = me();
           }

@@ -116,7 +116,7 @@ type Modal =
   | { t: "profile"; focusPic?: boolean }
   | { t: "remove"; url: string; memberId: string; ban: boolean }
   | { t: "block"; url: string; memberId: string; mute?: boolean }
-  | { t: "report"; url: string; message: Message }
+  | { t: "report"; url: string; message?: Message; memberId?: string }
   | { t: "reports" }
   | { t: "setup" }
   | { t: "lightbox"; src: string; name: string; video?: boolean };

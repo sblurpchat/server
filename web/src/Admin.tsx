@@ -680,24 +680,27 @@ function BansTab({ url }: { url: string }) {
 
 const REASONS = ["Spam", "Harassment", "Hate", "Something else"];
 
-export function ReportDialog({ url, message: m }: { url: string; message: Message }) {
+/** Report a message, or with only memberId a person (1507). */
+export function ReportDialog({ url, message: m, memberId }: { url: string; message?: Message; memberId?: string }) {
+  const who = m?.authorId ?? memberId ?? "";
   const c = useApp((s) => s.cs[url]);
-  const blocked = useApp((s) => !!s.cs[url]?.blocked.includes(m.authorId));
+  const blocked = useApp((s) => !!s.cs[url]?.blocked.includes(who));
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState("");
   if (!c) return null;
-  const author = c.members[m.authorId];
+  const author = c.members[who];
   const name = author ? author.displayName || author.username : "";
-  const dm = c.channels[m.channelId]?.kind === ChannelKind.DM;
+  const dm = !!m && c.channels[m.channelId]?.kind === ChannelKind.DM;
   const send = (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setErr("");
     // ponytail: the reason rides in the note, so the server needs no new field; add one if reports get filtered by reason.
-    api(url).server.reportMessage({ messageId: m.id, note: [reason, note.trim()].filter(Boolean).join(": ") }).then(
+    const full = [reason, note.trim()].filter(Boolean).join(": ");
+    (m ? api(url).server.reportMessage({ messageId: m.id, note: full }) : api(url).server.reportMember({ memberId: who, note: full })).then(
       () => setSent(true),
       (x) => (setErr(errorText(x, c.info?.name)), setBusy(false)),
     );
@@ -707,11 +710,11 @@ export function ReportDialog({ url, message: m }: { url: string; message: Messag
       <Dialog label="Report sent" className="confirm report-dialog">
         <h2>Report sent</h2>
         <p className="muted" role="status">
-          Thank you. The moderators of {c.info?.name ?? hostOf(url)} can now see it. You will not see what they do, and the author is not told who reported it.
+          Thank you. The moderators of {c.info?.name ?? hostOf(url)} can now see it. You will not see what they do, and {m ? "the author" : name || "the person"} is not told who reported {m ? "it" : "them"}.
         </p>
         <div className="row-end">
           {author && !blocked && (
-            <button className="btn ghost" onClick={() => set({ modal: { t: "block", url, memberId: m.authorId } })}>
+            <button className="btn ghost" onClick={() => set({ modal: { t: "block", url, memberId: who } })}>
               Block {name}
             </button>
           )}
@@ -722,17 +725,21 @@ export function ReportDialog({ url, message: m }: { url: string; message: Messag
       </Dialog>
     );
   return (
-    <Dialog label="Report message" className="confirm report-dialog">
+    <Dialog label={m ? "Report message" : `Report ${name}`} className="confirm report-dialog">
       <form onSubmit={send}>
-        <h2>Report this message?</h2>
-        <blockquote className="delete-preview">
-          <b>{name || "Former member"}</b> {m.text || "(attachment)"}
-        </blockquote>
+        <h2>{m ? "Report this message?" : `Report ${name || "this person"}?`}</h2>
+        {m && (
+          <blockquote className="delete-preview">
+            <b>{name || "Former member"}</b> {m.text || "(attachment)"}
+          </blockquote>
+        )}
         <p className="muted">
-          {dm
-            ? "This is a direct message. Moderators cannot read your direct messages, so a report shares this one message with them, and nothing else from the conversation."
-            : "Moderators and admins see the message, your name and your note."}{" "}
-          The author is not told who reported it.
+          {!m
+            ? "Moderators and admins see who you reported, your name and your note."
+            : dm
+              ? "This is a direct message. Moderators cannot read your direct messages, so a report shares this one message with them, and nothing else from the conversation."
+              : "Moderators and admins see the message, your name and your note."}{" "}
+          {m ? "The author is not told who reported it." : `${name || "The person"} is not told who reported them.`}
         </p>
         <fieldset className="report-reasons">
           <legend>Reason</legend>
@@ -745,7 +752,7 @@ export function ReportDialog({ url, message: m }: { url: string; message: Messag
         </fieldset>
         <label className="field">
           <span>Note for moderators (optional)</span>
-          <textarea className="input" rows={3} maxLength={980} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What is wrong with this message?" />
+          <textarea className="input" rows={3} maxLength={980} value={note} onChange={(e) => setNote(e.target.value)} placeholder={m ? "What is wrong with this message?" : "What has this person done?"} />
         </label>
         <Alert text={err} />
         <div className="row-end">
@@ -778,7 +785,7 @@ export function ReportsDialog() {
       <Head title="Reports" />
       <div className="stack" aria-busy={!reports && !err}>
         <p className="muted small">
-          Members report messages here. You see reports about members with a lower permission than yours. Resolve a report when you have dealt with it. A
+          Members report messages and people here. You see reports about members with a lower permission than yours. Resolve a report when you have dealt with it. A
           report of a direct message holds only that message. Resolved reports stay for 90 days.
         </p>
         <div className="seg" role="radiogroup" aria-label="Show">
@@ -809,7 +816,7 @@ export function ReportsDialog() {
                         {place.label} · {reportDetail(Number(r.reportedAtMs), r.reporter, now)}
                       </small>
                     </span>
-                    <blockquote className="delete-preview">{r.message?.text || "(attachment)"}</blockquote>
+                    {r.message && <blockquote className="delete-preview">{r.message.text || "(attachment)"}</blockquote>}
                     {r.message?.attachments.map((f) => (
                       <a key={f.id} href={absUrl(url, f.url)} target="_blank" rel="noreferrer" className="small">
                         {f.contentType.startsWith("image/") ? (

@@ -2749,6 +2749,7 @@ li.sw-empty {
   flex: 1;
 }
 .profile-mod {
+  flex-wrap: wrap;
   margin-top: 4px;
 }
 .profile-body .profile-mod .btn {

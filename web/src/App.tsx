@@ -2615,7 +2615,7 @@ function ProfilePopover() {
                 </select>
               </label>
             )}
-            {(mod.remove || (m.id !== me?.id && !blocked)) && (
+            {(mod.remove || m.id !== me?.id) && (
               <div className="row-end profile-mod">
                 {m.id !== me?.id && !blocked && (
                   <button className="btn ghost small" title={muted ? undefined : "Collapse their messages and skip their pings, unread and typing. They are not told."} onClick={() => (muted ? (setErr(""), setMuted(p.url, m.id, false).catch((e) => setErr(errorText(e)))) : set({ popover: null, modal: { t: "block", url: p.url, memberId: m.id, mute: true } }))}>
@@ -2625,6 +2625,11 @@ function ProfilePopover() {
                 {m.id !== me?.id && !blocked && (
                   <button className="btn ghost small" onClick={() => set({ popover: null, modal: { t: "block", url: p.url, memberId: m.id } })}>
                     <Icon name="ban" size={16} /> Block
+                  </button>
+                )}
+                {m.id !== me?.id && (
+                  <button className="btn ghost small" onClick={() => set({ popover: null, modal: { t: "report", url: p.url, memberId: m.id } })}>
+                    <Icon name="flag" size={16} /> Report
                   </button>
                 )}
                 {mod.remove && [false, true].map((ban) => (

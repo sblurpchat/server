@@ -1062,6 +1062,7 @@ export function banDetail(atMs: number, by: Member | undefined, now: number): st
 
 /** Where a reported message lives (1119), and whether this moderator can open it. */
 export function reportPlace(r: { dm: boolean; message?: { channelId: string } }, channels: Record<string, Channel>): { label: string; open: boolean } {
+  if (!r.message) return { label: "Report about this person", open: false }; // ReportMember (1507)
   if (r.dm) return { label: "Direct message", open: false };
   const ch = channels[r.message?.channelId ?? ""];
   return ch ? { label: `#${ch.name}`, open: true } : { label: "A channel you cannot see", open: false };
