@@ -3022,8 +3022,9 @@ li.sw-empty {
 .msgs {
   padding: 16px 0 10px;
 }
-.pane .scroller {
-  justify-content: flex-end;
+/* Short threads sit at the top. Main start is the bottom in column-reverse, and justify-content: flex-end made WebKit pack at the top with positive scrollTop (1449). */
+.pane .scroller > .msgs {
+  margin-bottom: auto;
 }
 /* Never the scroll anchor: it stays on top as pages load above, and anchoring to it pinned the view to the top. */
 .list-note {
