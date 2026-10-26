@@ -1448,3 +1448,29 @@ export function allDMs(cs: Record<string, Community>, order: string[]): { url: s
     .sort((a, b) => Number(b.unread) - Number(a.unread) || a.i - b.i || Number(b.ch.lastMessageSeq - a.ch.lastMessageSeq))
     .map(({ i: _, ...x }) => x);
 }
+
+/** Phone badges (1386), like Slack and Discord mobile. Home: a dot for unread channels and a
+ *  count of their mentions. DMs: unread conversations. Back: the mention count away from the
+ *  open channel, where an unread DM counts at least once; never a bare dot. */
+export function tabBadges(
+  cs: Record<string, Community>,
+  open?: { url: string; channelId: string },
+): { home: { unread: boolean; mentions: number }; dms: number; back: number } {
+  const out = { home: { unread: false, mentions: 0 }, dms: 0, back: 0 };
+  for (const [url, c] of Object.entries(cs)) {
+    for (const ch of Object.values(c.channels)) {
+      const r = c.reads[ch.id];
+      if (!r || (r.unreadCount <= 0 && r.mentionCount <= 0)) continue;
+      const here = open?.url === url && open.channelId === ch.id;
+      if (isDM(ch)) {
+        if (r.unreadCount > 0) out.dms++;
+        if (!here) out.back += Math.max(r.mentionCount, r.unreadCount > 0 ? 1 : 0);
+      } else {
+        if (r.unreadCount > 0) out.home.unread = true;
+        out.home.mentions += r.mentionCount;
+        if (!here) out.back += r.mentionCount;
+      }
+    }
+  }
+  return out;
+}

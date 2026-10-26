@@ -29,7 +29,7 @@ import {
   type Community,
   cssUrl,
   count,
-  communityBadge,
+  tabBadges,
   shareMessageLink,
   nameColor,
   listStep,
@@ -119,13 +119,8 @@ export function ChannelView() {
   const [q, setQ] = useState(pane?.t === "search" ? pane.q : "");
   const [joinErr, setJoinErr] = useState("");
   const [menu, setMenu] = useState<DOMRect | null>(null);
-  // Mobile hides the rail and sidebar, so the menu button carries a dot for unread anywhere.
-  const elsewhere = useApp((s) =>
-    Object.values(s.cs).some((x) => {
-      const b = communityBadge(x);
-      return b.unread || b.mentions > 0;
-    }),
-  );
+  // Phone back button (1386): mentions away from this channel only, like Slack and Discord.
+  const back = useApp((s) => tabBadges(s.cs, { url: s.url, channelId: s.channelId }).back);
   if (!ch) {
     return (
       <section className="channel">
@@ -160,11 +155,11 @@ export function ChannelView() {
       >
         <button
           className="icon-btn only-mobile menu-btn"
-          aria-label={elsewhere ? "Open communities and channels, unread messages" : "Open communities and channels"}
-          data-unread={elsewhere}
+          aria-label={back ? `Open communities and channels, ${back} mentions` : "Open communities and channels"}
           onClick={() => set({ drawer: true })}
         >
           <Icon name="back" />
+          {back > 0 && <span className="badge menu-badge">{back > 99 ? "99+" : back}</span>}
         </button>
         <div className="chan-id">
           <h1 className="chan-title">

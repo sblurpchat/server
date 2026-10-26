@@ -1328,3 +1328,24 @@ describe("allDMs (1369)", () => {
     expect(got[1]).toMatchObject({ unread: false, mentions: 0 });
   });
 });
+
+import { tabBadges } from "./logic";
+
+describe("tabBadges (1386)", () => {
+  it("splits channels and DMs and leaves the open channel out of the back count", () => {
+    const rs = (channelId: string, unreadCount: number, mentionCount: number) => create(ReadStateSchema, { channelId, unreadCount, mentionCount });
+    const a = emptyCommunity("https://a.test");
+    a.channels = {
+      gen: create(ChannelSchema, { id: "gen", kind: ChannelKind.TEXT }),
+      dev: create(ChannelSchema, { id: "dev", kind: ChannelKind.TEXT }),
+      d1: create(ChannelSchema, { id: "d1", kind: ChannelKind.DM, memberIds: ["me", "x"] }),
+      d2: create(ChannelSchema, { id: "d2", kind: ChannelKind.DM, memberIds: ["me", "y"] }),
+    };
+    a.reads = { gen: rs("gen", 5, 2), dev: rs("dev", 1, 0), d1: rs("d1", 3, 0), d2: rs("d2", 0, 0) };
+    expect(tabBadges({ [a.url]: a })).toEqual({ home: { unread: true, mentions: 2 }, dms: 1, back: 3 });
+    expect(tabBadges({ [a.url]: a }, { url: a.url, channelId: "gen" }).back).toBe(1);
+    expect(tabBadges({ [a.url]: a }, { url: a.url, channelId: "d1" }).back).toBe(2);
+    a.reads = { dev: rs("dev", 4, 0) };
+    expect(tabBadges({ [a.url]: a })).toEqual({ home: { unread: true, mentions: 0 }, dms: 0, back: 0 });
+  });
+});

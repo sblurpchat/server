@@ -39,6 +39,7 @@ import {
   swipeAxis,
   swipeEnds,
   allDMs,
+  tabBadges,
 } from "./logic";
 import {
   absUrl,
@@ -340,25 +341,30 @@ export function useCountdown(at?: number) {
 function TabBar() {
   const tab = useApp((s) => s.tab);
   const cs = useApp((s) => s.cs);
-  const order = useApp((s) => s.order);
   const me = useApp((s) => s.cs[s.url]?.me);
-  const unread = useMemo(() => allDMs(cs, order).filter((d) => d.unread).length, [cs, order]);
-  const item = (t: typeof tab, label: string, icon: React.ReactNode, badge = 0) => (
+  const b = useMemo(() => tabBadges(cs), [cs]);
+  const item = (t: typeof tab, label: string, icon: React.ReactNode, badge = 0, dot = false) => (
     <button className="tab" aria-current={tab === t ? "page" : undefined} onClick={() => set({ tab: t })}>
       {icon}
       <span>{label}</span>
-      {badge > 0 && (
+      {badge > 0 ? (
         <span className="badge tab-badge">
           {badge > 99 ? "99+" : badge}
           <span className="visually-hidden"> unread</span>
         </span>
+      ) : (
+        dot && (
+          <span className="tab-dot">
+            <span className="visually-hidden"> unread</span>
+          </span>
+        )
       )}
     </button>
   );
   return (
     <nav className="tabbar" aria-label="Sections">
-      {item("home", "Home", <Icon name="house" />)}
-      {item("dms", "DMs", <Icon name="messages" />, unread)}
+      {item("home", "Home", <Icon name="house" />, b.home.mentions, b.home.unread)}
+      {item("dms", "DMs", <Icon name="messages" />, b.dms)}
       {item("you", "You", <Avatar m={me} size={24} />)}
     </nav>
   );
