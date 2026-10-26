@@ -1521,13 +1521,17 @@ export function RightPane() {
   const many = useApp((s) => s.order.filter((u) => s.cs[u]?.me).length > 1);
   const open = !!pane;
   const ref = useRef<HTMLElement>(null);
-  // Closing would drop focus on body (its close button is gone): send it back to the conversation.
+  // Closing would drop focus on body (its close button is gone): send it back to the "replies"
+  // button that opened the thread, else the conversation (1464). A frame later, once main is no
+  // longer inert behind the phone pane.
   useLayoutEffect(() => {
-    if (open)
-      return () => {
-        ghost(ref.current);
-        if (document.activeElement === document.body || document.activeElement?.closest(".pane")) focusMain();
-      };
+    if (!open) return;
+    const from = document.querySelector<HTMLElement>('.main .thread-link[aria-pressed="true"]');
+    return () => {
+      ghost(ref.current);
+      if (document.activeElement === document.body || document.activeElement?.closest(".pane"))
+        requestAnimationFrame(() => (from?.isConnected ? from.focus() : focusMain()));
+    };
   }, [open]);
   // A thread counts as read when it opens and again when it closes, for the Threads view (1405).
   const rootId = pane?.t === "thread" ? pane.rootId : "";

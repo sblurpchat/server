@@ -327,10 +327,11 @@ function Shell() {
   const pane = useApp((s) => s.pane);
   const drawer = useApp((s) => s.drawer);
   const channelId = useApp((s) => s.channelId);
-  const narrow = useSyncExternalStore(onNarrow, () => NARROW.matches);
-  const covered = narrow && (drawer || !channelId);
-  const appRef = useRef<HTMLDivElement>(null);
   const tab = useApp((s) => s.tab);
+  const narrow = useSyncExternalStore(onNarrow, () => NARROW.matches);
+  // The phone drawer or side pane covers main, so it leaves the tab and VoiceOver order (1464).
+  const covered = narrow && (drawer || !channelId || !!pane);
+  const appRef = useRef<HTMLDivElement>(null);
   const live = useRef({ drawer, channelId });
   live.current = { drawer, channelId };
   useDrawerSwipe(appRef, live);
