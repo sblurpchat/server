@@ -11,6 +11,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -18,7 +19,9 @@ import (
 	"log/slog"
 	"maps"
 	"math/rand/v2"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -30,6 +33,7 @@ import (
 
 	v1 "sblurp.chat/server/gen/sblurp/v1"
 	"sblurp.chat/server/gen/sblurp/v1/sblurpv1connect"
+	"sblurp.chat/server/internal/seed"
 )
 
 type action string
@@ -40,19 +44,22 @@ const (
 	thread  action = "thread"
 	dm      action = "dm"
 	groupDM action = "group-dm"
+	image   action = "image"
 )
 
 // pick maps a roll in [0, 100) to an action: mostly plain posts, the rest
 // split between the states worth seeing.
 func pick(roll int) action {
 	switch {
-	case roll < 50:
+	case roll < 40:
 		return post
-	case roll < 65:
+	case roll < 60:
 		return thread
-	case roll < 77:
+	case roll < 70:
+		return image
+	case roll < 80:
 		return mention
-	case roll < 89:
+	case roll < 90:
 		return dm
 	default:
 		return groupDM
@@ -100,9 +107,19 @@ func main() {
 	}
 	slog.Info("simulating", "me", *me, "every", *every, "communities", len(comms))
 	for ctx.Err() == nil {
-		c := comms[rand.IntN(len(comms))]
-		if err := step(ctx, c[0], c[1], *me, pick(rand.IntN(100))); err != nil {
-			slog.Warn("step", "url", c[0], "err", err)
+		var ready [][2]string // communities whose server ran with -seed
+		for _, c := range comms {
+			if _, err := os.Stat(filepath.Join(c[1], "sim-tokens.json")); err == nil {
+				ready = append(ready, c)
+			}
+		}
+		if len(ready) == 0 {
+			slog.Warn("no sim-tokens.json yet; start the dev servers with -seed")
+		} else {
+			c := ready[rand.IntN(len(ready))]
+			if err := step(ctx, c[0], c[1], *me, pick(rand.IntN(100))); err != nil {
+				slog.Warn("step", "url", c[0], "err", err)
+			}
 		}
 		select {
 		case <-ctx.Done():
@@ -155,17 +172,26 @@ func step(ctx context.Context, url, dir, meName string, act action) error {
 		}
 		req.ChannelId = ch.Msg.Channel.Id
 	default:
-		var chans []*v1.Channel
+		// In an OPT_IN community you are only sure to be in the default
+		// channels, so mentions, threads and most posts go there. In ROLES
+		// mode none is default and you are in every channel you can see.
+		var chans, defaults []*v1.Channel
 		for _, ch := range st.Msg.Channels {
 			if ch.Kind == v1.ChannelKind_CHANNEL_KIND_TEXT && len(ch.PostRoleIds) == 0 {
 				chans = append(chans, ch)
+				if ch.IsDefault {
+					defaults = append(defaults, ch)
+				}
 			}
+		}
+		if len(defaults) > 0 && (act == thread || act == mention || rand.IntN(4) > 0) {
+			chans = defaults
 		}
 		if len(chans) == 0 {
 			return fmt.Errorf("%s is in no open text channel", author)
 		}
 		req.ChannelId = chans[rand.IntN(len(chans))].Id
-		if act == mention {
+		if act == mention || (act == thread && meID != "" && rand.IntN(3) == 0) {
 			req.Text = "<@" + meID + "> " + asks[rand.IntN(len(asks))]
 		}
 		if act == thread {
@@ -173,9 +199,14 @@ func step(ctx context.Context, url, dir, meName string, act action) error {
 			if err != nil {
 				return err
 			}
-			if ms := msgs.Msg.Messages; len(ms) > 0 {
-				req.ThreadRootId = ms[rand.IntN(len(ms))].Id
+			req.ThreadRootId = pickRoot(msgs.Msg.Messages, meID, rand.IntN(6))
+		}
+		if act == image {
+			id, err := upload(hc, url, seed.Avatar(names[rand.IntN(len(names))]))
+			if err != nil {
+				return fmt.Errorf("upload: %w", err)
 			}
+			req.AttachmentIds, req.Text = []string{id}, pics[rand.IntN(len(pics))]
 		}
 	}
 	if _, err := chat.SendMessage(ctx, connect.NewRequest(req)); err != nil {
@@ -183,6 +214,49 @@ func step(ctx context.Context, url, dir, meName string, act action) error {
 	}
 	slog.Info("sent", "url", url, "by", author, "action", act, "thread", req.ThreadRootId != "")
 	return nil
+}
+
+// pickRoot chooses which message a thread reply goes under: half the time
+// your newest message (replies to you are the thread state worth seeing),
+// otherwise one of the three newest, so threads grow where you look. ms is
+// oldest first; roll is in [0, 6).
+func pickRoot(ms []*v1.Message, meID string, roll int) string {
+	if len(ms) == 0 {
+		return ""
+	}
+	if roll < 3 {
+		for i := len(ms) - 1; i >= 0; i-- {
+			if ms[i].AuthorId == meID && !ms[i].Deleted {
+				return ms[i].Id
+			}
+		}
+	}
+	return ms[max(len(ms)-1-roll%3, 0)].Id
+}
+
+var pics = []string{"look who I ran into today", "new profile pic, thoughts?", "", "this is the one I meant", "📸"}
+
+// upload sends a WebP to the server's upload endpoint and returns its id.
+func upload(hc *http.Client, url string, webp []byte) (string, error) {
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	h := textproto.MIMEHeader{}
+	h.Set("Content-Disposition", `form-data; name="file"; filename="photo.webp"`)
+	h.Set("Content-Type", "image/webp")
+	part, _ := mw.CreatePart(h)
+	part.Write(webp)
+	mw.Close()
+	res, err := hc.Post(url+"/upload", mw.FormDataContentType(), &body)
+	if err != nil {
+		return "", err
+	}
+	defer res.Body.Close()
+	var a struct{ ID, Error string }
+	json.NewDecoder(res.Body).Decode(&a)
+	if res.StatusCode != http.StatusOK || a.ID == "" {
+		return "", fmt.Errorf("%s %s", res.Status, a.Error)
+	}
+	return a.ID, nil
 }
 
 type bearer string
