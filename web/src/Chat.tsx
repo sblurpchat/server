@@ -57,6 +57,7 @@ import {
   loadList,
   markRead,
   flushReads,
+  closePane,
   jumpTo,
   react,
   refreshMessage,
@@ -782,6 +783,12 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
           moreRef.current?.focus({ preventScroll: true });
         }}
         className="menu msg-menu" label="Message actions" sheet>
+        {NO_HOVER.matches && (
+          // The sheet can cover the held message, so it names what its actions apply to (1460).
+          <p className="msg-peek truncate">
+            <b>{name}</b> {decodeMentions(m.text, c.members) || count(m.attachments.length, "attachment", "attachments")}
+          </p>
+        )}
         <div role="menu" ref={moreRef} tabIndex={-1} onClick={() => setMore(null)} onKeyDown={menuKeys}>
           {NO_HOVER.matches && (
             <>
@@ -1484,7 +1491,7 @@ export function RightPane() {
   }, [c.url, rootId]);
   if (!pane) return null;
   const ch = c.channels[channelId];
-  const close = () => set({ pane: null });
+  const close = closePane;
   const title = { thread: "Thread", members: "Members", search: "Search", activity: "Activity", threads: "Threads" }[pane.t];
   const where = ch ? (isDM(ch) ? channelLabel(ch, c.members, c.me?.id) : `#${ch.name}`) : c.info?.name;
   return (
@@ -1492,7 +1499,7 @@ export function RightPane() {
       <Resizer panel="pane" label="Resize side pane" />
       <header className="pane-head">
         {/* A phone pushes the pane over the channel: one leading back, like the channel header (1452). */}
-        <button className="icon-btn only-mobile" aria-label={`Back to ${where}`} onClick={close}>
+        <button className="icon-btn only-mobile" aria-label={`Back to ${history.state?.drawer ? c.info?.name : where}`} onClick={close}>
           <Icon name="back" />
         </button>
         <div>

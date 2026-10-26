@@ -6195,6 +6195,15 @@ label:has(> input.visually-hidden:focus-visible) {
     width: 22px;
     height: 22px;
   }
+  .msg-peek {
+    margin: 0 4px 10px;
+    color: var(--graphite);
+    font-size: 0.9375rem;
+  }
+  .msg-peek b {
+    color: var(--text);
+    font-weight: 600;
+  }
   .msg-menu .quick {
     display: flex;
     justify-content: space-between;

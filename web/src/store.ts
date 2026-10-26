@@ -516,6 +516,14 @@ export async function loadList(url: string, channelId: string, rootId = "", page
   }
 }
 
+/** Close the side pane. One opened from the phone drawer goes back to the drawer (1469): its
+ *  history entry carries a drawer mark, like the back mark after a jump (1433). */
+export function closePane() {
+  const drawer = !!history.state?.drawer;
+  if (drawer) history.replaceState({ ...history.state, drawer: undefined }, "");
+  set(drawer && matchMedia("(max-width: 767px)").matches ? { pane: null, drawer: true } : { pane: null });
+}
+
 // Opens the channel (and thread) of a search hit and loads the messages around it.
 // push: a new history entry even within the same channel, so Back returns to where the jump came from (1080).
 export function jumpTo(url: string, m: Pick<Message, "id" | "channelId" | "threadRootId">, push = false) {

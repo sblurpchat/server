@@ -51,6 +51,7 @@ import {
   SELF_HOST_DOCS_URL,
   errorText,
   FAKE,
+  closePane,
   get,
   join,
   leave,
@@ -155,7 +156,7 @@ function useShortcuts() {
         markAllRead(s.url);
       } else if (e.key === "Escape" && !s.modal && !e.defaultPrevented && !document.querySelector(":popover-open")) {
         if (s.editing) set({ editing: null });
-        else if (s.pane) set({ pane: null });
+        else if (s.pane) closePane();
         else if (s.drawer) set({ drawer: false });
       }
     };
@@ -293,7 +294,7 @@ function useDrawerSwipe(app: React.RefObject<HTMLDivElement | null>, live: React
         if (open && pane.matches(".channel")) {
           addEventListener("popstate", () => requestAnimationFrame(() => pane.style.removeProperty("translate")), { once: true });
           setTimeout(() => history.back(), 140);
-        } else if (open) setTimeout(() => set({ pane: null }), 140);
+        } else if (open) setTimeout(closePane, 140);
         return;
       }
       for (const el of els()) el.removeAttribute("style");
@@ -665,10 +666,16 @@ function SideAbout({ c, text, admin }: { c: Community; text: string; admin: bool
 }
 
 /** Activity and Threads (1405) open in the side pane, on a phone over the channel. */
+// On a phone, closing it goes back to the drawer it came from (1469).
+function openSideView(t: "activity" | "threads") {
+  set({ pane: { t }, drawer: false });
+  if (NARROW.matches) history.replaceState({ ...history.state, drawer: true }, "");
+}
+
 function SideViews() {
   const pane = useApp((s) => s.pane?.t);
   const row = (t: "activity" | "threads", label: string, icon: "bell" | "thread") => (
-    <button className="chan browse-btn" aria-current={pane === t ? "page" : undefined} onClick={() => set({ pane: { t }, drawer: false })}>
+    <button className="chan browse-btn" aria-current={pane === t ? "page" : undefined} onClick={() => openSideView(t)}>
       <span className="chan-icon">
         <Icon name={icon} size={16} />
       </span>
