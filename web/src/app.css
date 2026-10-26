@@ -1099,6 +1099,10 @@ kbd {
   min-height: 0;
   background: var(--paper);
 }
+/* No community means no sidebar, so main takes the sidebar's column too (1505). */
+.drawer:not(:has(.sidebar)) + .main {
+  grid-column: 2 / -1;
+}
 .scrim,
 .only-mobile {
   display: none;
@@ -4490,6 +4494,9 @@ li.sw-empty {
     flex: 1;
     min-width: 0;
     border-right: 0;
+  }
+  .drawer:not(:has(.sidebar)) + .main {
+    grid-column: auto;
   }
   .app[data-drawer="true"] .drawer {
     translate: 0 0;
