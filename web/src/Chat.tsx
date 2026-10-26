@@ -140,6 +140,7 @@ export function ChannelView() {
   const [menu, setMenu] = useState<DOMRect | null>(null);
   // Phone back button (1386): mentions away from this channel only, like Slack and Discord.
   const back = useApp((s) => tabBadges(s.cs, { url: s.url, channelId: s.channelId }).back);
+  const many = useApp((s) => s.order.filter((u) => s.cs[u]?.me).length > 1);
   if (!ch) {
     return (
       <section className="channel">
@@ -183,7 +184,16 @@ export function ChannelView() {
         <div className="chan-id">
           <h1 className="chan-title">
             {dm ? <Avatar m={other} size={24} presence={ch.memberIds.length <= 2} /> : <Icon name={ch.kind === 2 ? "lock" : "hash"} size={20} />}
-            <span className="truncate">{title}</span>
+            <span className="chan-name">
+              <span className="truncate">{title}</span>
+              {/* On a phone nothing else says which community this is (1470). */}
+              {many && (
+                <small className="chan-comm truncate">
+                  <span className="visually-hidden">in </span>
+                  {c.info?.name ?? hostOf(c.url)}
+                </small>
+              )}
+            </span>
           </h1>
           {ch.topic && <Topic c={c} topic={ch.topic} title={title} onEdit={canEdit ? () => set({ modal: { t: "channel", id: ch.id, focusTopic: true } }) : undefined} />}
         </div>

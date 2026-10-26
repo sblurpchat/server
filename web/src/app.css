@@ -2941,6 +2941,18 @@ li.sw-empty {
 .chan-title > .icon {
   color: var(--graphite);
 }
+.chan-name {
+  display: grid;
+  min-width: 0;
+}
+/* Phone only (1470): the rail and sidebar name the community on desktop. */
+.chan-comm {
+  display: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--graphite);
+}
 /* Title and topic are centered in the bar like the search box (1041). */
 .chan-id {
   display: flex;
@@ -4533,6 +4545,9 @@ li.sw-empty {
   .chan-title {
     max-width: none;
     flex: 1;
+  }
+  .chan-comm {
+    display: block;
   }
   .topic-wrap,
   .topic-more {
