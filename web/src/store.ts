@@ -32,6 +32,7 @@ import {
   denied,
   queueStep,
   transient,
+  retryable,
   STABLE_MS,
   emptyCommunity,
   formatHash,
@@ -611,7 +612,7 @@ async function flush(url: string) {
       const step = queueStep([...waiting.values()].filter((w) => w.url === url), state.cs[url]?.status === "live", Date.now());
       for (const w of step.fail) {
         waiting.delete(w.m.clientId);
-        patchC(url, (c) => ({ ...c, failed: { ...c.failed, [w.m.clientId]: true } }));
+        patchC(url, (c) => ({ ...c, failed: { ...c.failed, [w.m.clientId]: { reason: "", retry: true } } }));
       }
       const w = step.send;
       if (!w) return;
@@ -636,7 +637,10 @@ async function flush(url: string) {
           return;
         }
         waiting.delete(m.clientId);
-        patchC(url, (c) => ({ ...c, failed: { ...c.failed, [m.clientId]: true } }));
+        // Keep the server's reason: a refusal like a block says why, and Try again can't fix it (1479).
+        const ce = ConnectError.from(e);
+        const reason = ce.code === Code.PermissionDenied && ce.rawMessage ? sentence(ce.rawMessage) : errorText(e, state.cs[url]?.info?.name);
+        patchC(url, (c) => ({ ...c, failed: { ...c.failed, [m.clientId]: { reason, retry: retryable(ce.code) } } }));
       }
     }
   } finally {

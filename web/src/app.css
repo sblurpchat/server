@@ -3950,6 +3950,13 @@ li.sw-empty {
 .msg[data-failed="true"] {
   box-shadow: inset 3px 0 0 var(--cherry);
 }
+@media (max-width: 767px) {
+  .send-failed .link-btn {
+    min-height: 44px; /* a thumb-sized target (1479) */
+    margin-left: 0;
+    padding: 0 8px;
+  }
+}
 
 .jump {
   position: absolute;

@@ -249,6 +249,9 @@ export function ChannelView() {
         <p className="composer-note">
           Only {posterNames(ch.postRoleIds, c.roles)} post in #{title}. You can react and reply in threads.
         </p>
+      ) : dm && other && c.blocked.includes(other.id) ? (
+        // The server refuses every message here, so say why instead of offering a box that fails (1479).
+        <p className="composer-note">You blocked {other.displayName}. Unblock them from their profile to send messages.</p>
       ) : joined ? (
         <Composer url={c.url} channelId={channelId} rootId="" placeholder={dm && c.me && dmPeer(ch, c.me.id) === c.me.id ? "Jot something down" : dm ? `Message ${title}` : `Message #${title}`} />
       ) : (
@@ -714,10 +717,12 @@ const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, f
         )}
         {failed && (
           <p className="send-failed" role="alert">
-            Couldn't send this message.
-            <button className="link-btn" onClick={() => retrySend(url, m)}>
-              Try again
-            </button>
+            Couldn't send this message. {failed.reason}
+            {failed.retry && (
+              <button className="link-btn" onClick={() => retrySend(url, m)}>
+                Try again
+              </button>
+            )}
             <button className="link-btn" onClick={() => discardSend(url, m)}>
               Discard
             </button>

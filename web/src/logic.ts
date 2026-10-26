@@ -70,7 +70,7 @@ export interface Community {
   /** Typing expiry (ms) keyed by list key, then member id. */
   typing: Record<string, Record<string, number>>;
   /** client_ids of optimistic messages that failed to send. */
-  failed: Record<string, true>;
+  failed: Record<string, SendFailure>;
   /** Bumped by a plugins_changed event, so the admin plugin list reloads (1090). */
   pluginsRev?: number;
   /** Members I blocked (1118): their messages show collapsed. */
@@ -864,6 +864,11 @@ export function queueStep<T extends { since: number }>(q: T[], live: boolean, no
 }
 
 /** A send that failed with one of these may work after a reconnect; anything else is the server saying no. */
+/** Why a send failed (empty when it waited too long) and whether Try again can work (1479). */
+export type SendFailure = { reason: string; retry: boolean };
+/** A refusal (no permission, a bad request) is the same on every try, so it gets no Try again. */
+export const retryable = (code: Code) => code !== Code.PermissionDenied && code !== Code.InvalidArgument;
+
 export const transient = (code: Code) => code === Code.Unavailable || code === Code.Unknown || code === Code.DeadlineExceeded || code === Code.Aborted;
 
 /** Access tokens are refreshed when less than this is left. */

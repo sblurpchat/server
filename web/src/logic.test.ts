@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { Code } from "@connectrpc/connect";
-import { leavingParts, queueStep, showDown, transient } from "./logic";
+import { leavingParts, queueStep, retryable, showDown, transient } from "./logic";
 import css from "./app.css?raw";
 import { allDMs, channelLabel, dmPreview, mergeNewest, rowWhen, dmPeer, settingsGroups, swipeAxis, swipeEnds, tailnetUrl } from "./logic";
 import {
@@ -338,7 +338,7 @@ describe("applyEvent", () => {
   it("replaces the optimistic message with the server copy by client_id and clears failure", () => {
     const c0 = community();
     c0.lists.c1.items.push(msg("local:abc", "me", 1, 0n, { clientId: "abc" }));
-    c0.failed = { abc: true };
+    c0.failed = { abc: { reason: "", retry: true } };
     const c = applyEvent(c0, ev(11n, { case: "messageCreated", value: msg("m2", "me", 1, 11n, { clientId: "abc" }) }), T0, null);
     expect(c.lists.c1.items.map((x) => x.id)).toEqual(["m1", "m2"]);
     expect(c.failed).toEqual({});
@@ -440,6 +440,12 @@ describe("dropped connection (1376)", () => {
     expect(transient(Code.Unknown)).toBe(true);
     expect(transient(Code.PermissionDenied)).toBe(false);
     expect(transient(Code.ResourceExhausted)).toBe(false);
+  });
+  it("offers Try again on a failed send unless the server refused it (1479)", () => {
+    expect(retryable(Code.PermissionDenied)).toBe(false);
+    expect(retryable(Code.InvalidArgument)).toBe(false);
+    expect(retryable(Code.ResourceExhausted)).toBe(true);
+    expect(retryable(Code.Internal)).toBe(true);
   });
 });
 
