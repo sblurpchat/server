@@ -452,7 +452,7 @@ export function selectChannel(url: string, channelId: string, push = true, close
   }));
   save("lastChannel", { ...load("lastChannel", {}), [url]: channelId });
   const hash = formatHash(url, channelId);
-  if (location.hash.split("?")[0] !== hash) history[push ? "pushState" : "replaceState"](null, "", hash);
+  if (location.hash.split("?")[0] !== hash) history[push ? "pushState" : "replaceState"](push ? null : history.state, "", hash);
 }
 
 function applyHash() {
@@ -473,7 +473,7 @@ function syncPaneHash() {
   if (!state.url || !state.channelId) return;
   const base = formatHash(state.url, state.channelId);
   const hash = base + paneQuery(state.pane);
-  if (location.hash !== hash && location.hash.split("?")[0] === base) history.replaceState(null, "", hash);
+  if (location.hash !== hash && location.hash.split("?")[0] === base) history.replaceState(history.state, "", hash);
 }
 
 // ---------------------------------------------------------------------------
@@ -520,7 +520,13 @@ export async function loadList(url: string, channelId: string, rootId = "", page
 // push: a new history entry even within the same channel, so Back returns to where the jump came from (1080).
 export function jumpTo(url: string, m: Pick<Message, "id" | "channelId" | "threadRootId">, push = false) {
   void loadList(url, m.channelId, m.threadRootId, "around", m.id);
-  if (push) history.pushState(null, "", location.hash);
+  if (push) {
+    // Back returns here (1433): the list's scroll rides on this entry, and the new entry says
+    // there is somewhere to go back to, so the phone's back button and swipe use history.
+    const y = document.querySelector(".pane .results")?.scrollTop ?? 0;
+    history.replaceState({ ...history.state, scroll: y }, "");
+    history.pushState({ back: true }, "", location.hash);
+  }
   selectChannel(url, m.channelId, !push);
   if (m.threadRootId) set({ pane: { t: "thread", rootId: m.threadRootId } });
 }

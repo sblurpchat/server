@@ -171,8 +171,8 @@ export function ChannelView() {
       >
         <button
           className="icon-btn only-mobile menu-btn"
-          aria-label={back ? `Open communities and channels, ${back} mentions` : "Open communities and channels"}
-          onClick={() => set({ drawer: true })}
+          aria-label={history.state?.back ? "Back" : back ? `Open communities and channels, ${back} mentions` : "Open communities and channels"}
+          onClick={() => (history.state?.back ? history.back() : set({ drawer: true }))}
         >
           <Icon name="back" />
           {back > 0 && <span className="badge menu-badge">{back > 99 ? "99+" : back}</span>}
@@ -1719,7 +1719,7 @@ function SearchResults({ c, q }: { c: Community; q: string }) {
     );
   if (!res.length) return <p className="muted pane-note" role="status">No messages match “{q}”. Try fewer words.</p>;
   return (
-    <ul className="pane-scroll results loaded">
+    <ul className="pane-scroll results loaded" ref={scrollBack}>
       {res.map((m) => {
         const ch = c.channels[m.channelId];
         const a = c.members[m.authorId];
@@ -1744,6 +1744,15 @@ function SearchResults({ c, q }: { c: Community; q: string }) {
       })}
     </ul>
   );
+}
+
+// Back to a result list (1433) lands where it was: jumpTo saved the scroll on this entry. Used once,
+// so a new search on the same entry starts at the top.
+function scrollBack(el: HTMLElement | null) {
+  const y = history.state?.scroll;
+  if (!el || !y) return;
+  el.scrollTop = y;
+  history.replaceState({ ...history.state, scroll: 0 }, "");
 }
 
 // Activity and Threads (1405): loaded each time the pane opens, rows like search results.
@@ -1776,7 +1785,7 @@ function Activity({ c }: { c: Community }) {
   if (note) return note;
   if (!res!.length) return <p className="muted pane-note">Mentions, replies to your threads and reactions to your messages show up here.</p>;
   return (
-    <ul className="pane-scroll results loaded">
+    <ul className="pane-scroll results loaded" ref={scrollBack}>
       {res!.map((it, i) => {
         const m = it.message!;
         const who = c.members[it.actorId]?.displayName ?? "Someone";
@@ -1817,7 +1826,7 @@ function Threads({ c }: { c: Community }) {
   if (note) return note;
   if (!res!.length) return <p className="muted pane-note">Threads you start or reply in show up here.</p>;
   return (
-    <ul className="pane-scroll results loaded">
+    <ul className="pane-scroll results loaded" ref={scrollBack}>
       {res!.map(({ root, unreadCount }) => {
         const m = root!;
         const at = Number(m.lastReplyAtMs);

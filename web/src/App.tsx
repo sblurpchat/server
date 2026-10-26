@@ -231,7 +231,8 @@ function useDrawerSwipe(app: React.RefObject<HTMLDivElement | null>, live: React
       const tabs = (live.current.drawer || !live.current.channelId) && !!t.closest(".drawer");
       // With no channel picked the drawer is all there is: nothing to swipe back to.
       if (!live.current.channelId && !tabs) return;
-      const pane = t.closest<HTMLElement>(".pane");
+      // After a jump from search, Activity or Threads (1433) the channel itself swipes back, like a pane.
+      const pane = t.closest<HTMLElement>(".pane") ?? (!live.current.drawer && history.state?.back ? t.closest<HTMLElement>(".channel") : null);
       const open = !pane && live.current.drawer;
       g = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp, t0: e.timeStamp, open, axis: null, p: open ? 1 : 0, v: 0, pane, tabs };
     };
@@ -284,7 +285,10 @@ function useDrawerSwipe(app: React.RefObject<HTMLDivElement | null>, live: React
       g = null;
       if (pane) {
         Object.assign(pane.style, { transition: "translate 140ms ease-out", translate: open ? "100% 0" : "" });
-        if (open) setTimeout(() => set({ pane: null }), 140);
+        if (open && pane.matches(".channel")) {
+          addEventListener("popstate", () => requestAnimationFrame(() => pane.style.removeProperty("translate")), { once: true });
+          setTimeout(() => history.back(), 140);
+        } else if (open) setTimeout(() => set({ pane: null }), 140);
         return;
       }
       for (const el of els()) el.removeAttribute("style");
