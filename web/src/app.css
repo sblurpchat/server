@@ -6319,6 +6319,11 @@ label:has(> input.visually-hidden:focus-visible) {
     overflow-y: auto;
     overscroll-behavior: contain;
   }
+  /* The panel scrolls; its groups keep their height. A child with overflow: hidden would
+     otherwise shrink to fit and clip its last row (1508). */
+  .tab-panel > * {
+    flex-shrink: 0;
+  }
   .tab-head {
     display: flex;
     align-items: center;
