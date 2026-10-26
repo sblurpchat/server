@@ -69,6 +69,7 @@ import {
   selectChannel,
   selectCommunity,
   set,
+  useOnline,
   setRole,
   setNotify,
   setLook,
@@ -411,7 +412,8 @@ function Empty({ title, body, action }: { title: string; body: string; action?: 
 function Loading({ c }: { c: Community }) {
   const name = c.info?.name ?? hostOf(c.url);
   const secs = useCountdown(c.retryAt);
-  const down = c.error && showDown(c, Date.now());
+  const online = useOnline();
+  const down = !online || (c.error && showDown(c, Date.now()));
   // The title already says it can't be reached, so only a different reason is repeated (1468).
   const reason = c.error?.startsWith("Can't reach") ? "" : `${c.error} `;
   return (
@@ -429,12 +431,14 @@ function Loading({ c }: { c: Community }) {
       </header>
       {down ? (
         <Empty
-          title={`Can't reach ${name}`}
-          body={`${reason}${secs > 0 ? `Trying again in ${secs}s.` : "Trying again now."}`}
+          title={online ? `Can't reach ${name}` : "You're offline"}
+          body={online ? `${reason}${secs > 0 ? `Trying again in ${secs}s.` : "Trying again now."}` : `${name} will load when you reconnect.`}
           action={
-            <button className="btn" onClick={() => retryNow(c.url)}>
-              Try now
-            </button>
+            online && (
+              <button className="btn" onClick={() => retryNow(c.url)}>
+                Try now
+              </button>
+            )
           }
         />
       ) : (
@@ -1201,7 +1205,7 @@ function AddCommunity({ input: given }: { input?: string }) {
       }
       setFound({ url: n.url, invite: n.invite, info });
     } catch (x) {
-      setErr(errorText(x, hostOf(n.url)));
+      setErr(errorText(x, hostOf(n.url), "Check the address and your connection."));
     } finally {
       setBusy(false);
     }

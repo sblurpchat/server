@@ -54,6 +54,7 @@ import {
   edit,
   errorText,
   get,
+  useOnline,
   leaveList,
   loadList,
   markRead,
@@ -271,6 +272,14 @@ export function ChannelView() {
 function Banner({ c }: { c: Community }) {
   // retryAt is set whenever reconnecting, so this ticks every second and the quiet time ends on time.
   const secs = useCountdown(c.retryAt);
+  const online = useOnline();
+  // No network is one fact for the whole app, not each community's fault (1494).
+  if (!online)
+    return (
+      <div className="banner">
+        <span role="status">You're offline. Messages will send when you reconnect.</span>
+      </div>
+    );
   if (!showDown(c, Date.now())) return null;
   return (
     <div className="banner">

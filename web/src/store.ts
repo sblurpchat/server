@@ -234,13 +234,14 @@ export function api(url: string) {
   return c;
 }
 
-export function errorText(e: unknown, name = "this community"): string {
+/** `hint` says what to do when the server can't be reached; Add a community asks to check the address (1494). */
+export function errorText(e: unknown, name = "this community", hint = "Check your connection and try again."): string {
   if (e instanceof SignedOutError) return "Your sign-in expired. Sign in again.";
   const ce = ConnectError.from(e);
   switch (ce.code) {
     case Code.Unavailable:
     case Code.Unknown:
-      return `Can't reach ${name}. Check the address and your connection.`;
+      return `Can't reach ${name}. ${hint}`;
     case Code.Unauthenticated:
       return `${name} didn't accept your sign-in. It may not trust sblurp.chat.`;
     case Code.PermissionDenied:
@@ -281,6 +282,9 @@ export function retryNow(url: string) {
 }
 // The network came back: retry now instead of waiting out the backoff.
 addEventListener("online", () => conns.forEach((c) => c.wake()));
+const onOnline = (f: () => void) => (addEventListener("online", f), addEventListener("offline", f), () => (removeEventListener("online", f), removeEventListener("offline", f)));
+/** Whether the device has a network at all, so offline is said once for the app (1494). */
+export const useOnline = () => useSyncExternalStore(onOnline, () => navigator.onLine);
 
 function refreshInfo(url: string, signal?: AbortSignal) {
   api(url)
