@@ -43,6 +43,8 @@ import {
   swipeEnds,
   swipeTab,
   allDMs,
+  dmPreview,
+  rowWhen,
   tabBadges,
 } from "./logic";
 import {
@@ -473,6 +475,7 @@ function DMList() {
   const current = useApp((s) => s.channelId);
   const dms = useMemo(() => allDMs(cs, order), [cs, order]);
   const many = order.length > 1;
+  const h24 = useApp((s) => s.look.clock === "24");
   return (
     <section className="tab-panel" aria-labelledby="dms-title">
       <header className="tab-head">
@@ -501,8 +504,13 @@ function DMList() {
                 >
                   <Avatar m={other} size={36} presence={ch.memberIds.length <= 2} />
                   <span className="dm-text">
-                    <b className="truncate">{label}</b>
-                    {many && <small className="truncate">{c.info?.name ?? hostOf(url)}</small>}
+                    <span className="dm-top">
+                      <b className="truncate">{label}</b>
+                      {ch.lastMessage && <time>{rowWhen(Number(ch.lastMessage.createdAtMs), Date.now(), h24)}</time>}
+                    </span>
+                    <small className="truncate">
+                      {[many && (c.info?.name ?? hostOf(url)), dmPreview(ch.lastMessage, c.members, c.me?.id)].filter(Boolean).join(" · ")}
+                    </small>
                   </span>
                   {unread && !mentions && <span className="visually-hidden">, unread</span>}
                   {mentions > 0 && (

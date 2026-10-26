@@ -617,7 +617,10 @@ type Channel struct {
 	// match one id: "moderator" (moderators), or a custom Role.id. "admin"
 	// alone means admins and the owner only. Everyone in the channel may
 	// still react and reply in threads. Plugins are not limited.
-	PostRoleIds   []string `protobuf:"bytes,15,rep,name=post_role_ids,json=postRoleIds,proto3" json:"post_role_ids,omitempty"`
+	PostRoleIds []string `protobuf:"bytes,15,rep,name=post_role_ids,json=postRoleIds,proto3" json:"post_role_ids,omitempty"`
+	// DMs only, set by GetState: the newest top-level message, for the DMs
+	// list preview and recency sort. Unset when there is none.
+	LastMessage   *Message `protobuf:"bytes,16,opt,name=last_message,json=lastMessage,proto3" json:"last_message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -746,6 +749,13 @@ func (x *Channel) GetHeaderImage() *Attachment {
 func (x *Channel) GetPostRoleIds() []string {
 	if x != nil {
 		return x.PostRoleIds
+	}
+	return nil
+}
+
+func (x *Channel) GetLastMessage() *Message {
+	if x != nil {
+		return x.LastMessage
 	}
 	return nil
 }
@@ -8081,7 +8091,7 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05color\x18\x03 \x01(\tR\x05color\x12\x1a\n" +
-	"\bposition\x18\x04 \x01(\x05R\bposition\"\xe7\x03\n" +
+	"\bposition\x18\x04 \x01(\x05R\bposition\"\x9e\x04\n" +
 	"\aChannel\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x16.sblurp.v1.ChannelKindR\x04kind\x12\x12\n" +
@@ -8099,7 +8109,8 @@ const file_sblurp_v1_sblurp_proto_rawDesc = "" +
 	"is_default\x18\v \x01(\bR\tisDefault\x12!\n" +
 	"\fmember_count\x18\f \x01(\x05R\vmemberCount\x128\n" +
 	"\fheader_image\x18\r \x01(\v2\x15.sblurp.v1.AttachmentR\vheaderImage\x12\"\n" +
-	"\rpost_role_ids\x18\x0f \x03(\tR\vpostRoleIdsJ\x04\b\x0e\x10\x0fR\x10admins_post_only\"\xc6\x01\n" +
+	"\rpost_role_ids\x18\x0f \x03(\tR\vpostRoleIds\x125\n" +
+	"\flast_message\x18\x10 \x01(\v2\x12.sblurp.v1.MessageR\vlastMessageJ\x04\b\x0e\x10\x0fR\x10admins_post_only\"\xc6\x01\n" +
 	"\n" +
 	"Attachment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -8849,197 +8860,198 @@ var file_sblurp_v1_sblurp_proto_depIdxs = []int32{
 	2,   // 2: sblurp.v1.Member.presence:type_name -> sblurp.v1.Presence
 	4,   // 3: sblurp.v1.Channel.kind:type_name -> sblurp.v1.ChannelKind
 	10,  // 4: sblurp.v1.Channel.header_image:type_name -> sblurp.v1.Attachment
-	11,  // 5: sblurp.v1.Message.reactions:type_name -> sblurp.v1.Reaction
-	10,  // 6: sblurp.v1.Message.attachments:type_name -> sblurp.v1.Attachment
-	10,  // 7: sblurp.v1.GetServerInfoResponse.banner:type_name -> sblurp.v1.Attachment
-	7,   // 8: sblurp.v1.JoinResponse.member:type_name -> sblurp.v1.Member
-	7,   // 9: sblurp.v1.GetMeResponse.member:type_name -> sblurp.v1.Member
-	7,   // 10: sblurp.v1.UpdateProfileResponse.member:type_name -> sblurp.v1.Member
-	7,   // 11: sblurp.v1.GetStateResponse.me:type_name -> sblurp.v1.Member
-	9,   // 12: sblurp.v1.GetStateResponse.channels:type_name -> sblurp.v1.Channel
-	7,   // 13: sblurp.v1.GetStateResponse.members:type_name -> sblurp.v1.Member
-	13,  // 14: sblurp.v1.GetStateResponse.read_states:type_name -> sblurp.v1.ReadState
-	8,   // 15: sblurp.v1.GetStateResponse.roles:type_name -> sblurp.v1.Role
-	3,   // 16: sblurp.v1.GetStateResponse.channel_mode:type_name -> sblurp.v1.ChannelMode
-	2,   // 17: sblurp.v1.PresenceEvent.presence:type_name -> sblurp.v1.Presence
-	26,  // 18: sblurp.v1.PresenceBatch.changes:type_name -> sblurp.v1.PresenceEvent
-	12,  // 19: sblurp.v1.Event.message_created:type_name -> sblurp.v1.Message
-	12,  // 20: sblurp.v1.Event.message_updated:type_name -> sblurp.v1.Message
-	12,  // 21: sblurp.v1.Event.message_deleted:type_name -> sblurp.v1.Message
-	9,   // 22: sblurp.v1.Event.channel_created:type_name -> sblurp.v1.Channel
-	9,   // 23: sblurp.v1.Event.channel_updated:type_name -> sblurp.v1.Channel
-	7,   // 24: sblurp.v1.Event.member_joined:type_name -> sblurp.v1.Member
-	7,   // 25: sblurp.v1.Event.member_updated:type_name -> sblurp.v1.Member
-	13,  // 26: sblurp.v1.Event.read_state:type_name -> sblurp.v1.ReadState
-	25,  // 27: sblurp.v1.Event.typing:type_name -> sblurp.v1.TypingEvent
-	26,  // 28: sblurp.v1.Event.presence:type_name -> sblurp.v1.PresenceEvent
-	8,   // 29: sblurp.v1.Event.role_updated:type_name -> sblurp.v1.Role
-	3,   // 30: sblurp.v1.Event.channel_mode_changed:type_name -> sblurp.v1.ChannelMode
-	27,  // 31: sblurp.v1.Event.presence_batch:type_name -> sblurp.v1.PresenceBatch
-	4,   // 32: sblurp.v1.CreateChannelRequest.kind:type_name -> sblurp.v1.ChannelKind
-	9,   // 33: sblurp.v1.CreateChannelResponse.channel:type_name -> sblurp.v1.Channel
-	32,  // 34: sblurp.v1.UpdateChannelRequest.post_roles:type_name -> sblurp.v1.PostRoles
-	9,   // 35: sblurp.v1.UpdateChannelResponse.channel:type_name -> sblurp.v1.Channel
-	9,   // 36: sblurp.v1.SetChannelAccessResponse.channel:type_name -> sblurp.v1.Channel
-	9,   // 37: sblurp.v1.BrowseChannelsResponse.channels:type_name -> sblurp.v1.Channel
-	9,   // 38: sblurp.v1.JoinChannelResponse.channel:type_name -> sblurp.v1.Channel
-	9,   // 39: sblurp.v1.OpenDMResponse.channel:type_name -> sblurp.v1.Channel
-	12,  // 40: sblurp.v1.ListMessagesResponse.messages:type_name -> sblurp.v1.Message
-	12,  // 41: sblurp.v1.SendMessageResponse.message:type_name -> sblurp.v1.Message
-	12,  // 42: sblurp.v1.EditMessageResponse.message:type_name -> sblurp.v1.Message
-	12,  // 43: sblurp.v1.ReactResponse.message:type_name -> sblurp.v1.Message
-	13,  // 44: sblurp.v1.MarkReadResponse.read_state:type_name -> sblurp.v1.ReadState
-	12,  // 45: sblurp.v1.SearchResponse.messages:type_name -> sblurp.v1.Message
-	62,  // 46: sblurp.v1.ListActivityResponse.items:type_name -> sblurp.v1.ActivityItem
-	5,   // 47: sblurp.v1.ActivityItem.kind:type_name -> sblurp.v1.ActivityKind
-	12,  // 48: sblurp.v1.ActivityItem.message:type_name -> sblurp.v1.Message
-	65,  // 49: sblurp.v1.ListThreadsResponse.threads:type_name -> sblurp.v1.ThreadSummary
-	12,  // 50: sblurp.v1.ThreadSummary.root:type_name -> sblurp.v1.Message
-	68,  // 51: sblurp.v1.GetLinkPreviewsResponse.previews:type_name -> sblurp.v1.LinkPreview
-	9,   // 52: sblurp.v1.AddChannelMembersResponse.channel:type_name -> sblurp.v1.Channel
-	9,   // 53: sblurp.v1.RemoveChannelMemberResponse.channel:type_name -> sblurp.v1.Channel
-	1,   // 54: sblurp.v1.SetMemberRoleRequest.role:type_name -> sblurp.v1.MemberRole
-	7,   // 55: sblurp.v1.SetMemberRoleResponse.member:type_name -> sblurp.v1.Member
-	7,   // 56: sblurp.v1.Ban.member:type_name -> sblurp.v1.Member
-	81,  // 57: sblurp.v1.ListBansResponse.bans:type_name -> sblurp.v1.Ban
-	12,  // 58: sblurp.v1.Report.message:type_name -> sblurp.v1.Message
-	7,   // 59: sblurp.v1.Report.author:type_name -> sblurp.v1.Member
-	7,   // 60: sblurp.v1.Report.reporter:type_name -> sblurp.v1.Member
-	7,   // 61: sblurp.v1.Report.resolved_by:type_name -> sblurp.v1.Member
-	96,  // 62: sblurp.v1.ListReportsResponse.reports:type_name -> sblurp.v1.Report
-	101, // 63: sblurp.v1.CreateInviteResponse.invite:type_name -> sblurp.v1.Invite
-	101, // 64: sblurp.v1.ListInvitesResponse.invites:type_name -> sblurp.v1.Invite
-	3,   // 65: sblurp.v1.UpdateServerSettingsRequest.channel_mode:type_name -> sblurp.v1.ChannelMode
-	3,   // 66: sblurp.v1.UpdateServerSettingsResponse.channel_mode:type_name -> sblurp.v1.ChannelMode
-	10,  // 67: sblurp.v1.UpdateServerSettingsResponse.banner:type_name -> sblurp.v1.Attachment
-	8,   // 68: sblurp.v1.CreateRoleResponse.role:type_name -> sblurp.v1.Role
-	8,   // 69: sblurp.v1.UpdateRoleResponse.role:type_name -> sblurp.v1.Role
-	7,   // 70: sblurp.v1.SetMemberRolesResponse.member:type_name -> sblurp.v1.Member
-	118, // 71: sblurp.v1.ListEmojiResponse.emoji:type_name -> sblurp.v1.CustomEmoji
-	6,   // 72: sblurp.v1.EmojiUploadResult.status:type_name -> sblurp.v1.EmojiUploadStatus
-	120, // 73: sblurp.v1.UploadEmojiResponse.results:type_name -> sblurp.v1.EmojiUploadResult
-	7,   // 74: sblurp.v1.CreateBotResponse.bot:type_name -> sblurp.v1.Member
-	7,   // 75: sblurp.v1.ListBotsResponse.bots:type_name -> sblurp.v1.Member
-	132, // 76: sblurp.v1.ListPluginsResponse.plugins:type_name -> sblurp.v1.Plugin
-	132, // 77: sblurp.v1.InstallPluginResponse.plugin:type_name -> sblurp.v1.Plugin
-	132, // 78: sblurp.v1.SetPluginEnabledResponse.plugin:type_name -> sblurp.v1.Plugin
-	14,  // 79: sblurp.v1.ServerService.GetServerInfo:input_type -> sblurp.v1.GetServerInfoRequest
-	16,  // 80: sblurp.v1.ServerService.Join:input_type -> sblurp.v1.JoinRequest
-	18,  // 81: sblurp.v1.ServerService.GetMe:input_type -> sblurp.v1.GetMeRequest
-	20,  // 82: sblurp.v1.ServerService.UpdateProfile:input_type -> sblurp.v1.UpdateProfileRequest
-	22,  // 83: sblurp.v1.ServerService.GetState:input_type -> sblurp.v1.GetStateRequest
-	24,  // 84: sblurp.v1.ServerService.Subscribe:input_type -> sblurp.v1.SubscribeRequest
-	73,  // 85: sblurp.v1.ServerService.SetMemberRole:input_type -> sblurp.v1.SetMemberRoleRequest
-	75,  // 86: sblurp.v1.ServerService.LeaveCommunity:input_type -> sblurp.v1.LeaveCommunityRequest
-	77,  // 87: sblurp.v1.ServerService.KickMember:input_type -> sblurp.v1.KickMemberRequest
-	79,  // 88: sblurp.v1.ServerService.BanMember:input_type -> sblurp.v1.BanMemberRequest
-	82,  // 89: sblurp.v1.ServerService.ListBans:input_type -> sblurp.v1.ListBansRequest
-	84,  // 90: sblurp.v1.ServerService.UnbanMember:input_type -> sblurp.v1.UnbanMemberRequest
-	102, // 91: sblurp.v1.ServerService.CreateInvite:input_type -> sblurp.v1.CreateInviteRequest
-	104, // 92: sblurp.v1.ServerService.ListInvites:input_type -> sblurp.v1.ListInvitesRequest
-	106, // 93: sblurp.v1.ServerService.RevokeInvite:input_type -> sblurp.v1.RevokeInviteRequest
-	108, // 94: sblurp.v1.ServerService.UpdateServerSettings:input_type -> sblurp.v1.UpdateServerSettingsRequest
-	110, // 95: sblurp.v1.ServerService.CreateRole:input_type -> sblurp.v1.CreateRoleRequest
-	112, // 96: sblurp.v1.ServerService.UpdateRole:input_type -> sblurp.v1.UpdateRoleRequest
-	114, // 97: sblurp.v1.ServerService.DeleteRole:input_type -> sblurp.v1.DeleteRoleRequest
-	116, // 98: sblurp.v1.ServerService.SetMemberRoles:input_type -> sblurp.v1.SetMemberRolesRequest
-	122, // 99: sblurp.v1.ServerService.DeleteEmoji:input_type -> sblurp.v1.DeleteEmojiRequest
-	86,  // 100: sblurp.v1.ServerService.BlockMember:input_type -> sblurp.v1.BlockMemberRequest
-	88,  // 101: sblurp.v1.ServerService.UnblockMember:input_type -> sblurp.v1.UnblockMemberRequest
-	90,  // 102: sblurp.v1.ServerService.MuteMember:input_type -> sblurp.v1.MuteMemberRequest
-	92,  // 103: sblurp.v1.ServerService.UnmuteMember:input_type -> sblurp.v1.UnmuteMemberRequest
-	94,  // 104: sblurp.v1.ServerService.ReportMessage:input_type -> sblurp.v1.ReportMessageRequest
-	97,  // 105: sblurp.v1.ServerService.ListReports:input_type -> sblurp.v1.ListReportsRequest
-	99,  // 106: sblurp.v1.ServerService.ResolveReport:input_type -> sblurp.v1.ResolveReportRequest
-	29,  // 107: sblurp.v1.ChatService.CreateChannel:input_type -> sblurp.v1.CreateChannelRequest
-	31,  // 108: sblurp.v1.ChatService.UpdateChannel:input_type -> sblurp.v1.UpdateChannelRequest
-	42,  // 109: sblurp.v1.ChatService.OpenDM:input_type -> sblurp.v1.OpenDMRequest
-	44,  // 110: sblurp.v1.ChatService.ListMessages:input_type -> sblurp.v1.ListMessagesRequest
-	46,  // 111: sblurp.v1.ChatService.SendMessage:input_type -> sblurp.v1.SendMessageRequest
-	48,  // 112: sblurp.v1.ChatService.EditMessage:input_type -> sblurp.v1.EditMessageRequest
-	50,  // 113: sblurp.v1.ChatService.DeleteMessage:input_type -> sblurp.v1.DeleteMessageRequest
-	52,  // 114: sblurp.v1.ChatService.React:input_type -> sblurp.v1.ReactRequest
-	54,  // 115: sblurp.v1.ChatService.MarkRead:input_type -> sblurp.v1.MarkReadRequest
-	56,  // 116: sblurp.v1.ChatService.SetTyping:input_type -> sblurp.v1.SetTypingRequest
-	58,  // 117: sblurp.v1.ChatService.Search:input_type -> sblurp.v1.SearchRequest
-	60,  // 118: sblurp.v1.ChatService.ListActivity:input_type -> sblurp.v1.ListActivityRequest
-	63,  // 119: sblurp.v1.ChatService.ListThreads:input_type -> sblurp.v1.ListThreadsRequest
-	66,  // 120: sblurp.v1.ChatService.GetLinkPreviews:input_type -> sblurp.v1.GetLinkPreviewsRequest
-	69,  // 121: sblurp.v1.ChatService.AddChannelMembers:input_type -> sblurp.v1.AddChannelMembersRequest
-	71,  // 122: sblurp.v1.ChatService.RemoveChannelMember:input_type -> sblurp.v1.RemoveChannelMemberRequest
-	34,  // 123: sblurp.v1.ChatService.SetChannelAccess:input_type -> sblurp.v1.SetChannelAccessRequest
-	36,  // 124: sblurp.v1.ChatService.BrowseChannels:input_type -> sblurp.v1.BrowseChannelsRequest
-	38,  // 125: sblurp.v1.ChatService.JoinChannel:input_type -> sblurp.v1.JoinChannelRequest
-	40,  // 126: sblurp.v1.ChatService.LeaveChannel:input_type -> sblurp.v1.LeaveChannelRequest
-	124, // 127: sblurp.v1.BotService.CreateBot:input_type -> sblurp.v1.CreateBotRequest
-	126, // 128: sblurp.v1.BotService.ListBots:input_type -> sblurp.v1.ListBotsRequest
-	128, // 129: sblurp.v1.BotService.RotateBotToken:input_type -> sblurp.v1.RotateBotTokenRequest
-	130, // 130: sblurp.v1.BotService.DeleteBot:input_type -> sblurp.v1.DeleteBotRequest
-	133, // 131: sblurp.v1.BotService.ListPlugins:input_type -> sblurp.v1.ListPluginsRequest
-	135, // 132: sblurp.v1.BotService.InstallPlugin:input_type -> sblurp.v1.InstallPluginRequest
-	137, // 133: sblurp.v1.BotService.SetPluginEnabled:input_type -> sblurp.v1.SetPluginEnabledRequest
-	139, // 134: sblurp.v1.BotService.DeletePlugin:input_type -> sblurp.v1.DeletePluginRequest
-	15,  // 135: sblurp.v1.ServerService.GetServerInfo:output_type -> sblurp.v1.GetServerInfoResponse
-	17,  // 136: sblurp.v1.ServerService.Join:output_type -> sblurp.v1.JoinResponse
-	19,  // 137: sblurp.v1.ServerService.GetMe:output_type -> sblurp.v1.GetMeResponse
-	21,  // 138: sblurp.v1.ServerService.UpdateProfile:output_type -> sblurp.v1.UpdateProfileResponse
-	23,  // 139: sblurp.v1.ServerService.GetState:output_type -> sblurp.v1.GetStateResponse
-	28,  // 140: sblurp.v1.ServerService.Subscribe:output_type -> sblurp.v1.Event
-	74,  // 141: sblurp.v1.ServerService.SetMemberRole:output_type -> sblurp.v1.SetMemberRoleResponse
-	76,  // 142: sblurp.v1.ServerService.LeaveCommunity:output_type -> sblurp.v1.LeaveCommunityResponse
-	78,  // 143: sblurp.v1.ServerService.KickMember:output_type -> sblurp.v1.KickMemberResponse
-	80,  // 144: sblurp.v1.ServerService.BanMember:output_type -> sblurp.v1.BanMemberResponse
-	83,  // 145: sblurp.v1.ServerService.ListBans:output_type -> sblurp.v1.ListBansResponse
-	85,  // 146: sblurp.v1.ServerService.UnbanMember:output_type -> sblurp.v1.UnbanMemberResponse
-	103, // 147: sblurp.v1.ServerService.CreateInvite:output_type -> sblurp.v1.CreateInviteResponse
-	105, // 148: sblurp.v1.ServerService.ListInvites:output_type -> sblurp.v1.ListInvitesResponse
-	107, // 149: sblurp.v1.ServerService.RevokeInvite:output_type -> sblurp.v1.RevokeInviteResponse
-	109, // 150: sblurp.v1.ServerService.UpdateServerSettings:output_type -> sblurp.v1.UpdateServerSettingsResponse
-	111, // 151: sblurp.v1.ServerService.CreateRole:output_type -> sblurp.v1.CreateRoleResponse
-	113, // 152: sblurp.v1.ServerService.UpdateRole:output_type -> sblurp.v1.UpdateRoleResponse
-	115, // 153: sblurp.v1.ServerService.DeleteRole:output_type -> sblurp.v1.DeleteRoleResponse
-	117, // 154: sblurp.v1.ServerService.SetMemberRoles:output_type -> sblurp.v1.SetMemberRolesResponse
-	123, // 155: sblurp.v1.ServerService.DeleteEmoji:output_type -> sblurp.v1.DeleteEmojiResponse
-	87,  // 156: sblurp.v1.ServerService.BlockMember:output_type -> sblurp.v1.BlockMemberResponse
-	89,  // 157: sblurp.v1.ServerService.UnblockMember:output_type -> sblurp.v1.UnblockMemberResponse
-	91,  // 158: sblurp.v1.ServerService.MuteMember:output_type -> sblurp.v1.MuteMemberResponse
-	93,  // 159: sblurp.v1.ServerService.UnmuteMember:output_type -> sblurp.v1.UnmuteMemberResponse
-	95,  // 160: sblurp.v1.ServerService.ReportMessage:output_type -> sblurp.v1.ReportMessageResponse
-	98,  // 161: sblurp.v1.ServerService.ListReports:output_type -> sblurp.v1.ListReportsResponse
-	100, // 162: sblurp.v1.ServerService.ResolveReport:output_type -> sblurp.v1.ResolveReportResponse
-	30,  // 163: sblurp.v1.ChatService.CreateChannel:output_type -> sblurp.v1.CreateChannelResponse
-	33,  // 164: sblurp.v1.ChatService.UpdateChannel:output_type -> sblurp.v1.UpdateChannelResponse
-	43,  // 165: sblurp.v1.ChatService.OpenDM:output_type -> sblurp.v1.OpenDMResponse
-	45,  // 166: sblurp.v1.ChatService.ListMessages:output_type -> sblurp.v1.ListMessagesResponse
-	47,  // 167: sblurp.v1.ChatService.SendMessage:output_type -> sblurp.v1.SendMessageResponse
-	49,  // 168: sblurp.v1.ChatService.EditMessage:output_type -> sblurp.v1.EditMessageResponse
-	51,  // 169: sblurp.v1.ChatService.DeleteMessage:output_type -> sblurp.v1.DeleteMessageResponse
-	53,  // 170: sblurp.v1.ChatService.React:output_type -> sblurp.v1.ReactResponse
-	55,  // 171: sblurp.v1.ChatService.MarkRead:output_type -> sblurp.v1.MarkReadResponse
-	57,  // 172: sblurp.v1.ChatService.SetTyping:output_type -> sblurp.v1.SetTypingResponse
-	59,  // 173: sblurp.v1.ChatService.Search:output_type -> sblurp.v1.SearchResponse
-	61,  // 174: sblurp.v1.ChatService.ListActivity:output_type -> sblurp.v1.ListActivityResponse
-	64,  // 175: sblurp.v1.ChatService.ListThreads:output_type -> sblurp.v1.ListThreadsResponse
-	67,  // 176: sblurp.v1.ChatService.GetLinkPreviews:output_type -> sblurp.v1.GetLinkPreviewsResponse
-	70,  // 177: sblurp.v1.ChatService.AddChannelMembers:output_type -> sblurp.v1.AddChannelMembersResponse
-	72,  // 178: sblurp.v1.ChatService.RemoveChannelMember:output_type -> sblurp.v1.RemoveChannelMemberResponse
-	35,  // 179: sblurp.v1.ChatService.SetChannelAccess:output_type -> sblurp.v1.SetChannelAccessResponse
-	37,  // 180: sblurp.v1.ChatService.BrowseChannels:output_type -> sblurp.v1.BrowseChannelsResponse
-	39,  // 181: sblurp.v1.ChatService.JoinChannel:output_type -> sblurp.v1.JoinChannelResponse
-	41,  // 182: sblurp.v1.ChatService.LeaveChannel:output_type -> sblurp.v1.LeaveChannelResponse
-	125, // 183: sblurp.v1.BotService.CreateBot:output_type -> sblurp.v1.CreateBotResponse
-	127, // 184: sblurp.v1.BotService.ListBots:output_type -> sblurp.v1.ListBotsResponse
-	129, // 185: sblurp.v1.BotService.RotateBotToken:output_type -> sblurp.v1.RotateBotTokenResponse
-	131, // 186: sblurp.v1.BotService.DeleteBot:output_type -> sblurp.v1.DeleteBotResponse
-	134, // 187: sblurp.v1.BotService.ListPlugins:output_type -> sblurp.v1.ListPluginsResponse
-	136, // 188: sblurp.v1.BotService.InstallPlugin:output_type -> sblurp.v1.InstallPluginResponse
-	138, // 189: sblurp.v1.BotService.SetPluginEnabled:output_type -> sblurp.v1.SetPluginEnabledResponse
-	140, // 190: sblurp.v1.BotService.DeletePlugin:output_type -> sblurp.v1.DeletePluginResponse
-	135, // [135:191] is the sub-list for method output_type
-	79,  // [79:135] is the sub-list for method input_type
-	79,  // [79:79] is the sub-list for extension type_name
-	79,  // [79:79] is the sub-list for extension extendee
-	0,   // [0:79] is the sub-list for field type_name
+	12,  // 5: sblurp.v1.Channel.last_message:type_name -> sblurp.v1.Message
+	11,  // 6: sblurp.v1.Message.reactions:type_name -> sblurp.v1.Reaction
+	10,  // 7: sblurp.v1.Message.attachments:type_name -> sblurp.v1.Attachment
+	10,  // 8: sblurp.v1.GetServerInfoResponse.banner:type_name -> sblurp.v1.Attachment
+	7,   // 9: sblurp.v1.JoinResponse.member:type_name -> sblurp.v1.Member
+	7,   // 10: sblurp.v1.GetMeResponse.member:type_name -> sblurp.v1.Member
+	7,   // 11: sblurp.v1.UpdateProfileResponse.member:type_name -> sblurp.v1.Member
+	7,   // 12: sblurp.v1.GetStateResponse.me:type_name -> sblurp.v1.Member
+	9,   // 13: sblurp.v1.GetStateResponse.channels:type_name -> sblurp.v1.Channel
+	7,   // 14: sblurp.v1.GetStateResponse.members:type_name -> sblurp.v1.Member
+	13,  // 15: sblurp.v1.GetStateResponse.read_states:type_name -> sblurp.v1.ReadState
+	8,   // 16: sblurp.v1.GetStateResponse.roles:type_name -> sblurp.v1.Role
+	3,   // 17: sblurp.v1.GetStateResponse.channel_mode:type_name -> sblurp.v1.ChannelMode
+	2,   // 18: sblurp.v1.PresenceEvent.presence:type_name -> sblurp.v1.Presence
+	26,  // 19: sblurp.v1.PresenceBatch.changes:type_name -> sblurp.v1.PresenceEvent
+	12,  // 20: sblurp.v1.Event.message_created:type_name -> sblurp.v1.Message
+	12,  // 21: sblurp.v1.Event.message_updated:type_name -> sblurp.v1.Message
+	12,  // 22: sblurp.v1.Event.message_deleted:type_name -> sblurp.v1.Message
+	9,   // 23: sblurp.v1.Event.channel_created:type_name -> sblurp.v1.Channel
+	9,   // 24: sblurp.v1.Event.channel_updated:type_name -> sblurp.v1.Channel
+	7,   // 25: sblurp.v1.Event.member_joined:type_name -> sblurp.v1.Member
+	7,   // 26: sblurp.v1.Event.member_updated:type_name -> sblurp.v1.Member
+	13,  // 27: sblurp.v1.Event.read_state:type_name -> sblurp.v1.ReadState
+	25,  // 28: sblurp.v1.Event.typing:type_name -> sblurp.v1.TypingEvent
+	26,  // 29: sblurp.v1.Event.presence:type_name -> sblurp.v1.PresenceEvent
+	8,   // 30: sblurp.v1.Event.role_updated:type_name -> sblurp.v1.Role
+	3,   // 31: sblurp.v1.Event.channel_mode_changed:type_name -> sblurp.v1.ChannelMode
+	27,  // 32: sblurp.v1.Event.presence_batch:type_name -> sblurp.v1.PresenceBatch
+	4,   // 33: sblurp.v1.CreateChannelRequest.kind:type_name -> sblurp.v1.ChannelKind
+	9,   // 34: sblurp.v1.CreateChannelResponse.channel:type_name -> sblurp.v1.Channel
+	32,  // 35: sblurp.v1.UpdateChannelRequest.post_roles:type_name -> sblurp.v1.PostRoles
+	9,   // 36: sblurp.v1.UpdateChannelResponse.channel:type_name -> sblurp.v1.Channel
+	9,   // 37: sblurp.v1.SetChannelAccessResponse.channel:type_name -> sblurp.v1.Channel
+	9,   // 38: sblurp.v1.BrowseChannelsResponse.channels:type_name -> sblurp.v1.Channel
+	9,   // 39: sblurp.v1.JoinChannelResponse.channel:type_name -> sblurp.v1.Channel
+	9,   // 40: sblurp.v1.OpenDMResponse.channel:type_name -> sblurp.v1.Channel
+	12,  // 41: sblurp.v1.ListMessagesResponse.messages:type_name -> sblurp.v1.Message
+	12,  // 42: sblurp.v1.SendMessageResponse.message:type_name -> sblurp.v1.Message
+	12,  // 43: sblurp.v1.EditMessageResponse.message:type_name -> sblurp.v1.Message
+	12,  // 44: sblurp.v1.ReactResponse.message:type_name -> sblurp.v1.Message
+	13,  // 45: sblurp.v1.MarkReadResponse.read_state:type_name -> sblurp.v1.ReadState
+	12,  // 46: sblurp.v1.SearchResponse.messages:type_name -> sblurp.v1.Message
+	62,  // 47: sblurp.v1.ListActivityResponse.items:type_name -> sblurp.v1.ActivityItem
+	5,   // 48: sblurp.v1.ActivityItem.kind:type_name -> sblurp.v1.ActivityKind
+	12,  // 49: sblurp.v1.ActivityItem.message:type_name -> sblurp.v1.Message
+	65,  // 50: sblurp.v1.ListThreadsResponse.threads:type_name -> sblurp.v1.ThreadSummary
+	12,  // 51: sblurp.v1.ThreadSummary.root:type_name -> sblurp.v1.Message
+	68,  // 52: sblurp.v1.GetLinkPreviewsResponse.previews:type_name -> sblurp.v1.LinkPreview
+	9,   // 53: sblurp.v1.AddChannelMembersResponse.channel:type_name -> sblurp.v1.Channel
+	9,   // 54: sblurp.v1.RemoveChannelMemberResponse.channel:type_name -> sblurp.v1.Channel
+	1,   // 55: sblurp.v1.SetMemberRoleRequest.role:type_name -> sblurp.v1.MemberRole
+	7,   // 56: sblurp.v1.SetMemberRoleResponse.member:type_name -> sblurp.v1.Member
+	7,   // 57: sblurp.v1.Ban.member:type_name -> sblurp.v1.Member
+	81,  // 58: sblurp.v1.ListBansResponse.bans:type_name -> sblurp.v1.Ban
+	12,  // 59: sblurp.v1.Report.message:type_name -> sblurp.v1.Message
+	7,   // 60: sblurp.v1.Report.author:type_name -> sblurp.v1.Member
+	7,   // 61: sblurp.v1.Report.reporter:type_name -> sblurp.v1.Member
+	7,   // 62: sblurp.v1.Report.resolved_by:type_name -> sblurp.v1.Member
+	96,  // 63: sblurp.v1.ListReportsResponse.reports:type_name -> sblurp.v1.Report
+	101, // 64: sblurp.v1.CreateInviteResponse.invite:type_name -> sblurp.v1.Invite
+	101, // 65: sblurp.v1.ListInvitesResponse.invites:type_name -> sblurp.v1.Invite
+	3,   // 66: sblurp.v1.UpdateServerSettingsRequest.channel_mode:type_name -> sblurp.v1.ChannelMode
+	3,   // 67: sblurp.v1.UpdateServerSettingsResponse.channel_mode:type_name -> sblurp.v1.ChannelMode
+	10,  // 68: sblurp.v1.UpdateServerSettingsResponse.banner:type_name -> sblurp.v1.Attachment
+	8,   // 69: sblurp.v1.CreateRoleResponse.role:type_name -> sblurp.v1.Role
+	8,   // 70: sblurp.v1.UpdateRoleResponse.role:type_name -> sblurp.v1.Role
+	7,   // 71: sblurp.v1.SetMemberRolesResponse.member:type_name -> sblurp.v1.Member
+	118, // 72: sblurp.v1.ListEmojiResponse.emoji:type_name -> sblurp.v1.CustomEmoji
+	6,   // 73: sblurp.v1.EmojiUploadResult.status:type_name -> sblurp.v1.EmojiUploadStatus
+	120, // 74: sblurp.v1.UploadEmojiResponse.results:type_name -> sblurp.v1.EmojiUploadResult
+	7,   // 75: sblurp.v1.CreateBotResponse.bot:type_name -> sblurp.v1.Member
+	7,   // 76: sblurp.v1.ListBotsResponse.bots:type_name -> sblurp.v1.Member
+	132, // 77: sblurp.v1.ListPluginsResponse.plugins:type_name -> sblurp.v1.Plugin
+	132, // 78: sblurp.v1.InstallPluginResponse.plugin:type_name -> sblurp.v1.Plugin
+	132, // 79: sblurp.v1.SetPluginEnabledResponse.plugin:type_name -> sblurp.v1.Plugin
+	14,  // 80: sblurp.v1.ServerService.GetServerInfo:input_type -> sblurp.v1.GetServerInfoRequest
+	16,  // 81: sblurp.v1.ServerService.Join:input_type -> sblurp.v1.JoinRequest
+	18,  // 82: sblurp.v1.ServerService.GetMe:input_type -> sblurp.v1.GetMeRequest
+	20,  // 83: sblurp.v1.ServerService.UpdateProfile:input_type -> sblurp.v1.UpdateProfileRequest
+	22,  // 84: sblurp.v1.ServerService.GetState:input_type -> sblurp.v1.GetStateRequest
+	24,  // 85: sblurp.v1.ServerService.Subscribe:input_type -> sblurp.v1.SubscribeRequest
+	73,  // 86: sblurp.v1.ServerService.SetMemberRole:input_type -> sblurp.v1.SetMemberRoleRequest
+	75,  // 87: sblurp.v1.ServerService.LeaveCommunity:input_type -> sblurp.v1.LeaveCommunityRequest
+	77,  // 88: sblurp.v1.ServerService.KickMember:input_type -> sblurp.v1.KickMemberRequest
+	79,  // 89: sblurp.v1.ServerService.BanMember:input_type -> sblurp.v1.BanMemberRequest
+	82,  // 90: sblurp.v1.ServerService.ListBans:input_type -> sblurp.v1.ListBansRequest
+	84,  // 91: sblurp.v1.ServerService.UnbanMember:input_type -> sblurp.v1.UnbanMemberRequest
+	102, // 92: sblurp.v1.ServerService.CreateInvite:input_type -> sblurp.v1.CreateInviteRequest
+	104, // 93: sblurp.v1.ServerService.ListInvites:input_type -> sblurp.v1.ListInvitesRequest
+	106, // 94: sblurp.v1.ServerService.RevokeInvite:input_type -> sblurp.v1.RevokeInviteRequest
+	108, // 95: sblurp.v1.ServerService.UpdateServerSettings:input_type -> sblurp.v1.UpdateServerSettingsRequest
+	110, // 96: sblurp.v1.ServerService.CreateRole:input_type -> sblurp.v1.CreateRoleRequest
+	112, // 97: sblurp.v1.ServerService.UpdateRole:input_type -> sblurp.v1.UpdateRoleRequest
+	114, // 98: sblurp.v1.ServerService.DeleteRole:input_type -> sblurp.v1.DeleteRoleRequest
+	116, // 99: sblurp.v1.ServerService.SetMemberRoles:input_type -> sblurp.v1.SetMemberRolesRequest
+	122, // 100: sblurp.v1.ServerService.DeleteEmoji:input_type -> sblurp.v1.DeleteEmojiRequest
+	86,  // 101: sblurp.v1.ServerService.BlockMember:input_type -> sblurp.v1.BlockMemberRequest
+	88,  // 102: sblurp.v1.ServerService.UnblockMember:input_type -> sblurp.v1.UnblockMemberRequest
+	90,  // 103: sblurp.v1.ServerService.MuteMember:input_type -> sblurp.v1.MuteMemberRequest
+	92,  // 104: sblurp.v1.ServerService.UnmuteMember:input_type -> sblurp.v1.UnmuteMemberRequest
+	94,  // 105: sblurp.v1.ServerService.ReportMessage:input_type -> sblurp.v1.ReportMessageRequest
+	97,  // 106: sblurp.v1.ServerService.ListReports:input_type -> sblurp.v1.ListReportsRequest
+	99,  // 107: sblurp.v1.ServerService.ResolveReport:input_type -> sblurp.v1.ResolveReportRequest
+	29,  // 108: sblurp.v1.ChatService.CreateChannel:input_type -> sblurp.v1.CreateChannelRequest
+	31,  // 109: sblurp.v1.ChatService.UpdateChannel:input_type -> sblurp.v1.UpdateChannelRequest
+	42,  // 110: sblurp.v1.ChatService.OpenDM:input_type -> sblurp.v1.OpenDMRequest
+	44,  // 111: sblurp.v1.ChatService.ListMessages:input_type -> sblurp.v1.ListMessagesRequest
+	46,  // 112: sblurp.v1.ChatService.SendMessage:input_type -> sblurp.v1.SendMessageRequest
+	48,  // 113: sblurp.v1.ChatService.EditMessage:input_type -> sblurp.v1.EditMessageRequest
+	50,  // 114: sblurp.v1.ChatService.DeleteMessage:input_type -> sblurp.v1.DeleteMessageRequest
+	52,  // 115: sblurp.v1.ChatService.React:input_type -> sblurp.v1.ReactRequest
+	54,  // 116: sblurp.v1.ChatService.MarkRead:input_type -> sblurp.v1.MarkReadRequest
+	56,  // 117: sblurp.v1.ChatService.SetTyping:input_type -> sblurp.v1.SetTypingRequest
+	58,  // 118: sblurp.v1.ChatService.Search:input_type -> sblurp.v1.SearchRequest
+	60,  // 119: sblurp.v1.ChatService.ListActivity:input_type -> sblurp.v1.ListActivityRequest
+	63,  // 120: sblurp.v1.ChatService.ListThreads:input_type -> sblurp.v1.ListThreadsRequest
+	66,  // 121: sblurp.v1.ChatService.GetLinkPreviews:input_type -> sblurp.v1.GetLinkPreviewsRequest
+	69,  // 122: sblurp.v1.ChatService.AddChannelMembers:input_type -> sblurp.v1.AddChannelMembersRequest
+	71,  // 123: sblurp.v1.ChatService.RemoveChannelMember:input_type -> sblurp.v1.RemoveChannelMemberRequest
+	34,  // 124: sblurp.v1.ChatService.SetChannelAccess:input_type -> sblurp.v1.SetChannelAccessRequest
+	36,  // 125: sblurp.v1.ChatService.BrowseChannels:input_type -> sblurp.v1.BrowseChannelsRequest
+	38,  // 126: sblurp.v1.ChatService.JoinChannel:input_type -> sblurp.v1.JoinChannelRequest
+	40,  // 127: sblurp.v1.ChatService.LeaveChannel:input_type -> sblurp.v1.LeaveChannelRequest
+	124, // 128: sblurp.v1.BotService.CreateBot:input_type -> sblurp.v1.CreateBotRequest
+	126, // 129: sblurp.v1.BotService.ListBots:input_type -> sblurp.v1.ListBotsRequest
+	128, // 130: sblurp.v1.BotService.RotateBotToken:input_type -> sblurp.v1.RotateBotTokenRequest
+	130, // 131: sblurp.v1.BotService.DeleteBot:input_type -> sblurp.v1.DeleteBotRequest
+	133, // 132: sblurp.v1.BotService.ListPlugins:input_type -> sblurp.v1.ListPluginsRequest
+	135, // 133: sblurp.v1.BotService.InstallPlugin:input_type -> sblurp.v1.InstallPluginRequest
+	137, // 134: sblurp.v1.BotService.SetPluginEnabled:input_type -> sblurp.v1.SetPluginEnabledRequest
+	139, // 135: sblurp.v1.BotService.DeletePlugin:input_type -> sblurp.v1.DeletePluginRequest
+	15,  // 136: sblurp.v1.ServerService.GetServerInfo:output_type -> sblurp.v1.GetServerInfoResponse
+	17,  // 137: sblurp.v1.ServerService.Join:output_type -> sblurp.v1.JoinResponse
+	19,  // 138: sblurp.v1.ServerService.GetMe:output_type -> sblurp.v1.GetMeResponse
+	21,  // 139: sblurp.v1.ServerService.UpdateProfile:output_type -> sblurp.v1.UpdateProfileResponse
+	23,  // 140: sblurp.v1.ServerService.GetState:output_type -> sblurp.v1.GetStateResponse
+	28,  // 141: sblurp.v1.ServerService.Subscribe:output_type -> sblurp.v1.Event
+	74,  // 142: sblurp.v1.ServerService.SetMemberRole:output_type -> sblurp.v1.SetMemberRoleResponse
+	76,  // 143: sblurp.v1.ServerService.LeaveCommunity:output_type -> sblurp.v1.LeaveCommunityResponse
+	78,  // 144: sblurp.v1.ServerService.KickMember:output_type -> sblurp.v1.KickMemberResponse
+	80,  // 145: sblurp.v1.ServerService.BanMember:output_type -> sblurp.v1.BanMemberResponse
+	83,  // 146: sblurp.v1.ServerService.ListBans:output_type -> sblurp.v1.ListBansResponse
+	85,  // 147: sblurp.v1.ServerService.UnbanMember:output_type -> sblurp.v1.UnbanMemberResponse
+	103, // 148: sblurp.v1.ServerService.CreateInvite:output_type -> sblurp.v1.CreateInviteResponse
+	105, // 149: sblurp.v1.ServerService.ListInvites:output_type -> sblurp.v1.ListInvitesResponse
+	107, // 150: sblurp.v1.ServerService.RevokeInvite:output_type -> sblurp.v1.RevokeInviteResponse
+	109, // 151: sblurp.v1.ServerService.UpdateServerSettings:output_type -> sblurp.v1.UpdateServerSettingsResponse
+	111, // 152: sblurp.v1.ServerService.CreateRole:output_type -> sblurp.v1.CreateRoleResponse
+	113, // 153: sblurp.v1.ServerService.UpdateRole:output_type -> sblurp.v1.UpdateRoleResponse
+	115, // 154: sblurp.v1.ServerService.DeleteRole:output_type -> sblurp.v1.DeleteRoleResponse
+	117, // 155: sblurp.v1.ServerService.SetMemberRoles:output_type -> sblurp.v1.SetMemberRolesResponse
+	123, // 156: sblurp.v1.ServerService.DeleteEmoji:output_type -> sblurp.v1.DeleteEmojiResponse
+	87,  // 157: sblurp.v1.ServerService.BlockMember:output_type -> sblurp.v1.BlockMemberResponse
+	89,  // 158: sblurp.v1.ServerService.UnblockMember:output_type -> sblurp.v1.UnblockMemberResponse
+	91,  // 159: sblurp.v1.ServerService.MuteMember:output_type -> sblurp.v1.MuteMemberResponse
+	93,  // 160: sblurp.v1.ServerService.UnmuteMember:output_type -> sblurp.v1.UnmuteMemberResponse
+	95,  // 161: sblurp.v1.ServerService.ReportMessage:output_type -> sblurp.v1.ReportMessageResponse
+	98,  // 162: sblurp.v1.ServerService.ListReports:output_type -> sblurp.v1.ListReportsResponse
+	100, // 163: sblurp.v1.ServerService.ResolveReport:output_type -> sblurp.v1.ResolveReportResponse
+	30,  // 164: sblurp.v1.ChatService.CreateChannel:output_type -> sblurp.v1.CreateChannelResponse
+	33,  // 165: sblurp.v1.ChatService.UpdateChannel:output_type -> sblurp.v1.UpdateChannelResponse
+	43,  // 166: sblurp.v1.ChatService.OpenDM:output_type -> sblurp.v1.OpenDMResponse
+	45,  // 167: sblurp.v1.ChatService.ListMessages:output_type -> sblurp.v1.ListMessagesResponse
+	47,  // 168: sblurp.v1.ChatService.SendMessage:output_type -> sblurp.v1.SendMessageResponse
+	49,  // 169: sblurp.v1.ChatService.EditMessage:output_type -> sblurp.v1.EditMessageResponse
+	51,  // 170: sblurp.v1.ChatService.DeleteMessage:output_type -> sblurp.v1.DeleteMessageResponse
+	53,  // 171: sblurp.v1.ChatService.React:output_type -> sblurp.v1.ReactResponse
+	55,  // 172: sblurp.v1.ChatService.MarkRead:output_type -> sblurp.v1.MarkReadResponse
+	57,  // 173: sblurp.v1.ChatService.SetTyping:output_type -> sblurp.v1.SetTypingResponse
+	59,  // 174: sblurp.v1.ChatService.Search:output_type -> sblurp.v1.SearchResponse
+	61,  // 175: sblurp.v1.ChatService.ListActivity:output_type -> sblurp.v1.ListActivityResponse
+	64,  // 176: sblurp.v1.ChatService.ListThreads:output_type -> sblurp.v1.ListThreadsResponse
+	67,  // 177: sblurp.v1.ChatService.GetLinkPreviews:output_type -> sblurp.v1.GetLinkPreviewsResponse
+	70,  // 178: sblurp.v1.ChatService.AddChannelMembers:output_type -> sblurp.v1.AddChannelMembersResponse
+	72,  // 179: sblurp.v1.ChatService.RemoveChannelMember:output_type -> sblurp.v1.RemoveChannelMemberResponse
+	35,  // 180: sblurp.v1.ChatService.SetChannelAccess:output_type -> sblurp.v1.SetChannelAccessResponse
+	37,  // 181: sblurp.v1.ChatService.BrowseChannels:output_type -> sblurp.v1.BrowseChannelsResponse
+	39,  // 182: sblurp.v1.ChatService.JoinChannel:output_type -> sblurp.v1.JoinChannelResponse
+	41,  // 183: sblurp.v1.ChatService.LeaveChannel:output_type -> sblurp.v1.LeaveChannelResponse
+	125, // 184: sblurp.v1.BotService.CreateBot:output_type -> sblurp.v1.CreateBotResponse
+	127, // 185: sblurp.v1.BotService.ListBots:output_type -> sblurp.v1.ListBotsResponse
+	129, // 186: sblurp.v1.BotService.RotateBotToken:output_type -> sblurp.v1.RotateBotTokenResponse
+	131, // 187: sblurp.v1.BotService.DeleteBot:output_type -> sblurp.v1.DeleteBotResponse
+	134, // 188: sblurp.v1.BotService.ListPlugins:output_type -> sblurp.v1.ListPluginsResponse
+	136, // 189: sblurp.v1.BotService.InstallPlugin:output_type -> sblurp.v1.InstallPluginResponse
+	138, // 190: sblurp.v1.BotService.SetPluginEnabled:output_type -> sblurp.v1.SetPluginEnabledResponse
+	140, // 191: sblurp.v1.BotService.DeletePlugin:output_type -> sblurp.v1.DeletePluginResponse
+	136, // [136:192] is the sub-list for method output_type
+	80,  // [80:136] is the sub-list for method input_type
+	80,  // [80:80] is the sub-list for extension type_name
+	80,  // [80:80] is the sub-list for extension extendee
+	0,   // [0:80] is the sub-list for field type_name
 }
 
 func init() { file_sblurp_v1_sblurp_proto_init() }

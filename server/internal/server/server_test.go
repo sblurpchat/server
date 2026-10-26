@@ -2088,3 +2088,33 @@ func TestUploadQuickTimeIsVideo(t *testing.T) {
 		t.Fatalf("got %v", a)
 	}
 }
+
+// GetState gives each DM its newest top-level message, for the DMs list (1455).
+func TestGetStateDMLastMessage(t *testing.T) {
+	e := newEnv(t)
+	ana, bob := e.join("ana"), e.join("bob")
+	gen := ana.channel("general", v1.ChannelKind_CHANNEL_KIND_TEXT)
+	ana.send(gen.Id, "not a dm")
+	dm := must(ana.chat.OpenDM(ctx(), connect.NewRequest(&v1.OpenDMRequest{MemberIds: []string{bob.me.Id}}))).Channel
+	last := func() *v1.Message {
+		for _, c := range bob.state().Channels {
+			if c.Id == dm.Id {
+				return c.LastMessage
+			}
+			if c.LastMessage != nil {
+				t.Fatalf("%s is not a DM but has a last message", c.Id)
+			}
+		}
+		t.Fatal("dm missing")
+		return nil
+	}
+	if m := last(); m != nil {
+		t.Fatalf("empty DM: %v", m)
+	}
+	ana.send(dm.Id, "first")
+	m := ana.send(dm.Id, "second")
+	must(bob.chat.SendMessage(ctx(), connect.NewRequest(&v1.SendMessageRequest{ChannelId: dm.Id, ThreadRootId: m.Id, Text: "reply"})))
+	if got := last(); got.GetId() != m.Id || got.Text != "second" {
+		t.Fatalf("last = %v, want %q", got, m.Text)
+	}
+}

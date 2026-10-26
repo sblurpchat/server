@@ -907,7 +907,9 @@ function service(f: Fake) {
         need();
         return {
           me: me(),
-          channels: [...f.channels.values()].filter((c) => inside(f, c)),
+          channels: [...f.channels.values()]
+            .filter((c) => inside(f, c))
+            .map((c) => (c.kind === ChannelKind.DM ? { ...c, lastMessage: f.messages.findLast((m) => m.channelId === c.id && !m.threadRootId && !m.deleted) } : c)),
           members: [...f.members.values()],
           readStates: [...f.reads.values()].filter((r) => inside(f, f.channels.get(r.channelId))),
           roles: [...f.roles].sort((a, b) => a.position - b.position),

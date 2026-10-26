@@ -826,7 +826,20 @@ func (s *Server) GetState(ctx context.Context, _ *connect.Request[v1.GetStateReq
 	if out.OpenReports, err = s.openReports(ctx, tx, m.Role); err != nil {
 		return nil, err
 	}
+	cutoff, err := s.retentionCutoff(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
 	for _, c := range out.Channels {
+		if c.Kind == v1.ChannelKind_CHANNEL_KIND_DM {
+			last, err := queryMessages(ctx, tx, "channel_id = ? AND thread_root_id = '' AND deleted = 0 AND created_at_ms >= ? ORDER BY created_seq DESC LIMIT 1", c.Id, cutoff)
+			if err != nil {
+				return nil, err
+			}
+			if len(last) > 0 {
+				c.LastMessage = last[0]
+			}
+		}
 		rs, err := readState(ctx, tx, m, c)
 		if err != nil {
 			return nil, err

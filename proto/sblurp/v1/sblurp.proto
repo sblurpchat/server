@@ -100,6 +100,9 @@ message Channel {
   // alone means admins and the owner only. Everyone in the channel may
   // still react and reply in threads. Plugins are not limited.
   repeated string post_role_ids = 15;
+  // DMs only, set by GetState: the newest top-level message, for the DMs
+  // list preview and recency sort. Unset when there is none.
+  Message last_message = 16;
 }
 
 message Attachment {

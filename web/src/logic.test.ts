@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { Code } from "@connectrpc/connect";
 import { leavingParts, queueStep, showDown, transient } from "./logic";
 import css from "./app.css?raw";
-import { allDMs, channelLabel, dmPeer, settingsGroups, swipeAxis, swipeEnds, tailnetUrl } from "./logic";
+import { allDMs, channelLabel, dmPreview, rowWhen, dmPeer, settingsGroups, swipeAxis, swipeEnds, tailnetUrl } from "./logic";
 import {
   ChannelKind,
   ChannelMode,
@@ -1342,18 +1342,33 @@ describe("drawer swipe (1354)", () => {
   });
 });
 
-describe("allDMs (1369)", () => {
-  it("puts unread first, then rail order, then newest within a community, and skips channels", () => {
-    const dm = (id: string, lastMessageSeq: bigint) => create(ChannelSchema, { id, kind: ChannelKind.DM, memberIds: ["me", id], lastMessageSeq });
+describe("allDMs (1369, 1455)", () => {
+  it("sorts every community's DMs by newest message, unread or not, and skips channels", () => {
+    const dm = (id: string, at: number) =>
+      create(ChannelSchema, { id, kind: ChannelKind.DM, memberIds: ["me", id], createdAtMs: 1n, lastMessage: at ? create(MessageSchema, { createdAtMs: BigInt(at) }) : undefined });
     const a = emptyCommunity("https://a.test");
-    a.channels = { a1: dm("a1", 3n), a2: dm("a2", 90n), gen: create(ChannelSchema, { id: "gen", kind: ChannelKind.TEXT }) };
+    a.channels = { a1: dm("a1", 30), a2: dm("a2", 0), gen: create(ChannelSchema, { id: "gen", kind: ChannelKind.TEXT }) };
     const b = emptyCommunity("https://b.test");
-    b.channels = { b1: dm("b1", 1n), b2: dm("b2", 2n) };
+    b.channels = { b1: dm("b1", 10), b2: dm("b2", 50) };
     b.reads = { b1: create(ReadStateSchema, { channelId: "b1", unreadCount: 2, mentionCount: 1 }) };
     const got = allDMs({ [a.url]: a, [b.url]: b }, [a.url, b.url, "https://gone.test"]);
-    expect(got.map((x) => x.ch.id)).toEqual(["b1", "a2", "a1", "b2"]);
-    expect(got[0]).toMatchObject({ url: "https://b.test", unread: true, mentions: 1 });
-    expect(got[1]).toMatchObject({ unread: false, mentions: 0 });
+    expect(got.map((x) => x.ch.id)).toEqual(["b2", "a1", "b1", "a2"]);
+    expect(got[2]).toMatchObject({ url: "https://b.test", unread: true, mentions: 1 });
+  });
+});
+
+describe("dmPreview and rowWhen (1455)", () => {
+  it("says what was said, and when, briefly", () => {
+    const m = (o: object) => create(MessageSchema, { authorId: "x", ...o });
+    expect(dmPreview(m({ text: "hi **there**" }), {}, "me")).toBe("hi there");
+    expect(dmPreview(m({ text: "yo", authorId: "me" }), {}, "me")).toBe("You: yo");
+    expect(dmPreview(m({ deleted: true }), {}, "me")).toBe("Message deleted");
+    expect(dmPreview(undefined, {}, "me")).toBe("");
+    const now = new Date(2026, 9, 25, 15, 0).getTime();
+    expect(rowWhen(new Date(2026, 9, 25, 9, 5).getTime(), now)).toBe("9:05 AM");
+    expect(rowWhen(new Date(2026, 9, 24, 9).getTime(), now)).toBe("Yesterday");
+    expect(rowWhen(new Date(2026, 9, 21, 9).getTime(), now)).toBe("Wed");
+    expect(rowWhen(new Date(2026, 8, 3, 9).getTime(), now)).toBe("Sep 3");
   });
 });
 

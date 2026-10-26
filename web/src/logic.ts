@@ -208,7 +208,7 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
       // Blocked and muted members never count, as on the server (1244, 1293).
       const counts = !quiet(c, m.authorId);
       if (ch && !m.threadRootId) {
-        next.channels = { ...c.channels, [ch.id]: { ...ch, lastMessageSeq: ev.seq } };
+        next.channels = { ...c.channels, [ch.id]: { ...ch, lastMessageSeq: ev.seq, lastMessage: isDM(ch) ? m : undefined } };
         if (counts) next.reads = { ...c.reads, [ch.id]: bumpUnread(c.reads[ch.id], ch.id, m, ev.seq, c.me?.id, isDM(ch), viewing === ch.id) };
       } else if (ch && counts && m.authorId !== c.me?.id && (isDM(ch) || mentionsMe(m.text, c.me?.id))) {
         // Thread replies are not channel unread, but a mention in one (or any DM reply) still counts.
@@ -220,6 +220,8 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
     case "messageUpdated": {
       const m = k.value;
       next.lists = mapLists(c, (items) => items.map((x) => (x.id === m.id ? m : x)));
+      const ch = c.channels[m.channelId];
+      if (ch?.lastMessage?.id === m.id) next.channels = { ...c.channels, [ch.id]: { ...ch, lastMessage: m } };
       return next;
     }
     case "messageDeleted": {
@@ -228,11 +230,15 @@ export function applyEvent(c: Community, ev: Event, now: number, viewing: string
       next.lists = mapLists(c, (items) =>
         m.replyCount > 0 ? items.map((x) => (x.id === m.id ? { ...m, deleted: true } : x)) : items.filter((x) => x.id !== m.id),
       );
+      // The DM keeps its place; only the preview text goes.
+      const ch = c.channels[m.channelId];
+      if (ch?.lastMessage?.id === m.id) next.channels = { ...c.channels, [ch.id]: { ...ch, lastMessage: { ...ch.lastMessage, text: "", attachments: [], deleted: true } } };
       return next;
     }
     case "channelCreated":
     case "channelUpdated":
-      next.channels = { ...c.channels, [k.value.id]: k.value };
+      // Only GetState sends lastMessage, so an update keeps the one we have.
+      next.channels = { ...c.channels, [k.value.id]: { ...k.value, lastMessage: k.value.lastMessage ?? c.channels[k.value.id]?.lastMessage } };
       if (c.peek?.id === k.value.id) next.peek = undefined;
       return next;
     case "channelDeleted": {
@@ -1482,17 +1488,34 @@ export function swipeEnds(progress: number, velocity: number): boolean {
   return Math.abs(velocity) > 0.4 ? velocity > 0 : progress > 0.5;
 }
 
-/** The phone DMs tab (1369): every DM in every community, unread first, then in rail order,
- *  newest first within a community. Seqs are per server, so they only order within one. */
+/** The phone DMs tab (1369, 1455): every DM in every community, newest message first. Unread
+ *  rows show bold but keep their place. A DM with no message yet sorts by when it was opened. */
 export function allDMs(cs: Record<string, Community>, order: string[]): { url: string; ch: Channel; unread: boolean; mentions: number }[] {
+  const at = (ch: Channel) => ch.lastMessage?.createdAtMs ?? ch.createdAtMs;
   return order
-    .flatMap((url, i) =>
+    .flatMap((url) =>
       Object.values(cs[url]?.channels ?? {})
         .filter(isDM)
-        .map((ch) => ({ url, ch, i, unread: (cs[url].reads[ch.id]?.unreadCount ?? 0) > 0, mentions: cs[url].reads[ch.id]?.mentionCount ?? 0 })),
+        .map((ch) => ({ url, ch, unread: (cs[url].reads[ch.id]?.unreadCount ?? 0) > 0, mentions: cs[url].reads[ch.id]?.mentionCount ?? 0 })),
     )
-    .sort((a, b) => Number(b.unread) - Number(a.unread) || a.i - b.i || Number(b.ch.lastMessageSeq - a.ch.lastMessageSeq))
-    .map(({ i: _, ...x }) => x);
+    .sort((a, b) => Number(at(b.ch) - at(a.ch)));
+}
+
+/** A DM row's one-line preview (1455): what was said, "You: " first when it was me. */
+export function dmPreview(m: Message | undefined, members: Record<string, Member>, meId: string | undefined): string {
+  if (!m) return "";
+  if (m.deleted) return "Message deleted";
+  const what = plainText(m.text, members) || count(m.attachments.length, "attachment", "attachments");
+  return m.authorId === meId ? `You: ${what}` : what;
+}
+
+/** A short time for a list row: the time today, else "Yesterday", a weekday this week, or a date. */
+export function rowWhen(ms: number, now: number, h24 = false): string {
+  const day = dayLabel(ms, now);
+  if (day === "Today") return timeLabel(ms, h24);
+  if (day === "Yesterday") return day;
+  const d = new Date(ms);
+  return d.toLocaleDateString("en-US", now - ms < 6 * 86_400_000 ? { weekday: "short" } : { month: "short", day: "numeric" });
 }
 
 export type SettingsPage = "appearance" | "notifications" | "links" | "blocked" | "account";
