@@ -5753,6 +5753,24 @@ label:has(> input.visually-hidden:focus-visible) {
   .drawer .mebar {
     display: none;
   }
+  /* The community header fills the status bar area (1406): the banner bleeds up under the
+     clock instead of a blank band that iOS frosts over. The rail and tabs keep the inset. */
+  .drawer {
+    padding-top: 0;
+  }
+  .drawer .rail {
+    padding-top: calc(12px + env(safe-area-inset-top));
+  }
+  .drawer > .tab-panel {
+    padding-top: env(safe-area-inset-top);
+  }
+  .drawer .side-head {
+    height: calc(48px + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+  }
+  .drawer .side-head[data-banner] {
+    height: calc(72px + env(safe-area-inset-top));
+  }
   .tabbar {
     position: absolute;
     left: 12px;
