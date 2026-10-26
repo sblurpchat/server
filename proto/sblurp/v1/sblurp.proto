@@ -408,6 +408,9 @@ message ReactResponse { Message message = 1; }
 message MarkReadRequest {
   string channel_id = 1;
   int64 seq = 2;
+  // Marks this thread read up to now instead of the channel (1405). seq is
+  // ignored, the response has no read_state and no event is sent.
+  string thread_root_id = 3;
 }
 message MarkReadResponse { ReadState read_state = 1; }
 
@@ -423,6 +426,36 @@ message SearchRequest {
   int32 limit = 3;            // default 20, max 100
 }
 message SearchResponse { repeated Message messages = 1; }
+
+// Activity (1405): mentions of me, replies in threads I started and
+// reactions to my messages, in channels I am in, newest first. Members I
+// blocked or muted are left out. limit: default 50, max 200.
+message ListActivityRequest { int32 limit = 1; }
+message ListActivityResponse { repeated ActivityItem items = 1; }
+enum ActivityKind {
+  ACTIVITY_KIND_UNSPECIFIED = 0;
+  ACTIVITY_KIND_MENTION = 1;
+  ACTIVITY_KIND_REPLY = 2;    // a reply in a thread I started (one that mentions me is a mention)
+  ACTIVITY_KIND_REACTION = 3;
+}
+message ActivityItem {
+  ActivityKind kind = 1;
+  Message message = 2;        // the mention, the reply, or my message that got the reaction
+  string actor_id = 3;        // who mentioned, replied or reacted
+  string emoji = 4;           // reactions only
+  int64 at_ms = 5;
+}
+
+// Threads I started or replied in, latest reply first (1405). limit:
+// default 50, max 200.
+message ListThreadsRequest { int32 limit = 1; }
+message ListThreadsResponse { repeated ThreadSummary threads = 1; }
+message ThreadSummary {
+  Message root = 1;
+  // Replies from others after I last read (MarkRead thread_root_id) or
+  // posted in the thread. Members I blocked or muted do not count.
+  int32 unread_count = 2;
+}
 
 // Previews of up to 5 http(s) links in a message I can see. The server
 // fetches each page once, caches it for a day and serves the image itself,
@@ -802,6 +835,8 @@ service ChatService {
   rpc MarkRead(MarkReadRequest) returns (MarkReadResponse) {}
   rpc SetTyping(SetTypingRequest) returns (SetTypingResponse) {}
   rpc Search(SearchRequest) returns (SearchResponse) {}
+  rpc ListActivity(ListActivityRequest) returns (ListActivityResponse) {}
+  rpc ListThreads(ListThreadsRequest) returns (ListThreadsResponse) {}
   rpc GetLinkPreviews(GetLinkPreviewsRequest) returns (GetLinkPreviewsResponse) {}
   rpc AddChannelMembers(AddChannelMembersRequest) returns (AddChannelMembersResponse) {}
   rpc RemoveChannelMember(RemoveChannelMemberRequest) returns (RemoveChannelMemberResponse) {}

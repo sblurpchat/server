@@ -149,6 +149,11 @@ const (
 	ChatServiceSetTypingProcedure = "/sblurp.v1.ChatService/SetTyping"
 	// ChatServiceSearchProcedure is the fully-qualified name of the ChatService's Search RPC.
 	ChatServiceSearchProcedure = "/sblurp.v1.ChatService/Search"
+	// ChatServiceListActivityProcedure is the fully-qualified name of the ChatService's ListActivity
+	// RPC.
+	ChatServiceListActivityProcedure = "/sblurp.v1.ChatService/ListActivity"
+	// ChatServiceListThreadsProcedure is the fully-qualified name of the ChatService's ListThreads RPC.
+	ChatServiceListThreadsProcedure = "/sblurp.v1.ChatService/ListThreads"
 	// ChatServiceGetLinkPreviewsProcedure is the fully-qualified name of the ChatService's
 	// GetLinkPreviews RPC.
 	ChatServiceGetLinkPreviewsProcedure = "/sblurp.v1.ChatService/GetLinkPreviews"
@@ -979,6 +984,8 @@ type ChatServiceClient interface {
 	MarkRead(context.Context, *connect.Request[v1.MarkReadRequest]) (*connect.Response[v1.MarkReadResponse], error)
 	SetTyping(context.Context, *connect.Request[v1.SetTypingRequest]) (*connect.Response[v1.SetTypingResponse], error)
 	Search(context.Context, *connect.Request[v1.SearchRequest]) (*connect.Response[v1.SearchResponse], error)
+	ListActivity(context.Context, *connect.Request[v1.ListActivityRequest]) (*connect.Response[v1.ListActivityResponse], error)
+	ListThreads(context.Context, *connect.Request[v1.ListThreadsRequest]) (*connect.Response[v1.ListThreadsResponse], error)
 	GetLinkPreviews(context.Context, *connect.Request[v1.GetLinkPreviewsRequest]) (*connect.Response[v1.GetLinkPreviewsResponse], error)
 	AddChannelMembers(context.Context, *connect.Request[v1.AddChannelMembersRequest]) (*connect.Response[v1.AddChannelMembersResponse], error)
 	RemoveChannelMember(context.Context, *connect.Request[v1.RemoveChannelMemberRequest]) (*connect.Response[v1.RemoveChannelMemberResponse], error)
@@ -1065,6 +1072,18 @@ func NewChatServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(chatServiceMethods.ByName("Search")),
 			connect.WithClientOptions(opts...),
 		),
+		listActivity: connect.NewClient[v1.ListActivityRequest, v1.ListActivityResponse](
+			httpClient,
+			baseURL+ChatServiceListActivityProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("ListActivity")),
+			connect.WithClientOptions(opts...),
+		),
+		listThreads: connect.NewClient[v1.ListThreadsRequest, v1.ListThreadsResponse](
+			httpClient,
+			baseURL+ChatServiceListThreadsProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("ListThreads")),
+			connect.WithClientOptions(opts...),
+		),
 		getLinkPreviews: connect.NewClient[v1.GetLinkPreviewsRequest, v1.GetLinkPreviewsResponse](
 			httpClient,
 			baseURL+ChatServiceGetLinkPreviewsProcedure,
@@ -1123,6 +1142,8 @@ type chatServiceClient struct {
 	markRead            *connect.Client[v1.MarkReadRequest, v1.MarkReadResponse]
 	setTyping           *connect.Client[v1.SetTypingRequest, v1.SetTypingResponse]
 	search              *connect.Client[v1.SearchRequest, v1.SearchResponse]
+	listActivity        *connect.Client[v1.ListActivityRequest, v1.ListActivityResponse]
+	listThreads         *connect.Client[v1.ListThreadsRequest, v1.ListThreadsResponse]
 	getLinkPreviews     *connect.Client[v1.GetLinkPreviewsRequest, v1.GetLinkPreviewsResponse]
 	addChannelMembers   *connect.Client[v1.AddChannelMembersRequest, v1.AddChannelMembersResponse]
 	removeChannelMember *connect.Client[v1.RemoveChannelMemberRequest, v1.RemoveChannelMemberResponse]
@@ -1187,6 +1208,16 @@ func (c *chatServiceClient) Search(ctx context.Context, req *connect.Request[v1.
 	return c.search.CallUnary(ctx, req)
 }
 
+// ListActivity calls sblurp.v1.ChatService.ListActivity.
+func (c *chatServiceClient) ListActivity(ctx context.Context, req *connect.Request[v1.ListActivityRequest]) (*connect.Response[v1.ListActivityResponse], error) {
+	return c.listActivity.CallUnary(ctx, req)
+}
+
+// ListThreads calls sblurp.v1.ChatService.ListThreads.
+func (c *chatServiceClient) ListThreads(ctx context.Context, req *connect.Request[v1.ListThreadsRequest]) (*connect.Response[v1.ListThreadsResponse], error) {
+	return c.listThreads.CallUnary(ctx, req)
+}
+
 // GetLinkPreviews calls sblurp.v1.ChatService.GetLinkPreviews.
 func (c *chatServiceClient) GetLinkPreviews(ctx context.Context, req *connect.Request[v1.GetLinkPreviewsRequest]) (*connect.Response[v1.GetLinkPreviewsResponse], error) {
 	return c.getLinkPreviews.CallUnary(ctx, req)
@@ -1235,6 +1266,8 @@ type ChatServiceHandler interface {
 	MarkRead(context.Context, *connect.Request[v1.MarkReadRequest]) (*connect.Response[v1.MarkReadResponse], error)
 	SetTyping(context.Context, *connect.Request[v1.SetTypingRequest]) (*connect.Response[v1.SetTypingResponse], error)
 	Search(context.Context, *connect.Request[v1.SearchRequest]) (*connect.Response[v1.SearchResponse], error)
+	ListActivity(context.Context, *connect.Request[v1.ListActivityRequest]) (*connect.Response[v1.ListActivityResponse], error)
+	ListThreads(context.Context, *connect.Request[v1.ListThreadsRequest]) (*connect.Response[v1.ListThreadsResponse], error)
 	GetLinkPreviews(context.Context, *connect.Request[v1.GetLinkPreviewsRequest]) (*connect.Response[v1.GetLinkPreviewsResponse], error)
 	AddChannelMembers(context.Context, *connect.Request[v1.AddChannelMembersRequest]) (*connect.Response[v1.AddChannelMembersResponse], error)
 	RemoveChannelMember(context.Context, *connect.Request[v1.RemoveChannelMemberRequest]) (*connect.Response[v1.RemoveChannelMemberResponse], error)
@@ -1317,6 +1350,18 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(chatServiceMethods.ByName("Search")),
 		connect.WithHandlerOptions(opts...),
 	)
+	chatServiceListActivityHandler := connect.NewUnaryHandler(
+		ChatServiceListActivityProcedure,
+		svc.ListActivity,
+		connect.WithSchema(chatServiceMethods.ByName("ListActivity")),
+		connect.WithHandlerOptions(opts...),
+	)
+	chatServiceListThreadsHandler := connect.NewUnaryHandler(
+		ChatServiceListThreadsProcedure,
+		svc.ListThreads,
+		connect.WithSchema(chatServiceMethods.ByName("ListThreads")),
+		connect.WithHandlerOptions(opts...),
+	)
 	chatServiceGetLinkPreviewsHandler := connect.NewUnaryHandler(
 		ChatServiceGetLinkPreviewsProcedure,
 		svc.GetLinkPreviews,
@@ -1383,6 +1428,10 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 			chatServiceSetTypingHandler.ServeHTTP(w, r)
 		case ChatServiceSearchProcedure:
 			chatServiceSearchHandler.ServeHTTP(w, r)
+		case ChatServiceListActivityProcedure:
+			chatServiceListActivityHandler.ServeHTTP(w, r)
+		case ChatServiceListThreadsProcedure:
+			chatServiceListThreadsHandler.ServeHTTP(w, r)
 		case ChatServiceGetLinkPreviewsProcedure:
 			chatServiceGetLinkPreviewsHandler.ServeHTTP(w, r)
 		case ChatServiceAddChannelMembersProcedure:
@@ -1448,6 +1497,14 @@ func (UnimplementedChatServiceHandler) SetTyping(context.Context, *connect.Reque
 
 func (UnimplementedChatServiceHandler) Search(context.Context, *connect.Request[v1.SearchRequest]) (*connect.Response[v1.SearchResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ChatService.Search is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) ListActivity(context.Context, *connect.Request[v1.ListActivityRequest]) (*connect.Response[v1.ListActivityResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ChatService.ListActivity is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) ListThreads(context.Context, *connect.Request[v1.ListThreadsRequest]) (*connect.Response[v1.ListThreadsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("sblurp.v1.ChatService.ListThreads is not implemented"))
 }
 
 func (UnimplementedChatServiceHandler) GetLinkPreviews(context.Context, *connect.Request[v1.GetLinkPreviewsRequest]) (*connect.Response[v1.GetLinkPreviewsResponse], error) {

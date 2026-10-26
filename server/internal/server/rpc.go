@@ -1639,6 +1639,12 @@ func (s *Server) React(ctx context.Context, req *connect.Request[v1.ReactRequest
 func (s *Server) MarkRead(ctx context.Context, req *connect.Request[v1.MarkReadRequest]) (*connect.Response[v1.MarkReadResponse], error) {
 	m := me(ctx)
 	r := req.Msg
+	if r.ThreadRootId != "" {
+		if err := s.markThreadRead(ctx, m.Id, r.ThreadRootId); err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&v1.MarkReadResponse{}), nil
+	}
 	// Read first, outside the writer: a mark at or behind the stored one
 	// (a repeat, or a late reply racing a newer one) changes nothing.
 	c, err := channelFor(ctx, s.db.r, r.ChannelId, m.Id)
