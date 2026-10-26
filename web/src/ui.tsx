@@ -693,7 +693,7 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
                   key={e.name}
                   tabIndex={from + j === cur ? 0 : -1}
                   title={`:${e.name}:`}
-                  aria-label={e.name.replace(/[_-]/g, " ")}
+                  aria-label={(e.alt ?? e.name).replace(/[_-]/g, " ")}
                   onMouseEnter={() => setHover(e)}
                   onFocus={() => (setHover(e), setCur(from + j))}
                   onClick={() => pick(e)}
