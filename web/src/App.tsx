@@ -717,6 +717,9 @@ function Sidebar({ c }: { c: Community }) {
                             onClick={() => removeFromChannel(c.url, ch.id, c.me!.id).catch(() => {})}
                           >
                             <Icon name="x" size={14} />
+                            <span className="chan-close-text" aria-hidden="true">
+                              Close
+                            </span>
                           </button>
                         )}
                       </li>
