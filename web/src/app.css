@@ -3993,8 +3993,6 @@ li.sw-empty {
   border: 1px solid var(--line);
   font-size: 0.8125rem;
   font-weight: 500;
-}
-.chip {
   transition:
     opacity 150ms ease-out,
     transform 150ms ease-out;

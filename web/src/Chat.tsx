@@ -1269,7 +1269,7 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
       if (!t || !ref.current || zone(t) !== zone(ref.current)) return;
       if (t.closest("a, button, input, textarea, select, label, summary, form, img, video, audio, canvas, iframe, [role='button'], [role='menu'], [role='menuitem'], dialog, [role='dialog'], [contenteditable]:not([contenteditable='false'])")) return;
       if (e.detail > 1 || !getSelection()?.isCollapsed) return;
-      if ((e as PointerEvent).pointerType === "touch" || matchMedia("(hover: none)").matches) return;
+      if ((e as PointerEvent).pointerType === "touch" || NO_HOVER.matches) return;
       if (get().modal || document.querySelector(":popover-open")) return;
       ref.current.focus({ preventScroll: true });
     };

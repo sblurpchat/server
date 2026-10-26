@@ -390,7 +390,6 @@ export const timeLabel = (ms: number, h24 = false) =>
 export const memberRoles = (m: Member | undefined, roles: Role[]) => (m ? roles.filter((r) => m.roleIds.includes(r.id)) : []);
 
 const fitted = new Map<string, string>();
-/** Name color from a member's first colored role, made readable on every surface a message sits on. "" when none. */
 /** IRC nick colors (1432): no reds, so a nick never reads as a mention or an error. */
 const NICKS = ["#0e9f8e", "#3f9d3a", "#c98a0b", "#d4682a", "#8b5cf6", "#2f8fd8", "#d64f9a", "#7a9a14"];
 /** A member's name color: their first role color, else a stable nick color when `nick` (an id) is given; fitted to the surfaces. */

@@ -229,7 +229,6 @@ export function ChannelDialog({ id, category = "", name: initial = "", focusTopi
   );
 }
 
-/** Uploads a banner or header image and applies it at once; "" removes it. Checked like the server checks it. */
 /** A square, at most 512 px copy of an image for the community icon (1044). GIFs stay as they are to keep animation. */
 async function squareIcon(file: File): Promise<File> {
   if (file.type === "image/gif") return file;
@@ -247,6 +246,7 @@ async function squareIcon(file: File): Promise<File> {
   }
 }
 
+/** Uploads a banner or header image and applies it at once; "" removes it. Checked like the server checks it. */
 function ImageField({
   label,
   hint,

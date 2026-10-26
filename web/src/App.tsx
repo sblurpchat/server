@@ -245,6 +245,11 @@ function useDrawerSwipe(app: React.RefObject<HTMLDivElement | null>, live: React
         if (g.tabs && a && swipeAxis(false, dx, dy, ms) === "open" && swipeTab(get().tab, dx)) a = "tab";
         else if (a && !live.current.channelId) a = "none";
         g.axis = a;
+        // Swiping back from a channel shows its list, never the You tab left open last time (1438).
+        if (a === "open" && !g.pane) {
+          const s = get();
+          set({ tab: isDM(s.cs[s.url]?.channels[s.channelId]) ? "dms" : "home" });
+        }
       }
       if (g.axis !== "open" && g.axis !== "close" && g.axis !== "tab") return;
       e.preventDefault();
