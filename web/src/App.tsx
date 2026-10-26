@@ -327,6 +327,14 @@ function Shell() {
   const live = useRef({ drawer, channelId });
   live.current = { drawer, channelId };
   useDrawerSwipe(appRef, live);
+  // With no community the phone drawer covers main, so the empty state goes in the drawer too (1451).
+  const none = (
+    <Empty
+      title="You're not in any communities yet."
+      body="Add one with its address or an invite link."
+      action={<button className="btn primary" onClick={() => set({ modal: { t: "add" } })}>Add a community</button>}
+    />
+  );
   // On a phone the open drawer covers the channel: focus goes in, and back to the menu button when it closes.
   const was = useRef(false);
   useEffect(() => {
@@ -344,7 +352,7 @@ function Shell() {
         {!narrow || tab === "home" ? (
           <>
             <Rail />
-            {c && <Sidebar c={c} />}
+            {c ? <Sidebar c={c} /> : narrow && none}
           </>
         ) : tab === "dms" ? (
           <DMList />
@@ -355,11 +363,7 @@ function Shell() {
       </div>
       <main className="main" tabIndex={-1} inert={covered}>
         {!url || !c ? (
-          <Empty
-            title="You're not in any communities yet."
-            body="Add one with its address or an invite link."
-            action={<button className="btn primary" onClick={() => set({ modal: { t: "add" } })}>Add a community</button>}
-          />
+          none
         ) : c.status === "join" ? (
           <JoinCard url={url} />
         ) : !c.me ? (
