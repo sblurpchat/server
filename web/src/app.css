@@ -3017,6 +3017,9 @@ li.sw-empty {
   border-color: var(--raspberry);
   background: var(--paper);
 }
+.chan-search-cancel {
+  display: none;
+}
 .chan-search input {
   border: 0;
   background: none;
@@ -4419,6 +4422,36 @@ li.sw-empty {
     right: 52px;
     width: auto;
     z-index: 2;
+  }
+  .chan-search:focus-within .chan-search-cancel {
+    display: block;
+  }
+  /* Search on a phone (1456): the field and Cancel replace the pane's title bar. */
+  .pane[data-pane="search"] .pane-head {
+    display: none;
+  }
+  .pane-search.only-mobile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .pane-search .chan-search {
+    flex: 1;
+    width: auto;
+    height: 40px;
+    margin: 0;
+    padding: 0 10px;
+    background: var(--frost);
+  }
+  .pane-search .link-btn,
+  .chan-search-cancel {
+    flex: none;
+    min-height: 44px;
+    color: var(--raspberry);
+    font-weight: 600;
   }
   .pane {
     position: fixed;

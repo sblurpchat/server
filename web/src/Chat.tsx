@@ -198,6 +198,18 @@ export function ChannelView() {
             <Icon name="search" size={16} />
           </label>
           <input id={`search-${channelId}`} type="search" aria-label={`Search ${c.info?.name ?? ""}`} placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} />
+          {/* Phone only, while the field covers the header (1456). Keeps focus on press so the tap lands. */}
+          <button
+            type="button"
+            className="chan-search-cancel"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              setQ("");
+              e.currentTarget.form?.querySelector("input")?.blur();
+            }}
+          >
+            Cancel
+          </button>
         </form>
         {(canEdit || canLeave) && (
           <button className="icon-btn" aria-label={`#${title} options`} title="Channel options" aria-haspopup="menu" aria-expanded={!!menu} onClick={(e) => setMenu(e.currentTarget.getBoundingClientRect())}>
@@ -1519,7 +1531,7 @@ export function RightPane() {
   const title = { thread: "Thread", members: "Members", search: "Search", activity: "Activity", threads: "Threads" }[pane.t];
   const where = ch ? (isDM(ch) ? channelLabel(ch, c.members, c.me?.id) : `#${ch.name}`) : c.info?.name;
   return (
-    <aside ref={ref} className="pane" aria-label={title}>
+    <aside ref={ref} className="pane" aria-label={title} data-pane={pane.t}>
       <Resizer panel="pane" label="Resize side pane" />
       <header className="pane-head">
         {/* A phone pushes the pane over the channel: one leading back, like the channel header (1452). */}
@@ -1553,7 +1565,28 @@ export function RightPane() {
       ) : pane.t === "threads" ? (
         <Threads c={c} />
       ) : (
-        <SearchResults key={pane.q} c={c} q={pane.q} />
+        <>
+          {/* Phone (1456): the query stays editable at the top, with Cancel, like iOS search. */}
+          <form
+            role="search"
+            className="pane-search only-mobile"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const q = String(new FormData(e.currentTarget).get("q")).trim();
+              if (q) set({ pane: { t: "search", q } });
+              e.currentTarget.querySelector("input")?.blur();
+            }}
+          >
+            <span className="chan-search">
+              <Icon name="search" size={16} />
+              <input key={pane.q} name="q" type="search" enterKeyHint="search" aria-label={`Search ${c.info?.name ?? ""}`} defaultValue={pane.q} />
+            </span>
+            <button type="button" className="link-btn" onClick={close}>
+              Cancel
+            </button>
+          </form>
+          <SearchResults key={pane.q} c={c} q={pane.q} />
+        </>
       )}
     </aside>
   );
