@@ -230,6 +230,51 @@ export function Dialog({
   );
 }
 
+/** An error line that screen readers announce. Renders nothing while `text` is empty. */
+export const Alert = ({ text, id }: { text: ReactNode; id?: string }) =>
+  text ? (
+    <p className="error" id={id} role="alert">
+      {text}
+    </p>
+  ) : null;
+
+/** Are-you-sure dialog: "{title}?", the body, an error, then Cancel (focused) and the action. */
+export function Confirm({
+  title,
+  verb,
+  danger = true,
+  err,
+  busy,
+  onConfirm,
+  onClose,
+  children,
+}: {
+  title: string;
+  verb: string;
+  danger?: boolean;
+  err?: string;
+  busy?: boolean;
+  onConfirm: () => void;
+  onClose?: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Dialog label={title} className="confirm" onClose={onClose}>
+      <h2>{title}?</h2>
+      {children}
+      <Alert text={err} />
+      <div className="row-end">
+        <button className="btn ghost" autoFocus={AUTOFOCUS} onClick={onClose ?? (() => set({ modal: null }))}>
+          Cancel
+        </button>
+        <button className={danger ? "btn danger" : "btn primary"} disabled={busy} onClick={onConfirm}>
+          {verb}
+        </button>
+      </div>
+    </Dialog>
+  );
+}
+
 /**
  * The lightbox picture (1316). On touch, two fingers zoom and pan it, one finger pans it once zoomed,
  * and at normal size it follows a swipe and closes past 120px down, fading the dark behind it.

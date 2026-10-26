@@ -96,7 +96,7 @@ import { AvatarField } from "./AvatarField";
 import { PushAsk, PushSetting } from "./PushAsk";
 import { iosApp } from "./push";
 import { pond } from "./pond";
-import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, AUTOFOCUS, autoFocusTo, Icon, type IconName, thenCompose, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped, ZoomStage } from "./ui";
+import { Alert, Avatar, AvatarEditOverlay, CommunityIcon, Confirm, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, AUTOFOCUS, autoFocusTo, Icon, type IconName, thenCompose, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped, ZoomStage } from "./ui";
 
 export function App() {
   const auth = useApp((s) => s.auth);
@@ -1113,11 +1113,7 @@ function SignIn() {
             Create an account
           </button>
         </div>
-        {err && (
-          <p className="error" role="alert">
-            {err}
-          </p>
-        )}
+        <Alert text={err} />
         <p className="fine">Communities only see the profile details you choose to share with them.</p>
       </div>
     </div>
@@ -1251,11 +1247,7 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
               />
             </label>
           ))}
-          {errField === "questions" && err && (
-            <p className="error" id="join-err" role="alert">
-              {err}
-            </p>
-          )}
+          <Alert id="join-err" text={errField === "questions" && err} />
         </fieldset>
       )}
       <h3>Share your profile with {info.name}?</h3>
@@ -1286,11 +1278,7 @@ function JoinConsent({ url, info, invite, onBack }: { url: string; info: GetServ
       <p className="fine">
         {info.name} gets only what is switched on. Your email and the rest of your sblurp.chat account stay private.
       </p>
-      {err && !errField && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
+      <Alert text={!errField && err} />
       <div className="row-end">
         {onBack && (
           <button type="button" className="btn ghost" onClick={onBack}>
@@ -1360,11 +1348,7 @@ function AddCommunity({ input: given }: { input?: string }) {
             inputMode="url"
             enterKeyHint="go"
           />
-          {err && (
-            <p className="error" id="add-err" role="alert">
-              {err}
-            </p>
-          )}
+          <Alert id="add-err" text={err} />
           {FAKE && !err && <p className="fine">Demo mode: try letterpress.club</p>}
           <p className="fine">
             Each community runs on its own server, so you join one by its address. Want to start your own?{" "}
@@ -2089,36 +2073,24 @@ function LeaveDialog({ c, name }: { c: Community; name: string }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   return (
-    <Dialog label={`Leave ${name}`} className="confirm">
-      <h2>Leave {name}?</h2>
+    <Confirm
+      title={`Leave ${name}`}
+      verb={busy ? "Leaving…" : "Leave"}
+      err={err}
+      busy={busy}
+      onConfirm={() => {
+        setBusy(true);
+        setErr("");
+        leaveCommunity(c.url).catch((e) => {
+          setErr(errorText(e, name));
+          setBusy(false);
+        });
+      }}
+    >
       <p className="muted">
         You stop being a member of {name} and it leaves your rail. Your messages stay on its server, and you can join again with its address.
       </p>
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
-      <div className="row-end">
-        <button className="btn ghost" autoFocus={AUTOFOCUS} onClick={() => set({ modal: null })}>
-          Cancel
-        </button>
-        <button
-          className="btn danger"
-          disabled={busy}
-          onClick={() => {
-            setBusy(true);
-            setErr("");
-            leaveCommunity(c.url).catch((e) => {
-              setErr(errorText(e, name));
-              setBusy(false);
-            });
-          }}
-        >
-          {busy ? "Leaving…" : "Leave"}
-        </button>
-      </div>
-    </Dialog>
+    </Confirm>
   );
 }
 
@@ -2402,11 +2374,7 @@ function EditProfile({ focusPic }: { focusPic?: boolean }) {
           <textarea className="input textarea" rows={3} value={f.bio} onChange={(e) => setF({ ...f, bio: e.target.value })} maxLength={500} />
         </label>
         <p className="fine">Only {name} sees this. Your sblurp.chat account doesn't change.</p>
-        {err && (
-          <p className="error" role="alert">
-            {err}
-          </p>
-        )}
+        <Alert text={err} />
         <div className="row-end">
           <button type="button" className="btn ghost" onClick={() => set({ modal: null })}>
             Cancel
@@ -2442,24 +2410,10 @@ function DeleteConfirm({ id }: { id: string }) {
     }
   };
   return (
-    <Dialog label="Delete message" className="confirm">
-      <h2>Delete message?</h2>
+    <Confirm title="Delete message" verb="Delete" err={err} onConfirm={go}>
       <blockquote className="delete-preview">{m.text || "(attachment)"}</blockquote>
       <p className="muted">This can't be undone.</p>
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
-      <div className="row-end">
-        <button className="btn ghost" autoFocus={AUTOFOCUS} onClick={() => set({ modal: null })}>
-          Cancel
-        </button>
-        <button className="btn danger" onClick={go}>
-          Delete
-        </button>
-      </div>
-    </Dialog>
+    </Confirm>
   );
 }
 
@@ -2476,29 +2430,13 @@ function BlockMember({ url, memberId, mute }: { url: string; memberId: string; m
       (e) => setErr(errorText(e)),
     );
   return (
-    <Dialog label={`${verb} ${name}`} className="confirm">
-      <h2>
-        {verb} {name}?
-      </h2>
+    <Confirm title={`${verb} ${name}`} verb={verb} danger={!mute} err={err} onConfirm={go}>
       <p className="muted">
         {mute
           ? "Their messages show collapsed for you, and you skip their pings, unread counts and typing. They are not told. Unmute them any time from their profile."
           : "Neither of you can send the other direct messages, and their messages in channels show collapsed for you. They are not told. Unblock them any time from their profile or in Settings."}
       </p>
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
-      <div className="row-end">
-        <button className="btn ghost" autoFocus={AUTOFOCUS} onClick={() => set({ modal: null })}>
-          Cancel
-        </button>
-        <button className={mute ? "btn primary" : "btn danger"} onClick={go}>
-          {verb}
-        </button>
-      </div>
-    </Dialog>
+    </Confirm>
   );
 }
 
@@ -2516,29 +2454,13 @@ function RemoveMember({ url, memberId, ban }: { url: string; memberId: string; b
       (e) => setErr(errorText(e, where)),
     );
   return (
-    <Dialog label={`${verb} ${name}`} className="confirm">
-      <h2>
-        {verb} {name}?
-      </h2>
+    <Confirm title={`${verb} ${name}`} verb={verb} err={err} onConfirm={go}>
       <p className="muted">
         {ban
           ? `${name} is removed from ${where} and can't join again with this account.`
           : `${name} is removed from ${where}. They can join again with its address.`}
       </p>
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
-      <div className="row-end">
-        <button className="btn ghost" autoFocus={AUTOFOCUS} onClick={() => set({ modal: null })}>
-          Cancel
-        </button>
-        <button className="btn danger" onClick={go}>
-          {verb}
-        </button>
-      </div>
-    </Dialog>
+    </Confirm>
   );
 }
 

@@ -8,7 +8,7 @@ import { shrinkImage } from "./avatar";
 import type { Member } from "./gen/sblurp/v1/sblurp_pb";
 import { bannerFileError } from "./logic";
 import { absUrl, errorText, upload, useApp } from "./store";
-import { Avatar, AvatarEditOverlay, Icon } from "./ui";
+import { Alert, Avatar, AvatarEditOverlay, Icon } from "./ui";
 
 /** value: the avatar_url to save, or null for no change. */
 export function AvatarField({ url, me, name, value, onChange, onBusy, autoFocus }: {
@@ -80,11 +80,7 @@ export function AvatarField({ url, me, name, value, onChange, onBusy, autoFocus 
           <small className="muted">Click or drop an image. Big photos are made smaller first.</small>
         </div>
       </div>
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
+      <Alert text={err} />
       <input
         ref={input}
         type="file"

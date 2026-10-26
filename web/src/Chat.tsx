@@ -85,7 +85,7 @@ import {
   unfurled,
   unfurlKey,
 } from "./store";
-import { Avatar, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, AUTOFOCUS, ghost, Icon, type IconName, Markdown, menuKeys, Pop, readRecent, Resizer, Skeleton, thenCompose, toned, useClamped } from "./ui";
+import { Avatar, Confirm, CopyButton, Dialog, Editable, EMOJI_NAMES, EmojiPicker, emojiChar, focusMain, AUTOFOCUS, ghost, Icon, type IconName, Markdown, menuKeys, Pop, readRecent, Resizer, Skeleton, thenCompose, toned, useClamped } from "./ui";
 
 const useC = () => useApp((s) => s.cs[s.url]!);
 /** A light haptic tap. iOS WebKit has no navigator.vibrate, so the iOS app navigates to
@@ -1783,18 +1783,9 @@ function Members({ c }: { c: Community }) {
         />
       )}
       {priv && leaving && (
-        <Dialog label={`Leave #${priv.name}`} className="confirm" onClose={() => setLeaving(false)}>
-          <h2>Leave #{priv.name}?</h2>
+        <Confirm title={`Leave #${priv.name}`} verb="Leave" onConfirm={() => (setLeaving(false), drop(c.me!.id))} onClose={() => setLeaving(false)}>
           <p className="muted">It's private, so you can't see it again until someone in it adds you back.</p>
-          <div className="row-end">
-            <button className="btn ghost" autoFocus={AUTOFOCUS} onClick={() => setLeaving(false)}>
-              Cancel
-            </button>
-            <button className="btn danger" onClick={() => (setLeaving(false), drop(c.me!.id))}>
-              Leave
-            </button>
-          </div>
-        </Dialog>
+        </Confirm>
       )}
     </div>
   );

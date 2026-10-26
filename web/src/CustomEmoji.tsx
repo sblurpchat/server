@@ -9,7 +9,7 @@ import { fakeEmoji } from "./fakeEmoji";
 import { EmojiUploadStatus, ListEmojiResponseSchema, MemberRole, UploadEmojiResponseSchema } from "./gen/sblurp/v1/sblurp_pb";
 import { count, hostOf } from "./logic";
 import { absUrl, api, errorText, FAKE, useApp } from "./store";
-import { AUTOFOCUS, emojiChar, Icon } from "./ui";
+import { Alert, AUTOFOCUS, emojiChar, Icon } from "./ui";
 
 export interface Emoji {
   name: string;
@@ -291,11 +291,7 @@ export function EmojiTab({ url }: { url: string }) {
           {busy.failed > 0 && <span className="bad"> {busy.failed.toLocaleString("en-US")} failed</span>}
         </p>
       )}
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
+      <Alert text={err} />
       {t && !busy && (
         <div className="emoji-results" role="status">
           <p>

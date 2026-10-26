@@ -42,7 +42,7 @@ import {
   useApp,
 } from "./store";
 import { EmojiTab } from "./CustomEmoji";
-import { AUTOFOCUS, Avatar, CopyButton, Dialog, Icon, Skeleton } from "./ui";
+import { Alert, AUTOFOCUS, Avatar, CopyButton, Dialog, Icon, Skeleton } from "./ui";
 
 /** The old rank. The UI calls it "Permission"; "Roles" are the custom tags from ticket 1011. */
 export const PERMISSION: Record<number, string> = {
@@ -211,11 +211,7 @@ export function ChannelDialog({ id, category = "", name: initial = "", focusTopi
             </span>
           </div>
         )}
-        {err && (
-          <p className="error" role="alert">
-            {err}
-          </p>
-        )}
+        <Alert text={err} />
         <div className="row-end">
           <button type="button" className="btn ghost" onClick={() => set({ modal: null })}>
             Cancel
@@ -326,11 +322,7 @@ function ImageField({
           e.target.value = "";
         }}
       />
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
+      <Alert text={err} />
     </div>
   );
 }
@@ -377,11 +369,7 @@ function AboutTab({ url, focusDesc }: { url: string; focusDesc?: boolean }) {
         </label>
         <textarea id="about-desc" className="input textarea" autoFocus={AUTOFOCUS && focusDesc} rows={5} maxLength={2000} value={desc} onChange={(e) => setDesc(e.target.value)} />
         <small className="muted">Markdown works: **bold**, _italic_, `code` and [links](https://example.com). Shown under the name in everyone's sidebar.</small>
-        {err && (
-          <p className="error" role="alert">
-            {err}
-          </p>
-        )}
+        <Alert text={err} />
         <div className="row-end">
           <button className="btn primary" disabled={busy || !dirty}>
             Save description
@@ -452,11 +440,7 @@ function Retention({ url }: { url: string }) {
           <span>Older messages will be deleted for everyone within the hour. This cannot be undone.</span>
         </p>
       )}
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
+      <Alert text={err} />
       <div className="row-end">
         <button className="btn primary" disabled={busy || !valid || days === saved}>
           Save history setting
@@ -620,11 +604,7 @@ function MembersTab({ url }: { url: string }) {
   return (
     <div className="stack">
       <input className="input" type="search" placeholder="Search members" aria-label="Search members" value={q} onChange={(e) => setQ(e.target.value)} />
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
+      <Alert text={err} />
       <ul className="admin-list" aria-label="Members">
         {people.map((m) => (
           <MemberAdminRow key={m.id} url={url} me={c.me} m={m} onError={setErr} />
@@ -698,11 +678,7 @@ function BansTab({ url }: { url: string }) {
   return (
     <div className="stack" aria-busy={!bans && !err}>
       <p className="muted small">A banned account can't join again. Unban it and the person may join with the same profile, as a plain member.</p>
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
+      <Alert text={err} />
       {!bans && !err && <Skeleton rows={2} avatar={32} className="skel-admin" />}
       {bans && !bans.length && <p className="muted small">Nobody is banned.</p>}
       {!!bans?.length && (
@@ -802,11 +778,7 @@ export function ReportDialog({ url, message: m }: { url: string; message: Messag
           <span>Note for moderators (optional)</span>
           <textarea className="input" rows={3} maxLength={980} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What is wrong with this message?" />
         </label>
-        {err && (
-          <p className="error" role="alert">
-            {err}
-          </p>
-        )}
+        <Alert text={err} />
         <div className="row-end">
           <button type="button" className="btn ghost" autoFocus={AUTOFOCUS} onClick={() => set({ modal: null })}>
             Cancel
@@ -852,11 +824,7 @@ export function ReportsDialog() {
             </label>
           ))}
         </div>
-        {err && (
-          <p className="error" role="alert">
-            {err}
-          </p>
-        )}
+        <Alert text={err} />
         {!reports && !err && <Skeleton rows={3} avatar={32} lines={2} className="skel-admin" />}
         {reports && !reports.length && <p className="muted small">{resolved ? "No resolved reports." : "No open reports."}</p>}
         {!!reports?.length && (
@@ -960,11 +928,7 @@ function BotsTab({ url }: { url: string }) {
   };
   return (
     <div className="stack" aria-busy={!bots && !err}>
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
+      <Alert text={err} />
       {plugins ? <Plugins url={url} plugins={plugins} reload={load} /> : !err && <Skeleton rows={2} avatar={32} className="skel-admin" />}
       <h3>Token bots</h3>
       <p className="muted small">
@@ -1293,11 +1257,7 @@ export function Invites({ url, inviteOnly }: { url: string; inviteOnly: boolean 
         </label>
         <button className="btn primary">Create link</button>
       </form>
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
+      <Alert text={err} />
       {!list && !err && <Skeleton rows={3} className="skel-admin" />}
       {list && !list.length && <p className="muted small">No invite links yet.</p>}
       {!!list?.length && (
@@ -1414,11 +1374,7 @@ function RolesTab({ url }: { url: string }) {
   return (
     <div className="stack">
       <p className="muted small">Roles decide who can see which channels. What someone may do comes from their Permission, on the Members tab.</p>
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
+      <Alert text={err} />
       {c.roles.length > 0 && (
         <ul className="admin-list roles-list" aria-label="Roles">
           {c.roles.map((r, i) => (
@@ -1519,11 +1475,7 @@ function ChannelsTab({ url }: { url: string }) {
           </label>
         ))}
       </fieldset>
-      {err && (
-        <p className="error" role="alert">
-          {err}
-        </p>
-      )}
+      <Alert text={err} />
       <h3>Who can see each channel</h3>
       {!chans && !err && <Skeleton rows={4} className="skel-admin" />}
       <ul className="access-list" aria-label="Channel access" aria-busy={!chans && !err}>

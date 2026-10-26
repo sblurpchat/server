@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { MemberRole } from "./gen/sblurp/v1/sblurp_pb";
 import { applyTemplate, errorText, finishSetup, get, set, useApp } from "./store";
 import { TEMPLATES, templateChannels, type Template } from "./templates";
-import { AUTOFOCUS, Dialog, Icon } from "./ui";
+import { Alert, AUTOFOCUS, Dialog, Icon } from "./ui";
 import "./setup.css";
 
 const offered = new Set<string>();
@@ -75,11 +75,7 @@ export function SetupWizard() {
               </label>
             ))}
           </fieldset>
-          {err && (
-            <p className="error" role="alert">
-              {err}
-            </p>
-          )}
+          <Alert text={err} />
           <div className="setup-foot">
             <button type="button" className="btn ghost" disabled={busy} onClick={() => run(() => finishSetup(url), close)}>
               Skip setup
@@ -128,11 +124,7 @@ export function SetupWizard() {
             <textarea id="setup-msg" className="input textarea" rows={5} maxLength={4000} value={message} onChange={(e) => setMessage(e.target.value)} />
             <small className="muted">Posted as you, so newcomers know where to start. Clear it to skip.</small>
           </div>
-          {err && (
-            <p className="error" role="alert">
-              {err} Channels made so far stay. Try again to finish.
-            </p>
-          )}
+          <Alert text={err && `${err} Channels made so far stay. Try again to finish.`} />
           <div className="setup-foot">
             <button type="button" className="btn ghost" disabled={busy} onClick={() => (setErr(""), setStep("pick"))}>
               Back
