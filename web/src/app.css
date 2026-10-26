@@ -4510,6 +4510,11 @@ li.sw-empty {
   opacity: 0;
   transform: scale(0.97);
 }
+/* A sheet that sets its own display (flex) would stay drawn while closed. Inside a message row,
+   whose content-visibility makes it the box for fixed children, its shadow showed as a band (1419). */
+.pop[popover]:not(:popover-open) {
+  display: none;
+}
 @starting-style {
   .pop:popover-open {
     opacity: 0;
