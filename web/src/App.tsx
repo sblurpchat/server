@@ -2149,7 +2149,7 @@ function EditProfile({ focusPic }: { focusPic?: boolean }) {
           </button>
         </div>
       </form>
-      <Pop anchor={pick} onClose={() => setPick(null)} label="Pick a status emoji">
+      <Pop anchor={pick} onClose={() => setPick(null)} className="emoji-sheet" label="Pick a status emoji" sheet>
         <EmojiPicker
           onPick={(e) => {
             setPick(null);

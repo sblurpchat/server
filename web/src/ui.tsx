@@ -158,7 +158,7 @@ export function CommunityIcon({ name, icon, accent, size = 48 }: { name: string;
 
 // Who opened each popover, so focus can go back there: a menu item that opens a dialog is hidden by
 // the time the dialog closes, so focus returns to the button that opened the menu.
-const openers = new WeakMap<Element, HTMLElement>();
+const openers = new WeakMap<Element, HTMLElement | null>();
 function opener(el: Element | null): HTMLElement | null {
   const pop = el?.closest("[popover]");
   const o = pop && openers.get(pop);
@@ -357,7 +357,7 @@ export async function thenCompose(work: Promise<unknown>, composer = ".main .com
  *  A drag that the page takes as a scroll is cancelled and the sheet goes back. */
 function dragSheet(e: React.PointerEvent<HTMLElement>) {
   const el = e.currentTarget;
-  if (e.pointerType === "mouse" || !PHONE.matches || el.scrollTop > 0) return;
+  if (e.pointerType === "mouse" || !PHONE.matches) return;
   // A drag inside a scrolled list scrolls it; the sheet moves only from the top of its content.
   for (let n = e.target as HTMLElement | null; n && n !== el.parentElement; n = n.parentElement) if (n.scrollTop > 0) return;
   const y0 = e.clientY;
@@ -410,11 +410,17 @@ export function Pop({
     const el = ref.current!;
     if (anchor) {
       if (!el.matches(":popover-open")) {
-        openers.set(el, document.activeElement as HTMLElement);
+        // A phone sheet does not hand focus back to a text field: that raises the keyboard again while
+        // the sheet slides away, and the screen jumps after every pick (1422). The browser itself
+        // refocuses what had focus before showPopover, so the field blurs first.
+        let a = document.activeElement as HTMLElement | null;
+        if (sheet && PHONE.matches && a?.matches("input, textarea, [contenteditable]")) (a.blur(), (a = null));
+        openers.set(el, a);
         el.showPopover();
       }
       place(el, anchor, side);
-      el.querySelector<HTMLElement>("input, button, [tabindex]")?.focus();
+      // A phone sheet does not focus its search field: the keyboard stays down and the sheet takes its place (1415).
+      el.querySelector<HTMLElement>(sheet && PHONE.matches ? "button, [tabindex]" : "input, button, [tabindex]")?.focus();
     } else if (el.matches(":popover-open")) {
       const a = document.activeElement; // body when the focused child just unmounted
       if (a === document.body || el.contains(a)) focusBack(openers.get(el) ?? null); // its blur may hide it already

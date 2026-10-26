@@ -6187,6 +6187,83 @@ label:has(> input.visually-hidden:focus-visible) {
   }
 }
 
+/* The emoji picker is a bottom sheet on phones (1415). It sits above the keyboard when the search
+   field raises it (--kb from main.tsx), the grid scrolls inside it, and every target is 44px. */
+@media (max-width: 767px) {
+  .pop.emoji-sheet {
+    left: 0 !important;
+    right: 0;
+    top: auto !important;
+    bottom: var(--kb, 0px);
+    width: 100%;
+    max-width: none;
+    height: min(520px, calc(100dvh - var(--kb, 0px) - env(safe-area-inset-top) - 24px));
+    display: flex;
+    flex-direction: column;
+    padding: 20px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    border-width: 1px 0 0;
+    border-radius: 16px 16px 0 0;
+    transition-duration: 180ms;
+  }
+  :root[data-keyboard] .pop.emoji-sheet {
+    padding-bottom: 10px;
+  }
+  .pop.emoji-sheet::backdrop {
+    background: rgb(0 0 0 / 0.4);
+  }
+  .pop.emoji-sheet:not(:popover-open) {
+    opacity: 1;
+    transform: translateY(100%);
+  }
+  @starting-style {
+    .pop.emoji-sheet:popover-open {
+      opacity: 1;
+      transform: translateY(100%);
+    }
+  }
+  .pop.emoji-sheet::before {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: calc(50% - 18px);
+    width: 36px;
+    height: 5px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--text) 35%, transparent);
+  }
+  .emoji-sheet .emoji-picker {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    grid-template-rows: auto auto 1fr auto;
+  }
+  .emoji-sheet .emoji-top .input {
+    height: 44px;
+    font-size: 16px; /* below 16px iOS zooms the page on focus */
+  }
+  .emoji-sheet .emoji-tone,
+  .emoji-sheet .emoji-tones button,
+  .emoji-sheet .emoji-tabs button {
+    width: 44px;
+    height: 44px;
+  }
+  .emoji-sheet .emoji-tabs button {
+    width: auto;
+  }
+  .emoji-sheet .emoji-grid {
+    height: auto;
+    min-height: 0;
+    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  }
+  .emoji-sheet .emoji-grid button {
+    height: 44px;
+    font-size: 1.625rem;
+  }
+  .emoji-sheet .emoji-foot .btn {
+    min-height: 44px;
+  }
+}
+
 /* Short channels still bounce on touch (1404), like a Safari page: iOS rubber-bands only a
    scroller that can scroll, so the list is always 1px taller than its view. Messages stay at
    the bottom. */

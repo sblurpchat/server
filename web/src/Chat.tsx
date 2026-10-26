@@ -736,7 +736,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
           </button>
         </div>
       )}
-      <Pop anchor={pick} side="left" onClose={() => setPick(null)} label="Pick a reaction">
+      <Pop anchor={pick} side="left" onClose={() => setPick(null)} className="emoji-sheet" label="Pick a reaction" sheet>
         <EmojiPicker
           onPick={(e) => {
             setPick(null);
