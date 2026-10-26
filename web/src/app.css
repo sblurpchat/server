@@ -5597,6 +5597,20 @@ label:has(> input.visually-hidden:focus-visible) {
   .composer-box {
     border-radius: 22px;
   }
+  /* Send (1371): a 36px circle inside the pill's curve; the 44px hit area stays. */
+  .send {
+    padding: 4px;
+    border-radius: 50%;
+    background-clip: content-box;
+  }
+  /* A long placeholder (1373) stays on one line instead of making the empty pill two lines tall. */
+  .composer-input:placeholder-shown {
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .composer-input::placeholder {
+    text-overflow: ellipsis;
+  }
 
   /* Sidebar (1351, 1358, 1359): one scroller, so the banner and description scroll away
      with the channels; the profile row stays pinned at the bottom. */
@@ -5704,6 +5718,110 @@ label:has(> input.visually-hidden:focus-visible) {
   }
   .settings h3 {
     margin: 0 0 6px 4px;
+  }
+
+  /* Settings rows (1368, 1370): grouped like iOS Settings; each opens a page from the right. */
+  .settings-list ul {
+    list-style: none;
+    margin: 16px 0 0;
+    padding: 0;
+    border-radius: 12px;
+    background: var(--frost);
+    overflow: hidden;
+  }
+  .settings-list li + li {
+    border-top: 1px solid var(--line);
+  }
+  .settings-list button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 12px 0 14px;
+    font-size: 1rem;
+    text-align: start;
+    color: var(--text);
+  }
+  .settings-list button:active {
+    background: var(--hover);
+  }
+  .settings-list span {
+    flex: 1;
+  }
+  .settings-list .icon:last-child {
+    rotate: -90deg;
+    color: var(--graphite);
+  }
+  .settings-back {
+    margin: 0 -8px 0 -12px;
+  }
+  .settings-back .icon {
+    rotate: 90deg;
+  }
+  /* The top bar already names the page; keep only where the setting is saved. */
+  .settings-page > section > h3 {
+    font-size: 0;
+    gap: 0;
+  }
+  .settings-page > section > h3 .scope {
+    font-size: 0.8125rem;
+  }
+  .settings-page {
+    animation: settings-push 200ms ease-out;
+  }
+  .settings-list {
+    animation: fade-in 160ms ease-out;
+  }
+
+  /* Profile (1385): a bottom sheet that slides up; a tap outside or a drag down closes it.
+     !important beats the inline position place() sets. */
+  .pop.profile {
+    left: 0 !important;
+    right: 0;
+    top: auto !important;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - env(safe-area-inset-top) - 24px);
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    border-width: 1px 0 0;
+    border-radius: 16px 16px 0 0;
+    overscroll-behavior: contain;
+    transition-duration: 200ms;
+  }
+  .pop.profile::backdrop {
+    background: rgb(0 0 0 / 0.4);
+  }
+  .pop.profile:not(:popover-open) {
+    opacity: 1;
+    transform: translateY(100%);
+  }
+  @starting-style {
+    .pop.profile:popover-open {
+      opacity: 1;
+      transform: translateY(100%);
+    }
+  }
+  /* The band is the grab handle: a drag on it never scrolls. */
+  .pop.profile .profile-band {
+    touch-action: none;
+  }
+  .pop.profile::before {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: calc(50% - 18px);
+    width: 36px;
+    height: 5px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--text) 35%, transparent);
+  }
+}
+@keyframes settings-push {
+  from {
+    translate: 40% 0;
+    opacity: 0;
   }
 }
 @keyframes sheet-up {

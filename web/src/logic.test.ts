@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { Code } from "@connectrpc/connect";
 import { queueStep, showDown, transient } from "./logic";
 import css from "./app.css?raw";
-import { allDMs, channelLabel, dmPeer, swipeAxis, swipeEnds, tailnetUrl } from "./logic";
+import { allDMs, channelLabel, dmPeer, settingsGroups, swipeAxis, swipeEnds, tailnetUrl } from "./logic";
 import {
   ChannelKind,
   ChannelMode,
@@ -1372,5 +1372,12 @@ describe("tabBadges (1386)", () => {
     expect(tabBadges({ [a.url]: a }, { url: a.url, channelId: "d1" }).back).toBe(2);
     a.reads = { dev: rs("dev", 4, 0) };
     expect(tabBadges({ [a.url]: a })).toEqual({ home: { unread: true, mentions: 0 }, dms: 0, back: 0 });
+  });
+});
+
+describe("settingsGroups", () => {
+  it("groups the phone Settings rows and shows links only in the mobile apps", () => {
+    expect(settingsGroups(false)).toEqual([["appearance", "notifications"], ["blocked"], ["account"]]);
+    expect(settingsGroups(true)).toEqual([["appearance", "notifications", "links"], ["blocked"], ["account"]]);
   });
 });

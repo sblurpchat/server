@@ -1473,6 +1473,13 @@ export function allDMs(cs: Record<string, Community>, order: string[]): { url: s
     .map(({ i: _, ...x }) => x);
 }
 
+export type SettingsPage = "appearance" | "notifications" | "links" | "blocked" | "account";
+
+/** Settings on a phone (1368, 1370): grouped rows like iOS Settings, each opening its own page.
+ *  The links page is only in the iOS and Android apps, where a link can open in a sheet. */
+export function settingsGroups(links: boolean): SettingsPage[][] {
+  return [["appearance", "notifications", ...(links ? (["links"] as const) : [])], ["blocked"], ["account"]];
+}
 /** Phone badges (1386), like Slack and Discord mobile. Home: a dot for unread channels and a
  *  count of their mentions. DMs: unread conversations. Back: the mention count away from the
  *  open channel, where an unread DM counts at least once; never a bare dot. */

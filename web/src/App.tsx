@@ -35,6 +35,8 @@ import {
   sentence,
   listStep,
   cssUrl,
+  settingsGroups,
+  type SettingsPage,
   channelSlug,
   blockedRows,
   swipeAxis,
@@ -81,10 +83,10 @@ import {
 } from "./store";
 import { AUTH_URL, nativeApp } from "./auth";
 import { appPlatform, DOWNLOADS, offered } from "./downloads";
-import { LinksSetting } from "./links";
+import { LinksSetting, sheetApp } from "./links";
 import { AvatarField } from "./AvatarField";
 import { pond } from "./pond";
-import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, Icon, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped, ZoomStage } from "./ui";
+import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, Icon, type IconName, thenCompose, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped, ZoomStage } from "./ui";
 
 export function App() {
   const auth = useApp((s) => s.auth);
@@ -1177,7 +1179,7 @@ function Modals() {
 }
 
 const THEME_NAMES: Record<Theme, string> = {
-  system: "Match system",
+  system: "Same as device",
   light: "Light",
   dark: "Dark",
   midnight: "Midnight",
@@ -1267,7 +1269,7 @@ function CustomTheme() {
       </div>
       {fixed.length > 0 && (
         <p className="fine custom-warn">
-          <Icon name="info" size={16} /> {fixed.join(" and ")} {fixed.length > 1 ? "were" : "was"} too close to the background, so Sblurp adjusted {fixed.length > 1 ? "them" : "it"} to pass WCAG AA contrast.
+          <Icon name="info" size={16} /> {fixed.join(" and ")} {fixed.length > 1 ? "were" : "was"} hard to read on the background, so Sblurp changed {fixed.length > 1 ? "them" : "it"}.
         </p>
       )}
       <div className="copy-row">
@@ -1289,7 +1291,7 @@ function CustomTheme() {
       </form>
       {bad && (
         <p className="error custom-warn" role="alert">
-          That is not a theme. Paste six colors separated by commas, like the one above.
+          That is not a theme. Paste six colors with commas between them, like the one above.
         </p>
       )}
     </fieldset>
@@ -1308,7 +1310,7 @@ function Appearance() {
   return (
     <section className="appearance">
       <h3>
-        Appearance <small className="scope">Synced to your account</small>
+        Appearance <small className="scope">Saved to your account</small>
       </h3>
       <div className="preview" inert aria-hidden="true">
         {SAMPLE.map((m, i) => (
@@ -1410,7 +1412,7 @@ function Appearance() {
             />
           </label>
         </div>
-        <small className="fine">Sblurp darkens or lightens the color if text on it would be hard to read.</small>
+        <small className="fine">If text on the color is hard to read, Sblurp changes the color a little.</small>
       </fieldset>
       )}
       {/* Phones always use cozy messages and the compact sidebar (1350, 1364). */}
@@ -1459,9 +1461,9 @@ function Appearance() {
       />
       <Choice
         k="motion"
-        label="Reduce motion"
+        label="Less motion"
         options={[
-          ["system", "Match system"],
+          ["system", "Same as device"],
           ["reduce", "On"],
           ["full", "Off"],
         ]}
@@ -1470,90 +1472,157 @@ function Appearance() {
   );
 }
 
+const PAGES: Record<SettingsPage, [string, IconName]> = {
+  appearance: ["Appearance", "sliders"],
+  notifications: ["Notifications", "bell"],
+  links: ["Links", "link"],
+  blocked: ["Blocked people", "ban"],
+  account: ["Account", "user"],
+};
+
+/** Settings. On a phone (1368, 1370) it is a short list of grouped rows, and each row opens its
+ *  own page with a back button in the top bar, like iOS Settings. */
 function Settings() {
-  const notify = useApp((s) => s.notify);
-  const profile = useApp((s) => s.profile);
-  const denied = typeof Notification !== "undefined" && Notification.permission === "denied";
+  const narrow = useSyncExternalStore(onNarrow, () => NARROW.matches);
+  const [page, setPage] = useState<SettingsPage | null>(null);
+  const last = useRef<SettingsPage | null>(null);
+  const listRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (page) last.current = page;
+    else listRef.current?.querySelector<HTMLElement>(`[data-page="${last.current}"]`)?.focus();
+  }, [page]);
+  const sub = narrow ? page : null;
+  const body = {
+    appearance: <Appearance />,
+    notifications: <Notifications />,
+    links: <LinksSetting />,
+    blocked: <BlockedList />,
+    account: <Account />,
+  };
   return (
     <Dialog label="Settings" className="settings">
       <header className="dialog-head">
+        {sub && (
+          <button className="icon-btn settings-back" aria-label="Back to Settings" autoFocus onClick={() => setPage(null)}>
+            <Icon name="chevron" />
+          </button>
+        )}
         <div>
-          <h2>Settings</h2>
-          <p className="dialog-sub">The same in every community you join.</p>
+          <h2>{sub ? PAGES[sub][0] : "Settings"}</h2>
+          <p className="dialog-sub">These apply in all your communities.</p>
         </div>
         <button className="icon-btn" aria-label="Close" onClick={() => set({ modal: null })}>
           <Icon name="x" />
         </button>
       </header>
-      <Appearance />
-      <section>
-        <h3>
-          Notifications <small className="scope">On this device</small>
-        </h3>
-        <label className="toggle-row">
-          <span>
-            <b>Mentions and direct messages</b>
-            <small>Show a notification when Sblurp is in the background.</small>
-          </span>
-          <input
-            type="checkbox"
-            role="switch"
-            className="switch"
-            checked={notify && !denied}
-            disabled={denied}
-            onChange={(e) => setNotify(e.target.checked)}
-          />
-        </label>
-        {denied && <p className="error small">Notifications are blocked for this site. Allow them in your browser's site settings, then turn this on.</p>}
-      </section>
-      <BlockedList />
-      <LinksSetting />
-      <section className="desk-only">
-        <h3>Keyboard</h3>
-        <button className="btn small" aria-keyshortcuts={`${MOD === "⌘" ? "Meta" : "Control"}+/`} onClick={() => set({ modal: { t: "keys" } })}>
-          Keyboard shortcuts <kbd>{MOD}</kbd> <kbd>/</kbd>
-        </button>
-      </section>
-      <section className="desk-only">
-        <h3>Get the apps</h3>
-        <ul className="download-list">
-          {offered(DOWNLOADS, appPlatform(nativeApp(), navigator.userAgent, navigator.maxTouchPoints > 1)).map((d) => (
-            <li key={d.id}>
-              <svg className="platform-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path d={d.icon} />
-              </svg>
-              <span>
-                <b>{d.name}</b>
-                {d.hint && <small>{d.hint}</small>}
-              </span>
-              {d.url ? (
-                <a className="btn small" href={d.url} target="_blank" rel="noopener noreferrer">
-                  {d.action}
-                  {d.action === "Download" && <span className="visually-hidden"> for {d.name}</span>} <Icon name="external" size={14} />
-                </a>
-              ) : (
-                <span className="soon">{d.action}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-      <section>
-        <h3>Account</h3>
-        <div className="account-row">
-          <span>
-            <b>{profile?.displayName}</b>
-            <small>@{profile?.username} on sblurp.chat</small>
-          </span>
-          <a className="btn small" href={ACCOUNT_URL} target="_blank" rel="noopener noreferrer">
-            Manage account <Icon name="external" size={14} />
-          </a>
+      {sub ? (
+        <div className="settings-page" key={sub}>
+          {body[sub]}
         </div>
-        <button className="btn danger-ghost" onClick={signOut}>
-          Sign out
-        </button>
-      </section>
+      ) : narrow ? (
+        <nav className="settings-list" aria-label="Settings" ref={listRef}>
+          {settingsGroups(sheetApp).map((g) => (
+            <ul key={g[0]}>
+              {g.map((p) => (
+                <li key={p}>
+                  <button data-page={p} onClick={() => setPage(p)}>
+                    <Icon name={PAGES[p][1]} />
+                    <span>{PAGES[p][0]}</span>
+                    <Icon name="chevron" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ))}
+        </nav>
+      ) : (
+        <>
+          <Appearance />
+          <Notifications />
+          <BlockedList />
+          <LinksSetting />
+          <section>
+            <h3>Keyboard</h3>
+            <button className="btn small" aria-keyshortcuts={`${MOD === "⌘" ? "Meta" : "Control"}+/`} onClick={() => set({ modal: { t: "keys" } })}>
+              Keyboard shortcuts <kbd>{MOD}</kbd> <kbd>/</kbd>
+            </button>
+          </section>
+          <section>
+            <h3>Get the apps</h3>
+            <ul className="download-list">
+              {offered(DOWNLOADS, appPlatform(nativeApp(), navigator.userAgent, navigator.maxTouchPoints > 1)).map((d) => (
+                <li key={d.id}>
+                  <svg className="platform-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d={d.icon} />
+                  </svg>
+                  <span>
+                    <b>{d.name}</b>
+                    {d.hint && <small>{d.hint}</small>}
+                  </span>
+                  {d.url ? (
+                    <a className="btn small" href={d.url} target="_blank" rel="noopener noreferrer">
+                      {d.action}
+                      {d.action === "Download" && <span className="visually-hidden"> for {d.name}</span>} <Icon name="external" size={14} />
+                    </a>
+                  ) : (
+                    <span className="soon">{d.action}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+          <Account />
+        </>
+      )}
     </Dialog>
+  );
+}
+
+function Notifications() {
+  const notify = useApp((s) => s.notify);
+  const denied = typeof Notification !== "undefined" && Notification.permission === "denied";
+  return (
+    <section>
+      <h3>
+        Notifications <small className="scope">On this device</small>
+      </h3>
+      <label className="toggle-row">
+        <span>
+          <b>Mentions and direct messages</b>
+          <small>Get an alert when Sblurp is not open.</small>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          className="switch"
+          checked={notify && !denied}
+          disabled={denied}
+          onChange={(e) => setNotify(e.target.checked)}
+        />
+      </label>
+      {denied && <p className="error small">Your browser blocks alerts from Sblurp. Allow them in the browser settings, then turn this on.</p>}
+    </section>
+  );
+}
+
+function Account() {
+  const profile = useApp((s) => s.profile);
+  return (
+    <section>
+      <h3>Account</h3>
+      <div className="account-row">
+        <span>
+          <b>{profile?.displayName}</b>
+          <small>@{profile?.username} on sblurp.chat</small>
+        </span>
+        <a className="btn small" href={ACCOUNT_URL} target="_blank" rel="noopener noreferrer">
+          Manage account <Icon name="external" size={14} />
+        </a>
+      </div>
+      <button className="btn danger-ghost" onClick={signOut}>
+        Sign out
+      </button>
+    </section>
   );
 }
 
@@ -1565,7 +1634,7 @@ function BlockedList() {
   return (
     <section>
       <h3>
-        Blocked members <small className="scope">Per community</small>
+        Blocked people <small className="scope">In each community</small>
       </h3>
       {rows.length ? (
         <ul className="blocked-list">
@@ -1583,7 +1652,7 @@ function BlockedList() {
           ))}
         </ul>
       ) : (
-        <p className="muted small">You haven't blocked anyone. Block someone from their profile.</p>
+        <p className="muted small">You have not blocked anyone. To block a person, open their profile.</p>
       )}
       {err && (
         <p className="error small" role="alert">
@@ -2140,7 +2209,7 @@ function ProfilePopover() {
   const [err, setErr] = useState("");
   const mod = m ? modActions(me, m) : { remove: false, roles: [] };
   return (
-    <Pop anchor={p && m ? p.rect : null} side="right" className="profile" label={m ? `${m.displayName || m.username}'s profile` : "Profile"} onClose={() => (setErr(""), set({ popover: null }))}>
+    <Pop anchor={p && m ? p.rect : null} side="right" className="profile" sheet label={m ? `${m.displayName || m.username}'s profile` : "Profile"} onClose={() => (setErr(""), set({ popover: null }))}>
       {m && p && (
         <>
           <div className="profile-band" style={{ background: "color-mix(in srgb, var(--raspberry) 18%, var(--paper))" }} />
@@ -2192,7 +2261,7 @@ function ProfilePopover() {
             )}
             {m.id === me?.id ? (
               <>
-                <button className="btn primary wide" onClick={() => openDM(p.url, m.id).catch((e) => setErr(errorText(e)))}>
+                <button className="btn primary wide" onClick={() => thenCompose(openDM(p.url, m.id)).catch((e) => setErr(errorText(e)))}>
                   Message
                 </button>
                 <button className="btn wide" onClick={() => set({ popover: null, modal: { t: "profile" } })}>
@@ -2207,7 +2276,7 @@ function ProfilePopover() {
                 </button>
               </>
             ) : (
-              <button className="btn primary wide" onClick={() => openDM(p.url, m.id).catch((e) => setErr(errorText(e)))}>
+              <button className="btn primary wide" onClick={() => thenCompose(openDM(p.url, m.id)).catch((e) => setErr(errorText(e)))}>
                 Message
               </button>
             )}

@@ -1,7 +1,7 @@
 // Shared UI primitives: icons, avatars, dialogs, popovers, the emoji picker and the markdown renderer.
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { MemberRole, Presence, type Member } from "./gen/sblurp/v1/sblurp_pb";
-import { PANELS, SKELETON_DELAY_MS, clampWidth, gridMove, initials, keyWidth, listMove, onBackdrop, onWhite, parseMarkdown, shareToDeepLink, skeletonRows, swatch, pinchView, type Block, type Inline, type View } from "./logic";
+import { PANELS, SKELETON_DELAY_MS, clampWidth, gridMove, initials, keyWidth, listMove, onBackdrop, onWhite, parseMarkdown, shareToDeepLink, skeletonRows, swatch, swipeEnds, pinchView, type Block, type Inline, type View } from "./logic";
 import { Img, Shortcodes, useEmojiSet, useMore } from "./CustomEmoji";
 import { bumpRecent, pickerSections, TONES, withTone, type PickItem } from "./emoji";
 import { EMOJI_DATA } from "./emoji-data";
@@ -66,6 +66,8 @@ const ICONS = {
   bellOff: "M10.268 21a2 2 0 0 0 3.464 0M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742M2 2l20 20M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05", // Lucide bell-off
   plane: "M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z", // Lucide plane
   house: "M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
+  ban: "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M4.929 4.929l14.142 14.142", // Lucide ban
+  user: "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M8 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0", // Lucide user
 };
 export type IconName = keyof typeof ICONS;
 
@@ -331,13 +333,65 @@ export function place(el: HTMLElement, a: DOMRect, side: "below" | "above" | "ri
   el.style.top = `${y}px`;
 }
 
-/** A popover that opens next to `anchor` while it is set, and reports when it closes. */
+const PHONE = matchMedia("(max-width: 767px)");
+
+/** Focus the composer once `work` has opened its channel (1390). iOS raises the keyboard only for a
+ *  focus() inside the tap itself, so a hidden stand-in field takes focus now and hands it over. */
+export async function thenCompose(work: Promise<unknown>) {
+  const stand = document.createElement("input");
+  stand.setAttribute("aria-hidden", "true");
+  stand.tabIndex = -1;
+  stand.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px";
+  document.body.append(stand);
+  stand.focus({ preventScroll: true });
+  try {
+    await work;
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); // the new channel has rendered
+    document.querySelector<HTMLElement>(".main .composer-input")?.focus();
+  } finally {
+    stand.remove();
+  }
+}
+
+/** A bottom sheet on a phone follows a finger dragged down and closes on a long or fast drag (1385).
+ *  A drag that the page takes as a scroll is cancelled and the sheet goes back. */
+function dragSheet(e: React.PointerEvent<HTMLElement>) {
+  const el = e.currentTarget;
+  if (e.pointerType === "mouse" || !PHONE.matches || el.scrollTop > 0) return;
+  // A drag inside a scrolled list scrolls it; the sheet moves only from the top of its content.
+  for (let n = e.target as HTMLElement | null; n && n !== el.parentElement; n = n.parentElement) if (n.scrollTop > 0) return;
+  const y0 = e.clientY;
+  let dy = 0;
+  let v = 0;
+  let last = { y: y0, t: e.timeStamp };
+  const move = (m: PointerEvent) => {
+    dy = Math.max(0, m.clientY - y0);
+    v = (m.clientY - last.y) / Math.max(1, m.timeStamp - last.t);
+    last = { y: m.clientY, t: m.timeStamp };
+    el.style.transition = "none";
+    el.style.translate = `0 ${dy}px`;
+  };
+  const end = (u: PointerEvent) => {
+    removeEventListener("pointermove", move);
+    removeEventListener("pointerup", end);
+    removeEventListener("pointercancel", end);
+    el.style.transition = el.style.translate = "";
+    if (u.type === "pointerup" && dy > 8 && swipeEnds(dy / el.offsetHeight, v)) el.hidePopover();
+  };
+  addEventListener("pointermove", move);
+  addEventListener("pointerup", end);
+  addEventListener("pointercancel", end);
+}
+
+/** A popover that opens next to `anchor` while it is set, and reports when it closes.
+ *  With `sheet`, phones show it as a bottom sheet that a drag down closes (the look is in app.css). */
 export function Pop({
   anchor,
   side,
   onClose,
   className = "",
   label,
+  sheet,
   children,
 }: {
   anchor: DOMRect | null;
@@ -345,6 +399,7 @@ export function Pop({
   onClose: () => void;
   className?: string;
   label?: string;
+  sheet?: boolean;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -373,6 +428,7 @@ export function Pop({
       role="dialog"
       aria-label={label}
       className={`pop ${className}`}
+      onPointerDown={sheet ? dragSheet : undefined}
       onToggle={(e) => {
         if ((e as unknown as ToggleEvent).newState !== "closed") return;
         const a = document.activeElement;

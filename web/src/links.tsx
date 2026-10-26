@@ -51,7 +51,7 @@ export function LinksSetting() {
       <label className="toggle-row">
         <span>
           <b>Open links in the browser</b>
-          <small>Off: links open in a sheet over Sblurp.</small>
+          <small>When off, links open inside Sblurp.</small>
         </span>
         <input
           type="checkbox"
