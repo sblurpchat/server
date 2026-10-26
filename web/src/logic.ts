@@ -461,7 +461,7 @@ export function parseAppearance(v: unknown): Appearance {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
   const one = <T>(x: unknown, ok: readonly T[], d: T) => (ok.includes(x as T) ? (x as T) : d);
   const custom = typeof o.custom === "string" ? parseThemeString(o.custom) : null;
-  const size = typeof o.fontSize === "number" && Number.isFinite(o.fontSize) ? Math.round(Math.min(20, Math.max(12, o.fontSize))) : APPEARANCE.fontSize;
+  const size = typeof o.fontSize === "number" && Number.isFinite(o.fontSize) ? Math.round(Math.min(30, Math.max(12, o.fontSize))) : APPEARANCE.fontSize;
   return {
     // Cocoa was replaced by Clementine (1323).
     theme: o.theme === "custom" && !custom ? APPEARANCE.theme : o.theme === "cocoa" ? "clementine" : one(o.theme, THEMES, APPEARANCE.theme),

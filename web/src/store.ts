@@ -1107,6 +1107,15 @@ function readTokens(vars: string[]) {
   probe.remove();
   return out;
 }
+// Only iOS WebKit has touch-callout; desktop WebKit also knows -apple-system-body but not Larger Text.
+const IOS_TEXT = CSS.supports("-webkit-touch-callout", "none");
+function readFont(font: string) {
+  const probe = document.body.appendChild(document.createElement("i"));
+  probe.style.font = font;
+  const size = getComputedStyle(probe).fontSize;
+  probe.remove();
+  return size;
+}
 /** Puts the appearance on <html>: data attributes for CSS, a font size, and an accent fitted to the theme. */
 function applyLook() {
   const { theme, density, sidebar, motion, fontSize, accent, custom, font } = state.look;
@@ -1116,7 +1125,10 @@ function applyLook() {
     if (v === "system" || v === "cozy" || v === "default") delete root.dataset[k];
     else root.dataset[k] = v;
   }
-  root.style.fontSize = fontSize === APPEARANCE.fontSize ? "" : `${(fontSize / 15) * 100}%`;
+  // iOS Larger Text (1483): -apple-system-body follows Dynamic Type and is 17px at the default size.
+  const sys = IOS_TEXT ? parseFloat(readFont("-apple-system-body")) / 17 || 1 : 1;
+  const scale = (fontSize / 15) * sys;
+  root.style.fontSize = scale === 1 ? "" : `${scale * 100}%`;
   for (const v of [...root.style].filter((v) => v.startsWith("--") || v === "color-scheme")) root.style.removeProperty(v);
   if (theme === "custom") {
     const { tokens, dark } = customTheme(custom.split(","));
@@ -1227,6 +1239,8 @@ const JOIN_KEY = "sblurp.join";
 export async function boot() {
   applyLook();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyLook);
+  // Larger Text is changed in Settings, so it is read again on the way back (1483).
+  if (IOS_TEXT) document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && applyLook());
   addEventListener("popstate", applyHash);
   addEventListener("hashchange", openDeepLink);
   addEventListener("blur", flushReads);

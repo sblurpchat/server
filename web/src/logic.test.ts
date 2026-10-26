@@ -787,7 +787,7 @@ describe("appearance", () => {
       theme: "mint",
       accent: "#d0306a",
       density: "irc",
-      fontSize: 20,
+      fontSize: 30,
       clock: "24",
       motion: "reduce",
     });

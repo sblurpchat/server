@@ -945,9 +945,9 @@ kbd {
   display: inline-grid;
   place-items: center;
   min-width: 18px;
-  height: 18px;
+  min-height: 18px;
   padding: 0 5px;
-  border-radius: 9px;
+  border-radius: 999px;
   background: var(--badge);
   color: var(--on-accent);
   font-size: 0.71875rem;
@@ -1403,7 +1403,8 @@ kbd {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 32px;
+  /* min-height: rows grow with large text (1483). */
+  min-height: 32px;
   padding: 0 8px 0 10px;
   border-radius: 7px;
   color: var(--graphite);
@@ -4784,7 +4785,7 @@ li.sw-empty {
     min-height: 44px;
   }
   .chan {
-    height: 44px;
+    min-height: 44px;
   }
   .side-sec h2 button {
     min-height: 44px;
@@ -4970,7 +4971,7 @@ li.sw-empty {
 }
 :root[data-sidebar="compact"] {
   .chan {
-    height: 26px;
+    min-height: 26px;
   }
   .side-sec + .side-sec {
     margin-top: 8px;

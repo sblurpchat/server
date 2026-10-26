@@ -1628,7 +1628,7 @@ function Appearance() {
         <span className="legend">
           Text size <span>{look.fontSize}px</span>
         </span>
-        <input type="range" min={12} max={20} step={1} aria-valuetext={`${look.fontSize} pixels`} value={look.fontSize} onChange={(e) => setLook({ fontSize: +e.target.value })} />
+        <input type="range" min={12} max={30} step={1} aria-valuetext={`${look.fontSize} pixels`} value={look.fontSize} onChange={(e) => setLook({ fontSize: +e.target.value })} />
       </label>
       <Choice
         k="clock"
