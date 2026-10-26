@@ -1,5 +1,5 @@
 // Login against sblurp.chat (Authorization Code + PKCE) and per-community access tokens.
-import { appPlatform } from "./downloads";
+import { offerPush, PUSH_KEY } from "./push";
 import { tailnetUrl, tokenFresh } from "./logic";
 
 export const AUTH_URL: string = import.meta.env.VITE_AUTH_URL ?? "http://localhost:8081";
@@ -109,35 +109,13 @@ export async function finishLogin(params: URLSearchParams): Promise<boolean> {
   if (!verifier || !code || params.get("iss")?.replace(/\/+$/, "") !== AUTH_URL.replace(/\/+$/, "")) return false;
   await tokenRequest(new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: redirectUri(), code_verifier: verifier }));
   localStorage.removeItem(REAUTH_KEY);
-  askForPush();
+  offerPush();
   return true;
 }
 
-// Notifications in the iOS app (ticket 0300). A sblurp-push: navigation makes Rust ask for
-// permission and register with APNs (apps/src-tauri/src/lib.rs); the device token comes back as a
-// sblurp-push event and goes to sblurp.chat. Community tokens then carry a push handle.
-const PUSH_KEY = "sblurp.pushDevice";
-const iosApp = () => "__TAURI_INTERNALS__" in globalThis && appPlatform(true, navigator.userAgent, navigator.maxTouchPoints > 1) === "ios";
-function askForPush() {
-  if (iosApp() && hasSession()) location.href = "sblurp-push:register";
-}
-async function registerDevice(d: { token: string; sandbox: boolean }) {
-  const res = await fetch(`${AUTH_URL}/api/push/devices`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${await getToken(AUTH_URL)}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ platform: "apns", token: d.token, sandbox: d.sandbox, preview: false }),
-  });
-  if (!res.ok) return;
-  const first = localStorage.getItem(PUSH_KEY) !== d.token;
-  localStorage.setItem(PUSH_KEY, d.token);
-  // Fresh community tokens carry the handle, so servers learn it now instead of in 15 minutes.
-  if (first) for (const aud of [...cache.keys()]) if (aud !== AUTH_URL) cache.delete(aud);
-}
-if (iosApp()) {
-  addEventListener("sblurp-push", (e) => void registerDevice((e as CustomEvent).detail).catch(() => {}));
-  // Every start registers again, which keeps the device from expiring after 60 days.
-  if (document.readyState === "complete") setTimeout(askForPush);
-  else addEventListener("load", askForPush);
+/** Drops cached community tokens, so the next ones carry a new push handle (web/src/push.ts). */
+export function forgetCommunityTokens() {
+  for (const aud of [...cache.keys()]) if (aud !== AUTH_URL) cache.delete(aud);
 }
 
 // Refresh tokens rotate on every use, so refreshes must never overlap: not across audiences in

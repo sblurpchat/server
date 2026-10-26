@@ -86,6 +86,8 @@ import { AUTH_URL, nativeApp } from "./auth";
 import { appPlatform, DOWNLOADS, offered } from "./downloads";
 import { LinksSetting, sheetApp } from "./links";
 import { AvatarField } from "./AvatarField";
+import { PushAsk, PushSetting } from "./PushAsk";
+import { iosApp } from "./push";
 import { pond } from "./pond";
 import { Avatar, AvatarEditOverlay, CommunityIcon, CopyButton, Dialog, Editable, EmojiPicker, emojiChar, focusMain, Icon, type IconName, thenCompose, Markdown, menuKeys, Pop, presenceLabel, Resizer, Skeleton, useClamped, ZoomStage } from "./ui";
 
@@ -359,6 +361,7 @@ function Shell() {
       </main>
       {pane && c?.me && <RightPane />}
       <Modals />
+      <PushAsk />
       <ProfilePopover />
       <div className="scrim" onClick={() => set({ drawer: false })} />
     </div>
@@ -1651,6 +1654,11 @@ function Settings({ start }: { start?: SettingsPage }) {
 }
 
 function Notifications() {
+  if (iosApp()) return <PushSetting />;
+  return <WebNotifications />;
+}
+
+function WebNotifications() {
   const notify = useApp((s) => s.notify);
   const denied = typeof Notification !== "undefined" && Notification.permission === "denied";
   return (
