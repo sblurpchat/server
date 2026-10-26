@@ -4,7 +4,7 @@
 // device token), which goes to sblurp.chat. Community tokens then carry a push handle.
 //
 // The iOS prompt can be shown only once, so it never fires on start: at a moment that makes sense
-// (after sign-in, opening a DM) a sheet explains it first, and only its Enable shows the prompt.
+// (opening a DM, not right after sign-in, 1500) a sheet explains it first, and only its Enable shows the prompt.
 import { AUTH_URL, forgetCommunityTokens, getToken, hasSession } from "./auth";
 import { appPlatform } from "./downloads";
 

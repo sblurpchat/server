@@ -3,9 +3,10 @@ import { useEffect, useSyncExternalStore } from "react";
 import { isDM } from "./logic";
 import { enablePush, notNowPush, offerPush, onPush, pushState, setPush } from "./push";
 import { useApp } from "./store";
-import { Dialog, Icon } from "./ui";
+import { AUTOFOCUS, Dialog, Icon } from "./ui";
 
-/** Explains notifications before the one-time iOS prompt. Opening a DM is a moment to ask. */
+/** Explains notifications before the one-time iOS prompt. Opening a DM is a moment to ask. It is
+ *  in Sblurp's own words, so it does not read like the iOS alert that follows (1500). */
 export function PushAsk() {
   const { asking } = useSyncExternalStore(onPush, pushState);
   const dm = useApp((s) => isDM(s.cs[s.url]?.channels[s.channelId]));
@@ -16,15 +17,15 @@ export function PushAsk() {
   return (
     <Dialog label="Turn on notifications" className="confirm" onClose={notNowPush}>
       <h2>
-        <Icon name="bell" /> Sblurp would like to send you notifications
+        <Icon name="bell" /> Get pinged when someone messages you
       </h2>
       <p className="muted">Know when someone mentions you or sends you a direct message, even when Sblurp is closed.</p>
       <div className="row-end">
         <button className="btn ghost" onClick={notNowPush}>
           Not now
         </button>
-        <button className="btn primary" autoFocus onClick={enablePush}>
-          Enable
+        <button className="btn primary" autoFocus={AUTOFOCUS} onClick={enablePush}>
+          Turn on notifications
         </button>
       </div>
     </Dialog>

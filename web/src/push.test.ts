@@ -40,7 +40,7 @@ describe("the iOS notification flow", () => {
     await new Promise((r) => setTimeout(r));
     expect(loc.href).toBe("sblurp-push:status"); // start only reads the permission
     loc.href = "";
-    offerPush(); // signed in before the status came
+    offerPush(); // opened a DM before the status came
     expect(pushState().asking).toBe(false);
     status("notDetermined");
     expect(pushState().asking).toBe(true);

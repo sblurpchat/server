@@ -1,5 +1,5 @@
 // Login against sblurp.chat (Authorization Code + PKCE) and per-community access tokens.
-import { offerPush, PUSH_KEY } from "./push";
+import { PUSH_KEY } from "./push";
 import { tailnetUrl, tokenFresh } from "./logic";
 
 export const AUTH_URL: string = import.meta.env.VITE_AUTH_URL ?? "http://localhost:8081";
@@ -109,7 +109,6 @@ export async function finishLogin(params: URLSearchParams): Promise<boolean> {
   if (!verifier || !code || params.get("iss")?.replace(/\/+$/, "") !== AUTH_URL.replace(/\/+$/, "")) return false;
   await tokenRequest(new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: redirectUri(), code_verifier: verifier }));
   localStorage.removeItem(REAUTH_KEY);
-  offerPush();
   return true;
 }
 
