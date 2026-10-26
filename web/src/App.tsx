@@ -1,5 +1,5 @@
 import { Code, ConnectError } from "@connectrpc/connect";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent } from "react";
 import { ChannelDialog, CommunitySettings, Invites, PERMISSION, RoleChips, ReportDialog, ReportsDialog } from "./Admin";
 import { ChannelView, openProfile, PeoplePicker, RightPane } from "./Chat";
 import { SetupWizard, useSetupPrompt } from "./Setup";
@@ -330,6 +330,16 @@ function Shell() {
   const live = useRef({ drawer, channelId });
   live.current = { drawer, channelId };
   useDrawerSwipe(appRef, live);
+  // A tab switch remounts the drawer's list, so each tab's scroll is kept here and put back (1457).
+  const scrolls = useRef<Record<string, number>>({});
+  useLayoutEffect(() => {
+    const el = appRef.current!.querySelector<HTMLElement>(".drawer > :is(.sidebar, .tab-panel)");
+    if (!el) return;
+    el.scrollTop = scrolls.current[tab] ?? 0;
+    const save = () => (scrolls.current[tab] = el.scrollTop);
+    el.addEventListener("scroll", save, { passive: true });
+    return () => el.removeEventListener("scroll", save);
+  }, [tab, !!c]);
   // With no community the phone drawer covers main, so the empty state goes in the drawer too (1451).
   const none = (
     <Empty
