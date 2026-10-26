@@ -197,19 +197,12 @@ func checkRole(name, color *string) error {
 	return nil
 }
 
-func requireAdminFor(ctx context.Context, what string) error {
-	if !isAdmin(me(ctx)) {
-		return errf(connect.CodePermissionDenied, "only admins can %s", what)
-	}
-	return nil
-}
-
 func emitRole(t *wtx, r *v1.Role) error {
 	return t.emit(&v1.Event{Kind: &v1.Event_RoleUpdated{RoleUpdated: r}}, "", "")
 }
 
 func (s *Server) CreateRole(ctx context.Context, req *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error) {
-	if err := requireAdminFor(ctx, "manage roles"); err != nil {
+	if err := requireAdmin(ctx, "manage roles"); err != nil {
 		return nil, err
 	}
 	r := req.Msg
@@ -244,7 +237,7 @@ func (s *Server) CreateRole(ctx context.Context, req *connect.Request[v1.CreateR
 }
 
 func (s *Server) UpdateRole(ctx context.Context, req *connect.Request[v1.UpdateRoleRequest]) (*connect.Response[v1.UpdateRoleResponse], error) {
-	if err := requireAdminFor(ctx, "manage roles"); err != nil {
+	if err := requireAdmin(ctx, "manage roles"); err != nil {
 		return nil, err
 	}
 	r := req.Msg
@@ -281,7 +274,7 @@ func (s *Server) UpdateRole(ctx context.Context, req *connect.Request[v1.UpdateR
 }
 
 func (s *Server) DeleteRole(ctx context.Context, req *connect.Request[v1.DeleteRoleRequest]) (*connect.Response[v1.DeleteRoleResponse], error) {
-	if err := requireAdminFor(ctx, "manage roles"); err != nil {
+	if err := requireAdmin(ctx, "manage roles"); err != nil {
 		return nil, err
 	}
 	err := s.writeTx(ctx, func(t *wtx) error {
@@ -342,7 +335,7 @@ func checkRoleIDs(ctx context.Context, q queryer, ids []string) ([]string, error
 }
 
 func (s *Server) SetMemberRoles(ctx context.Context, req *connect.Request[v1.SetMemberRolesRequest]) (*connect.Response[v1.SetMemberRolesResponse], error) {
-	if err := requireAdminFor(ctx, "give roles"); err != nil {
+	if err := requireAdmin(ctx, "give roles"); err != nil {
 		return nil, err
 	}
 	r := req.Msg
@@ -430,7 +423,7 @@ func setPostRoles(ctx context.Context, t *wtx, channelID string, ids []string) e
 }
 
 func (s *Server) SetChannelAccess(ctx context.Context, req *connect.Request[v1.SetChannelAccessRequest]) (*connect.Response[v1.SetChannelAccessResponse], error) {
-	if err := requireAdminFor(ctx, "change who sees a channel"); err != nil {
+	if err := requireAdmin(ctx, "change who sees a channel"); err != nil {
 		return nil, err
 	}
 	r := req.Msg

@@ -1028,10 +1028,10 @@ func presenceBatch(pending map[string]*v1.Event, at int64) *v1.Event {
 // ---------------------------------------------------------------------------
 
 func (s *Server) CreateChannel(ctx context.Context, req *connect.Request[v1.CreateChannelRequest]) (*connect.Response[v1.CreateChannelResponse], error) {
-	m := me(ctx)
-	if !isAdmin(m) {
-		return nil, errf(connect.CodePermissionDenied, "only admins can create channels")
+	if err := requireAdmin(ctx, "create channels"); err != nil {
+		return nil, err
 	}
+	m := me(ctx)
 	r := req.Msg
 	name, err := normalizeChannelName(r.Name)
 	if err != nil {
@@ -1103,10 +1103,10 @@ func (s *Server) createChannel(t *wtx, kind v1.ChannelKind, name, topic, categor
 }
 
 func (s *Server) UpdateChannel(ctx context.Context, req *connect.Request[v1.UpdateChannelRequest]) (*connect.Response[v1.UpdateChannelResponse], error) {
-	m := me(ctx)
-	if !isAdmin(m) {
-		return nil, errf(connect.CodePermissionDenied, "only admins can update channels")
+	if err := requireAdmin(ctx, "update channels"); err != nil {
+		return nil, err
 	}
+	m := me(ctx)
 	r := req.Msg
 	var name *string
 	if r.Name != nil {
@@ -2203,8 +2203,11 @@ func useInvite(t *wtx, code string, nowMs int64) error {
 	return nil
 }
 
-func requireAdmin(ctx context.Context) error {
-	return requireAdminFor(ctx, "manage invites and settings")
+func requireAdmin(ctx context.Context, what string) error {
+	if !isAdmin(me(ctx)) {
+		return errf(connect.CodePermissionDenied, "only admins can %s", what)
+	}
+	return nil
 }
 
 const inviteCols = "code, created_by, created_at_ms, expires_at_ms, max_uses, uses"
@@ -2215,7 +2218,7 @@ func scanInvite(sc scanner) (*v1.Invite, error) {
 }
 
 func (s *Server) CreateInvite(ctx context.Context, req *connect.Request[v1.CreateInviteRequest]) (*connect.Response[v1.CreateInviteResponse], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := requireAdmin(ctx, "manage invites and settings"); err != nil {
 		return nil, err
 	}
 	r := req.Msg
@@ -2246,7 +2249,7 @@ func (s *Server) CreateInvite(ctx context.Context, req *connect.Request[v1.Creat
 }
 
 func (s *Server) ListInvites(ctx context.Context, _ *connect.Request[v1.ListInvitesRequest]) (*connect.Response[v1.ListInvitesResponse], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := requireAdmin(ctx, "manage invites and settings"); err != nil {
 		return nil, err
 	}
 	rows, err := s.db.r.QueryContext(ctx, "SELECT "+inviteCols+" FROM invites ORDER BY created_at_ms DESC, rowid DESC")
@@ -2266,7 +2269,7 @@ func (s *Server) ListInvites(ctx context.Context, _ *connect.Request[v1.ListInvi
 }
 
 func (s *Server) RevokeInvite(ctx context.Context, req *connect.Request[v1.RevokeInviteRequest]) (*connect.Response[v1.RevokeInviteResponse], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := requireAdmin(ctx, "manage invites and settings"); err != nil {
 		return nil, err
 	}
 	err := s.writeTx(ctx, func(t *wtx) error {
@@ -2286,7 +2289,7 @@ func (s *Server) RevokeInvite(ctx context.Context, req *connect.Request[v1.Revok
 }
 
 func (s *Server) UpdateServerSettings(ctx context.Context, req *connect.Request[v1.UpdateServerSettingsRequest]) (*connect.Response[v1.UpdateServerSettingsResponse], error) {
-	if err := requireAdmin(ctx); err != nil {
+	if err := requireAdmin(ctx, "manage invites and settings"); err != nil {
 		return nil, err
 	}
 	r := req.Msg
@@ -2376,10 +2379,10 @@ func (s *Server) UpdateServerSettings(ctx context.Context, req *connect.Request[
 // ---------------------------------------------------------------------------
 
 func (s *Server) CreateBot(ctx context.Context, req *connect.Request[v1.CreateBotRequest]) (*connect.Response[v1.CreateBotResponse], error) {
-	m := me(ctx)
-	if !isAdmin(m) {
-		return nil, errf(connect.CodePermissionDenied, "only admins can create bots")
+	if err := requireAdmin(ctx, "create bots"); err != nil {
+		return nil, err
 	}
+	m := me(ctx)
 	r := req.Msg
 	username := strings.ToLower(strings.TrimSpace(r.Username))
 	if !usernameRE.MatchString(username) {
@@ -2442,8 +2445,8 @@ func (s *Server) ListBots(ctx context.Context, _ *connect.Request[v1.ListBotsReq
 
 // botFor loads a live bot for an admin action.
 func (s *Server) botFor(ctx context.Context, q queryer, botID string) (*memberRow, error) {
-	if !isAdmin(me(ctx)) {
-		return nil, errf(connect.CodePermissionDenied, "only admins can manage bots")
+	if err := requireAdmin(ctx, "manage bots"); err != nil {
+		return nil, err
 	}
 	bot, err := s.loadMember(ctx, q, "id = ? AND kind = ? AND deleted = 0", botID, v1.MemberKind_MEMBER_KIND_BOT)
 	if err == nil && bot == nil {

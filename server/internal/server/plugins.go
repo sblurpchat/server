@@ -536,8 +536,8 @@ const maxPluginSource = 256 << 10
 
 // pluginName checks the caller is an admin and normalizes name.
 func pluginName(ctx context.Context, name string) (string, error) {
-	if !isAdmin(me(ctx)) {
-		return "", errf(connect.CodePermissionDenied, "only admins can manage plugins")
+	if err := requireAdmin(ctx, "manage plugins"); err != nil {
+		return "", err
 	}
 	name = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(name)), ".js")
 	if !usernameRE.MatchString(name) {
@@ -600,8 +600,8 @@ func (s *Server) onePlugin(ctx context.Context, name string) (*v1.Plugin, error)
 }
 
 func (s *Server) ListPlugins(ctx context.Context, _ *connect.Request[v1.ListPluginsRequest]) (*connect.Response[v1.ListPluginsResponse], error) {
-	if !isAdmin(me(ctx)) {
-		return nil, errf(connect.CodePermissionDenied, "only admins can manage plugins")
+	if err := requireAdmin(ctx, "manage plugins"); err != nil {
+		return nil, err
 	}
 	ps, err := s.listPlugins(ctx, "")
 	if err != nil {
