@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { Code } from "@connectrpc/connect";
-import { editsInComposer, leavingParts, queueStep, retryable, showDown, transient } from "./logic";
+import { editsInComposer, leavingParts, longDraft, queueStep, retryable, showDown, transient } from "./logic";
 import css from "./app.css?raw";
 import { allDMs, channelLabel, dmPreview, mergeNewest, rowWhen, dmPeer, settingsGroups, swipeAxis, swipeEnds, tailnetUrl } from "./logic";
 import {
@@ -1489,5 +1489,14 @@ describe("editsInComposer", () => {
     expect(editsInComposer(true, m, "c", "r")).toBe(false);
     expect(editsInComposer(true, { channelId: "c", threadRootId: "r" }, "c", "")).toBe(false);
     expect(editsInComposer(true, m, "d", "")).toBe(false);
+  });
+});
+
+describe("longDraft", () => {
+  it("past 600 characters or 6 lines", () => {
+    expect(longDraft("x".repeat(600))).toBe(false);
+    expect(longDraft("x".repeat(601))).toBe(true);
+    expect(longDraft("a\nb\nc\nd\ne\nf")).toBe(false);
+    expect(longDraft("a\nb\nc\nd\ne\nf\ng")).toBe(true);
   });
 });

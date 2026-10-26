@@ -1620,3 +1620,6 @@ export function swipeTab(tab: (typeof TABS)[number], dx: number): (typeof TABS)[
 /** On a phone, editing happens in the composer of the list the message is in, like iMessage and Slack (1513). */
 export const editsInComposer = (touch: boolean, m: { channelId: string; threadRootId: string } | undefined, channelId: string, rootId: string) =>
   touch && !!m && m.channelId === channelId && m.threadRootId === rootId;
+
+/** Past this a draft is long enough to suggest posting it as a snippet (1269, 1514). */
+export const longDraft = (text: string) => text.length > 600 || text.split("\n").length > 6;

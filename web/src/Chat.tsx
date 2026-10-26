@@ -15,6 +15,7 @@ import {
   dayLabel,
   decodeMentions,
   editsInComposer,
+  longDraft,
   emojiMatches,
   encodeMentions,
   formatBytes,
@@ -1368,7 +1369,7 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
       setFiles([...files, { id: crypto.randomUUID(), name: file.name, error: errorText(e, c.info?.name) }]);
     }
   };
-  const longText = text.length > 600 || text.split("\n").length > 6;
+  const longText = longDraft(text);
 
   // Fade the chip out, then drop it; with motion reduced there is no transition, so drop at once.
   const remove = (f: Pending, el: HTMLElement) => {
@@ -1648,7 +1649,14 @@ function Composer({ url, channelId, rootId, placeholder }: { url: string; channe
             </button>
           )}
         </div>
-        {/* A touch keyboard has no ⌘ Shift Enter (1482). */}
+        {/* A touch keyboard has no ⌘ Shift Enter (1482), so a button does it (1514). */}
+        {longText && NO_HOVER.matches && !editMsg && (
+          <p className="composer-hint">
+            <button type="button" className="btn ghost" onClick={() => void openSnippet()}>
+              Post as snippet
+            </button>
+          </p>
+        )}
         {longText && !NO_HOVER.matches && (
           <p className="composer-hint">
             Long text? <kbd>{MOD}</kbd> <kbd>Shift</kbd> <kbd>Enter</kbd> posts it as a snippet.

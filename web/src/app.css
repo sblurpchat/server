@@ -3991,6 +3991,9 @@ li.sw-empty {
 .composer-hint kbd {
   font-size: 0.6875rem;
 }
+.composer-hint .btn {
+  height: 44px;
+}
 @keyframes hint-in {
   from { opacity: 0; }
 }
