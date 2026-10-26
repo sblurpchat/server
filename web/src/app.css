@@ -4821,6 +4821,23 @@ li.sw-empty {
   :root[data-density="irc"] .msg-head .name::after {
     content: ":" / "";
   }
+  /* A time gutter would make compact less dense than cozy on a phone (1491): the time goes
+     back inline after the name. */
+  :root[data-density="compact"] {
+    .msg {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .msg-gutter {
+      display: none;
+    }
+    .msg-head time {
+      display: inline;
+    }
+  }
+  /* Quotes and previews keep the UI font so their headers fit the narrow column. */
+  :root[data-density="irc"] .msg :is(blockquote, .unfurl, .lp) {
+    font-family: var(--sans);
+  }
 }
 @media (min-width: 768px) {
 :root[data-density="irc"] {
