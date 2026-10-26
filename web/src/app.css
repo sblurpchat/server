@@ -5816,20 +5816,30 @@ label:has(> input.visually-hidden:focus-visible) {
   .side-sec + .side-sec {
     margin-top: 6px;
   }
+  /* Fingertip rows (1473): channels, section toggles, + buttons, members and rail icons are 44pt. */
   .chan,
   :root[data-sidebar="compact"] .chan {
-    height: 40px;
+    height: 44px;
   }
   .side-sec h2 button {
-    min-height: 36px;
+    min-height: 44px;
   }
   .side-sec h2 .sec-add {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
   }
-  /* Rail (1365): slightly smaller icons with more air between them. */
+  .member {
+    min-height: 44px;
+  }
+  /* Rail (1365): slightly smaller icons with more air between them, in a 44pt box. */
   .rail ul {
-    gap: 12px;
+    gap: 10px;
+  }
+  .rail-btn {
+    display: grid;
+    place-items: center;
+    min-width: 44px;
+    min-height: 44px;
   }
   /* !important: CommunityIcon sizes itself inline. */
   .rail-btn .cicon {
