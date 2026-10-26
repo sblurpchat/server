@@ -598,6 +598,25 @@ function SideAbout({ c, text, admin }: { c: Community; text: string; admin: bool
   );
 }
 
+/** Activity and Threads (1405) open in the side pane, on a phone over the channel. */
+function SideViews() {
+  const pane = useApp((s) => s.pane?.t);
+  const row = (t: "activity" | "threads", label: string, icon: "bell" | "thread") => (
+    <button className="chan browse-btn" aria-current={pane === t ? "page" : undefined} onClick={() => set({ pane: { t }, drawer: false })}>
+      <span className="chan-icon">
+        <Icon name={icon} size={16} />
+      </span>
+      {label}
+    </button>
+  );
+  return (
+    <>
+      {row("activity", "Activity", "bell")}
+      {row("threads", "Threads", "thread")}
+    </>
+  );
+}
+
 function Sidebar({ c }: { c: Community }) {
   const channelId = useApp((s) => s.channelId);
   const collapsed = useApp((s) => s.collapsed);
@@ -671,6 +690,7 @@ function Sidebar({ c }: { c: Community }) {
         </div>
       </Pop>
       <nav className="side-scroll" aria-label="Channels" aria-busy={!c.me && !c.error}>
+        {c.me && <SideViews />}
         {c.me && c.mode === ChannelMode.OPT_IN && (
           <button className="chan browse-btn" onClick={() => set({ modal: { t: "browse" } })}>
             <span className="chan-icon">

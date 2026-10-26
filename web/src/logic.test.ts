@@ -524,6 +524,9 @@ describe("community URLs", () => {
     expect(parsePane("#/c/x.test/c1?members")).toEqual({ t: "members" });
     expect(parsePane("#/c/x.test/c1?search=a+b%26c")).toEqual({ t: "search", q: "a b&c" });
     expect(parsePane("#/c/x.test/c1")).toBeNull();
+    expect(paneQuery({ t: "activity" })).toBe("?activity");
+    expect(parsePane("#/c/x.test/c1?activity")).toEqual({ t: "activity" });
+    expect(parsePane("#/c/x.test/c1?threads")).toEqual({ t: "threads" });
     expect(parsePane("#/c/x.test/c1?thread=")).toBeNull();
     expect(parseHash("#/c/x.test/c1?thread=m1")).toEqual({ host: "x.test", channelId: "c1", messageId: "", rootId: "" });
   });

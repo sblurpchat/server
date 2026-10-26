@@ -6,6 +6,7 @@ import {
   AttachmentSchema,
   BanSchema,
   BotService,
+  ActivityKind,
   ChannelKind,
   ChannelMode,
   ChannelSchema,
@@ -1099,8 +1100,9 @@ function service(f: Fake) {
         emit(f, { case: "messageUpdated", value: m });
         return { message: m };
       },
-      markRead(req: { channelId: string; seq: bigint }) {
+      markRead(req: { channelId: string; seq: bigint; threadRootId: string }) {
         need();
+        if (req.threadRootId) return {};
         const rs = create(ReadStateSchema, { channelId: req.channelId, lastReadSeq: req.seq });
         f.reads.set(req.channelId, rs);
         return { readState: rs };
@@ -1133,6 +1135,35 @@ function service(f: Fake) {
         ch!.memberIds = ch!.memberIds.filter((m) => m !== req.memberId);
         emit(f, req.memberId === f.meId ? { case: "channelDeleted", value: ch!.id } : { case: "channelUpdated", value: ch! });
         return { channel: ch };
+      },
+      listActivity() {
+        need();
+        const seen = f.messages.filter((m) => !m.deleted && inside(f, f.channels.get(m.channelId)));
+        const mine = new Set(seen.filter((m) => m.authorId === f.meId).map((m) => m.id));
+        const items = seen.flatMap((m) => [
+          ...(m.authorId !== f.meId && m.text.includes(`<@${f.meId}>`)
+            ? [{ kind: ActivityKind.MENTION, message: m, actorId: m.authorId, atMs: m.createdAtMs }]
+            : m.authorId !== f.meId && mine.has(m.threadRootId)
+              ? [{ kind: ActivityKind.REPLY, message: m, actorId: m.authorId, atMs: m.createdAtMs }]
+              : []),
+          ...(mine.has(m.id)
+            ? m.reactions.flatMap((r) => r.memberIds.filter((x) => x !== f.meId).map((x) => ({ kind: ActivityKind.REACTION, message: m, actorId: x, emoji: r.emoji, atMs: m.createdAtMs })))
+            : []),
+        ]);
+        return { items: items.sort((a, b) => Number(b.atMs - a.atMs)) };
+      },
+      listThreads() {
+        need();
+        const roots = f.messages.filter(
+          (m) => m.replyCount > 0 && inside(f, f.channels.get(m.channelId)) && (m.authorId === f.meId || f.messages.some((r) => r.threadRootId === m.id && r.authorId === f.meId)),
+        );
+        // ponytail: fake unread is replies from others after my last post; no thread read marks.
+        const threads = roots.map((root) => {
+          const replies = f.messages.filter((r) => r.threadRootId === root.id);
+          const last = Math.max(-1, ...replies.map((r, i) => (r.authorId === f.meId ? i : -1)));
+          return { root, unreadCount: replies.slice(last + 1).filter((r) => r.authorId !== f.meId).length };
+        });
+        return { threads: threads.sort((a, b) => Number(b.root.lastReplyAtMs - a.root.lastReplyAtMs)) };
       },
       search(req: { query: string; channelId: string; limit: number }) {
         need();

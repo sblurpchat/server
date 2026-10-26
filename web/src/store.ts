@@ -815,6 +815,9 @@ export async function search(url: string, q: string) {
 // ---------------------------------------------------------------------------
 
 export const getMe = (url: string) => api(url).server.getMe({});
+export const listActivity = async (url: string) => (await api(url).chat.listActivity({ limit: 100 })).items;
+export const listThreads = async (url: string) => (await api(url).chat.listThreads({ limit: 100 })).threads;
+export const markThreadRead = (url: string, rootId: string) => void api(url).chat.markRead({ threadRootId: rootId }).catch(() => {});
 
 export async function probe(url: string): Promise<GetServerInfoResponse> {
   return api(url).server.getServerInfo({}, { timeoutMs: 8000 });

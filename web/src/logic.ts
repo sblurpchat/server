@@ -1062,11 +1062,11 @@ export const formatHash = (url: string, channelId: string) =>
   `#/c/${encodeURIComponent(hostOf(url))}${channelId ? `/${encodeURIComponent(channelId)}` : ""}`;
 
 /** The right-hand pane, kept after the route so a reload reopens it: ?thread=<root>, ?members, ?search=<q>. */
-export type Pane = null | { t: "thread"; rootId: string } | { t: "members" } | { t: "search"; q: string };
+export type Pane = null | { t: "thread"; rootId: string } | { t: "members" } | { t: "search"; q: string } | { t: "activity" } | { t: "threads" };
 
 export function paneQuery(p: Pane): string {
   if (!p) return "";
-  if (p.t === "members") return "?members";
+  if (p.t === "members" || p.t === "activity" || p.t === "threads") return `?${p.t}`;
   return `?${new URLSearchParams(p.t === "thread" ? { thread: p.rootId } : { search: p.q })}`;
 }
 
@@ -1078,7 +1078,8 @@ export function parsePane(hash: string): Pane {
   const search = q.get("search");
   if (thread) return { t: "thread", rootId: thread };
   if (search) return { t: "search", q: search };
-  return q.has("members") ? { t: "members" } : null;
+  for (const t of ["members", "activity", "threads"] as const) if (q.has(t)) return { t };
+  return null;
 }
 
 // ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@ import { MOD, useCountdown } from "./App";
 import { Glyph, useCustomMatches } from "./CustomEmoji";
 import { AUTH_URL } from "./auth";
 import { LinkPreviews } from "./LinkPreview";
-import { ChannelKind, ChannelMode, MemberKind, MemberRole, type Attachment, type Member, type Message } from "./gen/sblurp/v1/sblurp_pb";
+import { ActivityKind, ChannelKind, ChannelMode, MemberKind, MemberRole, type ActivityItem, type Attachment, type Member, type Message, type ThreadSummary } from "./gen/sblurp/v1/sblurp_pb";
 import {
   acQuery,
   arrivalText,
@@ -60,6 +60,9 @@ import {
   retryNow,
   retrySend,
   search,
+  listActivity,
+  listThreads,
+  markThreadRead,
   send,
   set,
   setDraft,
@@ -1393,10 +1396,17 @@ export function RightPane() {
         if (document.activeElement === document.body || document.activeElement?.closest(".pane")) focusMain();
       };
   }, [open]);
+  // A thread counts as read when it opens and again when it closes, for the Threads view (1405).
+  const rootId = pane?.t === "thread" ? pane.rootId : "";
+  useEffect(() => {
+    if (!rootId) return;
+    markThreadRead(c.url, rootId);
+    return () => markThreadRead(c.url, rootId);
+  }, [c.url, rootId]);
   if (!pane) return null;
   const ch = c.channels[channelId];
   const close = () => set({ pane: null });
-  const title = pane.t === "thread" ? "Thread" : pane.t === "members" ? "Members" : "Search";
+  const title = { thread: "Thread", members: "Members", search: "Search", activity: "Activity", threads: "Threads" }[pane.t];
   return (
     <aside ref={ref} className="pane" aria-label={title}>
       <Resizer panel="pane" label="Resize side pane" />
@@ -1406,6 +1416,7 @@ export function RightPane() {
           {pane.t === "thread" && ch && <p className="muted small truncate">{isDM(ch) ? channelLabel(ch, c.members, c.me?.id) : `#${ch.name}`}</p>}
           {pane.t === "search" && <p className="muted small truncate">“{pane.q}” in {c.info?.name}</p>}
           {pane.t === "members" && ch?.kind === ChannelKind.PRIVATE && <p className="muted small truncate">#{ch.name}</p>}
+          {(pane.t === "activity" || pane.t === "threads") && <p className="muted small truncate">{c.info?.name}</p>}
         </div>
         <button className="icon-btn" aria-label={`Close ${title.toLowerCase()}`} onClick={close}>
           <Icon name="x" />
@@ -1422,6 +1433,10 @@ export function RightPane() {
         </>
       ) : pane.t === "members" ? (
         <Members c={c} />
+      ) : pane.t === "activity" ? (
+        <Activity c={c} />
+      ) : pane.t === "threads" ? (
+        <Threads c={c} />
       ) : (
         <SearchResults key={pane.q} c={c} q={pane.q} />
       )}
@@ -1671,6 +1686,109 @@ function SearchResults({ c, q }: { c: Community; q: string }) {
                 </span>
               </span>
               <span className="result-text">{decodeMentions(m.text, c.members)}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// Activity and Threads (1405): loaded each time the pane opens, rows like search results.
+function useLoad<T>(c: Community, load: (url: string) => Promise<T[]>) {
+  const [res, setRes] = useState<T[] | null>(null);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    load(c.url).then(setRes, (e) => setErr(errorText(e, c.info?.name)));
+  }, [c.url]);
+  const note = err ? (
+    <p className="error pane-note" role="alert">
+      {err}
+    </p>
+  ) : !res ? (
+    <div className="pane-scroll" aria-busy="true">
+      <Skeleton rows={5} lines={2} className="skel-results" />
+    </div>
+  ) : null;
+  return { res, note };
+}
+
+function where(c: Community, channelId: string) {
+  const ch = c.channels[channelId];
+  return ch ? (isDM(ch) ? channelLabel(ch, c.members, c.me?.id) : `#${ch.name}`) : "a channel";
+}
+
+function Activity({ c }: { c: Community }) {
+  const h24 = useApp((s) => s.look.clock === "24");
+  const { res, note } = useLoad<ActivityItem>(c, listActivity);
+  if (note) return note;
+  if (!res!.length) return <p className="muted pane-note">Mentions, replies to your threads and reactions to your messages show up here.</p>;
+  return (
+    <ul className="pane-scroll results loaded">
+      {res!.map((it, i) => {
+        const m = it.message!;
+        const who = c.members[it.actorId]?.displayName ?? "Someone";
+        const at = Number(it.atMs);
+        return (
+          <li key={i}>
+            <button className="result" onClick={() => jumpTo(c.url, m, true)}>
+              <span className="result-meta">
+                <span>
+                  <b>{who}</b>{" "}
+                  {it.kind === ActivityKind.REACTION ? (
+                    <>
+                      reacted <Glyph e={it.emoji} /> in
+                    </>
+                  ) : it.kind === ActivityKind.REPLY ? (
+                    "replied to your thread in"
+                  ) : (
+                    "mentioned you in"
+                  )}{" "}
+                  <b>{where(c, m.channelId)}</b>
+                </span>
+                <span className="muted">
+                  {dayLabel(at, Date.now())} {timeLabel(at, h24)}
+                </span>
+              </span>
+              <span className="result-text">{decodeMentions(m.text, c.members)}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function Threads({ c }: { c: Community }) {
+  const h24 = useApp((s) => s.look.clock === "24");
+  const { res, note } = useLoad<ThreadSummary>(c, listThreads);
+  if (note) return note;
+  if (!res!.length) return <p className="muted pane-note">Threads you start or reply in show up here.</p>;
+  return (
+    <ul className="pane-scroll results loaded">
+      {res!.map(({ root, unreadCount }) => {
+        const m = root!;
+        const at = Number(m.lastReplyAtMs);
+        return (
+          <li key={m.id}>
+            <button
+              className="result"
+              data-unread={unreadCount > 0 || undefined}
+              onClick={() => {
+                jumpTo(c.url, { id: m.id, channelId: m.channelId, threadRootId: "" }, true);
+                set({ pane: { t: "thread", rootId: m.id } });
+              }}
+            >
+              <span className="result-meta">
+                <b>{where(c, m.channelId)}</b>
+                {unreadCount > 0 && <span className="badge">{unreadCount} new</span>}
+              </span>
+              <span className="result-text">
+                <b>{c.members[m.authorId]?.displayName ?? "Unknown"}</b> {decodeMentions(m.text, c.members)}
+              </span>
+              <span className="muted small">
+                {count(m.replyCount, "reply", "replies")}, last {dayLabel(at, Date.now())} {timeLabel(at, h24)}
+              </span>
             </button>
           </li>
         );
