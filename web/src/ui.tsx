@@ -677,7 +677,7 @@ export function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
           </button>
         ))}
       </nav>
-      <div className="emoji-grid" aria-label="Emoji, arrow keys move" role="group" ref={grid} onScroll={spy} onKeyDown={arrows} onMouseLeave={() => setHover(null)}>
+      <div className="emoji-grid" aria-label={AUTOFOCUS ? "Emoji, arrow keys move" : "Emoji"} role="group" ref={grid} onScroll={spy} onKeyDown={arrows} onMouseLeave={() => setHover(null)}>
         {shown.map((s) => {
           const room = Math.max(0, limit - n);
           const from = n;

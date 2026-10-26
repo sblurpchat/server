@@ -477,14 +477,14 @@ function TabBar() {
   const me = useApp((s) => s.cs[s.url]?.me);
   const profile = useApp((s) => s.profile);
   const b = useMemo(() => tabBadges(cs), [cs]);
-  const item = (t: typeof tab, label: string, icon: React.ReactNode, badge = 0, dot = false) => (
+  const item = (t: typeof tab, label: string, icon: React.ReactNode, badge = 0, dot = false, what = "unread") => (
     <button className="tab" aria-current={tab === t ? "page" : undefined} onClick={() => (tab === t ? toTop() : set({ tab: t }))}>
       {icon}
       <span>{label}</span>
       {badge > 0 ? (
         <span className="badge tab-badge">
           {badge > 99 ? "99+" : badge}
-          <span className="visually-hidden"> unread</span>
+          <span className="visually-hidden"> {what}</span>
         </span>
       ) : (
         dot && (
@@ -497,7 +497,7 @@ function TabBar() {
   );
   return (
     <nav className="tabbar" aria-label="Sections">
-      {item("home", "Home", <Icon name="house" size={24} />, b.home.mentions, b.home.unread)}
+      {item("home", "Home", <Icon name="house" size={24} />, b.home.mentions, b.home.unread, b.home.mentions === 1 ? "mention" : "mentions")}
       {item("dms", "DMs", <Icon name="messages" size={24} />, b.dms)}
       {item("you", "You", <Avatar m={accountAvatar(profile, me)} size={24} />)}
     </nav>
@@ -692,7 +692,7 @@ function Rail() {
             >
               <button
                 className="rail-btn"
-                aria-label={`${name}${b.mentions ? `, ${b.mentions} mentions` : b.unread ? ", unread messages" : ""}`}
+                aria-label={`${name}${b.mentions ? `, ${count(b.mentions, "mention", "mentions")}` : b.unread ? ", unread messages" : ""}`}
                 aria-current={u === current ? "page" : undefined}
                 aria-keyshortcuts="Alt+Shift+ArrowUp Alt+Shift+ArrowDown"
                 // On a phone the drawer stays open on the new community's channels (1297).

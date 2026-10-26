@@ -174,7 +174,7 @@ export function ChannelView() {
       >
         <button
           className="icon-btn only-mobile menu-btn"
-          aria-label={history.state?.back ? "Back" : back ? `Open communities and channels, ${back} mentions` : "Open communities and channels"}
+          aria-label={history.state?.back ? "Back" : back ? `Open communities and channels, ${count(back, "mention", "mentions")}` : "Open communities and channels"}
           onClick={() => (history.state?.back ? history.back() : set({ drawer: true }))}
         >
           <Icon name="back" />
@@ -407,7 +407,7 @@ function MessageList({ url, channelId, rootId }: { url: string; channelId: strin
         onPointerOver={placeTools}
         onFocus={placeTools}
         tabIndex={0}
-        aria-label="Message list. Arrow keys move between messages."
+        aria-label={AUTOFOCUS ? "Message list. Arrow keys move between messages." : "Message list"}
         aria-busy={phase === "skeleton" || !!list?.loading}
       >
         <div className="msgs" key={phase === "skeleton" ? "skel" : "list"} data-loaded={cold && phase !== "skeleton"}>
