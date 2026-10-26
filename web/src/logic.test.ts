@@ -2,7 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { Code } from "@connectrpc/connect";
 import css from "./app.css?raw";
-import { channelLabel, dmPeer, tailnetUrl } from "./logic";
+import { channelLabel, dmPeer, swipeAxis, swipeEnds, tailnetUrl } from "./logic";
 import {
   ChannelKind,
   ChannelMode,
@@ -1292,5 +1292,24 @@ describe("tailnetUrl", () => {
     expect(tailnetUrl("http://nope.sblurp.localhost:1355/x", t)).toBe("http://nope.sblurp.localhost:1355/x");
     expect(tailnetUrl("http://localhost:80821/x", t)).toBe("http://localhost:80821/x");
     expect(tailnetUrl("https://sblurp.chat/x", t)).toBe("https://sblurp.chat/x");
+  });
+});
+
+describe("drawer swipe (1354)", () => {
+  it("locks to an axis only after 10px", () => {
+    expect(swipeAxis(false, 6, 2)).toBe(null);
+    expect(swipeAxis(false, 20, 3)).toBe("open");
+    expect(swipeAxis(true, -20, 3)).toBe("close");
+  });
+  it("leaves vertical and wrong-way moves to scrolling", () => {
+    expect(swipeAxis(false, 12, 30)).toBe("none");
+    expect(swipeAxis(false, -20, 0)).toBe("none");
+    expect(swipeAxis(true, 20, 0)).toBe("none");
+  });
+  it("settles by flick, else by halfway", () => {
+    expect(swipeEnds(0.2, 0.8)).toBe(true);
+    expect(swipeEnds(0.9, -0.8)).toBe(false);
+    expect(swipeEnds(0.6, 0)).toBe(true);
+    expect(swipeEnds(0.4, 0.1)).toBe(false);
   });
 });

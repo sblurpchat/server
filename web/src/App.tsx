@@ -36,6 +36,8 @@ import {
   cssUrl,
   channelSlug,
   blockedRows,
+  swipeAxis,
+  swipeEnds,
 } from "./logic";
 import {
   absUrl,
@@ -161,6 +163,62 @@ function useShortcuts() {
 const NARROW = matchMedia("(max-width: 767px)");
 const onNarrow = (f: () => void) => (NARROW.addEventListener("change", f), () => NARROW.removeEventListener("change", f));
 
+
+/** Can this element scroll sideways? Then a sideways drag inside it is its own, not the drawer's. */
+const scrollsX = (el: Element) => el.scrollWidth > el.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(el).overflowX);
+
+/** Phone drawer swipe (1354): a sideways drag anywhere on the channel opens the drawer like Slack,
+ *  the drawer follows the finger and settles on release; dragging it back closes it. */
+function useDrawerSwipe(app: React.RefObject<HTMLDivElement | null>, live: React.RefObject<{ drawer: boolean; channelId: string }>) {
+  useEffect(() => {
+    const root = app.current!;
+    let g: { x: number; y: number; t: number; open: boolean; axis: ReturnType<typeof swipeAxis>; p: number; v: number } | null = null;
+    const els = () => [root.querySelector<HTMLElement>(".drawer")!, root.querySelector<HTMLElement>(".scrim")!] as const;
+    const start = (e: TouchEvent) => {
+      g = null;
+      if (!NARROW.matches || e.touches.length !== 1) return;
+      const t = e.target as Element;
+      if (t.closest("dialog, .pane, input, textarea, [popover]")) return;
+      for (let el: Element | null = t; el && el !== root; el = el.parentElement) if (scrollsX(el)) return;
+      // With no channel picked the drawer is all there is: nothing to swipe back to.
+      if (!live.current.channelId) return;
+      const open = live.current.drawer;
+      g = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp, open, axis: null, p: open ? 1 : 0, v: 0 };
+    };
+    const move = (e: TouchEvent) => {
+      if (!g || g.axis === "none") return;
+      const dx = e.touches[0].clientX - g.x;
+      g.axis ??= swipeAxis(g.open, dx, e.touches[0].clientY - g.y);
+      if (g.axis !== "open" && g.axis !== "close") return;
+      e.preventDefault();
+      const [drawer, scrim] = els();
+      const p = Math.min(1, Math.max(0, (g.open ? 1 : 0) + dx / drawer.offsetWidth));
+      g.v = ((p - g.p) * drawer.offsetWidth) / Math.max(1, e.timeStamp - g.t);
+      g.p = p;
+      g.t = e.timeStamp;
+      Object.assign(drawer.style, { transition: "none", visibility: "visible", translate: `${(p - 1) * 100}% 0` });
+      Object.assign(scrim.style, { transition: "none", opacity: String(p) });
+    };
+    const end = () => {
+      if (!g || (g.axis !== "open" && g.axis !== "close")) return (g = null);
+      const open = swipeEnds(g.p, g.v);
+      g = null;
+      for (const el of els()) el.removeAttribute("style");
+      set({ drawer: open });
+    };
+    root.addEventListener("touchstart", start, { passive: true });
+    root.addEventListener("touchmove", move, { passive: false });
+    root.addEventListener("touchend", end);
+    root.addEventListener("touchcancel", end);
+    return () => {
+      root.removeEventListener("touchstart", start);
+      root.removeEventListener("touchmove", move);
+      root.removeEventListener("touchend", end);
+      root.removeEventListener("touchcancel", end);
+    };
+  }, []);
+}
+
 /** Skip past the rail and sidebar: to the message box, else the message list, else the main area. */
 function Shell() {
   useSetupPrompt();
@@ -171,6 +229,10 @@ function Shell() {
   const channelId = useApp((s) => s.channelId);
   const narrow = useSyncExternalStore(onNarrow, () => NARROW.matches);
   const covered = narrow && (drawer || !channelId);
+  const appRef = useRef<HTMLDivElement>(null);
+  const live = useRef({ drawer, channelId });
+  live.current = { drawer, channelId };
+  useDrawerSwipe(appRef, live);
   // On a phone the open drawer covers the channel: focus goes in, and back to the menu button when it closes.
   const was = useRef(false);
   useEffect(() => {
@@ -180,7 +242,7 @@ function Shell() {
     was.current = drawer;
   }, [drawer, narrow]);
   return (
-    <div className="app" data-drawer={drawer || !channelId} data-pane={!!pane}>
+    <div ref={appRef} className="app" data-drawer={drawer || !channelId} data-pane={!!pane}>
       <button className="btn skip-link" onClick={focusMain}>
         Skip to messages
       </button>
@@ -1177,6 +1239,8 @@ function Appearance() {
         <small className="fine">Sblurp darkens or lightens the color if text on it would be hard to read.</small>
       </fieldset>
       )}
+      {/* Phones always use cozy messages and the compact sidebar (1350, 1364). */}
+      <div className="desk-only">
       <Choice
         k="density"
         label="Messages"
@@ -1194,6 +1258,7 @@ function Appearance() {
           ["compact", "Compact"],
         ]}
       />
+      </div>
       <label className="choice size">
         <span className="legend">Font</span>
         <select className="input" value={look.font} onChange={(e) => setLook({ font: e.target.value as Look["font"] })}>
@@ -1268,13 +1333,13 @@ function Settings() {
         {denied && <p className="error small">Notifications are blocked for this site. Allow them in your browser's site settings, then turn this on.</p>}
       </section>
       <BlockedList />
-      <section>
+      <section className="desk-only">
         <h3>Keyboard</h3>
         <button className="btn small" aria-keyshortcuts={`${MOD === "⌘" ? "Meta" : "Control"}+/`} onClick={() => set({ modal: { t: "keys" } })}>
           Keyboard shortcuts <kbd>{MOD}</kbd> <kbd>/</kbd>
         </button>
       </section>
-      <section>
+      <section className="desk-only">
         <h3>Get the apps</h3>
         <ul className="download-list">
           {offered(DOWNLOADS, appPlatform(nativeApp(), navigator.userAgent, navigator.maxTouchPoints > 1)).map((d) => (

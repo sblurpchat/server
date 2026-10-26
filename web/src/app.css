@@ -1594,8 +1594,10 @@ kbd {
 .skel-chat .skel-lines {
   padding-top: 3px;
 }
-:root:is([data-density="compact"], [data-density="irc"]) .skel-chat {
-  --av: 0px !important;
+@media (min-width: 768px) {
+  :root:is([data-density="compact"], [data-density="irc"]) .skel-chat {
+    --av: 0px !important;
+  }
 }
 /* Older pages: stays on top as they load above, like the list note it replaced. */
 .skel-more {
@@ -4546,6 +4548,8 @@ li.sw-empty {
 .msg[data-head="true"] .msg-gutter .hover-time {
   display: none;
 }
+/* Compact and IRC are desktop layouts; phones always get the cozy avatar-and-name rows (1350). */
+@media (min-width: 768px) {
 /* Compact: no avatars, the time on the left, the name inline with the text. */
 :root:is([data-density="compact"], [data-density="irc"]) {
   .msg {
@@ -4614,6 +4618,7 @@ li.sw-empty {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
 }
 :root[data-sidebar="compact"] {
   .chan {
@@ -5501,4 +5506,143 @@ label:has(> input.visually-hidden:focus-visible) {
 }
 .emoji-tones button[aria-checked="true"] {
   box-shadow: inset 0 0 0 2px var(--raspberry);
+}
+
+/* ------------------------------------------------- phone polish (1350-1364) */
+
+@media (max-width: 767px) {
+  /* Header image (1350): a backdrop for the normal bar, not a 112px poster. */
+  .chan-head[data-img] {
+    min-height: 56px;
+  }
+  /* Composer (1361): the text line centers on the 44px attach and send buttons. */
+  .composer-row {
+    align-items: flex-end;
+    padding: 0 4px;
+  }
+  .composer-input {
+    min-height: 44px;
+    padding-block: 10px;
+    line-height: 24px;
+  }
+  .attach,
+  .send {
+    margin-bottom: 0;
+  }
+  .composer-box {
+    border-radius: 22px;
+  }
+
+  /* Sidebar (1351, 1358, 1359): one scroller, so the banner and description scroll away
+     with the channels; the profile row stays pinned at the bottom. */
+  .drawer .sidebar {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .side-scroll {
+    flex: 1 0 auto;
+    overflow: visible;
+    padding: 6px 8px 12px;
+  }
+  .side-head {
+    height: 48px;
+  }
+  .side-head[data-banner] {
+    height: 72px;
+    padding-bottom: 8px;
+  }
+  .side-about {
+    padding: 8px 16px;
+  }
+  .side-sec + .side-sec {
+    margin-top: 6px;
+  }
+  .chan,
+  :root[data-sidebar="compact"] .chan {
+    height: 40px;
+  }
+  .side-sec h2 button {
+    min-height: 36px;
+  }
+  .side-sec h2 .sec-add {
+    width: 36px;
+    height: 36px;
+  }
+  /* Rail (1365): slightly smaller icons with more air between them. */
+  .rail ul {
+    gap: 12px;
+  }
+  /* !important: CommunityIcon sizes itself inline. */
+  .rail-btn .cicon {
+    width: 42px !important;
+    height: 42px !important;
+    font-size: 0.875rem !important;
+  }
+  .rail-item[data-selected="true"]::before {
+    height: 34px;
+  }
+  /* Profile row (1356): snug above the home bar instead of a full inset under 8px of padding. */
+  .mebar {
+    position: sticky;
+    bottom: 0;
+    padding: 4px 8px max(4px, calc(env(safe-area-inset-bottom) - 14px));
+    background: var(--frost);
+  }
+
+  /* Dialogs with a title bar become full-screen sheets (1357): the bar stays put while
+     the content scrolls under it. Small confirm dialogs stay centered cards. */
+  .dialog:has(> .dialog-head, > form > .dialog-head):not(.lightbox) {
+    --dialog-pad: 16px;
+    inset: 0;
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0 max(var(--dialog-pad), env(safe-area-inset-right)) max(var(--dialog-pad), env(safe-area-inset-bottom)) max(var(--dialog-pad), env(safe-area-inset-left));
+  }
+  .dialog:has(> .dialog-head, > form > .dialog-head):not(.lightbox) .dialog-head {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    min-height: 52px;
+    margin: 0 calc(-1 * var(--dialog-pad)) 4px;
+    padding: env(safe-area-inset-top) 8px 0 var(--dialog-pad);
+    background: var(--raised);
+    border-bottom: 1px solid var(--line);
+  }
+  .dialog:has(> .dialog-head, > form > .dialog-head):not(.lightbox) .dialog-head h2 {
+    font-size: 1.0625rem;
+  }
+  .dialog:has(> .dialog-head, > form > .dialog-head):not(.lightbox) .dialog-sub {
+    display: none;
+  }
+  .dialog:has(> .dialog-head, > form > .dialog-head)[open]:not(.lightbox),
+  .leaving.dialog:has(> .dialog-head, > form > .dialog-head):not(.lightbox) {
+    animation-name: sheet-up;
+    animation-duration: 200ms;
+  }
+  /* The sticky preview would take a third of a phone screen. */
+  .settings .preview {
+    position: static;
+  }
+
+  /* Settings on a phone (1364): no desktop apps, keyboard shortcuts or desktop-only
+     layouts; the rest reads as grouped rows. */
+  .desk-only {
+    display: none !important;
+  }
+  .settings section {
+    margin-top: 20px;
+  }
+  .settings h3 {
+    margin: 0 0 6px 4px;
+  }
+}
+@keyframes sheet-up {
+  from {
+    translate: 0 100%;
+  }
 }

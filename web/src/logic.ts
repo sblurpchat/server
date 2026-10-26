@@ -1422,3 +1422,16 @@ export function tailnetUrl(url: string, tailnet: string): string {
   const port = m && (m[1] ?? DEV_PORTS[m[2]]);
   return m && port ? `https://${tailnet}:1${port}${url.slice(m[0].length)}` : url;
 }
+
+/** Drawer swipe (1354): after 10px the gesture locks to an axis. "open" or "close" only when the
+ *  move is mostly sideways and in the direction that changes the drawer; anything else is a scroll. */
+export function swipeAxis(open: boolean, dx: number, dy: number): "open" | "close" | "none" | null {
+  if (Math.hypot(dx, dy) < 10) return null;
+  if (Math.abs(dx) < Math.abs(dy) * 1.2) return "none";
+  return !open && dx > 0 ? "open" : open && dx < 0 ? "close" : "none";
+}
+
+/** Where the drawer settles on release: a flick (px/ms) wins, else past halfway. */
+export function swipeEnds(progress: number, velocity: number): boolean {
+  return Math.abs(velocity) > 0.4 ? velocity > 0 : progress > 0.5;
+}
