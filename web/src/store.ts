@@ -1184,7 +1184,10 @@ function start() {
   order.forEach((u) => void connect(u));
   const fromHash = parseHash(location.hash);
   const url = order.find((u) => hostOf(u) === fromHash?.host) ?? order[0] ?? "";
-  set({ url, channelId: fromHash?.channelId ?? "", pane: fromHash?.channelId ? parsePane(location.hash) : null });
+  // Open the last channel straight away (1466): waiting for the channel list showed the phone
+  // drawer first, then slid it shut once the list arrived. ensureChannel falls back if it is gone.
+  const channelId = fromHash?.channelId || load<Record<string, string>>("lastChannel", {})[url] || "";
+  set({ url, channelId, pane: fromHash?.channelId ? parsePane(location.hash) : null });
   if (fromHash?.messageId) jumpTo(url, { id: fromHash.messageId, channelId: fromHash.channelId, threadRootId: fromHash.rootId });
   let join = null;
   try {
