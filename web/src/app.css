@@ -3377,6 +3377,18 @@ li.sw-empty {
 .msg:is(:focus-visible, :has(:focus-visible)) .toolbar {
   display: flex;
 }
+/* Touch screens hide it visually but keep it for VoiceOver and Switch Control (1450). */
+@media (hover: none) {
+  .toolbar {
+    display: flex;
+  }
+  .msg:not(:focus-visible, :has(:focus-visible)) .toolbar {
+    clip-path: inset(50%);
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+}
 @media (hover: hover) {
   .msg:hover .toolbar,
   .msg:focus-within .toolbar {
