@@ -1435,8 +1435,7 @@ function Appearance() {
         <small className="fine">If text on the color is hard to read, Sblurp changes the color a little.</small>
       </fieldset>
       )}
-      {/* Phones always use cozy messages and the compact sidebar (1350, 1364). */}
-      <div className="desk-only">
+      {/* Phones show IRC as compact (1424). */}
       <Choice
         k="density"
         label="Messages"
@@ -1446,6 +1445,8 @@ function Appearance() {
           ["irc", "IRC"],
         ]}
       />
+      {/* Phones always use the compact sidebar (1364). */}
+      <div className="desk-only">
       <Choice
         k="sidebar"
         label="Sidebar"

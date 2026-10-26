@@ -4624,8 +4624,6 @@ li.sw-empty {
 .msg[data-head="true"] .msg-gutter .hover-time {
   display: none;
 }
-/* Compact and IRC are desktop layouts; phones always get the cozy avatar-and-name rows (1350). */
-@media (min-width: 768px) {
 /* Compact: no avatars, the time on the left, the name inline with the text. */
 :root:is([data-density="compact"], [data-density="irc"]) {
   .msg {
@@ -4663,7 +4661,9 @@ li.sw-empty {
     font-size: inherit;
   }
 }
-/* IRC: monospace, names in a right-aligned column, no gaps between speakers. */
+/* IRC: monospace, names in a right-aligned column, no gaps between speakers.
+   A desktop layout: on phones it falls back to compact (1424). */
+@media (min-width: 768px) {
 :root[data-density="irc"] {
   .msg {
     font-family: var(--mono);
