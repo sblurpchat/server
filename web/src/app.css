@@ -3966,10 +3966,11 @@ li.sw-empty {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
+  min-height: 30px; /* grows with Text size (1506) */
   padding: 0 14px;
   border-radius: 15px;
   font-size: 0.8125rem;
+  white-space: nowrap; /* left: 50% would cap it at half the list's width (1506) */
   font-weight: 700;
   box-shadow: var(--shadow);
   z-index: 2;
@@ -4810,7 +4811,7 @@ li.sw-empty {
     height: 44px;
   }
   .jump {
-    height: 36px;
+    min-height: 36px;
     border-radius: 18px;
   }
   /* Small controls keep their look and get an invisible fingertip-sized hit area (1297). */
