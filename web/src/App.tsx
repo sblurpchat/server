@@ -218,11 +218,12 @@ const tabPanels = (drawer: HTMLElement) => drawer.querySelectorAll<HTMLElement>(
 /** Phone drawer swipe (1354): a sideways drag anywhere on the channel opens the drawer like Slack,
  *  the drawer follows the finger and settles on release; dragging it back closes it. In a thread
  *  or member pane the same drag pulls the pane away and goes back to the channel (1403, 1416).
- *  On the open drawer's tab lists a drag to the right brings in the tab on the left (1423). */
+ *  On the open drawer's tab lists a drag either way pages to the next tab (1423, 1477); past the
+ *  last tab, or on the rail, a drag to the left closes the drawer. */
 function useDrawerSwipe(app: React.RefObject<HTMLDivElement | null>, live: React.RefObject<{ drawer: boolean; channelId: string }>) {
   useEffect(() => {
     const root = app.current!;
-    let g: { x: number; y: number; t: number; t0: number; open: boolean; axis: ReturnType<typeof swipeAxis> | "tab"; p: number; v: number; pane: HTMLElement | null; tabs: boolean } | null = null;
+    let g: { x: number; y: number; t: number; t0: number; open: boolean; axis: ReturnType<typeof swipeAxis> | "tab"; p: number; v: number; pane: HTMLElement | null; tabs: boolean; dir: number } | null = null;
     const els = () => [root.querySelector<HTMLElement>(".drawer")!, root.querySelector<HTMLElement>(".scrim")!] as const;
     const start = (e: TouchEvent) => {
       g = null;
@@ -231,13 +232,13 @@ function useDrawerSwipe(app: React.RefObject<HTMLDivElement | null>, live: React
       // An open menu (a message long press, 1400) owns the touch, and so does the menu itself.
       if (t.closest("dialog, input, textarea, [popover], .side-sec li:has(.chan-close)") ||document.querySelector(".pop:popover-open")) return;
       for (let el: Element | null = t; el && el !== root; el = el.parentElement) if (scrollsX(el)) return;
-      const tabs = (live.current.drawer || !live.current.channelId) && !!t.closest(".drawer");
+      const tabs = (live.current.drawer || !live.current.channelId) && !!t.closest(".drawer") && !t.closest(".rail");
       // With no channel picked the drawer is all there is: nothing to swipe back to.
       if (!live.current.channelId && !tabs) return;
       // After a jump from search, Activity or Threads (1433) the channel itself swipes back, like a pane.
       const pane = t.closest<HTMLElement>(".pane") ?? (!live.current.drawer && history.state?.back ? t.closest<HTMLElement>(".channel") : null);
       const open = !pane && live.current.drawer;
-      g = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp, t0: e.timeStamp, open, axis: null, p: open ? 1 : 0, v: 0, pane, tabs };
+      g = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: e.timeStamp, t0: e.timeStamp, open, axis: null, p: open ? 1 : 0, v: 0, pane, tabs, dir: 0 };
     };
     const move = (e: TouchEvent) => {
       if (!g || g.axis === "none") return;
@@ -245,7 +246,8 @@ function useDrawerSwipe(app: React.RefObject<HTMLDivElement | null>, live: React
       if (g.axis === null) {
         const dy = e.touches[0].clientY - g.y, ms = e.timeStamp - g.t0;
         let a: ReturnType<typeof swipeAxis> | "tab" = swipeAxis(g.open, dx, dy, ms);
-        if (g.tabs && a && swipeAxis(false, dx, dy, ms) === "open" && swipeTab(get().tab, dx)) a = "tab";
+        const side = swipeAxis(dx < 0, dx, dy, ms); // "open" or "close" for any sideways drag
+        if (g.tabs && (side === "open" || side === "close") && swipeTab(get().tab, dx)) [a, g.dir] = ["tab", Math.sign(dx)];
         else if (a && !live.current.channelId) a = "none";
         g.axis = a;
         // Swiping back from a channel shows its list, never the You tab left open last time (1438).
@@ -258,12 +260,12 @@ function useDrawerSwipe(app: React.RefObject<HTMLDivElement | null>, live: React
       e.preventDefault();
       const [drawer, scrim] = els();
       if (g.axis === "tab") {
-        const p = Math.max(0, dx / drawer.offsetWidth);
+        const p = Math.max(0, (dx * g.dir) / drawer.offsetWidth);
         g.v = ((p - g.p) * drawer.offsetWidth) / Math.max(1, e.timeStamp - g.t);
         g.p = p;
         g.t = e.timeStamp;
         drawer.style.overflow = "clip";
-        for (const el of tabPanels(drawer)) Object.assign(el.style, { transition: "none", translate: `${dx > 0 ? dx : 0}px 0` });
+        for (const el of tabPanels(drawer)) Object.assign(el.style, { transition: "none", translate: `${p * g.dir * drawer.offsetWidth}px 0` });
         return;
       }
       const w = (g.pane ?? drawer).offsetWidth;
@@ -278,13 +280,14 @@ function useDrawerSwipe(app: React.RefObject<HTMLDivElement | null>, live: React
     const end = () => {
       if (g?.axis === "tab") {
         const go = swipeEnds(g.p, g.v);
+        const dir = g.dir;
         g = null;
         els()[0].style.removeProperty("overflow");
         for (const el of tabPanels(els()[0])) {
           el.style.removeProperty("translate");
           el.style.removeProperty("transition");
         }
-        if (go) set({ tab: swipeTab(get().tab, 1)! });
+        if (go) set({ tab: swipeTab(get().tab, dir)! });
         return;
       }
       if (!g || (g.axis !== "open" && g.axis !== "close")) return (g = null);
