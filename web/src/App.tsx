@@ -2467,8 +2467,8 @@ function ProfilePopover() {
                   </button>
                 )}
                 {m.id !== me?.id && !blocked && (
-                  <button className="btn danger-ghost small" onClick={() => set({ popover: null, modal: { t: "block", url: p.url, memberId: m.id } })}>
-                    Block
+                  <button className="btn ghost small" onClick={() => set({ popover: null, modal: { t: "block", url: p.url, memberId: m.id } })}>
+                    <Icon name="ban" size={16} /> Block
                   </button>
                 )}
                 {mod.remove && [false, true].map((ban) => (

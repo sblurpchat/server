@@ -2703,6 +2703,35 @@ li.sw-empty {
 .profile-body .profile-mod .btn {
   margin-top: 8px;
 }
+/* Edit roles sits in line with the role pills (1459). */
+.profile-body .role-chips .btn {
+  margin-top: 0;
+}
+/* On phones the moderation actions are a grouped list of fingertip rows, destructive last (1459). */
+@media (max-width: 767px) {
+  .profile-mod {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    margin-top: 16px;
+  }
+  .profile-body .profile-mod .btn {
+    justify-content: flex-start;
+    gap: 12px;
+    height: auto;
+    min-height: 44px;
+    margin: 0;
+    padding: 0 16px;
+    border-radius: 0;
+    font-size: 0.9375rem;
+  }
+  .profile-mod .btn + .btn {
+    border-top: 1px solid var(--line);
+  }
+  .profile-mod .btn.danger-ghost:hover {
+    text-decoration: none;
+  }
+}
 
 /* --------------------------------------------------------------- sign in */
 
@@ -4645,6 +4674,10 @@ li.sw-empty {
   .icon-btn {
     width: 44px;
     height: 44px;
+  }
+  /* Buttons are fingertip tall, .small too (1459). */
+  .btn {
+    min-height: 44px;
   }
   .chan {
     height: 44px;
