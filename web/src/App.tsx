@@ -171,6 +171,39 @@ const onNarrow = (f: () => void) => (NARROW.addEventListener("change", f), () =>
 /** Can this element scroll sideways? Then a sideways drag inside it is its own, not the drawer's. */
 const scrollsX = (el: Element) => el.scrollWidth > el.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(el).overflowX);
 
+/** Swipe a DM row left to reveal Close (1389). Not a native scroll-snap row (1411): WKWebView drops a
+ *  tap while a scroll view decelerates, and a snap scroller decelerates long after it looks still,
+ *  so Close took two taps. Here the row is only translated, so nothing scrolls under the tap. */
+const ROW_W = 92; // the Close button plus its gap
+function rowSwipe(e: React.PointerEvent<HTMLLIElement>) {
+  if (e.pointerType !== "touch") return;
+  const li = e.currentTarget;
+  const x0 = e.clientX;
+  const from = parseFloat(li.style.getPropertyValue("--dx")) || 0;
+  let at = from, t = e.timeStamp, v = 0;
+  const move = (m: PointerEvent) => {
+    const next = Math.min(0, Math.max(-ROW_W, from + m.clientX - x0));
+    v = (at - next) / Math.max(1, m.timeStamp - t);
+    at = next;
+    t = m.timeStamp;
+    li.dataset.drag = "";
+    li.style.setProperty("--dx", `${at}px`);
+  };
+  const up = (u: PointerEvent) => {
+    li.removeEventListener("pointermove", move);
+    li.removeEventListener("pointerup", up);
+    li.removeEventListener("pointercancel", up);
+    if (li.dataset.drag == null) return;
+    delete li.dataset.drag;
+    const open = u.type === "pointerup" ? swipeEnds(-at / ROW_W, v) : from < 0;
+    for (const o of document.querySelectorAll<HTMLElement>(".side-sec li[style]")) o.style.removeProperty("--dx");
+    if (open) li.style.setProperty("--dx", `${-ROW_W}px`);
+  };
+  li.addEventListener("pointermove", move);
+  li.addEventListener("pointerup", up);
+  li.addEventListener("pointercancel", up);
+}
+
 /** Phone drawer swipe (1354): a sideways drag anywhere on the channel opens the drawer like Slack,
  *  the drawer follows the finger and settles on release; dragging it back closes it. */
 function useDrawerSwipe(app: React.RefObject<HTMLDivElement | null>, live: React.RefObject<{ drawer: boolean; channelId: string }>) {
@@ -182,7 +215,7 @@ function useDrawerSwipe(app: React.RefObject<HTMLDivElement | null>, live: React
       g = null;
       if (!NARROW.matches || e.touches.length !== 1) return;
       const t = e.target as Element;
-      if (t.closest("dialog, .pane, input, textarea, [popover]")) return;
+      if (t.closest("dialog, .pane, input, textarea, [popover], .side-sec li:has(.chan-close)")) return;
       for (let el: Element | null = t; el && el !== root; el = el.parentElement) if (scrollsX(el)) return;
       // With no channel picked the drawer is all there is: nothing to swipe back to.
       if (!live.current.channelId) return;
@@ -683,7 +716,7 @@ function Sidebar({ c }: { c: Community }) {
                     const other = sec.dm ? c.members[dmPeer(ch, c.me?.id)] : undefined;
                     const label = channelLabel(ch, c.members, c.me?.id);
                     return (
-                      <li key={ch.id}>
+                      <li key={ch.id} onPointerDown={sec.dm ? rowSwipe : undefined}>
                         <a
                           href={formatHash(c.url, ch.id)}
                           className="chan"

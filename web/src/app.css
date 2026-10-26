@@ -1458,25 +1458,25 @@ kbd {
 .chan-close-text {
   display: none;
 }
-/* Touch (1389): no tiny X. A DM row scrolls sideways like an iOS list row: swipe it left to
-   reveal a full-height Close button. Native scroll snap, and the drawer swipe already
-   ignores touches that start in a sideways scroller. */
+/* Touch (1389): no tiny X. Swipe a DM row left like an iOS list row to reveal a full-height
+   Close button. rowSwipe in App.tsx sets --dx; not a native scroller, see 1411 there. */
 @media (hover: none) {
   .side-sec li:has(.chan-close) {
     display: flex;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    overscroll-behavior-x: contain;
+    overflow: hidden;
+    touch-action: pan-y;
   }
-  .side-sec li:has(.chan-close)::-webkit-scrollbar {
-    display: none;
+  .side-sec li:has(.chan-close) > * {
+    translate: var(--dx, 0) 0;
+    transition: translate 200ms ease-out;
+  }
+  .side-sec li[data-drag] > * {
+    transition: none;
   }
   .side-sec li:has(.chan-close) .chan {
     flex: 0 0 100%;
-    scroll-snap-align: start;
   }
-  .side-sec li .chan .badge {
+  .side-sec li:is(:hover, :focus-within) .chan .badge {
     visibility: visible;
   }
   .chan-close,
@@ -1492,7 +1492,6 @@ kbd {
     font-weight: 600;
     opacity: 1;
     transform: none;
-    scroll-snap-align: end;
   }
   .chan-close svg {
     display: none;
