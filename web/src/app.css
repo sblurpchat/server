@@ -4672,10 +4672,19 @@ li.sw-empty {
   .msg {
     font-family: var(--mono);
     font-size: 0.8125rem;
+    grid-template-columns: calc(8ch + 10px) minmax(0, 1fr);
   }
   .msg[data-head="true"] {
     margin-top: 0;
     padding-top: 1px;
+  }
+  /* The time is a column of the line at the text's size, like a client's scrollback (1432). */
+  .hover-time {
+    font-size: inherit;
+    padding-top: 0;
+  }
+  .msg-head .name {
+    font-weight: 600;
   }
 }
 @media (max-width: 767px) {

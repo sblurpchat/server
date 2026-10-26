@@ -494,7 +494,10 @@ function moveFocus(e: KeyboardEvent<HTMLElement>) {
 }
 
 // Memoized, and it reads only the community fields it shows, so loading a page of history renders only the new rows.
-const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, focus }: { url: string; m: Message; head: boolean; inThread: boolean; fresh: boolean; focus?: boolean }) {
+const MessageRow = memo(function MessageRow({ url, m, head: grouped, inThread, fresh, focus }: { url: string; m: Message; head: boolean; inThread: boolean; fresh: boolean; focus?: boolean }) {
+  // IRC puts the time and nick on every line (1432).
+  const irc = useApp((s) => s.look.density === "irc");
+  const head = grouped || irc;
   const c = {
     members: useApp((s) => s.cs[s.url]!.members),
     me: useApp((s) => s.cs[s.url]!.me),
@@ -534,7 +537,7 @@ const MessageRow = memo(function MessageRow({ url, m, head, inThread, fresh, foc
   const name = author?.displayName || author?.username || "Unknown member";
   const h24 = useApp((s) => s.look.clock === "24");
   const surfaces = useApp((s) => s.surfaces);
-  const color = nameColor(author, c.roles, surfaces);
+  const color = nameColor(author, c.roles, surfaces, irc ? m.authorId : "");
   const time = new Date(Number(m.createdAtMs));
   const timeEl = (
     <time dateTime={time.toISOString()} title={time.toLocaleString()}>

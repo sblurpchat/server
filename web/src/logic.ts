@@ -391,8 +391,13 @@ export const memberRoles = (m: Member | undefined, roles: Role[]) => (m ? roles.
 
 const fitted = new Map<string, string>();
 /** Name color from a member's first colored role, made readable on every surface a message sits on. "" when none. */
-export function nameColor(m: Member | undefined, roles: Role[], surfaces: string[]) {
-  const color = memberRoles(m, roles).find((r) => r.color)?.color;
+/** IRC nick colors (1432): no reds, so a nick never reads as a mention or an error. */
+const NICKS = ["#0e9f8e", "#3f9d3a", "#c98a0b", "#d4682a", "#8b5cf6", "#2f8fd8", "#d64f9a", "#7a9a14"];
+/** A member's name color: their first role color, else a stable nick color when `nick` (an id) is given; fitted to the surfaces. */
+export function nameColor(m: Member | undefined, roles: Role[], surfaces: string[], nick = "") {
+  let h = 2166136261; // FNV-1a, so ids that differ in one character still spread
+  for (const ch of nick) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  const color = memberRoles(m, roles).find((r) => r.color)?.color || (nick && NICKS[Math.floor(((h >>> 0) / 2 ** 32) * NICKS.length)]);
   if (!color || !surfaces.length) return "";
   const k = `${color} ${surfaces.join()}`;
   if (!fitted.has(k)) fitted.set(k, fitContrast(color, surfaces, 4.5));

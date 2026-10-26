@@ -1415,3 +1415,18 @@ describe("swipeTab (1423)", () => {
     expect(swipeTab("you", -40)).toBeNull();
   });
 });
+
+import { nameColor } from "./logic";
+describe("nameColor nick colors (1432)", () => {
+  const dark = ["#1d1f2d"];
+  const ids = ["01a1", "01b2", "01c3", "01d4", "01e5", "01f6", "01a7", "01b8"];
+  it("gives no color without a role or a nick", () => {
+    expect(nameColor(undefined, [], dark)).toBe("");
+  });
+  it("gives each nick a stable, readable color, and spreads nicks over several", () => {
+    const got = ids.map((id) => nameColor(undefined, [], dark, id));
+    expect(got).toEqual(ids.map((id) => nameColor(undefined, [], dark, id)));
+    expect(new Set(got).size).toBeGreaterThanOrEqual(3);
+    for (const c of got) expect(contrast(c, dark[0])).toBeGreaterThanOrEqual(4.5);
+  });
+});
