@@ -5,21 +5,21 @@ var owls = Community{
 	Accent:      "#f0a020",
 	Members: []Member{
 		{Username: "margot", Display: "Margot Lindqvist", Bio: "Started Night Owls after a decade of reading past midnight; Swedish crime novels are her guilty pleasure.", Emoji: "🦉", Status: "up past my bedtime", Role: "admin"},
-		{Username: "desmond", Display: "Desmond Achebe", Bio: "Projectionist turned librarian who has logged every film he's seen since 1998.", Emoji: "🎞️", Status: "picking Friday's film", Role: "moderator"},
-		{Username: "yuki", Display: "Yuki Tanaka", Bio: "Literary translator in Osaka who argues about translations in two languages.", Emoji: "📖", Status: "comparing Le Guin editions", Role: "moderator"},
-		{Username: "rosa.m", Display: "Rosa Medina", Bio: "Pediatric ER doctor who reads on night shifts between patients.", Emoji: "🩺", Status: "on call"},
-		{Username: "aleks", Display: "Aleksander Nowak", Bio: "Runs a bakery in Kraków and reads on the 4am tram.", Emoji: "🥐", Status: "proofing dough"},
-		{Username: "hannah_b", Display: "Hannah Brooks", Bio: "Ecology grad student who recommends The Overstory to anyone standing still.", Emoji: "🌲", Status: "thesis chapter 4"},
-		{Username: "omar", Display: "Omar Haddad", Bio: "Podcast audio engineer who reads almost everything as audiobooks at 1.25x.", Emoji: "🎧", Status: "listening to Le Guin"},
+		{Username: "desmond", Display: "Des", Bio: "Projectionist turned librarian who has logged every film he's seen since 1998.", Emoji: "🎞️", Status: "picking Friday's film", Role: "moderator"},
+		{Username: "yuki", Display: "yuki", Bio: "Literary translator in Osaka who argues about translations in two languages.", Emoji: "📖", Status: "comparing Le Guin editions", Role: "moderator"},
+		{Username: "rosa.m", Display: "Dr. Rosa Medina", Bio: "Pediatric ER doctor who reads on night shifts between patients.", Emoji: "🩺", Status: "on call"},
+		{Username: "aleks", Display: "ALEKS", Bio: "Runs a bakery in Kraków and reads on the 4am tram.", Emoji: "🥐", Status: "proofing dough"},
+		{Username: "hannah_b", Display: "hannah b", Bio: "Ecology grad student who recommends The Overstory to anyone standing still.", Emoji: "🌲", Status: "thesis chapter 4"},
+		{Username: "omar", Display: "Omar", Bio: "Podcast audio engineer who reads almost everything as audiobooks at 1.25x.", Emoji: "🎧", Status: "listening to Le Guin"},
 		{Username: "leilani", Display: "Leilani Kahale", Bio: "Writes poetry on Oʻahu's North Shore and posts the best recs in the club."},
-		{Username: "theo", Display: "Theo Fischer", Bio: "Retired cinematographer with strong opinions about aspect ratios.", Emoji: "🎥", Status: "4:3 forever"},
-		{Username: "ines", Display: "Inês Carvalho", Bio: "New parent in Lisbon reading in twenty-minute stretches during night feeds.", Emoji: "🍼", Status: "3am feed club"},
-		{Username: "kwame", Display: "Kwame Mensah", Bio: "Software engineer in Accra who joined for the sci-fi and stayed for the films.", Emoji: "🚀", Status: "recovering from Kindred"},
+		{Username: "theo", Display: "theo fischer", Bio: "Retired cinematographer with strong opinions about aspect ratios.", Emoji: "🎥", Status: "4:3 forever"},
+		{Username: "ines", Display: "Inês", Bio: "New parent in Lisbon reading in twenty-minute stretches during night feeds.", Emoji: "🍼", Status: "3am feed club"},
+		{Username: "kmensah23", Display: "Kwame M", Bio: "Software engineer in Accra who joined for the sci-fi and stayed for the films.", Emoji: "🚀", Status: "recovering from Kindred"},
 	},
 	Bot: Member{Username: "hoot", Display: "Hoot", Bio: "Posts a reading prompt in #nightly-prompt every night around 10. Answer in the thread."},
 	Roles: []Role{
-		{Name: "Film club", Color: "#c0392b", Members: []string{"desmond", "hannah_b", "ines", "kwame", "leilani", "omar", "rosa.m", "theo", "yuki"}},
-		{Name: "Spoiler-safe", Color: "#8e44ad", Members: []string{"desmond", "hannah_b", "kwame", "leilani", "omar", "rosa.m", "theo", "yuki"}},
+		{Name: "Film club", Color: "#c0392b", Members: []string{"desmond", "hannah_b", "ines", "kmensah23", "leilani", "omar", "rosa.m", "theo", "yuki"}},
+		{Name: "Spoiler-safe", Color: "#8e44ad", Members: []string{"desmond", "hannah_b", "kmensah23", "leilani", "omar", "rosa.m", "theo", "yuki"}},
 	},
 	Channels: []Channel{
 		{
@@ -27,7 +27,7 @@ var owls = Community{
 			Convos: []Convo{
 				{DaysAgo: 13.95, Lines: []Line{
 					{By: "margot", Text: "Welcome to October, owls 🦉 Book of the month is _The Left Hand of Darkness_ by Ursula K. Le Guin. Spoilers go in #spoilers-the-left-hand-of-darkness only. Film club is Fridays at 10pm.",
-						React: map[string][]string{"❤️": {"desmond", "yuki", "kwame", "hannah_b", "leilani"}}},
+						React: map[string][]string{"❤️": {"desmond", "yuki", "kmensah23", "hannah_b", "leilani"}}},
 				}},
 				{DaysAgo: 7.7, Lines: []Line{
 					{By: "margot", Text: "Reminder: Hoot posts a prompt every night around 10. Please answer in the thread so the channel stays readable.",
@@ -36,7 +36,7 @@ var owls = Community{
 				{DaysAgo: 1.5, Lines: []Line{
 					{By: "margot", Text: "The poll for November's book is up! Reply in this thread with your vote: _The Dispossessed_, _Kindred_ or _Piranesi_.",
 						Replies: []Line{
-							{By: "kwame", Text: "The Dispossessed"},
+							{By: "kmensah23", Text: "The Dispossessed"},
 							{By: "hannah_b", Text: "Piranesi!!"},
 							{By: "rosa.m", Text: "Kindred. I want to reread it with all of you"},
 							{By: "leilani", Text: "Piranesi"},
@@ -53,8 +53,8 @@ var owls = Community{
 						Replies: []Line{
 							{By: "rosa.m", Text: "Catcher in the Rye at 30. I wanted to shake Holden. I think I'd be kinder to him now that I work with teenagers."},
 							{By: "leilani", Text: "Little Women at 9. I skipped everything that wasn't Jo. Reread it last year and cried about Beth like an adult."},
-							{By: "kwame", Text: "Dune at 12. I understood the sandworms and nothing else."},
-							{By: "margot", Text: "@kwame honestly that's still 90% of the appeal"},
+							{By: "kmensah23", Text: "Dune at 12. I understood the sandworms and nothing else."},
+							{By: "margot", Text: "@kmensah23 honestly that's still 90% of the appeal"},
 						}},
 				}},
 				{DaysAgo: 12.1, Lines: []Line{
@@ -82,8 +82,8 @@ var owls = Community{
 							{By: "aleks", Text: "Infinite Jest. 200 pages in, the footnotes won"},
 							{By: "theo", Text: "Moby-Dick. I respect the whale. I do not need the chapter about rope."},
 							{By: "hannah_b", Text: "@theo the rope chapter is actually beautiful!! (I'm alone in this)"},
-							{By: "kwame", Text: "The Name of the Wind. am I waiting for book 3 or am I free?"},
-							{By: "margot", Text: "you are free, @kwame"},
+							{By: "kmensah23", Text: "The Name of the Wind. am I waiting for book 3 or am I free?"},
+							{By: "margot", Text: "you are free, @kmensah23"},
 						}},
 				}},
 				{DaysAgo: 9.1, Lines: []Line{
@@ -108,7 +108,7 @@ var owls = Community{
 				{DaysAgo: 7.1, Lines: []Line{
 					{By: "hoot", Text: "🦉 Tonight's prompt: Which character would you want sitting next to you on a long night train?",
 						Replies: []Line{
-							{By: "kwame", Text: "Murderbot. it would ignore me and watch its shows and that's ideal"},
+							{By: "kmensah23", Text: "Murderbot. it would ignore me and watch its shows and that's ideal"},
 							{By: "rosa.m", Text: "Miss Marple. she'd knit and figure out everyone in the carriage by morning"},
 							{By: "aleks", Text: "Samwise. he'd bring snacks"},
 							{By: "yuki", Text: "Klara from Klara and the Sun. she'd notice the sunrise before anyone"},
@@ -121,14 +121,14 @@ var owls = Community{
 							{By: "hannah_b", Text: "The Overstory, obviously. I can't walk past a chestnut without apologizing to it"},
 							{By: "leilani", Text: "Braiding Sweetgrass. I say thank you to the garden now"},
 							{By: "aleks", Text: "Salt Fat Acid Heat. I've baked for 20 years and it still taught me things about salt"},
-							{By: "kwame", Text: "Kindred. I think about family history very differently now"},
+							{By: "kmensah23", Text: "Kindred. I think about family history very differently now"},
 						}},
 				}},
 				{DaysAgo: 5.1, Lines: []Line{
 					{By: "hoot", Text: "🦉 Tonight's prompt: You can ask one author, living or dead, one question. Who, and what?",
 						Replies: []Line{
 							{By: "yuki", Text: "Ishiguro: did you know from page one what Stevens was hiding from himself?"},
-							{By: "kwame", Text: "Octavia Butler: what were you planning after the Parables?"},
+							{By: "kmensah23", Text: "Octavia Butler: what were you planning after the Parables?"},
 							{By: "desmond", Text: "Le Guin: would you write Genly any differently today?"},
 							{By: "margot", Text: "Agatha Christie: how did you plot these? index cards? spite?",
 								React: map[string][]string{"😂": {"desmond", "yuki", "aleks"}}},
@@ -157,7 +157,7 @@ var owls = Community{
 					{By: "hoot", Text: "🦉 Tonight's prompt: Pick a book for someone you love who \"doesn't read\". What would you hand them?",
 						Replies: []Line{
 							{By: "margot", Text: "The Martian. funny, fast, short chapters"},
-							{By: "kwame", Text: "Project Hail Mary, same reasons, plus the best friendship in sci-fi"},
+							{By: "kmensah23", Text: "Project Hail Mary, same reasons, plus the best friendship in sci-fi"},
 							{By: "leilani", Text: "a poetry collection. Ocean Vuong's _Night Sky with Exit Wounds_"},
 							{By: "rosa.m", Text: "my brother only reads cookbooks, so Salt Fat Acid Heat, @aleks style"},
 						}},
@@ -177,9 +177,9 @@ var owls = Community{
 			Name: "now-reading", Topic: "What's open on your nightstand? Progress updates welcome. No spoilers for the book of the month here.", Category: "Reading",
 			Convos: []Convo{
 				{DaysAgo: 13.6, Lines: []Line{
-					{By: "kwame", Text: "Started Kindred tonight. 30 pages in and I'm already stressed."},
+					{By: "kmensah23", Text: "Started Kindred tonight. 30 pages in and I'm already stressed."},
 					{By: "yuki", Text: "Butler doesn't waste a page. you're in for it"},
-					{By: "kwame", Text: "the prologue is like two pages and it already got me"},
+					{By: "kmensah23", Text: "the prologue is like two pages and it already got me"},
 					{By: "rosa.m", Text: "Read it in two days last year. Hydrate."},
 				}},
 				{DaysAgo: 11.8, Lines: []Line{
@@ -210,12 +210,12 @@ var owls = Community{
 					{By: "theo", Text: "the TV series is gorgeous too, once you finish. the opening credits alone"},
 				}},
 				{DaysAgo: 2.5, Lines: []Line{
-					{By: "kwame", Text: "Finished Kindred. I need a walk."},
+					{By: "kmensah23", Text: "Finished Kindred. I need a walk."},
 					{By: "rosa.m", Text: "told you. hydrate."},
-					{By: "kwame", Text: "what do I read next that won't wreck me"},
+					{By: "kmensah23", Text: "what do I read next that won't wreck me"},
 					{By: "yuki", Text: "Becky Chambers, _A Psalm for the Wild-Built_. a robot and a tea monk. pure comfort",
-						React: map[string][]string{"🍵": {"kwame", "leilani"}}},
-					{By: "kwame", Text: "a TEA MONK. sold"},
+						React: map[string][]string{"🍵": {"kmensah23", "leilani"}}},
+					{By: "kmensah23", Text: "a TEA MONK. sold"},
 				}},
 				{DaysAgo: 6.0, Lines: []Line{
 					{By: "leilani", Text: "Reading Ocean Vuong's _On Earth We're Briefly Gorgeous_ again. it's a letter to his mother and every page is a poem"},
@@ -251,22 +251,22 @@ var owls = Community{
 				}},
 				{DaysAgo: 7.8, Lines: []Line{
 					{By: "desmond", Text: "Film rec: _Columbus_ (2017) by Kogonada. Architecture, grief, long quiet shots. Perfect 1am viewing.",
-						React: map[string][]string{"👀": {"kwame", "hannah_b"}}},
+						React: map[string][]string{"👀": {"kmensah23", "hannah_b"}}},
 					{By: "theo", Text: "the framing in that film. every shot could hang on a wall"},
-					{By: "kwame", Text: "added to my list"},
+					{By: "kmensah23", Text: "added to my list"},
 				}},
 				{DaysAgo: 5.3, Lines: []Line{
-					{By: "kwame", Text: "Looking for sci-fi that's more about people than spaceships. Already loved Kindred and Le Guin."},
+					{By: "kmensah23", Text: "Looking for sci-fi that's more about people than spaceships. Already loved Kindred and Le Guin."},
 					{By: "yuki", Text: "Klara and the Sun"},
 					{By: "hannah_b", Text: "The Dispossessed, more Le Guin"},
 					{By: "leilani", Text: "Never Let Me Go. Ishiguro again, sorry"},
-					{By: "kwame", Text: "my library list just doubled. thank you"},
-					{By: "margot", Text: "@kwame The Dispossessed is the natural next step, trust me"},
+					{By: "kmensah23", Text: "my library list just doubled. thank you"},
+					{By: "margot", Text: "@kmensah23 The Dispossessed is the natural next step, trust me"},
 				}},
 				{DaysAgo: 3.5, Lines: []Line{
 					{By: "omar", Text: "Audiobook recs where the narrator makes the book? I just finished Middlemarch and I'm spoiled now",
 						Replies: []Line{
-							{By: "kwame", Text: "Project Hail Mary, Ray Porter. the audio has a thing the print book can't do"},
+							{By: "kmensah23", Text: "Project Hail Mary, Ray Porter. the audio has a thing the print book can't do"},
 							{By: "margot", Text: "Lincoln in the Bardo. a full cast of 166 voices"},
 							{By: "rosa.m", Text: "anything by Neil Gaiman read by himself. the Graveyard Book is perfect for night shifts"},
 							{By: "omar", Text: "three great picks, queued up"},
@@ -292,10 +292,10 @@ var owls = Community{
 				}},
 				{DaysAgo: 10.8, Lines: []Line{
 					{By: "yuki", Text: "Estraven's first chapters read so differently once you know how it ends. Every kindness he shows Genly in Erhenrang, and Genly misreads all of it.",
-						React: map[string][]string{"❤️": {"desmond", "kwame", "margot"}},
+						React: map[string][]string{"❤️": {"desmond", "kmensah23", "margot"}},
 						Replies: []Line{
 							{By: "desmond", Text: "the parade scene. Genly thinks he's being cold and he's actually trying to warn him"},
-							{By: "kwame", Text: "I misread him too the first time. which I think is the point. we're as stuck in our assumptions as Genly is"},
+							{By: "kmensah23", Text: "I misread him too the first time. which I think is the point. we're as stuck in our assumptions as Genly is"},
 							{By: "yuki", Text: "exactly. shifgrethor goes both ways"},
 						}},
 				}},
@@ -307,12 +307,12 @@ var owls = Community{
 					{By: "theo", Text: "the cold is written so well I put on a sweater"},
 				}},
 				{DaysAgo: 6.6, Lines: []Line{
-					{By: "kwame", Text: "I'm still upset about Estraven skiing straight at the guards. on purpose."},
+					{By: "kmensah23", Text: "I'm still upset about Estraven skiing straight at the guards. on purpose."},
 					{By: "desmond", Text: "and Genly calls the ship down right after. too late."},
 					{By: "omar", Text: "listening to the audiobook in the car and I had to pull over"},
 					{By: "yuki", Text: "and then the son asking Genly about the other worlds. that ending is a door left open"},
 					{By: "margot", Text: "the saddest hopeful ending I know",
-						React: map[string][]string{"😢": {"kwame", "yuki", "omar", "hannah_b"}}},
+						React: map[string][]string{"😢": {"kmensah23", "yuki", "omar", "hannah_b"}}},
 				}},
 				{DaysAgo: 3.4, Lines: []Line{
 					{By: "leilani", Text: "Hot take: the Orgoreyn chapters are the scariest in the book. the Voluntary Farm is so bureaucratic and calm about everything"},
@@ -338,7 +338,7 @@ var owls = Community{
 						Replies: []Line{
 							{By: "leilani", Text: "the peep show monologue. I had to pause and breathe"},
 							{By: "theo", Text: "the way Wenders keeps them on opposite sides of the glass. a reflection, a phone, never just one clean frame"},
-							{By: "kwame", Text: "Harry Dean Stanton barely speaks for the first stretch and you can't look away"},
+							{By: "kmensah23", Text: "Harry Dean Stanton barely speaks for the first stretch and you can't look away"},
 							{By: "omar", Text: "Ry Cooder improvised the score while watching the footage. you can hear it"},
 							{By: "desmond", Text: "great discussion, everyone 🎞️"},
 						}},
@@ -358,10 +358,10 @@ var owls = Community{
 						React: map[string][]string{"😂": {"yuki", "ines", "margot", "desmond"}}},
 				}},
 				{DaysAgo: 5.5, Lines: []Line{
-					{By: "kwame", Text: "Off-schedule question: has anyone seen _Arrival_? I watched it after finishing Le Guin and it scratched the same itch"},
+					{By: "kmensah23", Text: "Off-schedule question: has anyone seen _Arrival_? I watched it after finishing Le Guin and it scratched the same itch"},
 					{By: "theo", Text: "Bradford Young shot it. so much grey fog and it's still warm somehow"},
 					{By: "hannah_b", Text: "and it's based on a Ted Chiang story! _Story of Your Life_"},
-					{By: "kwame", Text: "wait, the same Ted Chiang from rosa's night-shift book?"},
+					{By: "kmensah23", Text: "wait, the same Ted Chiang from rosa's night-shift book?"},
 					{By: "rosa.m", Text: "the very same. it's in _Stories of Your Life and Others_, his first collection"},
 					{By: "desmond", Text: "adding it to the film club shortlist for winter"},
 				}},
@@ -375,14 +375,14 @@ var owls = Community{
 						Replies: []Line{
 							{By: "rosa.m", Text: "watched it Saturday morning after a night shift and it felt like medicine"},
 							{By: "theo", Text: "Wenders in 4:3 again. komorebi. I want to photograph trees now"},
-							{By: "kwame", Text: "the cassettes! Lou Reed in a tiny van in Tokyo"},
+							{By: "kmensah23", Text: "the cassettes! Lou Reed in a tiny van in Tokyo"},
 							{By: "ines", Text: "that last long shot on his face. I cried on the couch at 6am"},
 							{By: "desmond", Text: "best film club turnout yet, thank you all"},
 						}},
 				}},
 				{DaysAgo: 0.2, Lines: []Line{
 					{By: "desmond", Text: "Next Friday: _Past Lives_ or _Columbus_? Vote with 🍿 or 🏛️",
-						React: map[string][]string{"🍿": {"leilani", "hannah_b", "rosa.m", "kwame"}, "🏛️": {"theo", "desmond"}}},
+						React: map[string][]string{"🍿": {"leilani", "hannah_b", "rosa.m", "kmensah23"}, "🏛️": {"theo", "desmond"}}},
 					{By: "theo", Text: "a lone voice for architecture"},
 					{By: "hannah_b", Text: "Past Lives. I need to cry again"},
 				}},
@@ -414,22 +414,22 @@ var owls = Community{
 					{By: "leilani", Text: "@yuki I would love that"},
 				}},
 				{DaysAgo: 7.2, Lines: []Line{
-					{By: "kwame", Text: "What tea do insomniacs drink? I need something that isn't coffee at 1am"},
+					{By: "kmensah23", Text: "What tea do insomniacs drink? I need something that isn't coffee at 1am"},
 					{By: "yuki", Text: "hojicha. roasted, low caffeine, cozy"},
 					{By: "aleks", Text: "chamomile with honey, my grandmother's cure for everything"},
 					{By: "rosa.m", Text: "rooibos. zero caffeine, tastes like a hug"},
-					{By: "kwame", Text: "ordered all three. I am a tea person now"},
+					{By: "kmensah23", Text: "ordered all three. I am a tea person now"},
 				}},
 				{DaysAgo: 5.8, Lines: []Line{
 					{By: "theo", Text: "my cat has decided 2am is playtime. he keeps bringing me socks."},
 					{By: "ines", Text: "the sock tax 😂"},
 					{By: "omar", Text: "my dog does the same with one specific slipper"},
 					{By: "theo", Text: "it's always the left one. why the left one",
-						React: map[string][]string{"😂": {"ines", "omar", "kwame"}}},
+						React: map[string][]string{"😂": {"ines", "omar", "kmensah23"}}},
 				}},
 				{DaysAgo: 3.8, Lines: []Line{
 					{By: "hannah_b", Text: "Thesis chapter 3 submitted at 2:47am 🎉",
-						React: map[string][]string{"🎉": {"margot", "aleks", "rosa.m", "leilani", "yuki", "kwame", "ines"}}},
+						React: map[string][]string{"🎉": {"margot", "aleks", "rosa.m", "leilani", "yuki", "kmensah23", "ines"}}},
 					{By: "margot", Text: "HANNAH"},
 					{By: "aleks", Text: "virtual croissant for you"},
 					{By: "hannah_b", Text: "you're all the best. going to sleep for a week"},
@@ -449,7 +449,7 @@ var owls = Community{
 				}},
 				{DaysAgo: 0.05, Lines: []Line{
 					{By: "omar", Text: "3am crew checking in. what's everyone reading tonight?"},
-					{By: "kwame", Text: "A Psalm for the Wild-Built. it's perfect, thank you @yuki"},
+					{By: "kmensah23", Text: "A Psalm for the Wild-Built. it's perfect, thank you @yuki"},
 					{By: "rosa.m", Text: "Exhalation, between patients"},
 					{By: "theo", Text: "Station Eleven. the Traveling Symphony is my new favorite band"},
 					{By: "ines", Text: "nothing, the baby is asleep and so am I, almost"},
@@ -512,12 +512,12 @@ var owls = Community{
 			},
 		},
 		{
-			Members: []string{"desmond", "theo", "kwame"},
+			Members: []string{"desmond", "theo", "kmensah23"},
 			Convos: []Convo{
 				{DaysAgo: 6.3, Lines: []Line{
 					{By: "desmond", Text: "programming question: a Wenders double feature someday? Wings of Desire, then Paris, Texas again"},
 					{By: "theo", Text: "only if we start at 9. Wings of Desire is long"},
-					{By: "kwame", Text: "I've never seen it. I'm in"},
+					{By: "kmensah23", Text: "I've never seen it. I'm in"},
 					{By: "desmond", Text: "noting it for December"},
 				}},
 			},

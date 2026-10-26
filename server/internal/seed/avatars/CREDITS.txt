@@ -7,7 +7,7 @@ marcus.webp: Jadon Johnson, https://unsplash.com/photos/g9Et-rzQBkA
 sofia.g.webp: Anastasia Vityukova, https://unsplash.com/photos/nBE8-s0BG0Q
 kenji.webp: Vitaly Gariev, https://unsplash.com/photos/TOJiro5qBQg
 amara.webp: Jadon Johnson, https://unsplash.com/photos/gbR310ta_nE
-lukas.webp: Vitaly Gariev, https://unsplash.com/photos/B3KY1FbcG3o
+lukasb84.webp: Vitaly Gariev, https://unsplash.com/photos/B3KY1FbcG3o
 fatima.webp: Menor Degu, https://unsplash.com/photos/H92peKMv8xc
 tomk.webp: Noah Blaine Clark, https://unsplash.com/photos/644AhjsZNQs
 noa.webp: Lesha Tuman, https://unsplash.com/photos/19tzpQzwPmc
@@ -25,5 +25,5 @@ omar.webp: Christian Buehner, https://unsplash.com/photos/JQFHdpOKz2k
 leilani.webp: Vitaly Gariev, https://unsplash.com/photos/4RxZe_7zA4o
 theo.webp: Henry Ravenscroft, https://unsplash.com/photos/Fg6BNki8QpE
 ines.webp: Meg von Haartman, https://unsplash.com/photos/wCnXOZaLrTc
-kwame.webp: Mike Santos, https://unsplash.com/photos/L86XoLxEd-I
+kmensah23.webp: Mike Santos, https://unsplash.com/photos/L86XoLxEd-I
 hoot.webp: Daniel Mačura, https://unsplash.com/photos/E6xfioiJmms
